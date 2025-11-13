@@ -1,0 +1,7 @@
+{
+  "name": "Bounceball",
+  "description": "Een app om wekelijks aanmeldingen te verzamelen voor Bounceball en eerlijke teams te genereren op basis van spelerwaarderingen.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
