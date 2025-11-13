@@ -36,8 +36,11 @@ const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHi
   const handleSaveName = async () => {
       if (isSavingName || !nameInput.trim()) return;
       setIsSavingName(true);
-      await onSetCompetitionName(nameInput);
-      setIsSavingName(false);
+      try {
+        await onSetCompetitionName(nameInput.trim());
+      } finally {
+        setIsSavingName(false);
+      }
   };
 
   const handleDownload = () => {
@@ -100,8 +103,7 @@ const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHi
         <h2 className="ml-3 text-3xl font-bold text-white">Competitiebeheer</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-gray-700 rounded-lg p-6 md:col-span-2">
+      <div className="bg-gray-700 rounded-lg p-6 mb-8">
             <div className="flex items-center mb-4">
                 <EditIcon className="w-6 h-6 text-amber-400" />
                 <h3 className="ml-3 text-xl font-bold text-white">Competitienaam Aanpassen</h3>
@@ -121,13 +123,22 @@ const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHi
                 <button 
                     onClick={handleSaveName}
                     disabled={isSavingName}
-                    className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:bg-cyan-800 disabled:cursor-wait"
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:bg-cyan-800 disabled:cursor-wait flex items-center justify-center"
                 >
-                    {isSavingName ? 'Opslaan...' : 'Opslaan'}
+                    {isSavingName ? (
+                        <>
+                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Opslaan...</span>
+                        </>
+                    ) : 'Opslaan'}
                 </button>
             </div>
         </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-gray-700 rounded-lg p-6">
           <h3 className="text-xl font-bold text-white mb-4">Archiveren & Bekijken</h3>
           <p className="text-gray-400 mb-4">Sla de volledige geschiedenis van de huidige competitie op, of laad een eerder archief in om het te bekijken.</p>
