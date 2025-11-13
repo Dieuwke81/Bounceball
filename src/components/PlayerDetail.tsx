@@ -5,6 +5,7 @@ import ShieldIcon from './icons/ShieldIcon';
 import TrophyIcon from './icons/TrophyIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
 import RatingChart from './RatingChart';
+import UsersIcon from './icons/UsersIcon';
 
 interface PlayerDetailProps {
   player: Player;
@@ -61,6 +62,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, o
         let draws = 0;
         let gamesPlayed = 0;
         let goalsScored = 0;
+        const teammateFrequency = new Map<number, number>();
         const teammateWins = new Map<number, number>();
         const teammateLosses = new Map<number, number>();
         const opponentWins = new Map<number, number>();
@@ -109,6 +111,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, o
                 const opponents = session.teams[opponentTeamIndex];
 
                 teammates.forEach(tm => {
+                    teammateFrequency.set(tm.id, (teammateFrequency.get(tm.id) || 0) + 1);
                     if (playerTeamScore > opponentTeamScore) {
                         teammateWins.set(tm.id, (teammateWins.get(tm.id) || 0) + 1);
                     } else if (opponentTeamScore > playerTeamScore) {
@@ -130,8 +133,9 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, o
         const worstTeammates = [...teammateLosses.entries()].sort((a, b) => b[1] - a[1]);
         const bestOpponents = [...opponentWins.entries()].sort((a, b) => b[1] - a[1]);
         const worstOpponents = [...opponentLosses.entries()].sort((a, b) => b[1] - a[1]);
+        const mostFrequentTeammates = [...teammateFrequency.entries()].sort((a, b) => b[1] - a[1]);
 
-        return { wins, losses, draws, gamesPlayed, goalsScored, bestTeammates, worstTeammates, bestOpponents, worstOpponents };
+        return { wins, losses, draws, gamesPlayed, goalsScored, bestTeammates, worstTeammates, bestOpponents, worstOpponents, mostFrequentTeammates };
     }, [player.id, history]);
 
     const ratingHistory = useMemo(() => {
@@ -221,7 +225,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, o
                 <RatingChart data={ratingHistory} />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                <RelationshipList title="Vaakste Medespeler" data={stats.mostFrequentTeammates} playerMap={playerMap} icon={<UsersIcon className="w-5 h-5 text-cyan-400" />} />
                 <RelationshipList title="Beste Medespelers" data={stats.bestTeammates} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
                 <RelationshipList title="Lastige Medespelers" data={stats.worstTeammates} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
                 <RelationshipList title="Favoriete Tegenstanders" data={stats.bestOpponents} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
