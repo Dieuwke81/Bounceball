@@ -1,21 +1,44 @@
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { GameSession } from '../types';
 import { SPREADSHEET_ID } from '../config';
 import ArchiveIcon from './icons/ArchiveIcon';
 import DownloadIcon from './icons/DownloadIcon';
 import UploadIcon from './icons/UploadIcon';
+import EditIcon from './icons/EditIcon';
 
 interface CompetitionManagementProps {
   currentHistory: GameSession[];
   onViewArchive: (history: GameSession[]) => void;
   onRefresh: () => void;
+  currentCompetitionName: string | null;
+  onSetCompetitionName: (name: string) => Promise<void>;
 }
 
-const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHistory, onViewArchive, onRefresh }) => {
+const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHistory, onViewArchive, onRefresh, currentCompetitionName, onSetCompetitionName }) => {
   const [showInstructions, setShowInstructions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`;
+  
+  const [nameInput, setNameInput] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  useEffect(() => {
+    const getCurrentCompetition = () => {
+        const date = new Date();
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const season = month < 6 ? 1 : 2;
+        return `Competitie ${year}/${season}`;
+    };
+    setNameInput(currentCompetitionName || getCurrentCompetition());
+  }, [currentCompetitionName]);
+
+  const handleSaveName = async () => {
+      if (isSavingName || !nameInput.trim()) return;
+      setIsSavingName(true);
+      await onSetCompetitionName(nameInput);
+      setIsSavingName(false);
+  };
 
   const handleDownload = () => {
     if (currentHistory.length === 0) {
@@ -53,7 +76,6 @@ const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHi
         
         const parsed = JSON.parse(content);
         
-        // Basic validation
         if (Array.isArray(parsed) && (parsed.length === 0 || (parsed[0].date && parsed[0].teams))) {
             onViewArchive(parsed as GameSession[]);
         } else {
@@ -66,7 +88,6 @@ const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHi
     };
     reader.readAsText(file);
     
-    // Reset file input value to allow re-uploading the same file
     if (event.target) {
         event.target.value = '';
     }
@@ -80,7 +101,33 @@ const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHi
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Archiveren & Bekijken */}
+        <div className="bg-gray-700 rounded-lg p-6 md:col-span-2">
+            <div className="flex items-center mb-4">
+                <EditIcon className="w-6 h-6 text-amber-400" />
+                <h3 className="ml-3 text-xl font-bold text-white">Competitienaam Aanpassen</h3>
+            </div>
+            <p className="text-gray-400 mb-4">
+                Pas de naam aan die bovenaan de app wordt weergegeven. Dit wordt centraal opgeslagen in de Google Sheet.
+            </p>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+                <input
+                    type="text"
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    className="flex-grow bg-gray-900 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    placeholder="bv. Competitie 2026/1"
+                    aria-label="Competitienaam"
+                />
+                <button 
+                    onClick={handleSaveName}
+                    disabled={isSavingName}
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:bg-cyan-800 disabled:cursor-wait"
+                >
+                    {isSavingName ? 'Opslaan...' : 'Opslaan'}
+                </button>
+            </div>
+        </div>
+
         <div className="bg-gray-700 rounded-lg p-6">
           <h3 className="text-xl font-bold text-white mb-4">Archiveren & Bekijken</h3>
           <p className="text-gray-400 mb-4">Sla de volledige geschiedenis van de huidige competitie op, of laad een eerder archief in om het te bekijken.</p>
@@ -97,7 +144,6 @@ const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHi
           </div>
         </div>
 
-        {/* Nieuwe Competitie */}
         <div className="bg-gray-700 rounded-lg p-6">
           <h3 className="text-xl font-bold text-white mb-4">Nieuwe Competitie Starten</h3>
           <p className="text-gray-400 mb-4">Klaar voor een nieuw seizoen? Volg de instructies om de competitie te resetten met behoud van spelersratings.</p>
@@ -114,7 +160,7 @@ const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHi
           <ol className="list-decimal list-inside space-y-3 text-gray-300">
             <li>Open je Google Sheet: <a href={spreadsheetUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline font-semibold">Klik hier</a>.</li>
             <li>Klik onderaan met de <strong className="text-white">rechtermuisknop</strong> op de 'Geschiedenis' tab.</li>
-            <li>Kies de optie '<strong className="text-white">Naam wijzigen</strong>' en geef het een duidelijke naam, bijvoorbeeld <code className="bg-gray-700 px-1 rounded">Competitie 2023-2024</code>.</li>
+            <li>Kies de optie '<strong className="text-white">Naam wijzigen</strong>' en geef het een duidelijke naam, bijvoorbeeld <code className="bg-gray-700 px-1 rounded">Competitie 2025-2</code>.</li>
             <li>Klik op de '<strong className="text-white">+</strong>' knop (Een blad toevoegen) linksonderaan om een nieuw, leeg blad te maken.</li>
             <li>Hernoem dit nieuwe blad naar exact <code className="bg-gray-700 px-1 rounded">Geschiedenis</code> (hoofdlettergevoelig).</li>
             <li>Kopieer de kolomkoppen van je oude, gearchiveerde blad naar het nieuwe 'Geschiedenis' blad. De koppen moeten zijn: <code className="bg-gray-700 px-1 rounded">Datum</code>, <code className="bg-gray-700 px-1 rounded">Teams</code>, <code className="bg-gray-700 px-1 rounded">Ronde 1 Resultaten</code>, <code className="bg-gray-700 px-1 rounded">Ronde 2 Resultaten</code>.</li>

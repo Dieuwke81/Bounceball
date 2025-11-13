@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Player, Match, MatchResult, Goal, GameSession, NewPlayer, Constraint } from './types';
 import Header from './components/Header';
@@ -13,7 +12,7 @@ import HistoryView from './components/HistoryView';
 import PlayerDetail from './components/PlayerDetail';
 import ManualEntry from './components/ManualEntry';
 import CompetitionManagement from './components/CompetitionManagement';
-import { getPlayers, saveGameSession, getHistory, addPlayer, updatePlayer, deletePlayer } from './services/googleSheetService';
+import { getInitialData, saveGameSession, addPlayer, updatePlayer, deletePlayer, setCompetitionName as setCompetitionNameService } from './services/googleSheetService';
 import TrophyIcon from './components/icons/TrophyIcon';
 import UsersIcon from './components/icons/UsersIcon';
 import ClockIcon from './components/icons/ClockIcon';
@@ -22,7 +21,6 @@ import ArchiveIcon from './components/icons/ArchiveIcon';
 import LoadingSpinner from './components/LoadingSpinner';
 import LoginScreen from './components/LoginScreen';
 import LockIcon from './components/icons/LockIcon';
-// FIX: Import FutbolIcon component to resolve 'Cannot find name' error.
 import FutbolIcon from './components/icons/FutbolIcon';
 
 type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement';
@@ -83,15 +81,17 @@ const App: React.FC = () => {
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [viewingArchive, setViewingArchive] = useState<GameSession[] | null>(null);
   const [isManagementAuthenticated, setIsManagementAuthenticated] = useState(false);
+  const [competitionName, setCompetitionName] = useState<string | null>(null);
 
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [fetchedPlayers, fetchedHistory] = await Promise.all([getPlayers(), getHistory()]);
-      setPlayers(fetchedPlayers);
-      setHistory(fetchedHistory);
+      const { players, history, competitionName: name } = await getInitialData();
+      setPlayers(players);
+      setHistory(history);
+      setCompetitionName(name || null);
     } catch (e: any) {
       setError(e.message || "Er is een onbekende fout opgetreden bij het laden van de gegevens.");
     } finally {
@@ -128,27 +128,23 @@ const App: React.FC = () => {
   };
 
   const handleParseAttendance = (text: string) => {
-    // Helper function to normalize names for comparison.
-    // It lowercases, removes accents, and strips common invisible characters.
     const normalize = (str: string): string =>
       str
         .toLowerCase()
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') // Remove accents/diacritics
-        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '') // Remove invisible characters
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
         .trim();
 
     const lines = text.split('\n');
     const parsedNamesAndOriginals = new Map<string, string>();
 
     lines.forEach(line => {
-      // Clean the line: remove list markers, content in parentheses.
       const cleanedName = line
-        .replace(/^\s*\d+\.?\s*/, '') // "1. Name" -> "Name"
-        .replace(/[\(\[].*?[\)\]]/g, '') // "Name (comment)" -> "Name "
+        .replace(/^\s*\d+\.?\s*/, '')
+        .replace(/[\(\[].*?[\)\]]/g, '')
         .trim();
 
-      // Ignore empty lines or lines that are likely not names (e.g., date/time lines containing digits)
       if (!cleanedName || /\d/.test(cleanedName)) {
         return;
       }
@@ -161,11 +157,9 @@ const App: React.FC = () => {
       return;
     }
 
-    // Create a lookup map for efficient matching of players by normalized name.
     const playerLookup = new Map<string, Player>();
     players.forEach(player => {
       const normalizedFullName = normalize(player.name);
-      // Also map by first name for convenience, but don't overwrite a full name match.
       const normalizedFirstName = normalizedFullName.split(' ')[0];
 
       playerLookup.set(normalizedFullName, player);
@@ -192,7 +186,6 @@ const App: React.FC = () => {
 
     setAttendingPlayerIds(newAttendingPlayerIds);
 
-    // Provide detailed feedback to the user.
     if (newlyFoundPlayers.length > 0 || notFoundOriginalNames.length > 0) {
       let message = '';
       let type: 'success' | 'error' = 'success';
@@ -240,7 +233,7 @@ const App: React.FC = () => {
     try {
         const generated = await generateTeams(attendingPlayers, numberOfTeams, constraints);
         setTeams(generated);
-        setOriginalTeams(JSON.parse(JSON.stringify(generated))); // Deep copy for restoration
+        setOriginalTeams(JSON.parse(JSON.stringify(generated)));
         setCurrentRound(1);
     } catch (e: any) {
         showNotification(e.message, 'error');
@@ -289,7 +282,6 @@ const App: React.FC = () => {
       try {
           await saveGameSession(sessionData, updatedRatings);
           showNotification('Sessie en ratings succesvol opgeslagen!', 'success');
-          // Optimistically update local state for immediate feedback
           setPlayers(prevPlayers => prevPlayers.map(p => {
               const update = updatedRatings.find(u => u.id === p.id);
               return update ? { ...p, rating: update.rating } : p;
@@ -310,10 +302,8 @@ const App: React.FC = () => {
       team2Goals: goalScorers[`${index}-team2`] || [],
     }));
     
-    // Check if any goals were entered. If not, maybe show a warning? For now, we allow 0-0.
     setRound1Results(results);
 
-    // Tournament logic: generate round 2 pairings based on round 1 results
     const teamPoints: { teamIndex: number; points: number; goalDifference: number; goalsFor: number }[] = [];
     teams.forEach((_, index) => {
         teamPoints.push({ teamIndex: index, points: 0, goalDifference: 0, goalsFor: 0 });
@@ -340,15 +330,13 @@ const App: React.FC = () => {
         }
     });
 
-    // Sort teams by points, then goal difference, then goals for
     teamPoints.sort((a, b) => 
         b.points - a.points || 
         b.goalDifference - a.goalDifference || 
         b.goalsFor - a.goalsFor ||
-        a.teamIndex - b.teamIndex // Tie-breaker
+        a.teamIndex - b.teamIndex
     );
     
-    // Generate pairings: 1st vs 2nd, 3rd vs 4th
     const newPairings = [];
     for(let i = 0; i < teamPoints.length; i += 2) {
         if(teamPoints[i+1]) {
@@ -360,7 +348,7 @@ const App: React.FC = () => {
     }
 
     setRound2Pairings(newPairings);
-    setGoalScorers({}); // Reset for round 2
+    setGoalScorers({});
     setCurrentRound(2);
   };
   
@@ -369,14 +357,12 @@ const App: React.FC = () => {
     setActionInProgress('regeneratingTeams');
 
     try {
-        // Use the up-to-date 'attendingPlayers' list, not the stale 'teams' state.
         const remainingPlayers = attendingPlayers;
 
         if (remainingPlayers.length < 4) {
             throw new Error("Niet genoeg spelers over om nieuwe teams te maken (minimaal 4).");
         }
 
-        // Keep the same number of teams as originally planned for round 1.
         const numTeams = originalTeams.length;
         if (remainingPlayers.length < numTeams) {
             throw new Error(`Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`);
@@ -385,7 +371,6 @@ const App: React.FC = () => {
         const regeneratedTeams = await generateTeams(remainingPlayers, numTeams, constraints);
 
         const newPairings = [];
-        // Create pairings based on the new teams.
         for (let i = 0; i < regeneratedTeams.length; i += 2) {
             if (regeneratedTeams[i+1]) {
                  newPairings.push({ team1Index: i, team2Index: i + 1 });
@@ -430,7 +415,7 @@ const App: React.FC = () => {
         date: new Date().toISOString(),
         teams: teams,
         round1Results: results,
-        round2Results: [] // No round 2 for simple match
+        round2Results: []
     });
     setActionInProgress(null);
   };
@@ -439,12 +424,9 @@ const App: React.FC = () => {
     setActionInProgress('generating');
     try {
         const allPlayers = teams.flat();
-        
-        // Call generateTeams ONCE, passing the first match's teams to be excluded.
         const regeneratedTeams = await generateTeams(allPlayers, 2, constraints, teams);
         
         if (!regeneratedTeams || regeneratedTeams.length === 0) {
-            // This case should be handled by the rejection in generateTeams, but as a fallback:
             throw new Error("Kon geen unieke teamindeling genereren.");
         }
         
@@ -466,7 +448,6 @@ const App: React.FC = () => {
           setActionInProgress(null);
           return;
       }
-      // Save session 1
       await handleSaveSession({
           date: new Date().toISOString(),
           teams: originalTeams,
@@ -474,10 +455,8 @@ const App: React.FC = () => {
           round2Results: []
       });
       
-      // Artificial delay to ensure Google Sheet can process before next write
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Save session 2
       await handleSaveSession({
           date: new Date().toISOString(),
           teams: teams2,
@@ -495,8 +474,6 @@ const App: React.FC = () => {
       setConstraints(prev => prev.filter((_, i) => i !== index));
   };
   
-  // --- Player Management Handlers ---
-
   const handleAddPlayer = async (newPlayer: NewPlayer) => {
     try {
         const { newId } = await addPlayer(newPlayer);
@@ -522,7 +499,6 @@ const App: React.FC = () => {
     try {
         await deletePlayer(id);
         setPlayers(prev => prev.filter(p => p.id !== id));
-        // Also remove from attendance if they were selected
         setAttendingPlayerIds(prev => {
             const newSet = new Set(prev);
             newSet.delete(id);
@@ -557,6 +533,16 @@ const App: React.FC = () => {
       await handleSaveSession(data);
       setActionInProgress(null);
   }
+
+  const handleSetCompetitionName = async (name: string) => {
+    try {
+        await setCompetitionNameService(name);
+        setCompetitionName(name);
+        showNotification('Competitienaam opgeslagen!', 'success');
+    } catch(e: any) {
+        showNotification(`Fout bij opslaan: ${e.message}`, 'error');
+    }
+  };
 
 
   const renderMainView = () => (
@@ -677,6 +663,8 @@ const App: React.FC = () => {
                    fetchData();
                    setCurrentView('main');
                 }}
+                currentCompetitionName={competitionName}
+                onSetCompetitionName={handleSetCompetitionName}
             />
         ) : <LoginScreen onLogin={handleLogin} />;
       default:
@@ -687,7 +675,7 @@ const App: React.FC = () => {
   const NavItem: React.FC<{view: View, label: string, icon: React.ReactNode, isProtected?: boolean}> = ({ view, label, icon, isProtected }) => (
     <button
       onClick={() => {
-        if (view === 'main') setViewingArchive(null); // Reset archive view when going back to main
+        if (view === 'main') setViewingArchive(null);
         setCurrentView(view);
       }}
       className={`relative flex flex-col items-center justify-center space-y-1 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${currentView === view ? 'bg-gray-700 text-white' : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'}`}
@@ -729,7 +717,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen text-white">
       <div className="container mx-auto p-4 md:p-6">
-        <Header />
+        <Header competitionName={competitionName} />
         
          {notification && (
             <div className={`fixed top-5 right-5 z-50 p-4 rounded-lg shadow-lg max-w-sm animate-fade-in-out whitespace-pre-line ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>

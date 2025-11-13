@@ -1,7 +1,6 @@
-
 import React from 'react';
 
-const Header: React.FC = () => {
+const Header: React.FC<{ competitionName?: string | null }> = ({ competitionName }) => {
   const getCurrentCompetition = () => {
     const date = new Date();
     const year = date.getFullYear();
@@ -10,13 +9,15 @@ const Header: React.FC = () => {
     return `Competitie ${year}/${season}`;
   };
 
+  const displayName = competitionName || getCurrentCompetition();
+
   return (
     <header className="text-center p-4 md:p-6">
       <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
         Bounceball
       </h1>
       <p className="mt-2 text-lg text-gray-400">
-        {getCurrentCompetition()}
+        {displayName}
       </p>
     </header>
   );
