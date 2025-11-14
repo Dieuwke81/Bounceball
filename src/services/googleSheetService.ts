@@ -1,4 +1,4 @@
-import { SCRIPT_URL, PLAYERS_SHEET_NAME } from '../config';
+import { getScriptUrl } from './configService';
 import type { GameSession, NewPlayer, Player } from '../types';
 
 // Centralized error handling and JSON parsing for Apps Script calls
@@ -20,13 +20,18 @@ const handleResponse = async (response: Response) => {
     try {
         return JSON.parse(text);
     } catch (e) {
+        // If parsing fails, it might be a non-JSON success message or an HTML error page
+        if (text.includes('<!DOCTYPE html>')) {
+             throw new Error("De server stuurde een HTML-pagina terug in plaats van data. Dit wijst meestal op een inlog- of permissieprobleem bij Google.");
+        }
         return text;
     }
 };
 
 const postToAction = async (action: string, data: object): Promise<any> => {
+  const scriptUrl = getScriptUrl();
   try {
-    const response = await fetch(SCRIPT_URL, {
+    const response = await fetch(scriptUrl, {
       method: 'POST',
       mode: 'cors',
       body: JSON.stringify({ action, data }),
@@ -38,7 +43,7 @@ const postToAction = async (action: string, data: object): Promise<any> => {
   } catch (error) {
     console.error(`[postToAction Error] Action: "${action}"`, error);
     if (error instanceof TypeError) {
-      throw new Error(`Netwerkfout bij actie "${action}". Mogelijke oorzaken: 1) Foute SCRIPT_URL in config.ts. 2) Google Apps Script is niet correct 'gedeployed' (toegang moet op 'Iedereen' staan). 3) Geen internetverbinding.`);
+      throw new Error(`Netwerkfout bij actie "${action}". Mogelijke oorzaken: 1) De ingevoerde SCRIPT_URL is incorrect. 2) Google Apps Script is niet correct 'gedeployed' (CORS-fout). 3) Geen internetverbinding.`);
     }
     throw error;
   }
@@ -46,8 +51,13 @@ const postToAction = async (action: string, data: object): Promise<any> => {
 
 // Main function to fetch all initial data
 export const getInitialData = async (): Promise<{ players: Player[], history: GameSession[], competitionName: string }> => {
+  const scriptUrl = getScriptUrl();
+  if (!scriptUrl || !scriptUrl.includes('/exec')) {
+      throw new Error("De geconfigureerde SCRIPT_URL is ongeldig. Voer een geldige 'Web App URL' in via het configuratiescherm.");
+  }
+  
   try {
-    const url = new URL(SCRIPT_URL);
+    const url = new URL(scriptUrl);
     url.searchParams.append('action', 'getInitialData');
     url.searchParams.append('t', new Date().getTime().toString()); // Cache busting
 
@@ -59,7 +69,6 @@ export const getInitialData = async (): Promise<{ players: Player[], history: Ga
     
     const data = await handleResponse(response);
     
-    // NEW ROBUSTNESS CHECKS
     if (typeof data !== 'object' || data === null) {
         throw new Error(`Onverwacht antwoord van de server. De server stuurde geen geldige data, maar dit: ${JSON.stringify(data)}`);
     }
@@ -67,15 +76,10 @@ export const getInitialData = async (): Promise<{ players: Player[], history: Ga
     if (data.status === 'error') {
       throw new Error(data.message);
     }
-
-    // CRITICAL CHECK: Ensure players are loaded. This prevents the "blank screen" silent failure.
-    if (!Array.isArray(data.players) || data.players.length === 0) {
-        throw new Error(`Er zijn geen spelers gevonden in het tabblad '${PLAYERS_SHEET_NAME}'.
-Dit is de meest voorkomende oorzaak van een 'lege' app. Controleer a.u.b. het volgende:
-1. De naam van het tabblad in Google Sheets is exact '${PLAYERS_SHEET_NAME}'.
-2. De deel-instellingen van de Google Sheet staan op 'Iedereen met de link' kan 'Viewer' zijn.
-3. Er staan daadwerkelijk spelers in de sheet onder de juiste kolomkoppen (Id, Naam, Rating, etc.).
-4. Het Apps Script is correct 'gedeployed' (stap 5 uit de handleiding).`);
+    
+    // The presence of the 'players' array is the primary indicator of a successful connection.
+    if (!Array.isArray(data.players)) {
+        throw new Error(`Verbinding geslaagd, maar de server stuurde geen spelerslijst terug. Controleer of het 'Spelers' tabblad in je Google Sheet correct is ingesteld met de juiste kolomkoppen.`);
     }
 
     return {
@@ -85,7 +89,6 @@ Dit is de meest voorkomende oorzaak van een 'lege' app. Controleer a.u.b. het vo
     };
   } catch (error: any) {
     console.error("Failed to fetch initial data:", error);
-    // Re-throw with more context to ensure it's always displayed.
     throw new Error(`Kon de gegevens niet laden. Details: ${error.message}`);
   }
 };

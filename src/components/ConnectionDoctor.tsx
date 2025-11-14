@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { SCRIPT_URL, PLAYERS_SHEET_NAME } from '../config';
+// Fix: Removed direct import of SCRIPT_URL and fixed import for PLAYERS_SHEET_NAME.
+import { PLAYERS_SHEET_NAME } from '../config';
+import { getScriptUrl } from '../services/configService';
 
 const Spinner: React.FC = () => (
     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -19,7 +21,9 @@ const ConnectionDoctor: React.FC = () => {
     setAnalysis(null);
 
     try {
-      const url = new URL(SCRIPT_URL);
+      // Fix: Use getScriptUrl() to ensure the test uses the user-configured URL from localStorage, not just the fallback.
+      const scriptUrl = getScriptUrl();
+      const url = new URL(scriptUrl);
       url.searchParams.append('action', 'getInitialData');
       url.searchParams.append('t', new Date().getTime().toString());
 
@@ -59,7 +63,8 @@ const ConnectionDoctor: React.FC = () => {
     } catch (e: any) {
       setResult(e.message || 'Onbekende fout');
       if (e instanceof TypeError) {
-         setAnalysis({ message: "Netwerkfout. Dit wordt meestal veroorzaakt door een van deze drie problemen:\n1. Je hebt geen internetverbinding.\n2. De SCRIPT_URL in `src/config.ts` is incorrect.\n3. Het script is niet correct gedeployed (CORS-fout). Volg de implementatiestappen opnieuw.", type: 'error' });
+         // Fix: Updated error message to be more generic since the URL can come from localStorage.
+         setAnalysis({ message: "Netwerkfout. Dit wordt meestal veroorzaakt door een van deze drie problemen:\n1. Je hebt geen internetverbinding.\n2. De SCRIPT_URL in de configuratie is incorrect.\n3. Het script is niet correct gedeployed (CORS-fout). Volg de implementatiestappen opnieuw.", type: 'error' });
       } else {
          setAnalysis({ message: "Er is een onbekende fout opgetreden tijdens de test.", type: 'error' });
       }
