@@ -620,7 +620,7 @@ const App: React.FC = () => {
                     disabled={actionInProgress === 'generating' || attendingPlayers.length < 2}
                     className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
                     >
-                    Twee Wedstrijden
+                    2 Wedstrijden
                   </button>
               </div>
                <p className="text-xs text-gray-500 mt-3 text-center">
