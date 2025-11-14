@@ -134,42 +134,37 @@ const App: React.FC = () => {
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
     
-    // Heuristics to ignore non-player lines
-    const monthNames = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
-    const nonNameWords = ['afgemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij'];
+    const monthNames = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later'];
 
     lines.forEach(line => {
       const trimmedLine = line.trim();
       if (!trimmedLine) return;
-
+      
       const lowerLine = trimmedLine.toLowerCase();
 
-      // Ignore date-like lines (e.g., "18 november 20:30")
+      if (nonNameIndicators.some(word => lowerLine.includes(word)) && lowerLine.length > 20) {
+        return;
+      }
       if (monthNames.some(month => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) {
         return;
       }
       
-      // Clean up the line
       let cleaned = trimmedLine
-        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '') // Remove zero-width spaces
-        .replace(/\[.*?\]/, '') // Remove timestamps like [10:30]
-        .replace(/^\s*\d+\.?\s*/, '') // Remove leading numbers/dots
-        .replace(/[\(\[].*?[\)\]]/g, '') // Remove text in brackets (e.g., (keepen))
-        .split(':')[0] // Take only the part before a colon (removes "Hein: ik ben erbij")
+        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+        .replace(/\[.*?\]/, '')
+        .replace(/^\s*\d+[\.\)]?\s*/, '')
+        .replace(/[\(\[].*?[\)\]]/g, '')
+        .split(/[:\-\–]/)[0]
         .trim();
 
-      // Final checks
-      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned)) {
-        const normalizedPotentialName = normalize(cleaned);
-        // Check against common non-name phrases
-        if (!nonNameWords.some(word => normalizedPotentialName.includes(word))) {
-            potentialNames.add(cleaned);
-        }
+      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) {
+         potentialNames.add(cleaned);
       }
     });
 
     if (potentialNames.size === 0) {
-      showNotification('Geen geldige namen gevonden in de tekst.', 'error');
+      showNotification('Geen geldige namen gevonden in de tekst. Probeer de lijst op te schonen.', 'error');
       return;
     }
 
@@ -177,7 +172,6 @@ const App: React.FC = () => {
     players.forEach(player => {
       const normalizedFullName = normalize(player.name);
       const normalizedFirstName = normalizedFullName.split(' ')[0];
-
       playerLookup.set(normalizedFullName, player);
       if (!playerLookup.has(normalizedFirstName)) {
         playerLookup.set(normalizedFirstName, player);
@@ -190,7 +184,7 @@ const App: React.FC = () => {
     
     potentialNames.forEach((originalName) => {
       const normalizedName = normalize(originalName);
-      const matchedPlayer = playerLookup.get(normalizedName);
+      const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
       if (matchedPlayer) {
         if (!newAttendingPlayerIds.has(matchedPlayer.id)) {
           newlyFoundPlayers.push(matchedPlayer.name);
