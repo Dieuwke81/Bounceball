@@ -709,9 +709,8 @@ const App: React.FC = () => {
   );
   
   // ============================================================================
-  // NEW LOADING & ERROR HANDLING LOGIC
+  // ROBUST LOADING & ERROR HANDLING LOGIC
   // ============================================================================
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
@@ -723,15 +722,11 @@ const App: React.FC = () => {
     );
   }
 
-  if (error) {
-    return <SetupGuide error={error} onRetry={fetchData} />;
-  }
-  
-  if (!isLoading && players.length === 0) {
-    return <SetupGuide 
-        error={"De app kon verbinding maken, maar heeft geen spelers gevonden. Dit is de meest voorkomende oorzaak van een 'leeg' scherm. Volg de stappen in de Koppelingsassistent om het probleem op te lossen."} 
-        onRetry={fetchData} 
-    />;
+  // Na het laden, als er een fout is OF er zijn geen spelers, toon de Koppelingsassistent.
+  // Dit is de enige controle en vangt alle fout-scenario's af.
+  if (error || players.length === 0) {
+    const guideError = error || "De app kon verbinding maken, maar heeft geen spelers gevonden. Dit is de meest voorkomende oorzaak van een 'leeg' scherm. Volg de stappen in de Koppelingsassistent om het probleem op te lossen.";
+    return <SetupGuide error={guideError} onRetry={fetchData} />;
   }
   
   // ============================================================================
