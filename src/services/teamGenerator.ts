@@ -104,7 +104,14 @@ export const generateTeams = async (
         for (let i = 0; i < teamsWithExtraPlayer; i++) {
             teamSizes[i]++;
         }
-        
+        const minTeamSize = Math.min(...teamSizes);
+const maxTeamSize = Math.max(...teamSizes);
+
+if (minTeamSize < 4 || maxTeamSize > 5) {
+  const teamSizesString = [...new Set(teamSizes)].sort().join(' en ');
+  const errorMessage = `Met ${attendingPlayers.length} spelers voor ${numberOfTeams} teams, zouden de teams ${teamSizesString} spelers hebben. Dit is niet toegestaan (min. 4, max. 5). Pas het aantal spelers of teams aan.`;
+  return reject(new Error(errorMessage));
+}
         // Pre-separating keepers and field players doesn't guarantee better balance
         // with random shuffles. Shuffling the whole list gives more combinations.
         // We will validate keeper distribution instead.
