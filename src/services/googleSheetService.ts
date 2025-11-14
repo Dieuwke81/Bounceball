@@ -1,4 +1,4 @@
-import { SCRIPT_URL, SPREADSHEET_ID, PLAYERS_SHEET_NAME } from '../config';
+import { SCRIPT_URL, PLAYERS_SHEET_NAME } from '../config';
 import type { GameSession, NewPlayer, Player } from '../types';
 
 // Centralized error handling and JSON parsing for Apps Script calls
@@ -59,13 +59,17 @@ export const getInitialData = async (): Promise<{ players: Player[], history: Ga
     
     const data = await handleResponse(response);
     
+    // NEW ROBUSTNESS CHECKS
+    if (typeof data !== 'object' || data === null) {
+        throw new Error(`Onverwacht antwoord van de server. De server stuurde geen geldige data, maar dit: ${JSON.stringify(data)}`);
+    }
+
     if (data.status === 'error') {
       throw new Error(data.message);
     }
 
-    // CRITICAL CHECK: Ensure players are loaded. If not, the setup is incomplete.
-    // This prevents the "blank screen" silent failure.
-    if (!data.players || data.players.length === 0) {
+    // CRITICAL CHECK: Ensure players are loaded. This prevents the "blank screen" silent failure.
+    if (!Array.isArray(data.players) || data.players.length === 0) {
         throw new Error(`Er zijn geen spelers gevonden in het tabblad '${PLAYERS_SHEET_NAME}'.
 Dit is de meest voorkomende oorzaak van een 'lege' app. Controleer a.u.b. het volgende:
 1. De naam van het tabblad in Google Sheets is exact '${PLAYERS_SHEET_NAME}'.
@@ -76,12 +80,13 @@ Dit is de meest voorkomende oorzaak van een 'lege' app. Controleer a.u.b. het vo
 
     return {
       players: data.players,
-      history: data.history || [],
-      competitionName: data.competitionName || '',
+      history: Array.isArray(data.history) ? data.history : [],
+      competitionName: typeof data.competitionName === 'string' ? data.competitionName : '',
     };
   } catch (error: any) {
     console.error("Failed to fetch initial data:", error);
-    throw error;
+    // Re-throw with more context to ensure it's always displayed.
+    throw new Error(`Kon de gegevens niet laden. Details: ${error.message}`);
   }
 };
 
