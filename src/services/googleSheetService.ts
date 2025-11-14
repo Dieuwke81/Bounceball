@@ -82,8 +82,11 @@ export const getInitialData = async (): Promise<{ players: Player[], history: Ga
         throw new Error(`Verbinding geslaagd, maar de server stuurde geen spelerslijst terug. Controleer of het 'Spelers' tabblad in je Google Sheet correct is ingesteld met de juiste kolomkoppen.`);
     }
 
+    // Filter out any potential null/undefined entries or players without an ID or name
+    const validPlayers = data.players.filter((p: Player | null): p is Player => p !== null && p.id != null && typeof p.name === 'string' && p.name.trim() !== '');
+
     return {
-      players: data.players,
+      players: validPlayers,
       history: Array.isArray(data.history) ? data.history : [],
       competitionName: typeof data.competitionName === 'string' ? data.competitionName : '',
     };
