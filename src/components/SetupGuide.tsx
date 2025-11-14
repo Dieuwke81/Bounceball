@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SPREADSHEET_ID, PLAYERS_SHEET_NAME } from '../config';
+import ConnectionDoctor from './ConnectionDoctor';
 
 interface SetupGuideProps {
   error: string;
@@ -8,22 +9,38 @@ interface SetupGuideProps {
 
 const SetupGuide: React.FC<SetupGuideProps> = ({ error, onRetry }) => {
   const spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`;
+  const [showDoctor, setShowDoctor] = useState(false);
 
   return (
     <div className="min-h-screen flex items-center justify-center text-white p-4">
-      <div className="bg-gray-800 border border-red-700 p-8 rounded-lg max-w-4xl w-full">
+      <div className="bg-gray-800 border-2 border-red-700/50 p-6 md:p-8 rounded-2xl shadow-2xl max-w-4xl w-full">
         <h1 className="text-3xl font-bold text-red-300 mb-4">Oeps! De koppeling met Google Sheets is mislukt.</h1>
         <p className="text-gray-300 mb-6">
-          Geen zorgen, we lossen dit samen op! Meestal is dit met een paar klikken verholpen. 
-          De technische foutmelding hieronder geeft vaak al een goede hint.
+          Geen zorgen, we lossen dit samen op! De foutmelding hieronder en de "Connection Doctor" helpen je de oorzaak te vinden.
         </p>
 
-        <div className="bg-gray-900 p-4 rounded-md mb-8">
+        <div className="bg-gray-900/70 p-4 rounded-lg mb-8 border border-gray-700">
           <p className="text-sm font-semibold text-amber-300 mb-2">Technische Foutmelding:</p>
           <pre className="text-red-200 text-sm whitespace-pre-wrap font-mono break-words">{error}</pre>
         </div>
+        
+        <div className="bg-gray-700/50 p-6 rounded-lg mb-8">
+            <h2 className="text-2xl font-bold text-fuchsia-300 mb-3">Connection Doctor</h2>
+            <p className="text-gray-300 mb-4 text-sm">
+                Dit is de beste manier om het probleem te vinden. De "Connection Doctor" test de directe verbinding met je Google Sheet en geeft gedetailleerde, technische feedback.
+            </p>
+            <button
+                onClick={() => setShowDoctor(!showDoctor)}
+                className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+            >
+                {showDoctor ? 'Verberg Connection Doctor' : 'Start Connection Doctor'}
+            </button>
+            
+            {showDoctor && <ConnectionDoctor />}
+        </div>
 
-        <h2 className="text-2xl font-bold text-white mb-4">Stapsgewijze Controlelijst</h2>
+
+        <h2 className="text-2xl font-bold text-white mb-4">Standaard Controlelijst</h2>
         <div className="space-y-6">
           {/* Step 1 */}
           <div className="bg-gray-700/50 p-4 rounded-lg">
@@ -77,7 +94,7 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ error, onRetry }) => {
                 onClick={onRetry}
                 className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-transform transform hover:scale-105"
             >
-                Probeer Opnieuw
+                Probeer Opnieuw te Laden
             </button>
         </div>
       </div>
