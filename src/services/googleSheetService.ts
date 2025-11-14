@@ -50,47 +50,31 @@ const getPlayersFromCsv = async (): Promise<Player[]> => {
     
     try {
         const response = await fetch(url);
-        if (!response.ok) {
-            // Catch network-level errors first.
-            throw new Error(`Kon de Google Sheet niet bereiken. Status: ${response.status}. Controleer de SPREADSHEET_ID.`);
-        }
         const csvText = await response.text();
 
-        // Check 1: Detect if Google returned an HTML login/error page.
+        // **CRITICAL CHECK 1**: If Google returns an HTML page, it means the sheet is not public.
         if (csvText.trim().toLowerCase().startsWith('<!doctype html') || csvText.trim().toLowerCase().includes('<html')) {
             throw new Error("Toegang tot de Google Sheet is geweigerd. Zorg ervoor dat de deelinstellingen correct zijn: ga naar 'Delen' > 'Algemene toegang' en stel deze in op 'Iedereen met de link' kan 'Viewer' zijn.");
         }
         
         const lines = csvText.replace(/\r/g, '').split('\n');
-        if (lines.length === 0 || (lines.length === 1 && lines[0].trim() === '')) {
-            // Empty or effectively empty response
-            return [];
-        }
-
-        // Check 2: Robustly verify the header row.
-        const headerLine = (lines[0] || '').toLowerCase().replace(/"/g, '');
-        const actualHeaders = headerLine.split(',').map(h => h.trim());
-        const expectedHeaders = ['id', 'naam', 'rating', 'iskeeper', 'isvastlid'];
+        const header = (lines[0] || '').toLowerCase();
         
-        const headersOk = expectedHeaders.every((expected, index) => actualHeaders[index] === expected);
-
-        if (!headersOk) {
-             throw new Error(`De kolomkoppen in de Google Sheet komen niet overeen met wat de app verwacht.
-1. Controleer of de eerste 5 kolommen exact zijn: 'Id', 'Naam', 'Rating', 'IsKeeper', 'IsVastLid' (in die volgorde, spelling is belangrijk).
-2. Controleer of de naam van het tabblad in uw Google Sheet exact '${PLAYERS_SHEET_NAME}' is (hoofdlettergevoelig).
-3. Controleer nogmaals de deelinstellingen ('Iedereen met de link').
-Huidige gedetecteerde koppen: "${lines[0]}"`);
+        // **CRITICAL CHECK 2**: Verify if we got a valid CSV header.
+        if (!header.includes('id') || !header.includes('naam') || !header.includes('rating')) {
+             throw new Error(`De app kreeg een onverwachte reactie van Google Sheets en kon de spelerslijst niet lezen. Controleer het volgende:
+1. Is de naam van het tabblad in uw Google Sheet exact '${PLAYERS_SHEET_NAME}' (hoofdlettergevoelig)? Pas dit eventueel aan in 'src/config.ts'.
+2. Heeft de sheet de kolommen 'Id', 'Naam', en 'Rating'?
+3. Staan de deelinstellingen op 'Iedereen met de link'?`);
         }
 
         const rows = lines.slice(1);
         
         const players = rows
             .map((row): Player | null => {
-                // The regex handles values that might contain commas if they are quoted.
                 const columns = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
                 if (columns.length < 5) return null;
 
-                // Strip quotes from all columns after matching
                 const [id, name, rating, isKeeper, isFixedMember, photoBase64] = columns.map(col => col.replace(/"/g, '').trim());
                 
                 const playerId = parseInt(id, 10);
@@ -109,16 +93,14 @@ Huidige gedetecteerde koppen: "${lines[0]}"`);
             })
             .filter((p): p is Player => p !== null);
 
-        // This check is now less critical due to the robust header check, but still good to have.
         if (players.length === 0 && rows.filter(r => r.trim()).length > 0) {
-            throw new Error("Spelerslijst bevat rijen, maar kon geen geldige spelers verwerken. Controleer op lege rijen of fouten in de data.");
+            throw new Error("Spelerslijst kon niet worden verwerkt. Controleer of de kolomvolgorde in de sheet correct is: 'Id', 'Naam', 'Rating', 'IsKeeper', 'IsVastLid'.");
         }
 
         return players;
     } catch (error: any) {
         console.error("Fout bij het ophalen van spelers uit CSV:", error);
-        // Re-throw the specific error message from the try block, or a generic one.
-        throw new Error(error.message || `Kon spelers niet laden. Controleer SPREADSHEET_ID en PLAYERS_SHEET_NAME in config.ts en uw internetverbinding.`);
+        throw new Error(error.message || `Kon spelers niet laden. Controleer SPREADSHEET_ID en PLAYERS_SHEET_NAME in config.ts.`);
     }
 };
 
