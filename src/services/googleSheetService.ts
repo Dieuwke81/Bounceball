@@ -96,6 +96,38 @@ export const getInitialData = async (): Promise<{ players: Player[], history: Ga
   }
 };
 
+// Functie om een diagnostische test uit te voeren op de verbinding en sheet-instellingen
+export const runDiagnostics = async (): Promise<any> => {
+  const scriptUrl = getScriptUrl();
+  if (!scriptUrl || !scriptUrl.includes('/exec')) {
+      throw new Error("De geconfigureerde SCRIPT_URL is ongeldig.");
+  }
+
+  try {
+    const url = new URL(scriptUrl);
+    url.searchParams.append('action', 'runDiagnostics');
+    url.searchParams.append('t', new Date().getTime().toString()); // Cache busting
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      mode: 'cors',
+      cache: 'no-cache',
+    });
+    
+    const result = await handleResponse(response);
+    if (result.status === 'error') {
+      // Her-werp script-side fouten om door de aanroeper te worden opgevangen
+      throw new Error(result.message);
+    }
+    return result;
+
+  } catch (error: any) {
+    console.error("Diagnostische test mislukt:", error);
+    // Laat de component de UI voor deze fout afhandelen
+    throw error;
+  }
+};
+
 
 // Functie om de game session en rating updates op te slaan
 export const saveGameSession = (session: GameSession, updatedRatings: {id: number, rating: number}[]) => {

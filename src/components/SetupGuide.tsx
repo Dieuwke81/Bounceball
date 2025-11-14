@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { SPREADSHEET_ID, PLAYERS_SHEET_NAME } from '../config';
 import { getScriptUrl, saveScriptUrl, clearScriptUrl } from '../services/configService';
+import { runDiagnostics } from '../services/googleSheetService';
 
 interface SetupGuideProps {
   error: string;
   onRetry: () => void;
+}
+
+interface DiagnosticResult {
+  success: boolean;
+  steps: {
+    name: string;
+    success: boolean;
+    message: string;
+    details?: string | string[];
+  }[];
 }
 
 const Spinner: React.FC = () => (
@@ -19,6 +30,8 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ error, onRetry }) => {
   const [scriptUrlInput, setScriptUrlInput] = useState('');
   const [isTesting, setIsTesting] = useState(false);
   const [analysis, setAnalysis] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
 
   useEffect(() => {
     setScriptUrlInput(getScriptUrl());
@@ -74,6 +87,27 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ error, onRetry }) => {
     }
   };
   
+  const handleRunDiagnostics = async () => {
+    setIsDiagnosing(true);
+    setDiagnosticResult(null);
+    try {
+      const result = await runDiagnostics();
+      setDiagnosticResult(result);
+    } catch (e: any) {
+      setDiagnosticResult({
+        success: false,
+        steps: [{
+          name: "Verbinding",
+          success: false,
+          message: `Kon geen verbinding maken met het script.`,
+          details: e.message
+        }]
+      });
+    } finally {
+      setIsDiagnosing(false);
+    }
+  };
+
   const handleReset = () => {
       if (window.confirm("Weet je zeker dat je de opgeslagen URL wilt wissen? De app zal terugvallen op de standaardwaarde.")) {
           clearScriptUrl();
@@ -137,6 +171,41 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ error, onRetry }) => {
           <p className="text-sm font-semibold text-amber-300 mb-2">Huidige Foutmelding van App:</p>
           <pre className="text-red-200 text-sm whitespace-pre-wrap font-mono break-words">{error}</pre>
         </div>
+
+        {/* --- ADVANCED DIAGNOSTICS --- */}
+        <details className="bg-gray-700/30 rounded-lg mb-6">
+            <summary className="font-bold text-lg text-white p-4 cursor-pointer hover:bg-gray-700/50 rounded-lg">
+                Geavanceerde Diagnose
+            </summary>
+            <div className="p-4 border-t border-gray-600 space-y-4">
+                <p className="text-sm text-gray-400">Deze tool controleert stap-voor-stap de verbinding en de configuratie van je Google Sheet. Dit kan de exacte oorzaak van het probleem aanwijzen.</p>
+                <button
+                    onClick={handleRunDiagnostics}
+                    disabled={isDiagnosing}
+                    className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center disabled:bg-gray-500 disabled:cursor-wait"
+                >
+                    {isDiagnosing && <Spinner />}
+                    {isDiagnosing ? 'Diagnose bezig...' : 'Voer Diagnostische Test Uit'}
+                </button>
+                {diagnosticResult && (
+                    <div className="mt-4 space-y-2 text-sm">
+                        {diagnosticResult.steps.map((step, index) => (
+                            <div key={index} className={`p-3 rounded-md border ${step.success ? 'bg-green-800/30 border-green-700' : 'bg-red-800/30 border-red-700'}`}>
+                                <p className={`font-bold ${step.success ? 'text-green-300' : 'text-red-300'}`}>
+                                    {step.success ? '✓' : '✗'} Stap {index + 1}: {step.name}
+                                </p>
+                                <p className="ml-5 text-gray-300">{step.message}</p>
+                                {step.details && (
+                                    <pre className="ml-5 mt-2 p-2 bg-gray-900 rounded text-xs text-gray-400 whitespace-pre-wrap break-all">
+                                        {Array.isArray(step.details) ? step.details.join('\n') : step.details}
+                                    </pre>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </details>
 
         {/* --- TROUBLESHOOTING GUIDE --- */}
         <details className="bg-gray-700/30 rounded-lg" open>
