@@ -233,8 +233,26 @@ const App: React.FC = () => {
   const handleGenerateTeams = async (mode: GameMode) => {
     resetGameState();
     setGameMode(mode);
-    const numberOfTeams = mode === 'simple' || mode === 'doubleHeader' ? 2 : (attendingPlayers.length <= 14 ? 2 : 4);
-    
+      const playerCount = attendingPlayers.length;
+    let numberOfTeams;
+
+    if (mode === 'simple' || mode === 'doubleHeader') {
+        numberOfTeams = 2;
+    } else { // Dit is de logica voor de 'Toernooi' modus
+        // Prioriteer het hoogste aantal wedstrijden (6 teams)
+        if (playerCount >= 24) {
+            numberOfTeams = 6;
+        } 
+        // Dan 4 teams
+        else if (playerCount >= 16) {
+            numberOfTeams = 4;
+        } 
+        // Fallback voor kleinere toernooien
+        else {
+            numberOfTeams = 2;
+        }
+    }
+      
     if (attendingPlayers.length < numberOfTeams) {
         showNotification(`Niet genoeg spelers voor ${numberOfTeams} teams.`, 'error');
         return;
