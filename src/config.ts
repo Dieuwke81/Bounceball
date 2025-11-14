@@ -5,7 +5,12 @@
 export const SPREADSHEET_ID = '1I_0c8p8r9Ep2VVQdFdeL0IsyTM7w18QGI-Hj40dMxt4';
 
 // 2. De naam van het tabblad (sheet) waar de spelerslijst staat.
-//    Dit is hoofdlettergevoelig. Standaard is dit 'Spelers'.
+//    ========================================================================
+//    BELANGRIJK: Zorg dat de naam hieronder PRECIES overeenkomt met de naam
+//    van het tabblad in je Google Sheet. Dit is hoofdlettergevoelig.
+//    Als je tabblad bijvoorbeeld "Mijn Spelers" heet, verander je de regel in:
+//    export const PLAYERS_SHEET_NAME = 'Mijn Spelers';
+//    ========================================================================
 export const PLAYERS_SHEET_NAME = 'Spelers';
 
 // 3. De Web App URL van je Google Apps Script

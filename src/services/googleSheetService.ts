@@ -1,7 +1,7 @@
 import { SCRIPT_URL, SPREADSHEET_ID, PLAYERS_SHEET_NAME } from '../config';
 import type { GameSession, NewPlayer, Player } from '../types';
 
-// Centralized error handling and JSON parsing
+// Centralized error handling and JSON parsing for Apps Script calls
 const handleResponse = async (response: Response) => {
     if (!response.ok) {
         const errorText = await response.text();
@@ -44,76 +44,44 @@ const postToAction = async (action: string, data: object): Promise<any> => {
   }
 };
 
-// Functie om spelers direct uit de sheet te halen via CSV export
-const getPlayersFromCsv = async (): Promise<Player[]> => {
-    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(PLAYERS_SHEET_NAME)}`;
-    
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Kon spelersblad niet ophalen. Status: ${response.status}`);
-        }
-        const csvText = await response.text();
-        // Verwijder eventuele carriage returns (\r) en splits op nieuwe regels
-        const rows = csvText.replace(/\r/g, '').split('\n').slice(1);
-        
-        const players: Player[] = rows.map((row): Player | null => {
-            // Robuuste CSV parsing die rekening houdt met waarden tussen aanhalingstekens
-            const columns = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
-            if (columns.length < 5) return null; // Zorg voor voldoende kolommen
-
-            const [id, name, rating, isKeeper, isFixedMember, photoBase64] = columns.map(col => col.replace(/"/g, '').trim());
-
-            return {
-                id: parseInt(id, 10),
-                name: name,
-                rating: parseFloat(rating),
-                isKeeper: isKeeper.toLowerCase() === 'true',
-                isFixedMember: isFixedMember.toLowerCase() === 'true',
-                photoBase64: photoBase64 || undefined
-            };
-// Fix: Add explicit return type to the map callback to satisfy the type predicate in the filter.
-        }).filter((p): p is Player => p !== null && !isNaN(p.id) && !!p.name); // Filter lege/ongeldige rijen
-
-        if (players.length === 0) {
-            throw new Error("Spelerslijst is leeg of kon niet worden gelezen. Controleer of het blad 'Spelers' bestaat en of de spreadsheet-link is ingesteld op 'Iedereen met de link'.");
-        }
-
-        return players;
-    } catch (error: any) {
-        console.error("Fout bij het ophalen van spelers uit CSV:", error);
-        throw new Error(`Kon spelers niet laden. Controleer SPREADSHEET_ID en PLAYERS_SHEET_NAME in config.ts. Fout: ${error.message}`);
-    }
-};
-
-
-// Functie om de initiële data op te halen
+// Main function to fetch all initial data
 export const getInitialData = async (): Promise<{ players: Player[], history: GameSession[], competitionName: string }> => {
   try {
-    // Start beide fetches parallel voor efficiëntie
-    const playersPromise = getPlayersFromCsv();
-    
-    const secondaryDataPromise = fetch(new URL(SCRIPT_URL).toString(), {
+    const url = new URL(SCRIPT_URL);
+    url.searchParams.append('action', 'getInitialData');
+    url.searchParams.append('t', new Date().getTime().toString()); // Cache busting
+
+    const response = await fetch(url.toString(), {
       method: 'GET',
       mode: 'cors',
-      cache: 'no-cache', // Voorkom caching problemen
-    }).then(handleResponse);
+      cache: 'no-cache',
+    });
+    
+    const data = await handleResponse(response);
+    
+    if (data.status === 'error') {
+      throw new Error(data.message);
+    }
 
-    const [players, secondaryData] = await Promise.all([playersPromise, secondaryDataPromise]);
-
-    if (secondaryData.status === 'error') {
-        // Log de fout, maar ga door, de geschiedenis is minder kritisch dan de spelerslijst
-        console.error("Fout bij ophalen secundaire data (geschiedenis/naam):", secondaryData.message);
+    // CRITICAL CHECK: Ensure players are loaded. If not, the setup is incomplete.
+    // This prevents the "blank screen" silent failure.
+    if (!data.players || data.players.length === 0) {
+        throw new Error(`Er zijn geen spelers gevonden in het tabblad '${PLAYERS_SHEET_NAME}'.
+Dit is de meest voorkomende oorzaak van een 'lege' app. Controleer a.u.b. het volgende:
+1. De naam van het tabblad in Google Sheets is exact '${PLAYERS_SHEET_NAME}'.
+2. De deel-instellingen van de Google Sheet staan op 'Iedereen met de link' kan 'Viewer' zijn.
+3. Er staan daadwerkelijk spelers in de sheet onder de juiste kolomkoppen (Id, Naam, Rating, etc.).
+4. Het Apps Script is correct 'gedeployed' (stap 5 uit de handleiding).`);
     }
 
     return {
-      players,
-      history: secondaryData.history || [],
-      competitionName: secondaryData.competitionName || '',
+      players: data.players,
+      history: data.history || [],
+      competitionName: data.competitionName || '',
     };
   } catch (error: any) {
     console.error("Failed to fetch initial data:", error);
-    throw new Error(`Kon de gegevens niet laden. ${error.message}`);
+    throw error;
   }
 };
 
