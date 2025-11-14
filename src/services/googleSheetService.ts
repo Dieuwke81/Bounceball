@@ -44,93 +44,44 @@ const postToAction = async (action: string, data: object): Promise<any> => {
   }
 };
 
-// Function to fetch players directly from the sheet via CSV export
-const getPlayersFromCsv = async (): Promise<Player[]> => {
-    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(PLAYERS_SHEET_NAME)}`;
-    
-    try {
-        const response = await fetch(url);
-        const csvText = await response.text();
-
-        // **CRITICAL CHECK 1**: If Google returns an HTML page, it means the sheet is not public.
-        if (csvText.trim().toLowerCase().startsWith('<!doctype html') || csvText.trim().toLowerCase().includes('<html')) {
-            throw new Error("Toegang tot de Google Sheet is geweigerd. Zorg ervoor dat de deelinstellingen correct zijn: ga naar 'Delen' > 'Algemene toegang' en stel deze in op 'Iedereen met de link' kan 'Viewer' zijn.");
-        }
-        
-        const lines = csvText.replace(/\r/g, '').split('\n');
-        const header = (lines[0] || '').toLowerCase();
-        
-        // **CRITICAL CHECK 2**: Verify if we got a valid CSV header.
-        if (!header.includes('id') || !header.includes('naam') || !header.includes('rating')) {
-             throw new Error(`De app kreeg een onverwachte reactie van Google Sheets en kon de spelerslijst niet lezen. Controleer het volgende:
-1. Is de naam van het tabblad in uw Google Sheet exact '${PLAYERS_SHEET_NAME}' (hoofdlettergevoelig)? Pas dit eventueel aan in 'src/config.ts'.
-2. Heeft de sheet de kolommen 'Id', 'Naam', en 'Rating'?
-3. Staan de deelinstellingen op 'Iedereen met de link'?`);
-        }
-
-        const rows = lines.slice(1);
-        
-        const players = rows
-            .map((row): Player | null => {
-                const columns = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
-                if (columns.length < 5) return null;
-
-                const [id, name, rating, isKeeper, isFixedMember, photoBase64] = columns.map(col => col.replace(/"/g, '').trim());
-                
-                const playerId = parseInt(id, 10);
-                const playerRating = parseFloat(rating);
-
-                if (isNaN(playerId) || !name) return null;
-
-                return {
-                    id: playerId,
-                    name: name,
-                    rating: isNaN(playerRating) ? 7.0 : playerRating,
-                    isKeeper: isKeeper.toLowerCase() === 'true',
-                    isFixedMember: isFixedMember.toLowerCase() === 'true',
-                    photoBase64: photoBase64 || undefined
-                };
-            })
-            .filter((p): p is Player => p !== null);
-
-        if (players.length === 0 && rows.filter(r => r.trim()).length > 0) {
-            throw new Error("Spelerslijst kon niet worden verwerkt. Controleer of de kolomvolgorde in de sheet correct is: 'Id', 'Naam', 'Rating', 'IsKeeper', 'IsVastLid'.");
-        }
-
-        return players;
-    } catch (error: any) {
-        console.error("Fout bij het ophalen van spelers uit CSV:", error);
-        throw new Error(error.message || `Kon spelers niet laden. Controleer SPREADSHEET_ID en PLAYERS_SHEET_NAME in config.ts.`);
-    }
-};
-
-
 // Main function to fetch all initial data
 export const getInitialData = async (): Promise<{ players: Player[], history: GameSession[], competitionName: string }> => {
   try {
-    const playersPromise = getPlayersFromCsv();
-    
-    const secondaryDataPromise = fetch(new URL(SCRIPT_URL).toString(), {
+    const url = new URL(SCRIPT_URL);
+    url.searchParams.append('action', 'getInitialData');
+    url.searchParams.append('t', new Date().getTime().toString()); // Cache busting
+
+    const response = await fetch(url.toString(), {
       method: 'GET',
       mode: 'cors',
       cache: 'no-cache',
-    }).then(handleResponse).catch(err => {
-        console.warn("Fout bij ophalen secundaire data (geschiedenis/naam):", err.message);
-        return { history: [], competitionName: '' }; // Return default values on failure
     });
+    
+    const data = await handleResponse(response);
+    
+    if (data.status === 'error') {
+      throw new Error(data.message);
+    }
 
-    // We prioritize showing players, even if history fails.
-    const [players, secondaryData] = await Promise.all([playersPromise, secondaryDataPromise]);
+    // CRITICAL CHECK: Ensure players are loaded. If not, the setup is incomplete.
+    // This prevents the "blank screen" silent failure.
+    if (!data.players || data.players.length === 0) {
+        throw new Error(`Er zijn geen spelers gevonden in het tabblad '${PLAYERS_SHEET_NAME}'.
+Dit is de meest voorkomende oorzaak van een 'lege' app. Controleer a.u.b. het volgende:
+1. De naam van het tabblad in Google Sheets is exact '${PLAYERS_SHEET_NAME}'.
+2. De deel-instellingen van de Google Sheet staan op 'Iedereen met de link' kan 'Viewer' zijn.
+3. Er staan daadwerkelijk spelers in de sheet onder de juiste kolomkoppen (Id, Naam, Rating, etc.).
+4. Het Apps Script is correct 'gedeployed' (stap 5 uit de handleiding).`);
+    }
 
     return {
-      players,
-      history: secondaryData.history || [],
-      competitionName: secondaryData.competitionName || '',
+      players: data.players,
+      history: data.history || [],
+      competitionName: data.competitionName || '',
     };
   } catch (error: any) {
-    // This will catch the critical error from getPlayersFromCsv and display it to the user
     console.error("Failed to fetch initial data:", error);
-    throw new Error(error.message);
+    throw error;
   }
 };
 

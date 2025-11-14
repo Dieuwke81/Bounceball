@@ -22,6 +22,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import LoginScreen from './components/LoginScreen';
 import LockIcon from './components/icons/LockIcon';
 import FutbolIcon from './components/icons/FutbolIcon';
+import SetupGuide from './components/SetupGuide';
 
 type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement';
 type Notification = { message: string; type: 'success' | 'error' };
@@ -128,27 +129,43 @@ const App: React.FC = () => {
   };
 
   const handleParseAttendance = (text: string) => {
+    // This normalize function is perfect for the matching part. It handles case and diacritics.
     const normalize = (str: string): string =>
       str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
+    
+    // Heuristic to detect and ignore date lines.
+    const monthNames = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 
-    // Phase 1: Extract potential names from the text
     lines.forEach(line => {
-      // Basic cleaning: remove timestamps, list numbers, etc.
-      const cleaned = line
-        .replace(/\[\d{1,2}:\d{2}, \d{1,2}\/\d{1,2}\/\d{4,}\]/, '') // WhatsApp timestamp [10:30, 25/12/2024]
-        .replace(/^\s*\d+\.?\s*/, '') // "1. ", "2 ", etc.
-        .replace(/[\(\[].*?[\)\]]/g, '') // Text in brackets (vaak opmerkingen)
-        .trim();
-        
-      // Ignore empty lines or lines that are likely dates/times
-      const hasLetters = /[a-zA-Z]/.test(cleaned);
-      const isLikelyDate = /\d/.test(cleaned) && (cleaned.includes('/') || cleaned.includes('-') || ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'].some(day => cleaned.toLowerCase().includes(day)));
+      const trimmedLine = line.trim();
+      if (!trimmedLine) return; // Ignore empty lines
+
+      // --- Filter out non-name lines ---
+      const lowerLine = trimmedLine.toLowerCase();
+      // 1. Check for date lines like "18 november 20:30"
+      if (monthNames.some(month => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) {
+        return;
+      }
       
-      if (cleaned && hasLetters && !isLikelyDate) {
-        potentialNames.add(cleaned);
+      // --- Clean the line to extract the name ---
+      let cleaned = trimmedLine
+        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '') // Remove various zero-width characters (e.g. from WhatsApp)
+        .replace(/\[.*?\]/, '') // General purpose timestamp removal e.g. [12:34, 1/1/24]
+        .replace(/^\s*\d+\.?\s*/, '') // Remove list numbering "1. " or "1 "
+        .replace(/[\(\[].*?[\)\]]/g, '') // Remove comments like (keepen) or [extra]
+        .split(':')[0] // Handles "Hein: ik ben erbij" -> "Hein"
+        .trim();
+
+      // --- Final validation and add to set ---
+      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned)) {
+        const nonNameWords = ['afgemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas'];
+        const normalizedPotentialName = normalize(cleaned);
+        if (!nonNameWords.some(word => normalizedPotentialName.startsWith(word))) {
+            potentialNames.add(cleaned);
+        }
       }
     });
 
@@ -157,54 +174,49 @@ const App: React.FC = () => {
       return;
     }
 
-    // Phase 2: Match potential names against the player list
+    const playerLookup = new Map<string, Player>();
+    players.forEach(player => {
+      const normalizedFullName = normalize(player.name);
+      const normalizedFirstName = normalizedFullName.split(' ')[0];
+
+      playerLookup.set(normalizedFullName, player);
+      if (!playerLookup.has(normalizedFirstName)) {
+        playerLookup.set(normalizedFirstName, player);
+      }
+    });
+
     const newAttendingPlayerIds = new Set(attendingPlayerIds);
     const newlyFoundPlayers: string[] = [];
     const notFoundOriginalNames: string[] = [];
-    const ambiguousNames: { name: string, matches: string[] }[] = [];
     
-    potentialNames.forEach(pastedName => {
-        const normalizedPasted = normalize(pastedName);
-        if (!normalizedPasted) return;
-
-        const matches = players.filter(p => normalize(p.name).includes(normalizedPasted));
-
-        if (matches.length === 1) {
-            const player = matches[0];
-            if (!newAttendingPlayerIds.has(player.id)) {
-                newlyFoundPlayers.push(player.name);
-            }
-            newAttendingPlayerIds.add(player.id);
-        } else if (matches.length > 1) {
-            ambiguousNames.push({ name: pastedName, matches: matches.map(p => p.name) });
-        } else {
-            notFoundOriginalNames.push(pastedName);
+    potentialNames.forEach((originalName) => {
+      const normalizedName = normalize(originalName);
+      const matchedPlayer = playerLookup.get(normalizedName);
+      if (matchedPlayer) {
+        if (!newAttendingPlayerIds.has(matchedPlayer.id)) {
+          newlyFoundPlayers.push(matchedPlayer.name);
         }
+        newAttendingPlayerIds.add(matchedPlayer.id);
+      } else {
+        notFoundOriginalNames.push(originalName);
+      }
     });
 
     setAttendingPlayerIds(newAttendingPlayerIds);
 
-    // Phase 3: Create a comprehensive notification message
-    if (newlyFoundPlayers.length > 0 || notFoundOriginalNames.length > 0 || ambiguousNames.length > 0) {
-      let messages: string[] = [];
+    if (newlyFoundPlayers.length > 0 || notFoundOriginalNames.length > 0) {
+      let message = '';
       let type: 'success' | 'error' = 'success';
 
       if (newlyFoundPlayers.length > 0) {
-        messages.push(`Toegevoegd: ${newlyFoundPlayers.join(', ')}.`);
+        message += `${newlyFoundPlayers.length} speler(s) toegevoegd: ${newlyFoundPlayers.join(', ')}.`;
       }
 
       if (notFoundOriginalNames.length > 0) {
-        messages.push(`Niet herkend: ${notFoundOriginalNames.join(', ')}.`);
+        message += `${message ? '\n' : ''}Niet herkend: ${notFoundOriginalNames.join(', ')}.`;
         type = 'error';
       }
-      
-      if (ambiguousNames.length > 0) {
-        const ambiguousMessages = ambiguousNames.map(a => `${a.name} (matcht ${a.matches.join('/')})`);
-        messages.push(`Ambigu: ${ambiguousMessages.join('; ')}.`);
-        type = 'error';
-      }
-      
-      showNotification(messages.join('\n'), type);
+      showNotification(message, type);
     } else if (potentialNames.size > 0) {
       showNotification('Alle spelers uit de lijst waren al aangemeld.', 'success');
     }
@@ -692,7 +704,7 @@ const App: React.FC = () => {
     </button>
   );
 
-  if (isLoading && players.length === 0) {
+  if (isLoading && players.length === 0 && !error) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
         <div className="text-center">
@@ -704,20 +716,7 @@ const App: React.FC = () => {
   }
 
   if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-white p-4">
-        <div className="bg-red-900/50 border border-red-700 p-8 rounded-lg text-center max-w-2xl">
-            <h2 className="text-2xl font-bold text-red-300 mb-4">Oeps! Er is iets misgegaan.</h2>
-            <p className="text-red-200 mb-6">{error}</p>
-            <button
-                onClick={() => fetchData()}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg"
-            >
-                Probeer opnieuw
-            </button>
-        </div>
-      </div>
-    );
+    return <SetupGuide error={error} onRetry={fetchData} />;
   }
 
   return (
