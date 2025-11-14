@@ -4,7 +4,11 @@
 //    Deze vind je in de URL: https://docs.google.com/spreadsheets/d/THIS_IS_THE_ID/edit
 export const SPREADSHEET_ID = '1I_0c8p8r9Ep2VVQdFdeL0IsyTM7w18QGI-Hj40dMxt4';
 
-// 2. De Web App URL van je Google Apps Script
+// 2. De naam van het tabblad (sheet) waar de spelerslijst staat.
+//    Dit is hoofdlettergevoelig. Standaard is dit 'Spelers'.
+export const PLAYERS_SHEET_NAME = 'Spelers';
+
+// 3. De Web App URL van je Google Apps Script
 //    Deze krijg je na het 'deployen' van het script in de Google Apps Script editor.
 //    ================================================================================
 //    LET OP: NADAT JE HET SCRIPT HEBT GEWIJZIGD (BIJV. MET DE NIEUWE CODE.GS),

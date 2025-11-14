@@ -129,107 +129,83 @@ const App: React.FC = () => {
 
   const handleParseAttendance = (text: string) => {
     const normalize = (str: string): string =>
-      str
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
-        .trim();
+      str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
     const lines = text.split('\n');
-    const parsedNamesAndOriginals = new Map<string, string>();
+    const potentialNames = new Set<string>();
 
+    // Phase 1: Extract potential names from the text
     lines.forEach(line => {
-      const cleanedLine = line
-        .replace(/\[\d{1,2}:\d{2}, \d{1,2}\/\d{1,2}\/\d{4,}\]/, '') // [10:30, 25/12/2024]
+      // Basic cleaning: remove timestamps, list numbers, etc.
+      const cleaned = line
+        .replace(/\[\d{1,2}:\d{2}, \d{1,2}\/\d{1,2}\/\d{4,}\]/, '') // WhatsApp timestamp [10:30, 25/12/2024]
+        .replace(/^\s*\d+\.?\s*/, '') // "1. ", "2 ", etc.
+        .replace(/[\(\[].*?[\)\]]/g, '') // Text in brackets (vaak opmerkingen)
         .trim();
-
-      const cleanedName = cleanedLine
-        .replace(/^\s*\d+\.?\s*/, '')
-        .replace(/[\(\[].*?[\)\]]/g, '')
-        .trim();
-
-      if (!cleanedName) {
-        return;
-      }
+        
+      // Ignore empty lines or lines that are likely dates/times
+      const hasLetters = /[a-zA-Z]/.test(cleaned);
+      const isLikelyDate = /\d/.test(cleaned) && (cleaned.includes('/') || cleaned.includes('-') || ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'].some(day => cleaned.toLowerCase().includes(day)));
       
-      const numberMatches = cleanedName.match(/\d+/g);
-      if (/^\d+$/.test(cleanedName) || (numberMatches && numberMatches.length > 1)) {
-        return;
+      if (cleaned && hasLetters && !isLikelyDate) {
+        potentialNames.add(cleaned);
       }
-      const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
-      const normalizedCleanedName = normalize(cleanedName);
-      if (months.some(month => normalizedCleanedName.includes(month)) && numberMatches) {
-          return;
-      }
-
-      parsedNamesAndOriginals.set(normalizedCleanedName, cleanedName);
     });
 
-    if (parsedNamesAndOriginals.size === 0) {
+    if (potentialNames.size === 0) {
       showNotification('Geen geldige namen gevonden in de tekst.', 'error');
       return;
     }
 
+    // Phase 2: Match potential names against the player list
     const newAttendingPlayerIds = new Set(attendingPlayerIds);
     const newlyFoundPlayers: string[] = [];
     const notFoundOriginalNames: string[] = [];
-    const ambiguousNames: string[] = [];
+    const ambiguousNames: { name: string, matches: string[] }[] = [];
     
-    parsedNamesAndOriginals.forEach((originalName, normalizedPastedName) => {
-      if (!normalizedPastedName) return;
+    potentialNames.forEach(pastedName => {
+        const normalizedPasted = normalize(pastedName);
+        if (!normalizedPasted) return;
 
-      const potentialMatches = players.filter(p => {
-        const normalizedPlayerName = normalize(p.name);
-        const playerFirstName = normalizedPlayerName.split(' ')[0];
-        return normalizedPlayerName.startsWith(normalizedPastedName) || playerFirstName === normalizedPastedName;
-      });
+        const matches = players.filter(p => normalize(p.name).includes(normalizedPasted));
 
-      let matchedPlayer: Player | null = null;
-
-      if (potentialMatches.length === 1) {
-        matchedPlayer = potentialMatches[0];
-      } else if (potentialMatches.length > 1) {
-        const exactMatch = potentialMatches.find(p => normalize(p.name) === normalizedPastedName);
-        if (exactMatch) {
-            matchedPlayer = exactMatch;
+        if (matches.length === 1) {
+            const player = matches[0];
+            if (!newAttendingPlayerIds.has(player.id)) {
+                newlyFoundPlayers.push(player.name);
+            }
+            newAttendingPlayerIds.add(player.id);
+        } else if (matches.length > 1) {
+            ambiguousNames.push({ name: pastedName, matches: matches.map(p => p.name) });
         } else {
-            ambiguousNames.push(originalName);
+            notFoundOriginalNames.push(pastedName);
         }
-      }
-      
-      if (matchedPlayer) {
-        if (!newAttendingPlayerIds.has(matchedPlayer.id)) {
-          newlyFoundPlayers.push(matchedPlayer.name);
-        }
-        newAttendingPlayerIds.add(matchedPlayer.id);
-      } else if (potentialMatches.length === 0) {
-        notFoundOriginalNames.push(originalName);
-      }
     });
 
     setAttendingPlayerIds(newAttendingPlayerIds);
 
+    // Phase 3: Create a comprehensive notification message
     if (newlyFoundPlayers.length > 0 || notFoundOriginalNames.length > 0 || ambiguousNames.length > 0) {
-      let message = '';
+      let messages: string[] = [];
       let type: 'success' | 'error' = 'success';
 
       if (newlyFoundPlayers.length > 0) {
-        message += `${newlyFoundPlayers.length} speler(s) toegevoegd: ${newlyFoundPlayers.join(', ')}.`;
+        messages.push(`Toegevoegd: ${newlyFoundPlayers.join(', ')}.`);
       }
 
       if (notFoundOriginalNames.length > 0) {
-        message += `${message ? '\n' : ''}Niet herkend: ${notFoundOriginalNames.join(', ')}.`;
+        messages.push(`Niet herkend: ${notFoundOriginalNames.join(', ')}.`);
         type = 'error';
       }
       
       if (ambiguousNames.length > 0) {
-        message += `${message ? '\n' : ''}Ambigu (meerdere spelers gevonden): ${ambiguousNames.join(', ')}.`;
+        const ambiguousMessages = ambiguousNames.map(a => `${a.name} (matcht ${a.matches.join('/')})`);
+        messages.push(`Ambigu: ${ambiguousMessages.join('; ')}.`);
         type = 'error';
       }
-
-      showNotification(message, type);
-    } else if (parsedNamesAndOriginals.size > 0) {
+      
+      showNotification(messages.join('\n'), type);
+    } else if (potentialNames.size > 0) {
       showNotification('Alle spelers uit de lijst waren al aangemeld.', 'success');
     }
   };
