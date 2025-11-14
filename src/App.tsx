@@ -129,30 +129,43 @@ const App: React.FC = () => {
   };
 
   const handleParseAttendance = (text: string) => {
+    // This normalize function is perfect for the matching part. It handles case and diacritics.
     const normalize = (str: string): string =>
       str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
+    
+    // Heuristic to detect and ignore date lines.
+    const monthNames = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 
     lines.forEach(line => {
-      if (!line.trim()) return;
+      const trimmedLine = line.trim();
+      if (!trimmedLine) return; // Ignore empty lines
 
-      let cleaned = line
-        .replace(/\[\d{1,2}:\d{2}, \d{1,2}\/\d{1,2}\/\d{4,}\]/, '') // [10:30, 25/12/2024]
-        .replace(/^\s*\d+\.?\s*/, '') // "1. "
-        .replace(/[\(\[].*?[\)\]]/g, '') // (commentaar)
-        .trim();
-
-      cleaned = cleaned.split(':')[0].trim(); // Hein: ik ben er
-
-      const nonNameWords = ['afgemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas'];
-      if (nonNameWords.some(word => normalize(cleaned).startsWith(word)) || nonNameWords.includes(normalize(cleaned))) {
-          return;
+      // --- Filter out non-name lines ---
+      const lowerLine = trimmedLine.toLowerCase();
+      // 1. Check for date lines like "18 november 20:30"
+      if (monthNames.some(month => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) {
+        return;
       }
       
-      if (cleaned && /[a-zA-Z]/.test(cleaned) && cleaned.length > 1) {
-        potentialNames.add(cleaned);
+      // --- Clean the line to extract the name ---
+      let cleaned = trimmedLine
+        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '') // Remove various zero-width characters (e.g. from WhatsApp)
+        .replace(/\[.*?\]/, '') // General purpose timestamp removal e.g. [12:34, 1/1/24]
+        .replace(/^\s*\d+\.?\s*/, '') // Remove list numbering "1. " or "1 "
+        .replace(/[\(\[].*?[\)\]]/g, '') // Remove comments like (keepen) or [extra]
+        .split(':')[0] // Handles "Hein: ik ben erbij" -> "Hein"
+        .trim();
+
+      // --- Final validation and add to set ---
+      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned)) {
+        const nonNameWords = ['afgemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas'];
+        const normalizedPotentialName = normalize(cleaned);
+        if (!nonNameWords.some(word => normalizedPotentialName.startsWith(word))) {
+            potentialNames.add(cleaned);
+        }
       }
     });
 
