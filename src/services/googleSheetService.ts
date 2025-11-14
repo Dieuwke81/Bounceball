@@ -44,43 +44,107 @@ const postToAction = async (action: string, data: object): Promise<any> => {
   }
 };
 
+// Function to fetch players directly from the sheet via CSV export
+const getPlayersFromCsv = async (): Promise<Player[]> => {
+    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(PLAYERS_SHEET_NAME)}&t=${new Date().getTime()}`;
+    
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            // Catch network-level errors first.
+            throw new Error(`Kon de Google Sheet niet bereiken. Status: ${response.status}. Controleer de SPREADSHEET_ID.`);
+        }
+        const csvText = await response.text();
+
+        // Check 1: Detect if Google returned an HTML login/error page.
+        if (csvText.trim().toLowerCase().startsWith('<!doctype html') || csvText.trim().toLowerCase().includes('<html')) {
+            throw new Error("Toegang tot de Google Sheet is geweigerd. Zorg ervoor dat de deelinstellingen correct zijn: ga naar 'Delen' > 'Algemene toegang' en stel deze in op 'Iedereen met de link' kan 'Viewer' zijn.");
+        }
+        
+        const lines = csvText.replace(/\r/g, '').split('\n');
+        if (lines.length === 0 || (lines.length === 1 && lines[0].trim() === '')) {
+            // Empty or effectively empty response
+            return [];
+        }
+
+        // Check 2: Robustly verify the header row.
+        const headerLine = (lines[0] || '').toLowerCase().replace(/"/g, '');
+        const actualHeaders = headerLine.split(',').map(h => h.trim());
+        const expectedHeaders = ['id', 'naam', 'rating', 'iskeeper', 'isvastlid'];
+        
+        const headersOk = expectedHeaders.every((expected, index) => actualHeaders[index] === expected);
+
+        if (!headersOk) {
+             throw new Error(`De kolomkoppen in de Google Sheet komen niet overeen met wat de app verwacht.
+1. Controleer of de eerste 5 kolommen exact zijn: 'Id', 'Naam', 'Rating', 'IsKeeper', 'IsVastLid' (in die volgorde, spelling is belangrijk).
+2. Controleer of de naam van het tabblad in uw Google Sheet exact '${PLAYERS_SHEET_NAME}' is (hoofdlettergevoelig).
+3. Controleer nogmaals de deelinstellingen ('Iedereen met de link').
+Huidige gedetecteerde koppen: "${lines[0]}"`);
+        }
+
+        const rows = lines.slice(1);
+        
+        const players = rows
+            .map((row): Player | null => {
+                // The regex handles values that might contain commas if they are quoted.
+                const columns = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
+                if (columns.length < 5) return null;
+
+                // Strip quotes from all columns after matching
+                const [id, name, rating, isKeeper, isFixedMember, photoBase64] = columns.map(col => col.replace(/"/g, '').trim());
+                
+                const playerId = parseInt(id, 10);
+                const playerRating = parseFloat(rating);
+
+                if (isNaN(playerId) || !name) return null;
+
+                return {
+                    id: playerId,
+                    name: name,
+                    rating: isNaN(playerRating) ? 7.0 : playerRating,
+                    isKeeper: isKeeper.toLowerCase() === 'true',
+                    isFixedMember: isFixedMember.toLowerCase() === 'true',
+                    photoBase64: photoBase64 || undefined
+                };
+            })
+            .filter((p): p is Player => p !== null);
+
+        // This check is now less critical due to the robust header check, but still good to have.
+        if (players.length === 0 && rows.filter(r => r.trim()).length > 0) {
+            throw new Error("Spelerslijst bevat rijen, maar kon geen geldige spelers verwerken. Controleer op lege rijen of fouten in de data.");
+        }
+
+        return players;
+    } catch (error: any) {
+        console.error("Fout bij het ophalen van spelers uit CSV:", error);
+        // Re-throw the specific error message from the try block, or a generic one.
+        throw new Error(error.message || `Kon spelers niet laden. Controleer SPREADSHEET_ID en PLAYERS_SHEET_NAME in config.ts en uw internetverbinding.`);
+    }
+};
+
+
 // Main function to fetch all initial data
 export const getInitialData = async (): Promise<{ players: Player[], history: GameSession[], competitionName: string }> => {
   try {
-    const url = new URL(SCRIPT_URL);
-    url.searchParams.append('action', 'getInitialData');
-    url.searchParams.append('t', new Date().getTime().toString()); // Cache busting
-
-    const response = await fetch(url.toString(), {
+    const playersPromise = getPlayersFromCsv();
+    
+    const secondaryDataPromise = fetch(new URL(SCRIPT_URL).toString(), {
       method: 'GET',
       mode: 'cors',
       cache: 'no-cache',
-    });
-    
-    const data = await handleResponse(response);
-    
-    if (data.status === 'error') {
-      throw new Error(data.message);
-    }
+    }).then(handleResponse);
 
-    // CRITICAL CHECK: Ensure players are loaded. If not, the setup is incomplete.
-    // This prevents the "blank screen" silent failure.
-    if (!data.players || data.players.length === 0) {
-        throw new Error(`Er zijn geen spelers gevonden in het tabblad '${PLAYERS_SHEET_NAME}'.
-Dit is de meest voorkomende oorzaak van een 'lege' app. Controleer a.u.b. het volgende:
-1. De naam van het tabblad in Google Sheets is exact '${PLAYERS_SHEET_NAME}'.
-2. De deel-instellingen van de Google Sheet staan op 'Iedereen met de link' kan 'Viewer' zijn.
-3. Er staan daadwerkelijk spelers in de sheet onder de juiste kolomkoppen (Id, Naam, Rating, etc.).
-4. Het Apps Script is correct 'gedeployed' (stap 5 uit de handleiding).`);
-    }
+    // This will now fail if either promise fails, which is what we want.
+    const [players, secondaryData] = await Promise.all([playersPromise, secondaryDataPromise]);
 
     return {
-      players: data.players,
-      history: data.history || [],
-      competitionName: data.competitionName || '',
+      players,
+      history: secondaryData.history || [],
+      competitionName: secondaryData.competitionName || '',
     };
   } catch (error: any) {
     console.error("Failed to fetch initial data:", error);
+    // The specific error from either getPlayersFromCsv or the script fetch will be passed through.
     throw error;
   }
 };

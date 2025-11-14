@@ -135,23 +135,20 @@ const App: React.FC = () => {
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
 
+    // Phase 1: Extract potential names from the text
     lines.forEach(line => {
-      if (!line.trim()) return;
-
-      let cleaned = line
-        .replace(/\[\d{1,2}:\d{2}, \d{1,2}\/\d{1,2}\/\d{4,}\]/, '') // [10:30, 25/12/2024]
-        .replace(/^\s*\d+\.?\s*/, '') // "1. "
-        .replace(/[\(\[].*?[\)\]]/g, '') // (commentaar)
+      // Basic cleaning: remove timestamps, list numbers, etc.
+      const cleaned = line
+        .replace(/\[\d{1,2}:\d{2}, \d{1,2}\/\d{1,2}\/\d{4,}\]/, '') // WhatsApp timestamp [10:30, 25/12/2024]
+        .replace(/^\s*\d+\.?\s*/, '') // "1. ", "2 ", etc.
+        .replace(/[\(\[].*?[\)\]]/g, '') // Text in brackets (vaak opmerkingen)
         .trim();
-
-      cleaned = cleaned.split(':')[0].trim(); // Hein: ik ben er
-
-      const nonNameWords = ['afgemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas'];
-      if (nonNameWords.some(word => normalize(cleaned).startsWith(word)) || nonNameWords.includes(normalize(cleaned))) {
-          return;
-      }
+        
+      // Ignore empty lines or lines that are likely dates/times
+      const hasLetters = /[a-zA-Z]/.test(cleaned);
+      const isLikelyDate = /\d/.test(cleaned) && (cleaned.includes('/') || cleaned.includes('-') || ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'].some(day => cleaned.toLowerCase().includes(day)));
       
-      if (cleaned && /[a-zA-Z]/.test(cleaned) && cleaned.length > 1) {
+      if (cleaned && hasLetters && !isLikelyDate) {
         potentialNames.add(cleaned);
       }
     });
@@ -161,49 +158,54 @@ const App: React.FC = () => {
       return;
     }
 
-    const playerLookup = new Map<string, Player>();
-    players.forEach(player => {
-      const normalizedFullName = normalize(player.name);
-      const normalizedFirstName = normalizedFullName.split(' ')[0];
-
-      playerLookup.set(normalizedFullName, player);
-      if (!playerLookup.has(normalizedFirstName)) {
-        playerLookup.set(normalizedFirstName, player);
-      }
-    });
-
+    // Phase 2: Match potential names against the player list
     const newAttendingPlayerIds = new Set(attendingPlayerIds);
     const newlyFoundPlayers: string[] = [];
     const notFoundOriginalNames: string[] = [];
+    const ambiguousNames: { name: string, matches: string[] }[] = [];
     
-    potentialNames.forEach((originalName) => {
-      const normalizedName = normalize(originalName);
-      const matchedPlayer = playerLookup.get(normalizedName);
-      if (matchedPlayer) {
-        if (!newAttendingPlayerIds.has(matchedPlayer.id)) {
-          newlyFoundPlayers.push(matchedPlayer.name);
+    potentialNames.forEach(pastedName => {
+        const normalizedPasted = normalize(pastedName);
+        if (!normalizedPasted) return;
+
+        const matches = players.filter(p => normalize(p.name).includes(normalizedPasted));
+
+        if (matches.length === 1) {
+            const player = matches[0];
+            if (!newAttendingPlayerIds.has(player.id)) {
+                newlyFoundPlayers.push(player.name);
+            }
+            newAttendingPlayerIds.add(player.id);
+        } else if (matches.length > 1) {
+            ambiguousNames.push({ name: pastedName, matches: matches.map(p => p.name) });
+        } else {
+            notFoundOriginalNames.push(pastedName);
         }
-        newAttendingPlayerIds.add(matchedPlayer.id);
-      } else {
-        notFoundOriginalNames.push(originalName);
-      }
     });
 
     setAttendingPlayerIds(newAttendingPlayerIds);
 
-    if (newlyFoundPlayers.length > 0 || notFoundOriginalNames.length > 0) {
-      let message = '';
+    // Phase 3: Create a comprehensive notification message
+    if (newlyFoundPlayers.length > 0 || notFoundOriginalNames.length > 0 || ambiguousNames.length > 0) {
+      let messages: string[] = [];
       let type: 'success' | 'error' = 'success';
 
       if (newlyFoundPlayers.length > 0) {
-        message += `${newlyFoundPlayers.length} speler(s) toegevoegd: ${newlyFoundPlayers.join(', ')}.`;
+        messages.push(`Toegevoegd: ${newlyFoundPlayers.join(', ')}.`);
       }
 
       if (notFoundOriginalNames.length > 0) {
-        message += `${message ? '\n' : ''}Niet herkend: ${notFoundOriginalNames.join(', ')}.`;
+        messages.push(`Niet herkend: ${notFoundOriginalNames.join(', ')}.`);
         type = 'error';
       }
-      showNotification(message, type);
+      
+      if (ambiguousNames.length > 0) {
+        const ambiguousMessages = ambiguousNames.map(a => `${a.name} (matcht ${a.matches.join('/')})`);
+        messages.push(`Ambigu: ${ambiguousMessages.join('; ')}.`);
+        type = 'error';
+      }
+      
+      showNotification(messages.join('\n'), type);
     } else if (potentialNames.size > 0) {
       showNotification('Alle spelers uit de lijst waren al aangemeld.', 'success');
     }
@@ -702,7 +704,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (!isLoading && error && players.length === 0) {
     return <SetupGuide error={error} onRetry={fetchData} />;
   }
 
