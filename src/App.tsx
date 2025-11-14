@@ -22,7 +22,6 @@ import LoadingSpinner from './components/LoadingSpinner';
 import LoginScreen from './components/LoginScreen';
 import LockIcon from './components/icons/LockIcon';
 import FutbolIcon from './components/icons/FutbolIcon';
-import SetupGuide from './components/SetupGuide';
 
 type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement';
 type Notification = { message: string; type: 'success' | 'error' };
@@ -693,7 +692,7 @@ const App: React.FC = () => {
     </button>
   );
 
-  if (isLoading && players.length === 0 && !error) {
+  if (isLoading && players.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
         <div className="text-center">
@@ -704,8 +703,21 @@ const App: React.FC = () => {
     );
   }
 
-  if (!isLoading && error && players.length === 0) {
-    return <SetupGuide error={error} onRetry={fetchData} />;
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-white p-4">
+        <div className="bg-red-900/50 border border-red-700 p-8 rounded-lg text-center max-w-2xl">
+            <h2 className="text-2xl font-bold text-red-300 mb-4">Oeps! Er is iets misgegaan.</h2>
+            <p className="text-red-200 mb-6 whitespace-pre-line">{error}</p>
+            <button
+                onClick={() => fetchData()}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg"
+            >
+                Probeer opnieuw
+            </button>
+        </div>
+      </div>
+    );
   }
 
   return (

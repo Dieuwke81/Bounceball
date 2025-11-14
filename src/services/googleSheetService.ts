@@ -46,7 +46,7 @@ const postToAction = async (action: string, data: object): Promise<any> => {
 
 // Function to fetch players directly from the sheet via CSV export
 const getPlayersFromCsv = async (): Promise<Player[]> => {
-    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(PLAYERS_SHEET_NAME)}&t=${new Date().getTime()}`;
+    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(PLAYERS_SHEET_NAME)}`;
     
     try {
         const response = await fetch(url);
@@ -132,9 +132,12 @@ export const getInitialData = async (): Promise<{ players: Player[], history: Ga
       method: 'GET',
       mode: 'cors',
       cache: 'no-cache',
-    }).then(handleResponse);
+    }).then(handleResponse).catch(err => {
+        console.warn("Fout bij ophalen secundaire data (geschiedenis/naam):", err.message);
+        return { history: [], competitionName: '' }; // Return default values on failure
+    });
 
-    // This will now fail if either promise fails, which is what we want.
+    // We prioritize showing players, even if history fails.
     const [players, secondaryData] = await Promise.all([playersPromise, secondaryDataPromise]);
 
     return {
@@ -143,9 +146,9 @@ export const getInitialData = async (): Promise<{ players: Player[], history: Ga
       competitionName: secondaryData.competitionName || '',
     };
   } catch (error: any) {
+    // This will catch the critical error from getPlayersFromCsv and display it to the user
     console.error("Failed to fetch initial data:", error);
-    // The specific error from either getPlayersFromCsv or the script fetch will be passed through.
-    throw error;
+    throw new Error(error.message);
   }
 };
 
