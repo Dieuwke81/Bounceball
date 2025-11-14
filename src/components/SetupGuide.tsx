@@ -139,13 +139,26 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ error, onRetry }) => {
         </div>
 
         {/* --- TROUBLESHOOTING GUIDE --- */}
-        <details className="bg-gray-700/30 rounded-lg">
+        <details className="bg-gray-700/30 rounded-lg" open>
             <summary className="font-bold text-lg text-white p-4 cursor-pointer hover:bg-gray-700/50 rounded-lg">
                 Problemen? Open de Gids voor Probleemoplossing
             </summary>
             <div className="p-4 border-t border-gray-600 space-y-4">
                 <div>
-                    <h3 className="font-bold text-md text-cyan-300 mb-2">1. Google Apps Script Deployment (Meest voorkomende oorzaak)</h3>
+                    <h3 className="font-bold text-md text-amber-300 mb-2">1. Foutmelding "0 spelers gevonden"? (Meest waarschijnlijk)</h3>
+                    <p className="text-sm text-gray-400 mb-2">Als de verbinding slaagt maar geen spelers vindt, controleer dan het volgende in je Google Sheet:</p>
+                    <ul className="list-disc list-inside space-y-2 text-sm text-gray-300 pl-2">
+                        <li>Het tabblad met de spelerslijst heet <strong className="text-white">exact</strong> <code className="bg-gray-900 px-1 rounded">{PLAYERS_SHEET_NAME}</code>. (Hoofdlettergevoelig!)</li>
+                        <li>De <strong className="text-white">allereerste rij</strong> (rij 1) van dit tabblad bevat <strong className="text-white">exact</strong> deze kolomkoppen. De volgorde is belangrijk.
+                            <code className="block bg-gray-900 p-2 rounded mt-1 text-xs whitespace-pre-wrap">ID   |   Naam   |   Rating   |   Keeper   |   Lid   |   Foto (Base64)</code>
+                        </li>
+                        <li>De kolom <strong className="text-white">'Naam'</strong> is voor elke speler ingevuld. Rijen zonder naam worden genegeerd.</li>
+                        <li>De kolom <strong className="text-white">'ID'</strong> moet leeg zijn voor nieuwe spelers. Deze wordt automatisch door de app beheerd.</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 className="font-bold text-md text-cyan-300 mb-2">2. Andere verbindingsfouten (bv. Toegang Geweigerd, Serverfout)</h3>
                     <ol className="list-decimal list-inside space-y-1 text-sm text-gray-300 pl-2">
                         <li>Open het Apps Script via je spreadsheet (Extensies &gt; Apps Script).</li>
                         <li>Klik op de blauwe <strong className="text-white">"Implementeren"</strong> knop en kies <strong className="text-white">"Nieuwe implementatie"</strong>.</li>
@@ -154,7 +167,7 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ error, onRetry }) => {
                     </ol>
                 </div>
                 <div>
-                    <h3 className="font-bold text-md text-cyan-300 mb-2">2. Deel-instellingen van de Sheet</h3>
+                    <h3 className="font-bold text-md text-cyan-300 mb-2">3. Deel-instellingen van de Sheet</h3>
                     <ol className="list-decimal list-inside space-y-1 text-sm text-gray-300 pl-2">
                         <li>Open je spreadsheet: <a href={spreadsheetUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline font-semibold">Klik hier</a>.</li>
                         <li>Klik op de blauwe <strong className="text-white">"Delen"</strong> knop (rechtsboven).</li>
