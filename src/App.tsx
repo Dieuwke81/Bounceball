@@ -145,7 +145,16 @@ const App: React.FC = () => {
         .replace(/[\(\[].*?[\)\]]/g, '')
         .trim();
 
-      if (!cleanedName || /\d/.test(cleanedName)) {
+      if (!cleanedName) {
+        return;
+      }
+      
+      // New logic to ignore date lines but allow names with a single number.
+      // A date line like "18 november 20:30" will have multiple numbers.
+      // A name like "Player 2" will have only one.
+      const numberMatches = cleanedName.match(/\d+/g);
+      if (numberMatches && numberMatches.length > 1) {
+        // Contains multiple numbers, likely a date/time stamp, so ignore it.
         return;
       }
 
