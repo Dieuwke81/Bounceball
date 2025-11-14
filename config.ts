@@ -1,3 +1,4 @@
+
 // BELANGRIJK: Vul hier je eigen gegevens in!
 
 // 1. De ID van je Google Spreadsheet
@@ -12,4 +13,4 @@ export const SPREADSHEET_ID = '1I_0c8p8r9Ep2VVQdFdeL0IsyTM7w18QGI-Hj40dMxt4';
 //    KOPIEER DE **WEB APP URL** DIE JE DAN KRIGT EN PLAK DEZE HIERONDER.
 //    DIT IS NIET DE 'IMPLEMENTATIE-ID'. DE URL EINDIGT OP '/exec'.
 //    ================================================================================
-export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyqk2m2Bh0uxPOX7nDkj4jmbXnGaONCzP_Q3bCpki1heXBheXedHw7qg0ajMEIRWYJn/exec';
+export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzGpZSv6iqjD7nMQDV_-lVUjqWanP7B4unkC-cNo-5g4QJ8ZKXEgLLi4A6n_7p1iUCx/exec';
