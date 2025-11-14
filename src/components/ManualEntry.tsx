@@ -404,7 +404,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ allPlayers, onSave, isLoading
         <div className="mt-8">
             <button 
                 onClick={isR1 ? handleStartTournament : handleStartRound2} 
-                className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded-lg transition-colors text-lg" 
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors text-lg" 
                 disabled={isLoading}>
                 {isR1 ? 'Start Toernooi' : 'Start Ronde 2'}
             </button>
