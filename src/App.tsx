@@ -140,7 +140,11 @@ const App: React.FC = () => {
     const parsedNamesAndOriginals = new Map<string, string>();
 
     lines.forEach(line => {
-      const cleanedName = line
+      const cleanedLine = line
+        .replace(/\[\d{1,2}:\d{2}, \d{1,2}\/\d{1,2}\/\d{4,}\]/, '') // [10:30, 25/12/2024]
+        .trim();
+
+      const cleanedName = cleanedLine
         .replace(/^\s*\d+\.?\s*/, '')
         .replace(/[\(\[].*?[\)\]]/g, '')
         .trim();
@@ -149,16 +153,17 @@ const App: React.FC = () => {
         return;
       }
       
-      // New logic to ignore date lines but allow names with a single number.
-      // A date line like "18 november 20:30" will have multiple numbers.
-      // A name like "Player 2" will have only one.
       const numberMatches = cleanedName.match(/\d+/g);
-      if (numberMatches && numberMatches.length > 1) {
-        // Contains multiple numbers, likely a date/time stamp, so ignore it.
+      if (/^\d+$/.test(cleanedName) || (numberMatches && numberMatches.length > 1)) {
         return;
       }
+      const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+      const normalizedCleanedName = normalize(cleanedName);
+      if (months.some(month => normalizedCleanedName.includes(month)) && numberMatches) {
+          return;
+      }
 
-      parsedNamesAndOriginals.set(normalize(cleanedName), cleanedName);
+      parsedNamesAndOriginals.set(normalizedCleanedName, cleanedName);
     });
 
     if (parsedNamesAndOriginals.size === 0) {
@@ -166,36 +171,46 @@ const App: React.FC = () => {
       return;
     }
 
-    const playerLookup = new Map<string, Player>();
-    players.forEach(player => {
-      const normalizedFullName = normalize(player.name);
-      const normalizedFirstName = normalizedFullName.split(' ')[0];
-
-      playerLookup.set(normalizedFullName, player);
-      if (!playerLookup.has(normalizedFirstName)) {
-        playerLookup.set(normalizedFirstName, player);
-      }
-    });
-
     const newAttendingPlayerIds = new Set(attendingPlayerIds);
     const newlyFoundPlayers: string[] = [];
     const notFoundOriginalNames: string[] = [];
+    const ambiguousNames: string[] = [];
     
-    parsedNamesAndOriginals.forEach((originalName, normalizedName) => {
-      const matchedPlayer = playerLookup.get(normalizedName);
+    parsedNamesAndOriginals.forEach((originalName, normalizedPastedName) => {
+      if (!normalizedPastedName) return;
+
+      const potentialMatches = players.filter(p => {
+        const normalizedPlayerName = normalize(p.name);
+        const playerFirstName = normalizedPlayerName.split(' ')[0];
+        return normalizedPlayerName.startsWith(normalizedPastedName) || playerFirstName === normalizedPastedName;
+      });
+
+      let matchedPlayer: Player | null = null;
+
+      if (potentialMatches.length === 1) {
+        matchedPlayer = potentialMatches[0];
+      } else if (potentialMatches.length > 1) {
+        const exactMatch = potentialMatches.find(p => normalize(p.name) === normalizedPastedName);
+        if (exactMatch) {
+            matchedPlayer = exactMatch;
+        } else {
+            ambiguousNames.push(originalName);
+        }
+      }
+      
       if (matchedPlayer) {
         if (!newAttendingPlayerIds.has(matchedPlayer.id)) {
           newlyFoundPlayers.push(matchedPlayer.name);
         }
         newAttendingPlayerIds.add(matchedPlayer.id);
-      } else {
+      } else if (potentialMatches.length === 0) {
         notFoundOriginalNames.push(originalName);
       }
     });
 
     setAttendingPlayerIds(newAttendingPlayerIds);
 
-    if (newlyFoundPlayers.length > 0 || notFoundOriginalNames.length > 0) {
+    if (newlyFoundPlayers.length > 0 || notFoundOriginalNames.length > 0 || ambiguousNames.length > 0) {
       let message = '';
       let type: 'success' | 'error' = 'success';
 
@@ -207,6 +222,12 @@ const App: React.FC = () => {
         message += `${message ? '\n' : ''}Niet herkend: ${notFoundOriginalNames.join(', ')}.`;
         type = 'error';
       }
+      
+      if (ambiguousNames.length > 0) {
+        message += `${message ? '\n' : ''}Ambigu (meerdere spelers gevonden): ${ambiguousNames.join(', ')}.`;
+        type = 'error';
+      }
+
       showNotification(message, type);
     } else if (parsedNamesAndOriginals.size > 0) {
       showNotification('Alle spelers uit de lijst waren al aangemeld.', 'success');
