@@ -624,7 +624,7 @@ const App: React.FC = () => {
                   </button>
               </div>
                <p className="text-xs text-gray-500 mt-3 text-center">
-                   Voor een toernooi zijn minimaal 4 spelers nodig.
+                   Klik voor 1x50min op 1 wedstrijd. Voor 8-10 spelers klik op 2 wedstrijden. Voor 16-30 spelers klik op toernooi.
                </p>
            </div>
            
