@@ -18,7 +18,6 @@ import UsersIcon from './components/icons/UsersIcon';
 import ClockIcon from './components/icons/ClockIcon';
 import EditIcon from './components/icons/EditIcon';
 import ArchiveIcon from './components/icons/ArchiveIcon';
-import LoadingSpinner from './components/LoadingSpinner';
 import LoginScreen from './components/LoginScreen';
 import LockIcon from './components/icons/LockIcon';
 import FutbolIcon from './components/icons/FutbolIcon';
@@ -129,37 +128,31 @@ const App: React.FC = () => {
   };
 
   const handleParseAttendance = (text: string) => {
-    // This normalize function is perfect for the matching part. It handles case and diacritics.
     const normalize = (str: string): string =>
       str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
     
-    // Heuristic to detect and ignore date lines.
     const monthNames = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 
     lines.forEach(line => {
       const trimmedLine = line.trim();
-      if (!trimmedLine) return; // Ignore empty lines
+      if (!trimmedLine) return;
 
-      // --- Filter out non-name lines ---
       const lowerLine = trimmedLine.toLowerCase();
-      // 1. Check for date lines like "18 november 20:30"
       if (monthNames.some(month => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) {
         return;
       }
       
-      // --- Clean the line to extract the name ---
       let cleaned = trimmedLine
-        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '') // Remove various zero-width characters (e.g. from WhatsApp)
-        .replace(/\[.*?\]/, '') // General purpose timestamp removal e.g. [12:34, 1/1/24]
-        .replace(/^\s*\d+\.?\s*/, '') // Remove list numbering "1. " or "1 "
-        .replace(/[\(\[].*?[\)\]]/g, '') // Remove comments like (keepen) or [extra]
-        .split(':')[0] // Handles "Hein: ik ben erbij" -> "Hein"
+        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+        .replace(/\[.*?\]/, '')
+        .replace(/^\s*\d+\.?\s*/, '')
+        .replace(/[\(\[].*?[\)\]]/g, '')
+        .split(':')[0]
         .trim();
 
-      // --- Final validation and add to set ---
       if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned)) {
         const nonNameWords = ['afgemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas'];
         const normalizedPotentialName = normalize(cleaned);
@@ -616,33 +609,38 @@ const App: React.FC = () => {
                    Voor een toernooi zijn minimaal 4 spelers nodig.
                </p>
            </div>
+           
+            {actionInProgress === 'generating' ? (
+                <div className="mt-8 flex justify-center p-8 bg-gray-800 rounded-xl">
+                    <div className="flex flex-col items-center justify-center text-center">
+                        <div className="relative w-16 h-16">
+                            <FutbolIcon className="w-16 h-16 text-cyan-400 bounceball-loader" />
+                        </div>
+                        <p className="mt-4 text-lg font-semibold text-white animate-pulse">Teams worden gemaakt...</p>
+                        <p className="text-sm text-gray-400">De AI zoekt naar de perfecte balans.</p>
+                    </div>
+                </div>
+            ) : (
+                <TeamDisplay 
+                    teams={teams}
+                    teams2={teams2}
+                    gameMode={gameMode}
+                    currentRound={currentRound}
+                    round1Results={round1Results}
+                    round2Pairings={round2Pairings}
+                    goalScorers={goalScorers}
+                    onGoalChange={handleGoalChange}
+                    onSaveRound1={handleSaveRound1}
+                    onSaveFinalResults={handleSaveFinalResults}
+                    onSaveSimpleMatch={handleSaveSimpleMatch}
+                    onStartSecondDoubleHeaderMatch={handleStartSecondDoubleHeaderMatch}
+                    onSaveDoubleHeader={handleSaveDoubleHeader}
+                    onRegenerateTeams={handleRegenerateTeamsForR2}
+                    actionInProgress={actionInProgress}
+                />
+            )}
         </div>
       </div>
-      
-      {actionInProgress === 'generating' ? (
-        <div className="mt-8 flex justify-center">
-            <LoadingSpinner />
-        </div>
-      ) : (
-        <TeamDisplay 
-            teams={teams}
-            teams2={teams2}
-            gameMode={gameMode}
-            currentRound={currentRound}
-            round1Results={round1Results}
-            round2Pairings={round2Pairings}
-            goalScorers={goalScorers}
-            onGoalChange={handleGoalChange}
-            onSaveRound1={handleSaveRound1}
-            onSaveFinalResults={handleSaveFinalResults}
-            onSaveSimpleMatch={handleSaveSimpleMatch}
-            onStartSecondDoubleHeaderMatch={handleStartSecondDoubleHeaderMatch}
-            onSaveDoubleHeader={handleSaveDoubleHeader}
-            onRegenerateTeams={handleRegenerateTeamsForR2}
-            actionInProgress={actionInProgress}
-        />
-      )}
-
     </>
   );
 
@@ -703,8 +701,12 @@ const App: React.FC = () => {
       <span>{label}</span>
     </button>
   );
+  
+  // ============================================================================
+  // NEW LOADING & ERROR HANDLING LOGIC
+  // ============================================================================
 
-  if (isLoading && players.length === 0 && !error) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
         <div className="text-center">
@@ -718,6 +720,15 @@ const App: React.FC = () => {
   if (error) {
     return <SetupGuide error={error} onRetry={fetchData} />;
   }
+  
+  if (!isLoading && players.length === 0) {
+    return <SetupGuide 
+        error={"De app kon verbinding maken, maar heeft geen spelers gevonden. Dit is de meest voorkomende oorzaak van een 'leeg' scherm. Volg de stappen in de Koppelingsassistent om het probleem op te lossen."} 
+        onRetry={fetchData} 
+    />;
+  }
+  
+  // ============================================================================
 
   return (
     <div className="min-h-screen text-white">
