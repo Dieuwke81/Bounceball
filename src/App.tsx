@@ -620,7 +620,7 @@ const App: React.FC = () => {
                   <button
                     onClick={() => handleGenerateTeams('tournament')}
                     disabled={actionInProgress === 'generating' || attendingPlayers.length < 4}
-                    className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                    className="bg-green-600 hover:bg-fuchsia-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
                     >
                     Toernooi
                   </button>
