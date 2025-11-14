@@ -134,6 +134,7 @@ const App: React.FC = () => {
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
     
+    // Woorden die vaak in status-updates staan, maar geen namen zijn.
     const monthNames = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
     const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later'];
 
@@ -143,6 +144,7 @@ const App: React.FC = () => {
       
       const lowerLine = trimmedLine.toLowerCase();
 
+      // Negeer regels die waarschijnlijk status-updates of data zijn.
       if (nonNameIndicators.some(word => lowerLine.includes(word)) && lowerLine.length > 20) {
         return;
       }
@@ -150,14 +152,20 @@ const App: React.FC = () => {
         return;
       }
       
+      // *** DIT IS DE VERBETERING ***
+      // STAP 1: Verwijder EERST alle mogelijke onzichtbare tekens en andere WhatsApp-artefacten.
+      // Deze regex is uitgebreider en pakt meer variaties.
       let cleaned = trimmedLine
-        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
-        .replace(/\[.*?\]/, '')
+        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+        .replace(/\[.*?\]/, '') // Verwijder [18:30] etc.
+        // STAP 2: Verwijder nu pas het nummer, de punt en eventuele dubbele punten.
         .replace(/^\s*\d+[\.\)]?\s*/, '')
+        .split(/[:\-\–]/)[0] // Stop bij een dubbele punt (bv. "Roy: aanwezig")
+        // STAP 3: Verwijder tekst tussen haakjes (bv. "(keeper)")
         .replace(/[\(\[].*?[\)\]]/g, '')
-        .split(/[:\-\–]/)[0]
         .trim();
 
+      // Voeg alleen namen toe die letters bevatten en niet te lang zijn.
       if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) {
          potentialNames.add(cleaned);
       }
@@ -184,6 +192,7 @@ const App: React.FC = () => {
     
     potentialNames.forEach((originalName) => {
       const normalizedName = normalize(originalName);
+      // Probeer eerst de volledige naam, dan de eerste naam.
       const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
       if (matchedPlayer) {
         if (!newAttendingPlayerIds.has(matchedPlayer.id)) {
