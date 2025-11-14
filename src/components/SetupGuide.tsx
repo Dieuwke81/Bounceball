@@ -101,7 +101,7 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ error, onRetry }) => {
                 <div>
                     <h3 className="font-bold text-md text-cyan-300 mb-2">2. Google Apps Script Deployment</h3>
                     <ol className="list-decimal list-inside space-y-1 text-sm text-gray-300 pl-2">
-                    <li>Open het Apps Script via je spreadsheet (Extensies > Apps Script).</li>
+                    <li>Open het Apps Script via je spreadsheet (Extensies &gt; Apps Script).</li>
                     <li>Klik op de blauwe <strong className="text-white">"Implementeren"</strong> knop en kies <strong className="text-white">"Nieuwe implementatie"</strong>.</li>
                     <li>Zorg dat bij <strong className="text-white">"Wie heeft toegang"</strong> de optie <strong className="text-white">"Iedereen"</strong> is geselecteerd.</li>
                     <li>Klik op "Implementeren". Je krijgt nu de <strong className="text-white">Web App URL</strong> om hierboven in te vullen.</li>
