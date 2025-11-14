@@ -21,4 +21,4 @@ export const PLAYERS_SHEET_NAME = 'Spelers';
 //    KOPIEER DE **WEB APP URL** DIE JE DAN KRIGT EN PLAK DEZE HIERONDER.
 //    DIT IS NIET DE 'IMPLEMENTATIE-ID'. DE URL EINDIGT OP '/exec'.
 //    ================================================================================
-export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzGpZSv6iqjD7nMQDV_-lVUjqWanP7B4unkC-cNo-5g4QJ8ZKXEgLLi4A6n_7p1iUCx/exec';
+export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwOTV76jbhv40CKgJtoiFsOaqcu6ek4sFPyMwNVbwkQsKX0aG7q3TUmXyLKz5b-n07C/exec';
