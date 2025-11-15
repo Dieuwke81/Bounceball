@@ -176,51 +176,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ allPlayers, onSave, isLoading
   const [round2Pairings, setRound2Pairings] = useState<Match[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const UNSAVED_MANUAL_ENTRY_KEY = 'bounceball_unsaved_manual_entry';
-
-// Effect om de staat van het formulier op te slaan bij wijzigingen
-useEffect(() => {
-  if (round > 0) { // Sla alleen op als we begonnen zijn met invoeren
-    const stateToSave = {
-      round,
-      teamTextR1,
-      teamTextR2,
-      round1Teams,
-      numMatches,
-      date,
-      manualRound2,
-      goalScorers,
-      round1Results,
-      round2Pairings,
-    };
-    localStorage.setItem(UNSAVED_MANUAL_ENTRY_KEY, JSON.stringify(stateToSave));
-  }
-}, [round, teamTextR1, teamTextR2, round1Teams, numMatches, date, manualRound2, goalScorers, round1Results, round2Pairings]);
-
-// Effect om de staat te laden als de component wordt geopend
-useEffect(() => {
-  const savedStateJSON = localStorage.getItem(UNSAVED_MANUAL_ENTRY_KEY);
-  if (savedStateJSON) {
-    try {
-      const savedState = JSON.parse(savedStateJSON);
-      // Vraag niet om bevestiging, herstel gewoon het formulier
-      setRound(savedState.round || 0);
-      setTeamTextR1(savedState.teamTextR1 || Array(6).fill(''));
-      setTeamTextR2(savedState.teamTextR2 || Array(6).fill(''));
-      setRound1Teams(savedState.round1Teams || null);
-      setNumMatches(savedState.numMatches || 1);
-      setDate(savedState.date || new Date().toISOString().split('T')[0]);
-      setManualRound2(savedState.manualRound2 || false);
-      setGoalScorers(savedState.goalScorers || {});
-      setRound1Results(savedState.round1Results || []);
-      setRound2Pairings(savedState.round2Pairings || []);
-    } catch (e) {
-      console.error("Kon handmatige invoer niet herstellen:", e);
-      localStorage.removeItem(UNSAVED_MANUAL_ENTRY_KEY);
-    }
-  }
-}, []); // Lege array, draait één keer bij openen
-
+ 
   const playerMap = useMemo(() => {
     const map = new Map<string, Player>();
     allPlayers.forEach(p => {
@@ -383,7 +339,7 @@ useEffect(() => {
         }));
         onSave({ date: new Date(date).toISOString(), teams: round1Teams || parsedTeamsR1.teams, round1Results, round2Results });
     }
-      localStorage.removeItem(UNSAVED_MANUAL_ENTRY_KEY);
+    
   };
 
   const handleSaveSimpleMatch = () => {
@@ -393,7 +349,7 @@ useEffect(() => {
         team2Goals: goalScorers['0-team2'] || [],
      }];
      onSave({ date: new Date(date).toISOString(), teams: round1Teams || parsedTeamsR1.teams, round1Results: results, round2Results: [] });
-       localStorage.removeItem(UNSAVED_MANUAL_ENTRY_KEY);
+    
   }
   
 
