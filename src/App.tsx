@@ -83,7 +83,56 @@ const App: React.FC = () => {
   const [isManagementAuthenticated, setIsManagementAuthenticated] = useState(false);
   const [competitionName, setCompetitionName] = useState<string | null>(null);
 
+const UNSAVED_GAME_KEY = 'bounceball_unsaved_game';
 
+// Effect om de status van een lopende wedstrijd op te slaan
+useEffect(() => {
+  // Sla alleen op als er een wedstrijd gestart is
+  if (gameMode) {
+    const stateToSave = {
+      attendingPlayerIds: Array.from(attendingPlayerIds),
+      teams,
+      originalTeams,
+      teams2,
+      currentRound,
+      round1Results,
+      round2Pairings,
+      goalScorers,
+      gameMode,
+      constraints,
+    };
+    localStorage.setItem(UNSAVED_GAME_KEY, JSON.stringify(stateToSave));
+  }
+}, [attendingPlayerIds, teams, originalTeams, teams2, currentRound, round1Results, round2Pairings, goalScorers, gameMode, constraints]);
+
+// Effect om bij het laden te vragen om een sessie te herstellen
+useEffect(() => {
+  const savedGameJSON = localStorage.getItem(UNSAVED_GAME_KEY);
+  if (savedGameJSON) {
+    try {
+      const savedGame = JSON.parse(savedGameJSON);
+      if (window.confirm("Er is een niet-opgeslagen wedstrijd gevonden. Wil je doorgaan waar je was gebleven?")) {
+        setAttendingPlayerIds(new Set(savedGame.attendingPlayerIds || []));
+        setTeams(savedGame.teams || []);
+        setOriginalTeams(savedGame.originalTeams || null);
+        setTeams2(savedGame.teams2 || null);
+        setCurrentRound(savedGame.currentRound || 0);
+        setRound1Results(savedGame.round1Results || []);
+        setRound2Pairings(savedGame.round2Pairings || []);
+        setGoalScorers(savedGame.goalScorers || {});
+        setGameMode(savedGame.gameMode || null);
+        setConstraints(savedGame.constraints || []);
+      } else {
+        // Gebruiker wil niet herstellen, dus wis de opgeslagen data
+        localStorage.removeItem(UNSAVED_GAME_KEY);
+      }
+    } catch (e) {
+      console.error("Kon de opgeslagen wedstrijd niet herstellen:", e);
+      localStorage.removeItem(UNSAVED_GAME_KEY);
+    }
+  }
+}, []); // Deze lege array zorgt ervoor dat dit effect maar één keer wordt uitgevoerd als de app start
+    
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -224,7 +273,7 @@ const App: React.FC = () => {
     }
   };
   
-  const resetGameState = () => {
+ const resetGameState = () => {
       setTeams([]);
       setTeams2(null);
       setOriginalTeams(null);
@@ -235,6 +284,8 @@ const App: React.FC = () => {
       setGameMode(null);
       setActionInProgress(null);
       setConstraints([]);
+      // Wis de opgeslagen sessie uit de browser
+      localStorage.removeItem(UNSAVED_GAME_KEY);
   };
 
   const attendingPlayers = players.filter(p => attendingPlayerIds.has(p.id));
