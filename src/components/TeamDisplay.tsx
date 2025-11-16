@@ -170,7 +170,7 @@ const TeamCard: React.FC<{team: Player[], index: number, title: string}> = ({ te
                         </span>
                       )}
                     </div>
-                    <span className="text-sm font-semibold text-cyan-300">{player.rating}</span>
+                    {/*   <span className="text-sm font-semibold text-cyan-300">{player.rating}</span> */}
                   </div>
                 ))}
               </div>
