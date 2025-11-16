@@ -65,7 +65,7 @@ const generatePairingsWithoutRematches = (
 
 const PlayerChip: React.FC<{player: Player}> = ({ player }) => (
     <div className="bg-green-800/50 flex items-center justify-between text-sm text-green-200 px-2 py-1 rounded">
-        <span>{player.name} <span className="text-xs opacity-70">({player.rating})</span></span>
+        <span>{player.name} {/*<span className="text-xs opacity-70">({player.rating})</span>*/}</span>
     </div>
 );
 
