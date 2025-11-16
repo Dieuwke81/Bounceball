@@ -38,9 +38,9 @@ const PlayerList: React.FC<PlayerListProps> = ({ players, attendingPlayerIds, on
                 </span>
               )}
             </div>
-            <span className="text-sm font-semibold bg-cyan-500 text-white py-1 px-3 rounded-full">
+            {/*  <span className="text-sm font-semibold bg-cyan-500 text-white py-1 px-3 rounded-full">
               {player.rating}
-            </span>
+            </span> */}
           </label>
         ))}
       </div>
