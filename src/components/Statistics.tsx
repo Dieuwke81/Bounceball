@@ -349,7 +349,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     <>
       <div className="text-center mb-8">
           <p className="text-gray-400">Statistieken gebaseerd op <span className="font-bold text-white">{totalSessions}</span> speeldagen. <span className="italic">Voor de ranglijsten (gem.) moet een speler minimaal <span className="font-bold text-white">{minGames}</span> keer aanwezig zijn geweest.</span></p>
-  <p className="text-gray-500 text-sm mt-2 italic">Klik op een speler om de individuele statistieken te zien.</p>
+  <p className="text-green-500 text-sm mt-2 italic">Klik op een speler om de individuele statistieken te zien.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
