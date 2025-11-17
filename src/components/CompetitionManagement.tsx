@@ -151,7 +151,7 @@ const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHi
               <UploadIcon className="w-5 h-5 mr-2" />
               Bekijk een Archief
             </button>
-            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".json" className="hidden" />
+            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".json, .txt" className="hidden" />
           </div>
         </div>
 
