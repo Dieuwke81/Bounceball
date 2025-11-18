@@ -70,7 +70,7 @@ const MatchInputCard: React.FC<{
 
         return (
             <div className="flex items-center justify-between space-x-2 bg-gray-600 p-2 rounded">
-                <span className="text-gray-200 truncate">{player.name}</span>
+                <span className="text-gray-200">{player.name}</span>
                 <input
                     type="number"
                     value={goalCount}
