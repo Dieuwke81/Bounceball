@@ -70,13 +70,13 @@ const MatchInputCard: React.FC<{
 
         return (
             <div className="flex items-center justify-between space-x-2 bg-gray-600 p-2 rounded">
-                <span className="text-gray-200">{player.name}</span>
+                <span className="text-gray-200 flex-1 pr-2">{player.name}</span>
                 <input
                     type="number"
                     value={goalCount}
                     onChange={(e) => onGoalChange(matchIndex, teamIdentifier, player.id, parseInt(e.target.value, 10) || 0)}
                     min="0"
-                    className="w-16 bg-gray-700 border border-gray-500 rounded-md py-1 px-2 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-10 bg-gray-700 border border-gray-500 rounded-md py-1 px-2 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     aria-label={`Doelpunten voor ${player.name}`}
                     placeholder="0"
                 />
