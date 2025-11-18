@@ -426,12 +426,47 @@ useEffect(() => {
         a.teamIndex - b.teamIndex
     );
     
+    // Slimmere paring: Voorkom rematches uit ronde 1
     const newPairings = [];
-    for(let i = 0; i < teamPoints.length; i += 2) {
-        if(teamPoints[i+1]) {
+    const availableTeams = [...teamPoints]; // Kopie van de ranglijst
+
+    while (availableTeams.length > 0) {
+        // Pak het hoogst geplaatste team dat nog over is
+        const teamA = availableTeams.shift(); 
+        if (!teamA) break;
+
+        let teamB = null;
+        let teamBIndex = -1;
+
+        // Zoek de hoogst geplaatste tegenstander waartegen ze nog NIET hebben gespeeld
+        for (let i = 0; i < availableTeams.length; i++) {
+            const potentialOpponent = availableTeams[i];
+            
+            // Check in de resultaten of deze twee al tegen elkaar hebben gespeeld
+            const alreadyPlayed = results.some(match => 
+                (match.team1Index === teamA.teamIndex && match.team2Index === potentialOpponent.teamIndex) ||
+                (match.team1Index === potentialOpponent.teamIndex && match.team2Index === teamA.teamIndex)
+            );
+
+            if (!alreadyPlayed) {
+                teamB = potentialOpponent;
+                teamBIndex = i;
+                break; // Gevonden!
+            }
+        }
+
+        // Als iedereen al tegen elkaar heeft gespeeld (of er is geen keuze meer), pak gewoon de bovenste
+        if (!teamB) {
+            teamB = availableTeams[0];
+            teamBIndex = 0;
+        }
+
+        // Verwijder tegenstander uit de lijst en maak de wedstrijd
+        if (teamB) {
+            availableTeams.splice(teamBIndex, 1);
             newPairings.push({
-                team1Index: teamPoints[i].teamIndex,
-                team2Index: teamPoints[i+1].teamIndex,
+                team1Index: teamA.teamIndex,
+                team2Index: teamB.teamIndex,
             });
         }
     }
