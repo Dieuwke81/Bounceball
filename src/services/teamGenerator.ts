@@ -1,6 +1,6 @@
 import type { Player, Constraint } from '../types';
 
-const ITERATIONS = 200000; // A good balance between performance and quality.
+const ITERATIONS = 500000; // A good balance between performance and quality.
 
 // Helper to check if two team compositions are functionally identical
 // It works for any number of teams and ignores player order within teams and the order of teams.
