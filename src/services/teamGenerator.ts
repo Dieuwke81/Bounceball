@@ -68,9 +68,14 @@ const isCompositionValid = (teams: Player[][], constraints: Constraint[]): boole
       case 'apart':
         if (team2Index !== undefined && team1Index === team2Index) return false;
         break;
-      case 'versus':
-        // This constraint implies they must also be 'apart'
+       case 'versus':
+        // 1. Ze mogen niet in hetzelfde team zitten (net als bij 'apart')
         if (team2Index === undefined || team1Index === team2Index) return false;
+        
+        // 2. Ze moeten in dezelfde wedstrijd zitten (Index 0 vs 1, of 2 vs 3, of 4 vs 5)
+        // Door de index door 2 te delen en af te ronden (Math.floor), krijg je het wedstrijdnummer.
+        // Als die nummers niet gelijk zijn, spelen ze niet tegen elkaar in de eerste ronde.
+        if (Math.floor(team1Index / 2) !== Math.floor(team2Index / 2)) return false;
         break;
       case 'must_be_5':
         if (teams[team1Index].length !== 5) return false;
