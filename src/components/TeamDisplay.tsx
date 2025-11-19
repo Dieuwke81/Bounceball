@@ -53,13 +53,25 @@ const MatchInputCard: React.FC<{
     const team1 = teams[match.team1Index];
     const team2 = teams[match.team2Index];
     
-    // Kleurlogica met conflictresolutie
-    const team1Color = match.team1Index % 2 === 0 ? 'text-cyan-300' : 'text-amber-300';
-    let team2Color = match.team2Index % 2 === 0 ? 'text-cyan-300' : 'text-amber-300';
-    if (team1Color === team2Color) {
-        team2Color = team1Color === 'text-cyan-300' ? 'text-amber-300' : 'text-cyan-300';
-    }
+    // --- NIEUWE LOGICA START ---
+    
+    // 1. Bepaal of Team 1 "Blauw" is (even nummer).
+    const isTeam1Blue = match.team1Index % 2 === 0;
 
+    // 2. Bepaal wie er LINKS moet staan (We willen Blauw altijd links)
+    const leftTeam      = isTeam1Blue ? team1 : team2;
+    const leftIndex     = isTeam1Blue ? match.team1Index : match.team2Index;
+    // Belangrijk: onthoud of dit data-technisch team1 of team2 is voor het opslaan van scores
+    const leftId        = isTeam1Blue ? 'team1' : 'team2'; 
+    const leftColor     = 'text-cyan-300'; // Links is altijd cyaan
+
+    // 3. Bepaal wie er RECHTS moet staan (Oranje)
+    const rightTeam     = isTeam1Blue ? team2 : team1;
+    const rightIndex    = isTeam1Blue ? match.team2Index : match.team1Index;
+    const rightId       = isTeam1Blue ? 'team2' : 'team1';
+    const rightColor    = 'text-amber-300'; // Rechts is altijd amber
+
+    // --- NIEUWE LOGICA EIND ---
 
     const getTeamGoals = (teamIdentifier: 'team1' | 'team2') => goalScorers[`${matchIndex}-${teamIdentifier}`] || [];
     const getTeamScore = (teamIdentifier: 'team1' | 'team2') => getTeamGoals(teamIdentifier).reduce((sum, goal) => sum + goal.count, 0);
@@ -70,6 +82,7 @@ const MatchInputCard: React.FC<{
 
         return (
             <div className="flex items-center justify-between space-x-2 bg-gray-600 p-2 rounded">
+                {/* Hier zit ook meteen je fix voor de uitlijning in (flex-1) */}
                 <span className="text-gray-200 flex-1 pr-2">{player.name}</span>
                 <input
                     type="number"
@@ -87,30 +100,33 @@ const MatchInputCard: React.FC<{
     return (
         <div className="bg-gray-700 rounded-lg p-4">
             <div className="grid grid-cols-2 gap-4">
-                {/* Team 1 */}
+                {/* Linker Kolom (Blauw) */}
                 <div className="space-y-3">
                     <div className="text-center">
-                        <h4 className={`font-bold text-lg ${team1Color}`}>Team {match.team1Index + 1}</h4>
-                        <p className="text-3xl font-bold text-white">{getTeamScore('team1')}</p>
+                        <h4 className={`font-bold text-lg ${leftColor}`}>Team {leftIndex + 1}</h4>
+                        <p className="text-3xl font-bold text-white">{getTeamScore(leftId)}</p>
                     </div>
                     <div className="space-y-2 pr-1">
-                        {team1.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier="team1" />)}
+                        {/* Let op: we gebruiken hier leftTeam en leftId */}
+                        {leftTeam.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier={leftId} />)}
                     </div>
                 </div>
-                {/* Team 2 */}
+                {/* Rechter Kolom (Oranje) */}
                 <div className="space-y-3">
                      <div className="text-center">
-                        <h4 className={`font-bold text-lg ${team2Color}`}>Team {match.team2Index + 1}</h4>
-                        <p className="text-3xl font-bold text-white">{getTeamScore('team2')}</p>
+                        <h4 className={`font-bold text-lg ${rightColor}`}>Team {rightIndex + 1}</h4>
+                        <p className="text-3xl font-bold text-white">{getTeamScore(rightId)}</p>
                     </div>
                     <div className="space-y-2 pr-1">
-                        {team2.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier="team2" />)}
+                         {/* Let op: we gebruiken hier rightTeam en rightId */}
+                        {rightTeam.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier={rightId} />)}
                     </div>
                 </div>
             </div>
         </div>
     );
 };
+
 
 const MatchResultDisplayCard: React.FC<{
     matchResult: MatchResult;
