@@ -779,7 +779,7 @@ useEffect(() => {
             <PlayerManagement players={players} onAdd={handleAddPlayer} onUpdate={handleUpdatePlayer} onDelete={handleDeletePlayer} isLoading={!!actionInProgress} />
         ) : <LoginScreen onLogin={handleLogin} />;
       case 'playerDetail':
-          return selectedPlayer ? <PlayerDetail player={selectedPlayer} history={activeHistory} players={players} onBack={() => setCurrentView(viewingArchive ? 'stats' : 'stats')} /> : <p>Speler niet gevonden.</p>;
+          return selectedPlayer ? <PlayerDetail player={selectedPlayer} history={activeHistory} players={players} ratingLogs={ratingLogs} onBack={() => setCurrentView(viewingArchive ? 'stats' : 'stats')} /> : <p>Speler niet gevonden.</p>;
       case 'manualEntry':
          return <ManualEntry allPlayers={players} onSave={handleSaveManualEntry} isLoading={actionInProgress === 'savingManual'} />;
       case 'competitionManagement':
