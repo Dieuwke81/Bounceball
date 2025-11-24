@@ -55,7 +55,7 @@ const RelationshipList: React.FC<{
 );
 
 
-const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, onBack }) => {
+const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, ratingLogs, onBack }) => {
     const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
 
     const stats = useMemo(() => {
