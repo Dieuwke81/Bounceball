@@ -1,3 +1,4 @@
+import type { Player, ..., RatingLogEntry } from './types';
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Player, Match, MatchResult, Goal, GameSession, NewPlayer, Constraint } from './types';
 import Header from './components/Header';
@@ -22,6 +23,7 @@ import LoginScreen from './components/LoginScreen';
 import LockIcon from './components/icons/LockIcon';
 import FutbolIcon from './components/icons/FutbolIcon';
 import SetupGuide from './components/SetupGuide';
+
 
 type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement';
 type Notification = { message: string; type: 'success' | 'error' };
@@ -63,6 +65,7 @@ const calculateRatingDeltas = (results: MatchResult[], currentTeams: Player[][])
 const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [history, setHistory] = useState<GameSession[]>([]);
+    const [ratingLogs, setRatingLogs] = useState<RatingLogEntry[]>([]);
   const [attendingPlayerIds, setAttendingPlayerIds] = useState<Set<number>>(new Set());
   const [teams, setTeams] = useState<Player[][]>([]);
   const [originalTeams, setOriginalTeams] = useState<Player[][] | null>(null);
@@ -138,6 +141,7 @@ useEffect(() => {
     setError(null);
     try {
       const { players, history, competitionName: name } = await getInitialData();
+        setRatingLogs(logs);
       setPlayers(players);
       setHistory(history);
       setCompetitionName(name || null);
