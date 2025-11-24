@@ -6,11 +6,13 @@ import TrophyIcon from './icons/TrophyIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
 import RatingChart from './RatingChart';
 import UsersIcon from './icons/UsersIcon';
+import RatingLogEntry from './types';
 
 interface PlayerDetailProps {
   player: Player;
   history: GameSession[];
   players: Player[];
+  ratingLogs: RatingLogEntry[];
   onBack: () => void;
 }
 
@@ -147,6 +149,16 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, o
             let playerTeamIndex: number | null = null;
             let sessionDelta = 0;
 
+const allTimeRatingHistory = useMemo(() => {
+    // Filter logs voor deze speler
+    const logs = ratingLogs
+        .filter(log => log.playerId === player.id)
+        .map(log => ({ date: log.date, rating: log.rating }));
+    
+    // Sorteer op datum
+    return logs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}, [player.id, ratingLogs]);
+          
             const playerInSession = session.teams.flat().some(p => p.id === player.id);
             if (!playerInSession) return;
 
@@ -216,7 +228,21 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, o
                 <StatCard title="Goals" value={stats.goalsScored} subtext={`${(stats.goalsScored / (stats.gamesPlayed || 1)).toFixed(2)} gem.`} />
                 <StatCard title="Vorm" value={`${stats.wins}-${stats.draws}-${stats.losses}`} subtext="W-G-V" />
             </div>
-            
+
+{/* NIEUWE GRAFIEK BLOK */}
+        <div className="bg-gray-700 p-4 rounded-lg mb-8">
+            <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
+                <ChartBarIcon className="w-5 h-5 text-green-400" /> {/* Ander kleurtje icoon */}
+                <span className="ml-2">All-time Rating Verloop</span>
+            </h4>
+            {/* Check of er data is, anders toon je niks of een melding */}
+            {allTimeRatingHistory.length > 1 ? (
+                <RatingChart data={allTimeRatingHistory} />
+            ) : (
+                <p className="text-gray-500 text-sm text-center py-4">Nog niet genoeg data over meerdere seizoenen.</p>
+            )}
+        </div>
+          
             <div className="bg-gray-700 p-4 rounded-lg mb-8">
                 <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
                     <ChartBarIcon className="w-5 h-5 text-cyan-400" />
