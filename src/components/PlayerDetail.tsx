@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import type { Player, GameSession, RatingLogEntry } from '../types';
+import type { Player, GameSession } from '../types';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
 import ShieldIcon from './icons/ShieldIcon';
 import TrophyIcon from './icons/TrophyIcon';
@@ -11,7 +11,6 @@ interface PlayerDetailProps {
   player: Player;
   history: GameSession[];
   players: Player[];
-  ratingLogs: RatingLogEntry[];
   onBack: () => void;
 }
 
@@ -54,7 +53,7 @@ const RelationshipList: React.FC<{
 );
 
 
-const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, ratingLogs, onBack }) => {
+const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, onBack }) => {
     const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
 
     const stats = useMemo(() => {
@@ -148,12 +147,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
             let playerTeamIndex: number | null = null;
             let sessionDelta = 0;
 
-
-    
-    // Sorteer op datum
-    return logs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-}, [player.id, ratingLogs]);
-          
             const playerInSession = session.teams.flat().some(p => p.id === player.id);
             if (!playerInSession) return;
 
@@ -194,12 +187,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
         return historyPoints.reverse();
     }, [player.id, player.rating, history]);
 
-const allTimeRatingHistory = useMemo(() => {
-    // Filter logs voor deze speler
-    const logs = ratingLogs
-        .filter(log => log.playerId === player.id)
-        .map(log => ({ date: log.date, rating: log.rating }));
-
     return (
         <div className="bg-gray-800 rounded-xl shadow-lg p-6">
             <div className="flex items-center mb-6">
@@ -229,21 +216,7 @@ const allTimeRatingHistory = useMemo(() => {
                 <StatCard title="Goals" value={stats.goalsScored} subtext={`${(stats.goalsScored / (stats.gamesPlayed || 1)).toFixed(2)} gem.`} />
                 <StatCard title="Vorm" value={`${stats.wins}-${stats.draws}-${stats.losses}`} subtext="W-G-V" />
             </div>
-
-{/* NIEUWE GRAFIEK BLOK */}
-        <div className="bg-gray-700 p-4 rounded-lg mb-8">
-            <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
-                <ChartBarIcon className="w-5 h-5 text-green-400" /> {/* Ander kleurtje icoon */}
-                <span className="ml-2">All-time Rating Verloop</span>
-            </h4>
-            {/* Check of er data is, anders toon je niks of een melding */}
-            {allTimeRatingHistory.length > 1 ? (
-                <RatingChart data={allTimeRatingHistory} />
-            ) : (
-                <p className="text-gray-500 text-sm text-center py-4">Nog niet genoeg data over meerdere seizoenen.</p>
-            )}
-        </div>
-          
+            
             <div className="bg-gray-700 p-4 rounded-lg mb-8">
                 <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
                     <ChartBarIcon className="w-5 h-5 text-cyan-400" />
