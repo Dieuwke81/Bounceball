@@ -1,5 +1,5 @@
 import { getScriptUrl } from './configService';
-import type { GameSession, NewPlayer, Player } from '../types';
+import type { GameSession, NewPlayer, Player, RatingLogEntry} from '../types';
 
 // Centralized error handling and JSON parsing for Apps Script calls
 const handleResponse = async (response: Response) => {
