@@ -141,7 +141,7 @@ useEffect(() => {
     setError(null);
     try {
       const { players, history, competitionName: name } = await getInitialData();
-        setRatingLogs(logs);
+        setRatingLogs(ratingLogs || []);
       setPlayers(players);
       setHistory(history);
       setCompetitionName(name || null);
