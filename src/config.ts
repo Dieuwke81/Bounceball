@@ -1,4 +1,4 @@
-// BELANGRIJK: Vul hier je eigen gegevens in!
+// BELANGRIJK: Vul hier je eigen gegevens in! ..
 
 // 1. De ID van je Google Spreadsheet
 //    Deze vind je in de URL: https://docs.google.com/spreadsheets/d/THIS_IS_THE_ID/edit
