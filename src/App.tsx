@@ -874,5 +874,4 @@ useEffect(() => {
 };
 
 export default App;
-};
 
