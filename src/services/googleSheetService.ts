@@ -1,5 +1,5 @@
 import { getScriptUrl } from './configService';
-import type { GameSession, NewPlayer, Player, RatingLogEntry} from '../types';
+import type { GameSession, NewPlayer, Player } from '../types';
 
 // Centralized error handling and JSON parsing for Apps Script calls
 const handleResponse = async (response: Response) => {
@@ -50,7 +50,7 @@ const postToAction = async (action: string, data: object): Promise<any> => {
 };
 
 // Main function to fetch all initial data
-export const getInitialData = async (): Promise<{ players: Player[], history: GameSession[], competitionName: string, ratingLogs: RatingLogEntry[]}> => {
+export const getInitialData = async (): Promise<{ players: Player[], history: GameSession[], competitionName: string }> => {
   const scriptUrl = getScriptUrl();
   if (!scriptUrl || !scriptUrl.includes('/exec')) {
       throw new Error("De geconfigureerde SCRIPT_URL is ongeldig. Voer een geldige 'Web App URL' in via het configuratiescherm.");
@@ -89,7 +89,6 @@ export const getInitialData = async (): Promise<{ players: Player[], history: Ga
       players: validPlayers,
       history: Array.isArray(data.history) ? data.history : [],
       competitionName: typeof data.competitionName === 'string' ? data.competitionName : '',
-        ratingLogs: Array.isArray(data.ratingLogs) ? data.ratingLogs : [],
     };
   } catch (error: any) {
     console.error("Failed to fetch initial data:", error);
