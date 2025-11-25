@@ -37,9 +37,3 @@ export interface Constraint {
   type: ConstraintType;
   playerIds: number[];
 }
-
-export interface RatingLogEntry {
-  date: string;
-  playerId: number;
-  rating: number;
-}
