@@ -1,12 +1,11 @@
 import React, { useMemo } from 'react';
-import type { Player, GameSession } from '../types';
+import type { Player, GameSession, RatingLogEntry } from '../types';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
 import ShieldIcon from './icons/ShieldIcon';
 import TrophyIcon from './icons/TrophyIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
 import RatingChart from './RatingChart';
 import UsersIcon from './icons/UsersIcon';
-import RatingLogEntry from './types';
 
 interface PlayerDetailProps {
   player: Player;
@@ -149,11 +148,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
             let playerTeamIndex: number | null = null;
             let sessionDelta = 0;
 
-const allTimeRatingHistory = useMemo(() => {
-    // Filter logs voor deze speler
-    const logs = ratingLogs
-        .filter(log => log.playerId === player.id)
-        .map(log => ({ date: log.date, rating: log.rating }));
+
     
     // Sorteer op datum
     return logs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -198,6 +193,12 @@ const allTimeRatingHistory = useMemo(() => {
         
         return historyPoints.reverse();
     }, [player.id, player.rating, history]);
+
+const allTimeRatingHistory = useMemo(() => {
+    // Filter logs voor deze speler
+    const logs = ratingLogs
+        .filter(log => log.playerId === player.id)
+        .map(log => ({ date: log.date, rating: log.rating }));
 
     return (
         <div className="bg-gray-800 rounded-xl shadow-lg p-6">
