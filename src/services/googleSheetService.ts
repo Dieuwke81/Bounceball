@@ -1,5 +1,5 @@
 import { getScriptUrl } from './configService';
-import type { GameSession, NewPlayer, Player } from '../types';
+import type { GameSession, NewPlayer, Player, RatingLogEntry } from '../types';
 
 // Centralized error handling and JSON parsing for Apps Script calls
 const handleResponse = async (response: Response) => {
@@ -49,8 +49,24 @@ const postToAction = async (action: string, data: object): Promise<any> => {
   }
 };
 
+// Helper to safely parse rating logs ensuring correct types and handling Dutch formats
+const parseRatingLogs = (logs: any[]): RatingLogEntry[] => {
+    if (!Array.isArray(logs)) return [];
+    return logs.map(log => {
+        // Handle potentially Dutch formatted numbers (comma as decimal separator)
+        // This fixes the issue where "5,9" becomes NaN
+        const ratingStr = String(log.rating).replace(',', '.');
+        
+        return {
+            date: String(log.date),
+            playerId: Number(log.playerId), // Force conversion to number
+            rating: Number(ratingStr)       // Force conversion to number (after fixing comma)
+        };
+    }).filter(log => !isNaN(log.playerId) && !isNaN(log.rating)); // Remove invalid entries
+};
+
 // Main function to fetch all initial data
-export const getInitialData = async (): Promise<{ players: Player[], history: GameSession[], competitionName: string, ratingLogs: RatingLogEntry[]}> => {
+export const getInitialData = async (): Promise<{ players: Player[], history: GameSession[], competitionName: string, ratingLogs: RatingLogEntry[] }> => {
   const scriptUrl = getScriptUrl();
   if (!scriptUrl || !scriptUrl.includes('/exec')) {
       throw new Error("De geconfigureerde SCRIPT_URL is ongeldig. Voer een geldige 'Web App URL' in via het configuratiescherm.");
@@ -89,7 +105,7 @@ export const getInitialData = async (): Promise<{ players: Player[], history: Ga
       players: validPlayers,
       history: Array.isArray(data.history) ? data.history : [],
       competitionName: typeof data.competitionName === 'string' ? data.competitionName : '',
-        ratingLogs: Array.isArray(data.ratingLogs) ? data.ratingLogs : [],
+      ratingLogs: parseRatingLogs(data.ratingLogs), // Use strict parsing here
     };
   } catch (error: any) {
     console.error("Failed to fetch initial data:", error);
