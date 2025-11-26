@@ -1,6 +1,6 @@
-import type { Player, ..., RatingLogEntry } from './types';
+
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Player, Match, MatchResult, Goal, GameSession, NewPlayer, Constraint } from './types';
+import type { Player, Match, MatchResult, Goal, GameSession, NewPlayer, Constraint, RatingLogEntry } from './types';
 import Header from './components/Header';
 import PlayerList from './components/PlayerList';
 import TeamDisplay from './components/TeamDisplay';
