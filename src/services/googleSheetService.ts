@@ -49,20 +49,37 @@ const postToAction = async (action: string, data: object): Promise<any> => {
   }
 };
 
-// Helper to safely parse rating logs ensuring correct types and handling Dutch formats
+// ROBUUSTE PARSER: Werkt voor zowel 'rating' als 'Rating', 'SpelerID' als 'playerId', en '.' als ','
 const parseRatingLogs = (logs: any[]): RatingLogEntry[] => {
     if (!Array.isArray(logs)) return [];
+    
     return logs.map(log => {
-        // Handle potentially Dutch formatted numbers (comma as decimal separator)
-        // This fixes the issue where "5,9" becomes NaN
-        const ratingStr = String(log.rating).replace(',', '.');
+        // 1. Probeer verschillende schrijfwijzen van de kolomnamen (Case-insensitive fallback)
+        // We checken zowel camelCase (playerId) als PascalCase (SpelerID) zoals in de sheet
+        const rawRating = log.rating !== undefined ? log.rating : (log.Rating !== undefined ? log.Rating : undefined);
+        const rawPlayerId = log.playerId !== undefined ? log.playerId : (log.SpelerID !== undefined ? log.SpelerID : (log.playerid !== undefined ? log.playerid : undefined));
+        const rawDate = log.date !== undefined ? log.date : (log.Datum !== undefined ? log.Datum : (log.date !== undefined ? log.date : undefined));
+
+        // Als een van de velden ontbreekt, is de regel ongeldig
+        if (rawRating === undefined || rawPlayerId === undefined || rawDate === undefined) {
+            return null;
+        }
+
+        // 2. Fix komma's in getallen (5,9 -> 5.9) voor Nederlandse sheets
+        const ratingStr = String(rawRating).replace(',', '.');
+        
+        // 3. Zorg dat datum een string is
+        const dateStr = String(rawDate);
         
         return {
-            date: String(log.date),
-            playerId: Number(log.playerId), // Force conversion to number
-            rating: Number(ratingStr)       // Force conversion to number (after fixing comma)
+            date: dateStr,
+            playerId: Number(rawPlayerId),
+            rating: Number(ratingStr)
         };
-    }).filter(log => !isNaN(log.playerId) && !isNaN(log.rating)); // Remove invalid entries
+    }).filter((log): log is RatingLogEntry => {
+        // 4. Filter ongeldige regels en null waarden eruit
+        return log !== null && !isNaN(log.playerId) && !isNaN(log.rating) && log.playerId !== 0;
+    });
 };
 
 // Main function to fetch all initial data
@@ -105,7 +122,7 @@ export const getInitialData = async (): Promise<{ players: Player[], history: Ga
       players: validPlayers,
       history: Array.isArray(data.history) ? data.history : [],
       competitionName: typeof data.competitionName === 'string' ? data.competitionName : '',
-      ratingLogs: parseRatingLogs(data.ratingLogs), // Use strict parsing here
+      ratingLogs: parseRatingLogs(data.ratingLogs), // Gebruik de nieuwe, slimme parser
     };
   } catch (error: any) {
     console.error("Failed to fetch initial data:", error);
