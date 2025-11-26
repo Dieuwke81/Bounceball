@@ -7,7 +7,7 @@ export const SPREADSHEET_ID = '1I_0c8p8r9Ep2VVQdFdeL0IsyTM7w18QGI-Hj40dMxt4';
 // 2. De Web App URL van je Google Apps Script
 //    Deze krijg je na het 'deployen' van het script in de Google Apps Script editor.
 //    Deze waarde wordt gebruikt als 'fallback' als er geen URL is ingesteld door de gebruiker in de app.
-export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvi37mcgNzFzh7g7Mi7ryk_oTGyeJLqTQ_7uBovi_KfDDu-PF17GmWszEgWZ5uuymP/exec';
+export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwxInEgYbUsb3t1K9zYzsNsnHCwuXAT9pAJcxVuHkxGSHCaUh6tdrSv7hh7J1G8L3TJ/exec';
 
 // Fix: Add PLAYERS_SHEET_NAME export to resolve import error.
 // 3. De naam van het tabblad in je sheet waar de spelerslijst staat.
