@@ -1,6 +1,8 @@
 import { SCRIPT_URL as FALLBACK_URL } from '../config';
 
-const SCRIPT_URL_KEY = 'google_script_url';
+// DOOR DEZE NAAM TE VERANDEREN (v5), DWINGEN WE DE APP OM DE OUDE URL TE VERGETEN
+// EN DE NIEUWE URL UIT CONFIG.TS TE GEBRUIKEN.
+const SCRIPT_URL_KEY = 'bounceball_script_url_v5';
 
 /**
  * Haalt de actieve SCRIPT_URL op. Geeft prioriteit aan de URL die door de
