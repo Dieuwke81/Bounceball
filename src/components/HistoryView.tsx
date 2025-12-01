@@ -5,7 +5,7 @@ import html2canvas from 'html2canvas';
 const CameraIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
     <path d="M12 9a3.75 3.75 0 1 0 0 7.5A3.75 3.75 0 0 0 12 9Z" />
-    <path fillRule="evenodd" d="M9.348 2.818a1.5 1.5 0 0 0-1.414 1.182l-.45 1.795H4.5a2.25 2.25 0 0 0-2.25 2.25v10.5a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25V7.5a2.25 2.25 0 0 0-2.25-2.25h-2.985l-.45-1.795a1.5 1.5 0 0 0-1.414-1.182l-1.313.131a6.67 6.67 0 0 0-3.376 0l-1.313-.131Z" clipRule="evenodd" />
+    <path fillRule="evenodd" d="M9.348 2.818a1.5 1.5 0 0 0-1.414 1.182l-.45 1.795H4.5a2.25 2.25 0 0 0-2.25 2.25v10.5a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25V7.5a2.25 2.25 0 0 0-2.25-2.25h-2.985l-.45-1.795a1.5 1.5 0 0 0-1.414 1.182l-1.313.131a6.67 6.67 0 0 0-3.376 0l-1.313-.131Z" clipRule="evenodd" />
   </svg>
 );
 
@@ -46,33 +46,47 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     });
   };
 
-  // --- CSV EXPORT FUNCTIE (NU FLEXIBEL) ---
+  // --- CSV EXPORT FUNCTIE (AANGEPAST VOOR SPELER STATS) ---
   const handleExportCSV = (e: React.MouseEvent, sessionsToExport: GameSession[], filenamePrefix: string) => {
-    // Stop propagatie, anders klapt de sessie open/dicht als je op downloaden klikt
     e.stopPropagation();
 
-    const headers = ['Datum', 'Ronde', 'Team Blauw (Spelers)', 'Score Blauw', 'Score Geel', 'Team Geel (Spelers)'];
+    // Headers voor gedetailleerde export
+    const headers = ['Datum', 'Ronde', 'Wedstrijd Nr', 'Team Kleur', 'Speler ID', 'Naam', 'Doelpunten'];
     const rows: string[][] = [];
 
     sessionsToExport.forEach(session => {
         const dateStr = new Date(session.date).toLocaleDateString('nl-NL');
         
         const processMatches = (results: MatchResult[], roundName: string) => {
-            results.forEach(match => {
-                const team1Players = session.teams[match.team1Index]?.map(p => p.name).join(', ') || 'Onbekend';
-                const team2Players = session.teams[match.team2Index]?.map(p => p.name).join(', ') || 'Onbekend';
-                
-                const score1 = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
-                const score2 = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
+            results.forEach((match, index) => {
+                const matchNumber = (index + 1).toString();
 
-                rows.push([
-                    dateStr,
-                    roundName,
-                    `"${team1Players}"`,
-                    score1.toString(),
-                    score2.toString(),
-                    `"${team2Players}"`
-                ]);
+                // Hulpfunctie om spelers van een team toe te voegen
+                const addTeamRows = (teamIndex: number, goalsArray: any[], teamColor: 'Blauw' | 'Geel') => {
+                    const teamPlayers = session.teams[teamIndex] || [];
+                    
+                    teamPlayers.forEach(player => {
+                        // Zoek hoeveel goals deze specifieke speler heeft gemaakt
+                        const playerGoalData = goalsArray.find(g => g.playerId === player.id);
+                        const goalsScored = playerGoalData ? playerGoalData.count : 0;
+
+                        rows.push([
+                            dateStr,
+                            roundName,
+                            matchNumber,
+                            teamColor,
+                            player.id.toString(),
+                            player.name,
+                            goalsScored.toString()
+                        ]);
+                    });
+                };
+
+                // Verwerk Team Blauw (Team 1)
+                addTeamRows(match.team1Index, match.team1Goals, 'Blauw');
+                
+                // Verwerk Team Geel (Team 2)
+                addTeamRows(match.team2Index, match.team2Goals, 'Geel');
             });
         };
 
@@ -80,9 +94,11 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
         processMatches(session.round2Results, 'Ronde 2');
     });
 
+    // We gebruiken nu een PUNTKOMMA (;) als scheidingsteken.
+    // Dit werkt veel beter in Nederlandse Excel versies.
     const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.join(','))
+        headers.join(';'),
+        ...rows.map(row => row.join(';'))
     ].join('\n');
 
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -90,8 +106,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     if (link.download !== undefined) {
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        // Bestandsnaam op basis van input
-        link.setAttribute('download', `bounceball_${filenamePrefix}_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', `bounceball_stats_${filenamePrefix}_${new Date().toISOString().split('T')[0]}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -279,7 +294,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
               
               <div className="flex items-center space-x-3">
                 
-                {/* EXPORT SINGLE KNOP (NIEUW) */}
+                {/* EXPORT SINGLE KNOP */}
                 <div 
                     onClick={(e) => handleExportCSV(e, [session], `MATCH_${session.date.split('T')[0]}`)}
                     className="p-2 bg-green-700 hover:bg-green-600 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95 transform duration-150"
