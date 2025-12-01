@@ -359,7 +359,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
                     </div>
                     
                     <div className="mt-10 pt-4 border-t border-gray-800 text-center text-gray-500 text-sm font-medium">
-                        Gegenereerd door Bounceball App 🏆
+                        Gegenereerd door de Bounceball App
                     </div>
                 </div>
               </div>
