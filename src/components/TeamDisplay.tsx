@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import type { Player, Match, Goal, MatchResult } from '../types';
 import TrophyIcon from './icons/TrophyIcon';
@@ -42,6 +41,11 @@ const LoadingDots: React.FC = () => {
 };
 
 
+// HULPFUNCTIE VOOR KLEUREN
+// Geeft 'blue' of 'yellow' terug op basis van team index
+const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
+
+
 const MatchInputCard: React.FC<{
     match: Match;
     matchIndex: number;
@@ -53,25 +57,22 @@ const MatchInputCard: React.FC<{
     const team1 = teams[match.team1Index];
     const team2 = teams[match.team2Index];
     
-    // --- NIEUWE LOGICA START ---
-    
-    // 1. Bepaal of Team 1 "Blauw" is (even nummer).
-    const isTeam1Blue = match.team1Index % 2 === 0;
+    // --- SLIMME KLEUREN LOGICA ---
+    const baseColor1 = getBaseColor(match.team1Index);
+    const baseColor2 = getBaseColor(match.team2Index);
 
-    // 2. Bepaal wie er LINKS moet staan (We willen Blauw altijd links)
-    const leftTeam      = isTeam1Blue ? team1 : team2;
-    const leftIndex     = isTeam1Blue ? match.team1Index : match.team2Index;
-    // Belangrijk: onthoud of dit data-technisch team1 of team2 is voor het opslaan van scores
-    const leftId        = isTeam1Blue ? 'team1' : 'team2'; 
-    const leftColor     = 'text-cyan-300'; // Links is altijd cyaan
+    let finalColor1 = baseColor1;
+    let finalColor2 = baseColor2;
 
-    // 3. Bepaal wie er RECHTS moet staan (Oranje)
-    const rightTeam     = isTeam1Blue ? team2 : team1;
-    const rightIndex    = isTeam1Blue ? match.team2Index : match.team1Index;
-    const rightId       = isTeam1Blue ? 'team2' : 'team1';
-    const rightColor    = 'text-amber-300'; // Rechts is altijd amber
+    // Conflict? Wissel rechts.
+    if (baseColor1 === baseColor2) {
+        finalColor2 = (baseColor2 === 'blue' ? 'yellow' : 'blue');
+    }
 
-    // --- NIEUWE LOGICA EIND ---
+    // Vertaal naar Tailwind classes
+    const leftColorClass = finalColor1 === 'blue' ? 'text-cyan-300' : 'text-amber-300';
+    const rightColorClass = finalColor2 === 'blue' ? 'text-cyan-300' : 'text-amber-300';
+    // -----------------------------
 
     const getTeamGoals = (teamIdentifier: 'team1' | 'team2') => goalScorers[`${matchIndex}-${teamIdentifier}`] || [];
     const getTeamScore = (teamIdentifier: 'team1' | 'team2') => getTeamGoals(teamIdentifier).reduce((sum, goal) => sum + goal.count, 0);
@@ -82,7 +83,6 @@ const MatchInputCard: React.FC<{
 
         return (
             <div className="flex items-center justify-between space-x-2 bg-gray-600 p-2 rounded">
-                {/* Hier zit ook meteen je fix voor de uitlijning in (flex-1) */}
                 <span className="text-gray-200 flex-1 pr-2">{player.name}</span>
                 <input
                     type="number"
@@ -100,26 +100,24 @@ const MatchInputCard: React.FC<{
     return (
         <div className="bg-gray-700 rounded-lg p-4">
             <div className="grid grid-cols-2 gap-4">
-                {/* Linker Kolom (Blauw) */}
+                {/* Linker Kolom (Team 1) */}
                 <div className="space-y-3">
                     <div className="text-center">
-                        <h4 className={`font-bold text-lg ${leftColor}`}>Team {leftIndex + 1}</h4>
-                        <p className="text-3xl font-bold text-white">{getTeamScore(leftId)}</p>
+                        <h4 className={`font-bold text-lg ${leftColorClass}`}>Team {match.team1Index + 1}</h4>
+                        <p className="text-3xl font-bold text-white">{getTeamScore('team1')}</p>
                     </div>
                     <div className="space-y-2 pr-1">
-                        {/* Let op: we gebruiken hier leftTeam en leftId */}
-                        {leftTeam.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier={leftId} />)}
+                        {team1.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier="team1" />)}
                     </div>
                 </div>
-                {/* Rechter Kolom (Oranje) */}
+                {/* Rechter Kolom (Team 2) */}
                 <div className="space-y-3">
                      <div className="text-center">
-                        <h4 className={`font-bold text-lg ${rightColor}`}>Team {rightIndex + 1}</h4>
-                        <p className="text-3xl font-bold text-white">{getTeamScore(rightId)}</p>
+                        <h4 className={`font-bold text-lg ${rightColorClass}`}>Team {match.team2Index + 1}</h4>
+                        <p className="text-3xl font-bold text-white">{getTeamScore('team2')}</p>
                     </div>
                     <div className="space-y-2 pr-1">
-                         {/* Let op: we gebruiken hier rightTeam en rightId */}
-                        {rightTeam.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier={rightId} />)}
+                        {team2.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier="team2" />)}
                     </div>
                 </div>
             </div>
@@ -134,13 +132,20 @@ const MatchResultDisplayCard: React.FC<{
     const team1Score = matchResult.team1Goals.reduce((sum, goal) => sum + goal.count, 0);
     const team2Score = matchResult.team2Goals.reduce((sum, goal) => sum + goal.count, 0);
     
-    // Kleurlogica met conflictresolutie
-    const team1Color = matchResult.team1Index % 2 === 0 ? 'text-cyan-400/80' : 'text-amber-400/80';
-    let team2Color = matchResult.team2Index % 2 === 0 ? 'text-cyan-400/80' : 'text-amber-400/80';
-    if (team1Color === team2Color) {
-        team2Color = team1Color === 'text-cyan-400/80' ? 'text-amber-400/80' : 'text-cyan-400/80';
+    // --- SLIMME KLEUREN LOGICA ---
+    const baseColor1 = getBaseColor(matchResult.team1Index);
+    const baseColor2 = getBaseColor(matchResult.team2Index);
+
+    let finalColor1 = baseColor1;
+    let finalColor2 = baseColor2;
+
+    if (baseColor1 === baseColor2) {
+        finalColor2 = (baseColor2 === 'blue' ? 'yellow' : 'blue');
     }
 
+    const team1Color = finalColor1 === 'blue' ? 'text-cyan-400/80' : 'text-amber-400/80';
+    const team2Color = finalColor2 === 'blue' ? 'text-cyan-400/80' : 'text-amber-400/80';
+    // -----------------------------
 
     return (
         <div className="bg-gray-700/50 rounded-lg p-4">
@@ -168,6 +173,9 @@ const TeamCard: React.FC<{team: Player[], index: number, title: string}> = ({ te
         return { totalRating, averageRating };
     };
     const { totalRating, averageRating } = calculateTeamStats(team);
+    
+    // Bij de teamkaarten (lijstjes) is er geen tegenstander, dus gebruiken we altijd de basiskleur.
+    // Index 0,2,4 = Blauw. Index 1,3,5 = Geel.
     const isBlueTeam = index % 2 === 0;
     const headerColor = isBlueTeam ? 'text-cyan-400' : 'text-amber-400';
     const borderColor = isBlueTeam ? 'border-cyan-500' : 'border-amber-500';
@@ -186,7 +194,6 @@ const TeamCard: React.FC<{team: Player[], index: number, title: string}> = ({ te
                         </span>
                       )}
                     </div>
-                    {/*   <span className="text-sm font-semibold text-cyan-300">{player.rating}</span> */}
                   </div>
                 ))}
               </div>
@@ -223,9 +230,8 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
     
     if (gameMode === 'tournament') {
         const matches: Match[] = [];
-        // Pair teams sequentially: Team 1 vs Team 2, Team 3 vs Team 4, etc.
         for (let i = 0; i < teams.length; i += 2) {
-            if (teams[i + 1]) { // Ensure a pair exists
+            if (teams[i + 1]) {
                 matches.push({
                     team1Index: i,
                     team2Index: i + 1,
@@ -246,7 +252,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
         <h2 className="ml-3 text-2xl font-bold text-white">Wedstrijdoverzicht</h2>
       </div>
 
-      {/* --- DOUBLE HEADER LOGIC (self-contained) --- */}
+      {/* --- DOUBLE HEADER LOGIC --- */}
       {gameMode === 'doubleHeader' && (
         <>
           {currentRound === 1 && (
