@@ -1,269 +1,255 @@
 import React, { useMemo } from 'react';
 import type { Player, GameSession, RatingLogEntry } from '../types';
-import ArrowLeftIcon from './icons/ArrowLeftIcon';
-import ShieldIcon from './icons/ShieldIcon';
-import TrophyIcon from './icons/TrophyIcon';
-import ChartBarIcon from './icons/ChartBarIcon';
-import RatingChart from './RatingChart';
-import UsersIcon from './icons/UsersIcon';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  TimeScale
+} from 'chart.js';
+import 'chartjs-adapter-date-fns';
+import { nl } from 'date-fns/locale';
+import UsersIcon from './icons/UsersIcon'; // Zorg dat je dit icoon hebt, of haal de import weg
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  TimeScale
+);
+
+// --- COMPONENT: DE PRIJZENKAST ---
+const TrophyCabinet: React.FC<{ awardsString?: string }> = ({ awardsString }) => {
+  if (!awardsString) return null;
+
+  // Splitst de tekst op de komma (bijv: "Kampioen 2023, Topscorer")
+  const awards = awardsString.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+  if (awards.length === 0) return null;
+
+  // Hulpfunctie om icoontje te kiezen
+  const getIconAndColor = (award: string) => {
+    const lower = award.toLowerCase();
+    if (lower.includes('kampioen') || lower.includes('winnaar') || lower.includes('1e')) {
+      return { icon: '🏆', color: 'text-yellow-400', border: 'border-yellow-500/50 bg-yellow-500/10' };
+    }
+    if (lower.includes('topscorer') || lower.includes('doelpunt') || lower.includes('boot')) {
+      return { icon: '👟', color: 'text-cyan-400', border: 'border-cyan-500/50 bg-cyan-500/10' };
+    }
+    if (lower.includes('mvp') || lower.includes('beste')) {
+      return { icon: '⭐', color: 'text-fuchsia-400', border: 'border-fuchsia-500/50 bg-fuchsia-500/10' };
+    }
+    if (lower.includes('poedel') || lower.includes('laatste')) {
+        return { icon: '💩', color: 'text-amber-700', border: 'border-amber-700/50 bg-amber-900/10' };
+    }
+    return { icon: '🏅', color: 'text-gray-300', border: 'border-gray-500/50 bg-gray-500/10' };
+  };
+
+  return (
+    <div className="bg-gray-700/50 rounded-lg p-4 mb-6 border border-gray-600">
+      <h3 className="text-lg font-bold text-white mb-3 flex items-center">
+        <span className="mr-2">🏆</span> Hall of Fame
+      </h3>
+      <div className="flex flex-wrap gap-2">
+        {awards.map((award, index) => {
+          const style = getIconAndColor(award);
+          return (
+            <div key={index} className={`flex items-center px-3 py-1.5 rounded-full border ${style.border}`}>
+              <span className="text-lg mr-2">{style.icon}</span>
+              <span className={`text-sm font-bold ${style.color}`}>{award}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 interface PlayerDetailProps {
   player: Player;
   history: GameSession[];
-  players: Player[];
-  ratingLogs: RatingLogEntry[];
+  players: Player[]; 
+  ratingLogs?: RatingLogEntry[];
   onBack: () => void;
 }
 
-const StatCard: React.FC<{title: string, value: string | number, subtext?: string}> = ({title, value, subtext}) => (
-    <div className="bg-gray-700 p-4 rounded-lg text-center">
-        <p className="text-sm text-gray-400">{title}</p>
-        <p className="text-3xl font-bold text-white">{value}</p>
-        {subtext && <p className="text-xs text-gray-500">{subtext}</p>}
-    </div>
-);
-
-const RelationshipList: React.FC<{
-  title: string;
-  data: [number, number][];
-  playerMap: Map<number, Player>;
-  icon: React.ReactNode;
-}> = ({ title, data, playerMap, icon }) => (
-  <div>
-    <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
-      {icon}
-      <span className="ml-2">{title}</span>
-    </h4>
-    {data.length > 0 ? (
-      <ul className="space-y-1.5 pl-1">
-        {data.slice(0, 5).map(([id, count]) => {
-          const relatedPlayer = playerMap.get(id);
-          if (!relatedPlayer) return null;
-          return (
-            <li key={id} className="flex justify-between items-center text-sm text-gray-300">
-              <span className="truncate">{relatedPlayer.name}</span>
-              <span className="font-mono bg-gray-600 text-xs px-2 py-0.5 rounded-full">{count}x</span>
-            </li>
-          );
-        })}
-      </ul>
-    ) : (
-      <p className="text-gray-500 text-xs text-center py-2">Geen data</p>
-    )}
-  </div>
-);
-
-
 const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, ratingLogs, onBack }) => {
-    const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
+  
+  // 1. Statistieken berekenen (Winst, Verlies, Goals)
+  const stats = useMemo(() => {
+    let matchesPlayed = 0;
+    let goalsScored = 0;
+    let wins = 0;
+    let draws = 0;
+    let losses = 0;
 
-    const stats = useMemo(() => {
-        let wins = 0;
-        let losses = 0;
-        let draws = 0;
-        let gamesPlayed = 0;
-        let goalsScored = 0;
-        const teammateFrequency = new Map<number, number>();
-        const teammateWins = new Map<number, number>();
-        const teammateLosses = new Map<number, number>();
-        const opponentWins = new Map<number, number>();
-        const opponentLosses = new Map<number, number>();
-
-        history.forEach(session => {
-            let playerTeamIndex: number | null = null;
-            session.teams.forEach((team, index) => {
-                if (team.some(p => p.id === player.id)) {
-                    playerTeamIndex = index;
-                }
-            });
-
-            if (playerTeamIndex === null) return;
-
-            [...session.round1Results, ...session.round2Results].forEach(match => {
-                let opponentTeamIndex: number | null = null;
-                let isParticipating = false;
-                
-                if (match.team1Index === playerTeamIndex) {
-                    opponentTeamIndex = match.team2Index;
-                    isParticipating = true;
-                } else if (match.team2Index === playerTeamIndex) {
-                    opponentTeamIndex = match.team1Index;
-                    isParticipating = true;
-                }
-
-                if (!isParticipating || opponentTeamIndex === null || !session.teams[opponentTeamIndex]) return;
-                
-                gamesPlayed++;
-
-                const playerTeamGoalsList = (playerTeamIndex === match.team1Index ? match.team1Goals : match.team2Goals);
-                const opponentTeamGoalsList = (opponentTeamIndex === match.team1Index ? match.team1Goals : match.team2Goals);
-                
-                const playerGoalCount = playerTeamGoalsList.find(g => g.playerId === player.id)?.count || 0;
-                goalsScored += playerGoalCount;
-
-                const playerTeamScore = playerTeamGoalsList.reduce((sum, g) => sum + g.count, 0);
-                const opponentTeamScore = opponentTeamGoalsList.reduce((sum, g) => sum + g.count, 0);
-
-                if (playerTeamScore > opponentTeamScore) wins++;
-                else if (opponentTeamScore > playerTeamScore) losses++;
-                else draws++;
-
-                const teammates = session.teams[playerTeamIndex!].filter(p => p.id !== player.id);
-                const opponents = session.teams[opponentTeamIndex];
-
-                teammates.forEach(tm => {
-                    teammateFrequency.set(tm.id, (teammateFrequency.get(tm.id) || 0) + 1);
-                    if (playerTeamScore > opponentTeamScore) {
-                        teammateWins.set(tm.id, (teammateWins.get(tm.id) || 0) + 1);
-                    } else if (opponentTeamScore > playerTeamScore) {
-                        teammateLosses.set(tm.id, (teammateLosses.get(tm.id) || 0) + 1);
-                    }
-                });
-
-                opponents.forEach(op => {
-                    if (playerTeamScore > opponentTeamScore) {
-                        opponentWins.set(op.id, (opponentWins.get(op.id) || 0) + 1);
-                    } else if (opponentTeamScore > playerTeamScore) {
-                        opponentLosses.set(op.id, (opponentLosses.get(op.id) || 0) + 1);
-                    }
-                });
-            });
-        });
-
-        const bestTeammates = [...teammateWins.entries()].sort((a, b) => b[1] - a[1]);
-        const worstTeammates = [...teammateLosses.entries()].sort((a, b) => b[1] - a[1]);
-        const bestOpponents = [...opponentWins.entries()].sort((a, b) => b[1] - a[1]);
-        const worstOpponents = [...opponentLosses.entries()].sort((a, b) => b[1] - a[1]);
-        const mostFrequentTeammates = [...teammateFrequency.entries()].sort((a, b) => b[1] - a[1]);
-
-        return { wins, losses, draws, gamesPlayed, goalsScored, bestTeammates, worstTeammates, bestOpponents, worstOpponents, mostFrequentTeammates };
-    }, [player.id, history]);
-
-    // 1. Berekening Seizoen History (op basis van terugrekenen uit wedstrijden)
-    const ratingHistory = useMemo(() => {
-        const historyPoints: { date: string; rating: number }[] = [];
-        let currentRating = player.rating;
-        historyPoints.push({ date: new Date().toISOString(), rating: currentRating });
-
-        history.forEach(session => {
-            let playerTeamIndex: number | null = null;
-            let sessionDelta = 0;
-
-            const playerInSession = session.teams.flat().some(p => p.id === player.id);
-            if (!playerInSession) return;
-
-            session.teams.forEach((team, index) => {
-                if (team.some(p => p.id === player.id)) {
-                    playerTeamIndex = index;
-                }
-            });
-
-            if (playerTeamIndex === null) return;
-            
-            [...session.round1Results, ...session.round2Results].forEach(match => {
-                let isParticipating = false;
-                let playerTeamScore = 0;
-                let opponentTeamScore = 0;
-
-                if (match.team1Index === playerTeamIndex) {
-                    isParticipating = true;
-                    playerTeamScore = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
-                    opponentTeamScore = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
-                } else if (match.team2Index === playerTeamIndex) {
-                    isParticipating = true;
-                    playerTeamScore = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
-                    opponentTeamScore = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
-                }
-
-                if (isParticipating) {
-                    if (playerTeamScore > opponentTeamScore) sessionDelta += 0.1;
-                    else if (opponentTeamScore > playerTeamScore) sessionDelta -= 0.1;
-                }
-            });
-            
-            const ratingBeforeSession = currentRating - sessionDelta;
-            historyPoints.push({ date: session.date, rating: ratingBeforeSession });
-            currentRating = ratingBeforeSession;
-        });
+    history.forEach(session => {
+        const allMatches = [...session.round1Results, ...session.round2Results];
         
-        return historyPoints.reverse();
-    }, [player.id, player.rating, history]);
-
-    // 2. Berekening All Time History (op basis van logs uit sheet)
-    const allTimeRatingHistory = useMemo(() => {
-        // Filter logs voor deze speler
-        const logs = ratingLogs
-            .filter(log => log.playerId === player.id)
-            .map(log => ({ date: log.date, rating: log.rating }));
-        
-        // Sorteer op datum
-        return logs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [player.id, ratingLogs]);
-
-    return (
-        <div className="bg-gray-800 rounded-xl shadow-lg p-6">
-            <div className="flex items-center mb-6">
-                <button onClick={onBack} className="p-2 mr-4 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-colors">
-                    <ArrowLeftIcon className="w-6 h-6" />
-                </button>
-                {player.photoBase64 && (
-                    <img 
-                        src={player.photoBase64} 
-                        alt={player.name}
-                        className="w-16 h-16 rounded-full object-cover mr-4 border-2 border-cyan-400"
-                    />
-                )}
-                <div>
-                    <h2 className="text-3xl font-bold text-white">{player.name}</h2>
-                    <div className="flex items-center mt-1">
-                        <span className="text-lg font-semibold bg-cyan-500 text-white py-1 px-3 rounded-full">{player.rating.toFixed(1)}</span>
-                        {player.isKeeper && <span className="ml-2 text-xs font-semibold bg-amber-500 text-white py-0.5 px-2 rounded-full">K</span>}
-                        {player.isFixedMember && <span className="ml-2 text-xs font-semibold bg-green-500 text-white py-0.5 px-2 rounded-full">Lid</span>}
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <StatCard title="Gespeeld" value={stats.gamesPlayed} />
-                <StatCard title="Gewonnen" value={`${Math.round((stats.wins / (stats.gamesPlayed || 1)) * 100)}%`} subtext={`${stats.wins} van ${stats.gamesPlayed}`} />
-                <StatCard title="Goals" value={stats.goalsScored} subtext={`${(stats.goalsScored / (stats.gamesPlayed || 1)).toFixed(2)} gem.`} />
-                <StatCard title="Vorm" value={`${stats.wins}-${stats.draws}-${stats.losses}`} subtext="W-G-V" />
-            </div>
-
-            {/* NIEUWE GRAFIEK BLOK: All-time */}
-            <div className="bg-gray-700 p-4 rounded-lg mb-8">
-                <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
-                    <ChartBarIcon className="w-5 h-5 text-green-400" />
-                    <span className="ml-2">All-time Rating Verloop</span>
-                </h4>
-                {allTimeRatingHistory.length > 1 ? (
-                    <RatingChart data={allTimeRatingHistory} />
-                ) : (
-                    <p className="text-gray-500 text-sm text-center py-4">Nog niet genoeg data over meerdere seizoenen.</p>
-                )}
-            </div>
+        allMatches.forEach(match => {
+            const team1 = session.teams[match.team1Index];
+            const team2 = session.teams[match.team2Index];
             
-            {/* OUDE GRAFIEK BLOK: Seizoen */}
-            <div className="bg-gray-700 p-4 rounded-lg mb-8">
-                <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
-                    <ChartBarIcon className="w-5 h-5 text-cyan-400" />
-                    <span className="ml-2">Seizoen Rating Verloop</span>
-                </h4>
-                <RatingChart data={ratingHistory} />
-            </div>
+            // Check of speler in team 1 zit
+            if (team1?.some(p => p.id === player.id)) {
+                matchesPlayed++;
+                const myGoals = match.team1Goals.find(g => g.playerId === player.id)?.count || 0;
+                goalsScored += myGoals;
+                
+                const score1 = match.team1Goals.reduce((a, b) => a + b.count, 0);
+                const score2 = match.team2Goals.reduce((a, b) => a + b.count, 0);
+                
+                if (score1 > score2) wins++;
+                else if (score1 === score2) draws++;
+                else losses++;
+            }
+            // Check of speler in team 2 zit
+            else if (team2?.some(p => p.id === player.id)) {
+                matchesPlayed++;
+                const myGoals = match.team2Goals.find(g => g.playerId === player.id)?.count || 0;
+                goalsScored += myGoals;
+                
+                const score1 = match.team1Goals.reduce((a, b) => a + b.count, 0);
+                const score2 = match.team2Goals.reduce((a, b) => a + b.count, 0);
+                
+                if (score2 > score1) wins++;
+                else if (score1 === score2) draws++;
+                else losses++;
+            }
+        });
+    });
 
-            <div className="bg-gray-700 p-4 rounded-lg mb-6">
-                <RelationshipList title="Vaakste Medespeler (Top 5)" data={stats.mostFrequentTeammates} playerMap={playerMap} icon={<UsersIcon className="w-5 h-5 text-cyan-400" />} />
-            </div>
+    return { matchesPlayed, goalsScored, wins, draws, losses };
+  }, [player, history]);
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <RelationshipList title="Beste Medespelers" data={stats.bestTeammates} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
-                <RelationshipList title="Lastige Medespelers" data={stats.worstTeammates} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
-                <RelationshipList title="Favoriete Tegenstanders" data={stats.bestOpponents} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
-                <RelationshipList title="Lastige Tegenstanders" data={stats.worstOpponents} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
-            </div>
+  // 2. Grafiek data voorbereiden
+  const chartData = useMemo(() => {
+      // Haal logs op voor DEZE speler
+      const playerLogs = (ratingLogs || [])
+        .filter(log => log.playerId === player.id)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      // We voegen de HUIDIGE rating toe als het puntje van vandaag
+      const allPoints = [...playerLogs];
+      
+      // Als de laatste log niet van vandaag is, voeg huidige stand toe voor mooie lijn
+      const today = new Date().toISOString().split('T')[0];
+      const hasTodayLog = playerLogs.some(l => l.date.startsWith(today));
+      
+      if (!hasTodayLog) {
+          allPoints.push({
+              date: new Date().toISOString(),
+              playerId: player.id,
+              rating: player.rating
+          });
+      }
+
+      const labels = allPoints.map(log => new Date(log.date));
+      const dataPoints = allPoints.map(log => log.rating);
+
+      return {
+          labels,
+          datasets: [{
+              label: 'Rating',
+              data: dataPoints,
+              borderColor: 'rgb(34, 211, 238)', // Cyan-400
+              backgroundColor: 'rgba(34, 211, 238, 0.1)',
+              borderWidth: 3,
+              pointBackgroundColor: 'rgb(34, 211, 238)',
+              pointRadius: 4,
+              fill: true,
+              tension: 0.3 // Maakt de lijn een beetje vloeiend
+          }]
+      };
+  }, [player, ratingLogs]);
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      title: { display: false },
+      tooltip: {
+         mode: 'index' as const,
+         intersect: false,
+      }
+    },
+    scales: {
+      x: {
+        type: 'time' as const,
+        time: { unit: 'month' as const, tooltipFormat: 'd MMM yyyy' },
+        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+        ticks: { color: '#9ca3af' }
+      },
+      y: {
+        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+        ticks: { color: '#9ca3af' }
+      }
+    }
+  };
+
+  return (
+    <div className="bg-gray-800 rounded-xl shadow-lg p-6 min-h-[80vh]">
+      <button onClick={onBack} className="mb-6 text-cyan-400 hover:text-cyan-300 font-bold flex items-center transition-colors">
+        ← Terug naar overzicht
+      </button>
+
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
+        <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border-4 border-gray-600 shadow-xl shrink-0">
+           {player.photoBase64 ? (
+               <img src={player.photoBase64} alt={player.name} className="w-full h-full object-cover" />
+           ) : (
+               <UsersIcon className="w-12 h-12 text-gray-500" />
+           )}
         </div>
-    );
+        <div>
+          <h2 className="text-4xl font-bold text-white">{player.name}</h2>
+          <div className="flex items-center mt-2 space-x-3">
+             <div className="text-2xl font-bold text-cyan-400">{player.rating.toFixed(2)} <span className="text-sm text-gray-400 font-normal">Rating</span></div>
+             {player.isKeeper && <span className="bg-amber-600 text-white text-xs px-2 py-1 rounded-full uppercase font-bold tracking-wider">Keeper</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* DE PRIJZENKAST */}
+      <TrophyCabinet awardsString={player.awards} />
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-gray-700 p-4 rounded-lg text-center">
+          <div className="text-gray-400 text-sm uppercase tracking-wide">Wedstrijden</div>
+          <div className="text-2xl font-bold text-white">{stats.matchesPlayed}</div>
+        </div>
+        <div className="bg-gray-700 p-4 rounded-lg text-center">
+          <div className="text-gray-400 text-sm uppercase tracking-wide">Doelpunten</div>
+          <div className="text-2xl font-bold text-cyan-400">{stats.goalsScored}</div>
+        </div>
+        <div className="bg-gray-700 p-4 rounded-lg text-center">
+          <div className="text-gray-400 text-sm uppercase tracking-wide">Winst %</div>
+          <div className="text-2xl font-bold text-green-400">
+            {stats.matchesPlayed > 0 ? Math.round((stats.wins / stats.matchesPlayed) * 100) : 0}%
+          </div>
+        </div>
+        <div className="bg-gray-700 p-4 rounded-lg text-center">
+          <div className="text-gray-400 text-sm uppercase tracking-wide">W-G-V</div>
+          <div className="text-lg font-bold text-white">{stats.wins} - {stats.draws} - {stats.losses}</div>
+        </div>
+      </div>
+
+      <div className="bg-gray-700 p-4 rounded-lg h-64 md:h-80">
+        <h3 className="text-white font-bold mb-4">Rating Verloop</h3>
+        <Line data={chartData} options={chartOptions} />
+      </div>
+    </div>
+  );
 };
 
 export default PlayerDetail;
