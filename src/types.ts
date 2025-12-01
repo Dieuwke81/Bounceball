@@ -5,7 +5,6 @@ export interface Player {
   isKeeper: boolean;
   isFixedMember: boolean;
   photoBase64?: string;
-  awards?: string; // <--- NIEUW: Dit is de ruwe tekst uit Excel (bv "Kampioen 2023")
 }
 
 export type NewPlayer = Omit<Player, 'id'>;
