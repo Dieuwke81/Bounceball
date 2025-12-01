@@ -191,7 +191,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
             
             {/* Footer */}
             <div className="w-full text-center text-xs text-gray-400 mt-auto pb-4">
-                Wedstrijdformulier - Zaal {match.matchNumber} - Geprint via Bounceball App
+                Wedstrijdformulier - Zaal {match.matchNumber} - Geprint via de Bounceball App
             </div>
 
           </div>
