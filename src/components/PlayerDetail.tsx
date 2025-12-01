@@ -259,8 +259,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <RelationshipList title="Beste Medespelers" data={stats.bestTeammates} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
                 <RelationshipList title="Lastige Medespelers" data={stats.worstTeammates} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
-                <RelationshipList title="Favoriete Tegenstanders" data={stats.bestOpponents} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
-                <RelationshipList title="Lastige Tegenstanders" data={stats.worstOpponents} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
+                <RelationshipList title="Makkelijke Tegenstanders" data={stats.bestOpponents} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
+                <RelationshipList title="Moeilijke Tegenstanders" data={stats.worstOpponents} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
             </div>
         </div>
     );
