@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import type { Player, NewPlayer } from '../types';
 import XIcon from './icons/XIcon';
@@ -11,7 +9,8 @@ interface PlayerFormProps {
   initialData?: Player | null;
 }
 
-const MAX_IMAGE_SIZE = 256; // px
+// 200px is groot genoeg voor een avatar, en klein genoeg voor Google Sheets limiet (50k tekens)
+const MAX_IMAGE_SIZE = 200; 
 
 const PlayerForm: React.FC<PlayerFormProps> = ({ onSubmit, onCancel, initialData }) => {
   const [name, setName] = useState('');
@@ -21,10 +20,9 @@ const PlayerForm: React.FC<PlayerFormProps> = ({ onSubmit, onCancel, initialData
   const [photoBase64, setPhotoBase64] = useState<string | undefined>(undefined);
   const [error, setError] = useState('');
 
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  // We hebben twee refs nodig: één voor bestand kiezen, één voor de camera
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialData) {
@@ -34,7 +32,6 @@ const PlayerForm: React.FC<PlayerFormProps> = ({ onSubmit, onCancel, initialData
       setIsFixedMember(initialData.isFixedMember);
       setPhotoBase64(initialData.photoBase64);
     } else {
-      // Reset for new player
       setName('');
       setRating('');
       setIsKeeper(false);
@@ -42,21 +39,6 @@ const PlayerForm: React.FC<PlayerFormProps> = ({ onSubmit, onCancel, initialData
       setPhotoBase64(undefined);
     }
   }, [initialData]);
-  
-  const stopCameraStream = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-  };
-  
-  useEffect(() => {
-    // Cleanup effect to close camera stream on component unmount
-    return () => {
-      stopCameraStream();
-    };
-  }, []);
-
 
   const processImage = (file: File) => {
     const reader = new FileReader();
@@ -68,6 +50,7 @@ const PlayerForm: React.FC<PlayerFormProps> = ({ onSubmit, onCancel, initialData
         if (!ctx) return;
 
         let { width, height } = img;
+        // Behoud aspect ratio, maar schaal terug naar MAX_IMAGE_SIZE
         if (width > height) {
           if (width > MAX_IMAGE_SIZE) {
             height *= MAX_IMAGE_SIZE / width;
@@ -82,7 +65,9 @@ const PlayerForm: React.FC<PlayerFormProps> = ({ onSubmit, onCancel, initialData
         canvas.width = width;
         canvas.height = height;
         ctx.drawImage(img, 0, 0, width, height);
-        setPhotoBase64(canvas.toDataURL('image/jpeg', 0.8));
+        
+        // Comprimeer naar JPEG met 0.6 kwaliteit (veilig voor Google Sheets)
+        setPhotoBase64(canvas.toDataURL('image/jpeg', 0.6));
       };
       img.src = e.target?.result as string;
     };
@@ -95,38 +80,6 @@ const PlayerForm: React.FC<PlayerFormProps> = ({ onSubmit, onCancel, initialData
     }
   };
   
-  const handleOpenCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setIsCameraOpen(true);
-    } catch (err) {
-      console.error("Camera access denied:", err);
-      setError("Kon geen toegang krijgen tot de camera. Controleer de permissies.");
-    }
-  };
-  
-  const handleCapture = () => {
-    if (!videoRef.current) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(blob => {
-        if (blob) {
-            processImage(new File([blob], "capture.jpg", { type: "image/jpeg" }));
-        }
-    }, 'image/jpeg');
-    setIsCameraOpen(false);
-    stopCameraStream();
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -145,20 +98,9 @@ const PlayerForm: React.FC<PlayerFormProps> = ({ onSubmit, onCancel, initialData
     onSubmit(playerData);
   };
   
-  const CameraView = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center z-[60]">
-        <video ref={videoRef} autoPlay playsInline className="w-full max-w-lg h-auto rounded-lg" />
-        <div className="mt-4 flex space-x-4">
-            <button type="button" onClick={handleCapture} className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3 px-6 rounded-lg">Maak Foto</button>
-            <button type="button" onClick={() => { setIsCameraOpen(false); stopCameraStream(); }} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg">Annuleren</button>
-        </div>
-    </div>
-  );
-
   return (
-    <>
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-md">
+      <div className="bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h2 className="text-2xl font-bold text-white mb-6">
           {initialData ? 'Speler Bewerken' : 'Nieuwe Speler'}
         </h2>
@@ -191,16 +133,35 @@ const PlayerForm: React.FC<PlayerFormProps> = ({ onSubmit, onCancel, initialData
            <div>
             <label className="block text-sm font-medium text-gray-300">Profielfoto</label>
             <div className="mt-2 flex items-center space-x-4">
-                <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-gray-600">
-                    {photoBase64 ? <img src={photoBase64} alt="Profielfoto" className="w-full h-full object-cover" /> : <UsersIcon className="w-10 h-10 text-gray-500"/>}
+                {/* De avatar weergave */}
+                <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-gray-600 shrink-0">
+                    {photoBase64 ? (
+                        <img src={photoBase64} alt="Profielfoto" className="w-full h-full object-cover" /> 
+                    ) : (
+                        <UsersIcon className="w-10 h-10 text-gray-500"/>
+                    )}
                 </div>
-                <div className="flex flex-col space-y-2">
-                    <button type="button" onClick={() => fileInputRef.current?.click()} className="text-sm bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-3 rounded-lg transition-colors">Upload Bestand</button>
+                
+                <div className="flex flex-col space-y-2 w-full">
+                    {/* Verborgen inputs */}
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                    <button type="button" onClick={handleOpenCamera} className="text-sm bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-3 rounded-lg transition-colors">Maak Foto</button>
+                    
+                    {/* Input speciaal voor mobiele camera (capture='user') */}
+                    <input type="file" ref={cameraInputRef} onChange={handleFileChange} accept="image/*" capture="user" className="hidden" />
+
+                    {/* Knoppen die de inputs activeren */}
+                    <div className="flex gap-2">
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 text-sm bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-3 rounded-lg transition-colors text-center">
+                            📁 Upload
+                        </button>
+                        <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex-1 text-sm bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-3 rounded-lg transition-colors text-center">
+                            📷 Camera
+                        </button>
+                    </div>
                 </div>
+                
                 {photoBase64 && (
-                    <button type="button" onClick={() => setPhotoBase64(undefined)} className="self-start p-1 text-gray-400 hover:text-white">
+                    <button type="button" onClick={() => setPhotoBase64(undefined)} className="self-start p-1 text-gray-400 hover:text-red-400">
                         <XIcon className="w-5 h-5"/>
                     </button>
                 )}
@@ -221,8 +182,6 @@ const PlayerForm: React.FC<PlayerFormProps> = ({ onSubmit, onCancel, initialData
         </form>
       </div>
     </div>
-    {isCameraOpen && <CameraView />}
-    </>
   );
 };
 
