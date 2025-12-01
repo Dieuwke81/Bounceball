@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import type { GameSession, Player, MatchResult } from '../types';
+import html2canvas from 'html2canvas';
 
-// Simpel Share icoontje (zodat je geen aparte file nodig hebt)
-const ShareIcon = ({ className }: { className?: string }) => (
+// Camera/Share icon
+const CameraIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path fillRule="evenodd" d="M15.75 4.5a3 3 0 1 1 .825 2.066l-8.421 4.679a3.002 3.002 0 0 1 0 1.51l8.421 4.679a3 3 0 1 1-.729 1.31l-8.421-4.678a3 3 0 1 1 0-4.132l8.421-4.679a3 3 0 0 1-.096-.755Z" clipRule="evenodd" />
+    <path d="M12 9a3.75 3.75 0 1 0 0 7.5A3.75 3.75 0 0 0 12 9Z" />
+    <path fillRule="evenodd" d="M9.348 2.818a1.5 1.5 0 0 0-1.414 1.182l-.45 1.795H4.5a2.25 2.25 0 0 0-2.25 2.25v10.5a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25V7.5a2.25 2.25 0 0 0-2.25-2.25h-2.985l-.45-1.795a1.5 1.5 0 0 0-1.414-1.182l-1.313.131a6.67 6.67 0 0 0-3.376 0l-1.313-.131Z" clipRule="evenodd" />
   </svg>
 );
 
@@ -15,6 +17,7 @@ interface HistoryViewProps {
 
 const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   if (history.length === 0) {
     return (
@@ -38,50 +41,69 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     });
   };
 
-  // --- DE WHATSAPP GENERATOR ---
-  const handleShareToWhatsApp = (e: React.MouseEvent, session: GameSession) => {
-    e.stopPropagation(); // Voorkom dat de accordion open/dicht klapt als je op share klikt
+  // --- DE FOTO GENERATOR ---
+  const handleShareImage = async (e: React.MouseEvent, sessionDate: string) => {
+    e.stopPropagation(); // Voorkom inklappen
+    
+    // Zorg dat de sessie opengeklapt is, anders kunnen we geen foto maken
+    if (expandedDate !== sessionDate) {
+        setExpandedDate(sessionDate);
+        // Wacht heel even zodat React de DOM kan renderen
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
 
-    const dateStr = new Date(session.date).toLocaleDateString('nl-NL');
-    let text = `📅 *Uitslagen ${dateStr}*\n\n`;
+    const elementId = `session-content-${sessionDate}`;
+    const element = document.getElementById(elementId);
 
-    // Hulpfunctie om scorers op te maken: "Jan (2), Piet (1)"
-    const formatScorers = (goals: { playerId: number, count: number }[]) => {
-      const parts = goals.map(g => {
-        // We zoeken de naam in de 'players' prop, want die is altijd up-to-date
-        const p = players.find(player => player.id === g.playerId);
-        return p ? `${p.name} (${g.count})` : null;
-      }).filter(Boolean); // Filter null waarden eruit
-      
-      return parts.length > 0 ? parts.join(', ') : null;
-    };
+    if (!element) {
+        alert("Kan de uitslagen niet vinden om te delen.");
+        return;
+    }
 
-    const processResults = (label: string, results: MatchResult[]) => {
-      if (!results || results.length === 0) return;
-      text += `*${label}*\n`;
+    setIsGeneratingImage(true);
 
-      results.forEach(match => {
-        const score1 = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
-        const score2 = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
+    try {
+        // Maak de screenshot met html2canvas
+        // We zetten scale op 2 voor scherpere tekst op mobiel (Retina schermen)
+        const canvas = await html2canvas(element, {
+            backgroundColor: '#1f2937', // De donkere bg-gray-800 kleur
+            scale: 2, 
+            useCORS: true, // Nodig als er ooit plaatjes van buitenaf in komen
+        });
 
-        text += `🔸 Team ${match.team1Index + 1} (${score1}) - (${score2}) Team ${match.team2Index + 1} 🔹\n`;
+        canvas.toBlob(async (blob) => {
+            if (!blob) return;
 
-        const scorers1 = formatScorers(match.team1Goals);
-        const scorers2 = formatScorers(match.team2Goals);
+            // Maak een bestand van de blob
+            const file = new File([blob], `Uitslagen-${sessionDate}.png`, { type: 'image/png' });
 
-        if (scorers1) text += `   ⚽ T${match.team1Index + 1}: ${scorers1}\n`;
-        if (scorers2) text += `   ⚽ T${match.team2Index + 1}: ${scorers2}\n`;
-        text += '\n'; // Witregel na elke wedstrijd
-      });
-    };
+            // Check of de browser kan delen (Mobiel doet dit bijna altijd)
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Bounceball Uitslagen',
+                        text: `De uitslagen van ${formatDate(sessionDate)}! ⚽`,
+                    });
+                } catch (shareError) {
+                    console.log('Delen geannuleerd', shareError);
+                }
+            } else {
+                // Fallback voor PC: Download het bestand
+                const link = document.createElement('a');
+                link.download = `Uitslagen-${sessionDate}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                alert("Afbeelding gedownload! Je kunt hem nu handmatig versturen.");
+            }
+            setIsGeneratingImage(false);
+        }, 'image/png');
 
-    processResults('Ronde 1', session.round1Results);
-    processResults('Ronde 2', session.round2Results);
-
-    text += '_Gegenereerd met de Bounceball-app_ 🏆';
-
-    // Open WhatsApp
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    } catch (error) {
+        console.error("Fout bij maken afbeelding:", error);
+        alert("Er ging iets mis bij het maken van de afbeelding.");
+        setIsGeneratingImage(false);
+    }
   };
   // -----------------------------
 
@@ -103,7 +125,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
                     <li key={player.id} className="flex justify-between items-center">
                         <span className="truncate">{player.name}</span>
                         {goals && goals > 0 ? (
-                            <span className="ml-2 font-bold text-white bg-gray-500/50 text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">{goals}</span>
+                            <span className="ml-2 font-bold text-gray-900 bg-gray-200 text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">{goals}</span>
                         ) : null}
                     </li>
                 );
@@ -112,22 +134,22 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     );
 
     return (
-        <div className="bg-gray-600/50 p-4 rounded-lg flex flex-col">
+        <div className="bg-slate-700 p-4 rounded-xl shadow-md flex flex-col border border-slate-600">
             <div className="flex-grow grid grid-cols-2 gap-4">
                 {/* Team 1 */}
                 <div>
-                    <h4 className="font-semibold text-base text-gray-300 truncate mb-2">Team {result.team1Index + 1}</h4>
+                    <h4 className="font-bold text-base text-gray-200 truncate mb-3 border-b border-gray-600 pb-1">Team {result.team1Index + 1}</h4>
                     <PlayerListWithGoals players={team1Players} goalsMap={team1GoalsMap} />
                 </div>
                 {/* Team 2 */}
                 <div>
-                    <h4 className="font-semibold text-base text-gray-300 truncate mb-2">Team {result.team2Index + 1}</h4>
+                    <h4 className="font-bold text-base text-gray-200 truncate mb-3 border-b border-gray-600 pb-1">Team {result.team2Index + 1}</h4>
                     <PlayerListWithGoals players={team2Players} goalsMap={team2GoalsMap} />
                 </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-gray-500/50 text-center">
-                <p className="text-2xl font-bold text-white">
+            <div className="mt-4 pt-3 border-t border-slate-600 text-center">
+                <p className="text-3xl font-black text-white tracking-widest drop-shadow-md">
                     {score1} - {score2}
                 </p>
             </div>
@@ -149,56 +171,58 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
               <span className="font-bold text-lg text-white">{formatDate(session.date)}</span>
               
               <div className="flex items-center space-x-4">
-                {/* DE SHARE KNOP */}
+                {/* DE SCREENSHOT SHARE KNOP */}
                 <div 
-                    onClick={(e) => handleShareToWhatsApp(e, session)}
-                    className="p-2 bg-green-600 hover:bg-green-500 rounded-full text-white transition-colors cursor-pointer"
-                    title="Delen via WhatsApp"
+                    onClick={(e) => handleShareImage(e, session.date)}
+                    className="p-2 bg-cyan-600 hover:bg-cyan-500 rounded-full text-white transition-colors cursor-pointer shadow-lg"
+                    title="Deel afbeelding via WhatsApp"
                 >
-                    <ShareIcon className="w-5 h-5" />
+                   {isGeneratingImage && expandedDate === session.date ? (
+                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                   ) : (
+                       <CameraIcon className="w-5 h-5" />
+                   )}
                 </div>
-                {/* --------------- */}
+                {/* ------------------------- */}
                 
                 <span className={`transform transition-transform ${expandedDate === session.date ? 'rotate-180' : ''}`}>▼</span>
               </div>
             </button>
+            
+            {/* Dit ID gebruiken we om de foto te maken */}
             {expandedDate === session.date && (
-              <div className="p-4 border-t border-gray-600">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div id={`session-content-${session.date}`} className="p-6 border-t border-gray-600 bg-gray-800">
                   
-                  {/* Teams */}
-                  <div className="md:col-span-2 lg:col-span-3">
-                    <h3 className="text-xl font-semibold text-cyan-400 mb-3">Teams</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {session.teams.map((team, index) => (
-                        <div key={index} className="bg-gray-600 p-3 rounded-md">
-                           <h4 className="font-bold text-gray-200 mb-2">Team {index + 1}</h4>
-                           <ul className="text-sm text-gray-300 space-y-1">
-                            {team.map(p => <li key={p.id}>{p.name}</li>)}
-                           </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                {/* Header speciaal voor de screenshot (zichtbaar in app, maar ziet er cool uit op foto) */}
+                <div className="mb-6 text-center border-b border-gray-700 pb-4">
+                    <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+                        BOUNCEBALL
+                    </h3>
+                    <p className="text-gray-400 text-sm mt-1">{formatDate(session.date)}</p>
+                </div>
 
-                  {/* Results */}
+                <div className="grid grid-cols-1 gap-6">
+                  {/* Ronde 1 */}
                   <div>
-                    <h3 className="text-xl font-semibold text-cyan-400 mb-3">Ronde 1</h3>
-                    <div className="space-y-2">
+                    <h3 className="text-lg font-bold text-cyan-400 mb-3 uppercase tracking-wider">Ronde 1</h3>
+                    <div className="space-y-4">
                         {session.round1Results.map((r, i) => <MatchResultDisplay key={`r1-${i}`} result={r} teams={session.teams} />)}
                     </div>
                   </div>
-                  <div>
-                    {session.round2Results.length > 0 && (
-                        <>
-                            <h3 className="text-xl font-semibold text-cyan-400 mb-3">Ronde 2</h3>
-                            <div className="space-y-2">
-                                {session.round2Results.map((r, i) => <MatchResultDisplay key={`r2-${i}`} result={r} teams={session.teams} />)}
-                            </div>
-                        </>
-                    )}
-                  </div>
 
+                  {/* Ronde 2 (alleen als die er is) */}
+                  {session.round2Results.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-bold text-cyan-400 mb-3 uppercase tracking-wider mt-2">Ronde 2</h3>
+                        <div className="space-y-4">
+                            {session.round2Results.map((r, i) => <MatchResultDisplay key={`r2-${i}`} result={r} teams={session.teams} />)}
+                        </div>
+                      </div>
+                  )}
+                </div>
+                
+                <div className="mt-8 text-center text-gray-500 text-xs">
+                    Gegenereerd door Bounceball App
                 </div>
               </div>
             )}
