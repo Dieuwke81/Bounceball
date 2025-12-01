@@ -44,6 +44,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
   const handleShareImage = async (e: React.MouseEvent, sessionDate: string) => {
     e.stopPropagation();
     
+    // Zorg dat hij openklapt
     if (expandedDate !== sessionDate) {
         setExpandedDate(sessionDate);
         await new Promise(resolve => setTimeout(resolve, 300));
@@ -60,13 +61,27 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     setIsGeneratingImage(true);
 
     try {
+        // We forceren een breedte van 700px. Dit is de 'sweet spot' voor WhatsApp.
+        // Niet te breed (dan wordt tekst klein), niet te smal (dan past het niet naast elkaar).
+        const fixedWidth = 700; 
+
         const canvas = await html2canvas(element, {
             backgroundColor: '#111827', 
-            scale: 2, 
+            scale: 2, // Retina kwaliteit
             useCORS: true,
-            width: element.scrollWidth, 
-            height: element.scrollHeight,
-            windowWidth: 1200, // Forceer een desktop-breedte voor de render zodat alles past
+            width: fixedWidth, 
+            windowWidth: fixedWidth, // Dit vertelt de 'browser' in het script dat het venster breed is
+            onclone: (clonedDoc) => {
+                const clonedElement = clonedDoc.getElementById(elementId);
+                if (clonedElement) {
+                    // Hier dwingen we de kopie om breed te zijn, ongeacht je telefoonscherm
+                    clonedElement.style.width = `${fixedWidth}px`;
+                    clonedElement.style.minWidth = `${fixedWidth}px`;
+                    clonedElement.style.maxWidth = `${fixedWidth}px`;
+                    clonedElement.style.height = 'auto';
+                    clonedElement.style.padding = '2rem'; // Extra witruimte rondom
+                }
+            }
         });
 
         canvas.toBlob(async (blob) => {
@@ -112,20 +127,14 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     const PlayerListWithGoals: React.FC<{ players: Player[]; goalsMap: Map<number, number> }> = ({ players, goalsMap }) => (
         <ul className="space-y-1 mt-3">
             {players.map(player => {
-                // Hier halen we de score op, of 0 als er geen score is
                 const goals = goalsMap.get(player.id) || 0;
-                
-                // Check of deze speler gescoord heeft voor de kleur
                 const hasScored = goals > 0;
 
                 return (
                     <li key={player.id} className="flex justify-between items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0">
-                        {/* Naam van de speler */}
-                        <span className={`text-sm whitespace-nowrap mr-2 ${hasScored ? 'text-gray-100 font-medium' : 'text-gray-400'}`}>
+                        <span className={`text-sm whitespace-nowrap mr-2 ${hasScored ? 'text-gray-100 font-bold' : 'text-gray-400'}`}>
                             {player.name}
                         </span>
-
-                        {/* De Score: Geen bolletje meer, gewoon tekst */}
                         <span className={`text-base font-bold ${hasScored ? 'text-cyan-400' : 'text-gray-600'}`}>
                             {goals}
                         </span>
@@ -136,16 +145,17 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     );
 
     return (
-        <div className="bg-gray-700/80 p-5 rounded-xl border border-gray-600 shadow-md flex flex-col">
+        // Kleuren iets aangepast voor beter contrast in de foto
+        <div className="bg-gray-800 p-5 rounded-xl border border-gray-600/50 shadow-md flex flex-col">
             <div className="flex-grow grid grid-cols-2 gap-8">
                 {/* Team 1 */}
                 <div className="overflow-hidden">
-                    <h4 className="font-bold text-lg text-cyan-400 mb-2 border-b border-gray-500 pb-2 truncate">Team {result.team1Index + 1}</h4>
+                    <h4 className="font-bold text-lg text-cyan-400 mb-2 border-b border-gray-600 pb-2 truncate">Team {result.team1Index + 1}</h4>
                     <PlayerListWithGoals players={team1Players} goalsMap={team1GoalsMap} />
                 </div>
                 {/* Team 2 */}
                 <div className="overflow-hidden">
-                    <h4 className="font-bold text-lg text-cyan-400 mb-2 border-b border-gray-500 pb-2 truncate">Team {result.team2Index + 1}</h4>
+                    <h4 className="font-bold text-lg text-cyan-400 mb-2 border-b border-gray-600 pb-2 truncate">Team {result.team2Index + 1}</h4>
                     <PlayerListWithGoals players={team2Players} goalsMap={team2GoalsMap} />
                 </div>
             </div>
@@ -188,46 +198,48 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
               </div>
             </button>
             
-            {/* Capture Area */}
             {expandedDate === session.date && (
-              <div id={`session-content-${session.date}`} className="p-6 bg-gray-900 border-t border-gray-600 w-full" style={{ minWidth: '400px' }}>
-                  
-                <div className="mb-8 text-center">
-                    <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight" style={{WebkitTextFillColor: '#22d3ee'}}>
-                        BOUNCEBALL
-                    </h3>
-                    <div className="h-1 w-24 bg-cyan-500 mx-auto my-2 rounded-full"></div>
-                    <p className="text-gray-300 font-medium text-lg mt-1 uppercase tracking-wide">{formatDate(session.date)}</p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-8">
-                  {/* Ronde 1 */}
-                  <div>
-                    <div className="flex items-center mb-4">
-                        <div className="h-8 w-1 bg-cyan-500 rounded-full mr-3"></div>
-                        <h3 className="text-2xl font-bold text-white uppercase tracking-wider">Ronde 1</h3>
+              <div id={`session-content-${session.date}`} className="bg-gray-900 border-t border-gray-600">
+                {/* Deze div is normaal zichtbaar, maar wordt door onClone geforceerd naar 700px breedte tijdens de foto */}
+                <div className="p-6 w-full"> 
+                    
+                    <div className="mb-8 text-center">
+                        <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight" style={{WebkitTextFillColor: '#22d3ee'}}>
+                            BOUNCEBALL
+                        </h3>
+                        <div className="h-1 w-24 bg-cyan-500 mx-auto my-2 rounded-full"></div>
+                        <p className="text-gray-300 font-medium text-lg mt-1 uppercase tracking-wide">{formatDate(session.date)}</p>
                     </div>
-                    <div className="space-y-6">
-                        {session.round1Results.map((r, i) => <MatchResultDisplay key={`r1-${i}`} result={r} teams={session.teams} />)}
-                    </div>
-                  </div>
 
-                  {/* Ronde 2 */}
-                  {session.round2Results.length > 0 && (
-                      <div>
-                        <div className="flex items-center mb-4 mt-4">
-                            <div className="h-8 w-1 bg-fuchsia-500 rounded-full mr-3"></div>
-                            <h3 className="text-2xl font-bold text-white uppercase tracking-wider">Ronde 2</h3>
+                    <div className="grid grid-cols-1 gap-8">
+                    {/* Ronde 1 */}
+                    <div>
+                        <div className="flex items-center mb-4">
+                            <div className="h-8 w-1 bg-cyan-500 rounded-full mr-3"></div>
+                            <h3 className="text-2xl font-bold text-white uppercase tracking-wider">Ronde 1</h3>
                         </div>
                         <div className="space-y-6">
-                            {session.round2Results.map((r, i) => <MatchResultDisplay key={`r2-${i}`} result={r} teams={session.teams} />)}
+                            {session.round1Results.map((r, i) => <MatchResultDisplay key={`r1-${i}`} result={r} teams={session.teams} />)}
                         </div>
-                      </div>
-                  )}
-                </div>
-                
-                <div className="mt-10 pt-4 border-t border-gray-800 text-center text-gray-500 text-sm font-medium">
-                    Gegenereerd door Bounceball App 🏆
+                    </div>
+
+                    {/* Ronde 2 */}
+                    {session.round2Results.length > 0 && (
+                        <div>
+                            <div className="flex items-center mb-4 mt-4">
+                                <div className="h-8 w-1 bg-fuchsia-500 rounded-full mr-3"></div>
+                                <h3 className="text-2xl font-bold text-white uppercase tracking-wider">Ronde 2</h3>
+                            </div>
+                            <div className="space-y-6">
+                                {session.round2Results.map((r, i) => <MatchResultDisplay key={`r2-${i}`} result={r} teams={session.teams} />)}
+                            </div>
+                        </div>
+                    )}
+                    </div>
+                    
+                    <div className="mt-10 pt-4 border-t border-gray-800 text-center text-gray-500 text-sm font-medium">
+                        Gegenereerd door Bounceball App 🏆
+                    </div>
                 </div>
               </div>
             )}
