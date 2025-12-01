@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import type { GameSession, Player, MatchResult } from '../types';
 import html2canvas from 'html2canvas';
 
-// Camera/Share icon
 const CameraIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
     <path d="M12 9a3.75 3.75 0 1 0 0 7.5A3.75 3.75 0 0 0 12 9Z" />
@@ -44,7 +43,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
   const handleShareImage = async (e: React.MouseEvent, sessionDate: string) => {
     e.stopPropagation();
     
-    // Zorg dat hij openklapt
     if (expandedDate !== sessionDate) {
         setExpandedDate(sessionDate);
         await new Promise(resolve => setTimeout(resolve, 300));
@@ -61,25 +59,22 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     setIsGeneratingImage(true);
 
     try {
-        // We forceren een breedte van 700px. Dit is de 'sweet spot' voor WhatsApp.
-        // Niet te breed (dan wordt tekst klein), niet te smal (dan past het niet naast elkaar).
         const fixedWidth = 700; 
 
         const canvas = await html2canvas(element, {
             backgroundColor: '#111827', 
-            scale: 2, // Retina kwaliteit
+            scale: 2, 
             useCORS: true,
             width: fixedWidth, 
-            windowWidth: fixedWidth, // Dit vertelt de 'browser' in het script dat het venster breed is
+            windowWidth: fixedWidth,
             onclone: (clonedDoc) => {
                 const clonedElement = clonedDoc.getElementById(elementId);
                 if (clonedElement) {
-                    // Hier dwingen we de kopie om breed te zijn, ongeacht je telefoonscherm
                     clonedElement.style.width = `${fixedWidth}px`;
                     clonedElement.style.minWidth = `${fixedWidth}px`;
                     clonedElement.style.maxWidth = `${fixedWidth}px`;
                     clonedElement.style.height = 'auto';
-                    clonedElement.style.padding = '2rem'; // Extra witruimte rondom
+                    clonedElement.style.padding = '2rem';
                 }
             }
         });
@@ -124,7 +119,31 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     const team1GoalsMap = new Map(result.team1Goals.map(g => [g.playerId, g.count]));
     const team2GoalsMap = new Map(result.team2Goals.map(g => [g.playerId, g.count]));
 
-    const PlayerListWithGoals: React.FC<{ players: Player[]; goalsMap: Map<number, number> }> = ({ players, goalsMap }) => (
+    // --- DE SLIMME KLEUREN LOGICA ---
+    // Stap 1: Bepaal de 'standaard' kleur (Even index = Blauw, Oneven index = Geel)
+    // Team 1 (index 0), 3 (2), 5 (4) -> BLAUW
+    // Team 2 (index 1), 4 (3), 6 (5) -> GEEL
+    const getBaseColor = (idx: number) => (idx % 2 === 0 ? 'blue' : 'yellow');
+
+    const baseColor1 = getBaseColor(result.team1Index);
+    const baseColor2 = getBaseColor(result.team2Index);
+
+    let finalColor1 = baseColor1;
+    let finalColor2 = baseColor2;
+
+    // Stap 2: Conflict Check. Als ze dezelfde kleur hebben, wissel de tweede.
+    if (baseColor1 === baseColor2) {
+        finalColor2 = (baseColor2 === 'blue' ? 'yellow' : 'blue');
+    }
+
+    // Stap 3: Vertaal naar Tailwind classes
+    const getColorClass = (color: string) => color === 'blue' ? 'text-cyan-400' : 'text-amber-400';
+    
+    const colorClassTeam1 = getColorClass(finalColor1);
+    const colorClassTeam2 = getColorClass(finalColor2);
+    // --------------------------------
+
+    const PlayerListWithGoals: React.FC<{ players: Player[]; goalsMap: Map<number, number>; scoreColorClass: string }> = ({ players, goalsMap, scoreColorClass }) => (
         <ul className="space-y-1 mt-3">
             {players.map(player => {
                 const goals = goalsMap.get(player.id) || 0;
@@ -132,10 +151,11 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
 
                 return (
                     <li key={player.id} className="flex justify-between items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0">
-                        <span className={`text-sm whitespace-nowrap mr-2 ${hasScored ? 'text-gray-100 font-bold' : 'text-gray-400'}`}>
+                        <span className={`text-sm whitespace-nowrap mr-2 ${hasScored ? 'text-gray-100 font-medium' : 'text-gray-400'}`}>
                             {player.name}
                         </span>
-                        <span className={`text-base font-bold ${hasScored ? 'text-cyan-400' : 'text-gray-600'}`}>
+                        {/* Als gescoord: teamkleur. Als 0: donkergrijs. */}
+                        <span className={`text-base font-bold ${hasScored ? scoreColorClass : 'text-gray-600'}`}>
                             {goals}
                         </span>
                     </li>
@@ -145,25 +165,37 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     );
 
     return (
-        // Kleuren iets aangepast voor beter contrast in de foto
         <div className="bg-gray-800 p-5 rounded-xl border border-gray-600/50 shadow-md flex flex-col">
             <div className="flex-grow grid grid-cols-2 gap-8">
-                {/* Team 1 */}
+                {/* Linker Team */}
                 <div className="overflow-hidden">
-                    <h4 className="font-bold text-lg text-cyan-400 mb-2 border-b border-gray-600 pb-2 truncate">Team {result.team1Index + 1}</h4>
-                    <PlayerListWithGoals players={team1Players} goalsMap={team1GoalsMap} />
+                    <h4 className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${colorClassTeam1}`}>
+                        Team {result.team1Index + 1}
+                    </h4>
+                    <PlayerListWithGoals 
+                        players={team1Players} 
+                        goalsMap={team1GoalsMap} 
+                        scoreColorClass={colorClassTeam1} 
+                    />
                 </div>
-                {/* Team 2 */}
+                {/* Rechter Team */}
                 <div className="overflow-hidden">
-                    <h4 className="font-bold text-lg text-cyan-400 mb-2 border-b border-gray-600 pb-2 truncate">Team {result.team2Index + 1}</h4>
-                    <PlayerListWithGoals players={team2Players} goalsMap={team2GoalsMap} />
+                    <h4 className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${colorClassTeam2}`}>
+                        Team {result.team2Index + 1}
+                    </h4>
+                    <PlayerListWithGoals 
+                        players={team2Players} 
+                        goalsMap={team2GoalsMap} 
+                        scoreColorClass={colorClassTeam2} 
+                    />
                 </div>
             </div>
 
-            <div className="mt-6 pt-2 border-t border-gray-600 text-center">
-                <p className="text-4xl font-black text-white tracking-widest drop-shadow-md">
-                    {score1} - {score2}
-                </p>
+            {/* Totale Score (in kleur) */}
+            <div className="mt-6 pt-2 border-t border-gray-600 text-center flex justify-center items-center gap-4">
+                <span className={`text-4xl font-black tracking-widest drop-shadow-md ${colorClassTeam1}`}>{score1}</span>
+                <span className="text-2xl font-bold text-gray-500">-</span>
+                <span className={`text-4xl font-black tracking-widest drop-shadow-md ${colorClassTeam2}`}>{score2}</span>
             </div>
         </div>
     );
@@ -200,14 +232,13 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
             
             {expandedDate === session.date && (
               <div id={`session-content-${session.date}`} className="bg-gray-900 border-t border-gray-600">
-                {/* Deze div is normaal zichtbaar, maar wordt door onClone geforceerd naar 700px breedte tijdens de foto */}
                 <div className="p-6 w-full"> 
                     
                     <div className="mb-8 text-center">
-                        <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight" style={{WebkitTextFillColor: '#22d3ee'}}>
+                        <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-amber-400 tracking-tight">
                             BOUNCEBALL
                         </h3>
-                        <div className="h-1 w-24 bg-cyan-500 mx-auto my-2 rounded-full"></div>
+                        <div className="h-1 w-32 bg-gradient-to-r from-cyan-400 to-amber-400 mx-auto my-2 rounded-full"></div>
                         <p className="text-gray-300 font-medium text-lg mt-1 uppercase tracking-wide">{formatDate(session.date)}</p>
                     </div>
 
@@ -215,7 +246,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
                     {/* Ronde 1 */}
                     <div>
                         <div className="flex items-center mb-4">
-                            <div className="h-8 w-1 bg-cyan-500 rounded-full mr-3"></div>
+                            <div className="h-8 w-1 bg-gradient-to-b from-cyan-400 to-amber-400 rounded-full mr-3"></div>
                             <h3 className="text-2xl font-bold text-white uppercase tracking-wider">Ronde 1</h3>
                         </div>
                         <div className="space-y-6">
@@ -227,7 +258,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
                     {session.round2Results.length > 0 && (
                         <div>
                             <div className="flex items-center mb-4 mt-4">
-                                <div className="h-8 w-1 bg-fuchsia-500 rounded-full mr-3"></div>
+                                <div className="h-8 w-1 bg-gradient-to-b from-amber-400 to-cyan-400 rounded-full mr-3"></div>
                                 <h3 className="text-2xl font-bold text-white uppercase tracking-wider">Ronde 2</h3>
                             </div>
                             <div className="space-y-6">
