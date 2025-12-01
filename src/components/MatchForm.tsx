@@ -8,7 +8,6 @@ interface MatchFormProps {
 }
 
 const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
-  // Genereer de wedstrijden
   const matches = [];
   for (let i = 0; i < teams.length; i += 2) {
     if (teams[i + 1]) {
@@ -27,29 +26,22 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
     year: 'numeric'
   });
 
-  // We gebruiken createPortal om dit component buiten de normale App-structuur te renderen.
-  // Dit maakt het makkelijker om de rest van de app te verbergen tijdens het printen.
   return createPortal(
     <div className="print-portal hidden">
       <style>
         {`
           @media print {
-            /* 1. Reset de hele pagina: witte achtergrond, geen margins */
             html, body {
               background: white !important;
-              background-image: none !important; /* Forceer logo weg */
+              background-image: none !important;
               height: auto !important;
               overflow: visible !important;
               margin: 0 !important;
               padding: 0 !important;
             }
-
-            /* 2. Verberg de normale React App (#root is standaard, soms heet het anders, dus we pakken alles behalve onze portal) */
             body > *:not(.print-portal) {
               display: none !important;
             }
-
-            /* 3. Toon onze Portal en positioneer hem linksboven */
             .print-portal {
               display: block !important;
               position: absolute;
@@ -61,14 +53,10 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               background-color: white;
               color: black;
             }
-
-            /* 4. Printer instellingen */
             @page {
               size: A4;
               margin: 10mm;
             }
-
-            /* 5. Forceer page-breaks per wedstrijd */
             .match-page {
               page-break-after: always;
               break-after: page;
@@ -76,14 +64,10 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               display: flex;
               flex-direction: column;
             }
-
-            /* Geen lege pagina na de laatste */
             .match-page:last-child {
               page-break-after: auto;
               break-after: auto;
             }
-            
-            /* Zorg dat kleuren geprint worden */
             * {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
@@ -119,16 +103,20 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                 <table className="w-full border-collapse border border-black text-sm mb-4">
                     <thead>
                         <tr>
-                            <th className="border border-black bg-blue-600 text-white w-[35%] py-2 text-lg uppercase">
+                            {/* AANGEPAST: Breedte van 35% naar 25% voor namen */}
+                            <th className="border border-black bg-blue-600 text-white w-[25%] py-2 text-lg uppercase">
                                 TEAM BLAUW
                             </th>
-                            <th className="border border-black w-[15%] py-2 text-center text-gray-500 text-xs text-black">
+                            {/* AANGEPAST: Breedte van 15% naar 25% voor doelpunten */}
+                            <th className="border border-black w-[25%] py-2 text-center text-gray-500 text-xs text-black">
                                 Doelpunten
                             </th>
-                            <th className="border border-black bg-yellow-300 text-black w-[35%] py-2 text-lg uppercase">
+                            
+                            {/* Zelfde aanpassing voor Geel */}
+                            <th className="border border-black bg-yellow-300 text-black w-[25%] py-2 text-lg uppercase">
                                 TEAM GEEL
                             </th>
-                            <th className="border border-black w-[15%] py-2 text-center text-gray-500 text-xs text-black">
+                            <th className="border border-black w-[25%] py-2 text-center text-gray-500 text-xs text-black">
                                 Doelpunten
                             </th>
                         </tr>
@@ -166,16 +154,17 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                 <table className="w-full border-collapse border border-black text-sm mb-4">
                     <thead>
                         <tr>
-                            <th className="border border-black bg-blue-600 text-white w-[35%] py-2 text-lg uppercase">
+                            {/* AANGEPAST: Ook hier 25% / 25% */}
+                            <th className="border border-black bg-blue-600 text-white w-[25%] py-2 text-lg uppercase">
                                 TEAM BLAUW
                             </th>
-                            <th className="border border-black w-[15%] py-2 text-center text-gray-500 text-xs text-black">
+                            <th className="border border-black w-[25%] py-2 text-center text-gray-500 text-xs text-black">
                                 Doelpunten
                             </th>
-                            <th className="border border-black bg-yellow-300 text-black w-[35%] py-2 text-lg uppercase">
+                            <th className="border border-black bg-yellow-300 text-black w-[25%] py-2 text-lg uppercase">
                                 TEAM GEEL
                             </th>
-                            <th className="border border-black w-[15%] py-2 text-center text-gray-500 text-xs text-black">
+                            <th className="border border-black w-[25%] py-2 text-center text-gray-500 text-xs text-black">
                                 Doelpunten
                             </th>
                         </tr>
@@ -209,7 +198,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
         );
       })}
     </div>,
-    document.body // <-- DIT IS DE MAGIE: Render direct aan de body!
+    document.body
   );
 };
 
