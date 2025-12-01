@@ -120,9 +120,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     const team2GoalsMap = new Map(result.team2Goals.map(g => [g.playerId, g.count]));
 
     // --- DE SLIMME KLEUREN LOGICA ---
-    // Stap 1: Bepaal de 'standaard' kleur (Even index = Blauw, Oneven index = Geel)
-    // Team 1 (index 0), 3 (2), 5 (4) -> BLAUW
-    // Team 2 (index 1), 4 (3), 6 (5) -> GEEL
     const getBaseColor = (idx: number) => (idx % 2 === 0 ? 'blue' : 'yellow');
 
     const baseColor1 = getBaseColor(result.team1Index);
@@ -131,12 +128,10 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     let finalColor1 = baseColor1;
     let finalColor2 = baseColor2;
 
-    // Stap 2: Conflict Check. Als ze dezelfde kleur hebben, wissel de tweede.
     if (baseColor1 === baseColor2) {
         finalColor2 = (baseColor2 === 'blue' ? 'yellow' : 'blue');
     }
 
-    // Stap 3: Vertaal naar Tailwind classes
     const getColorClass = (color: string) => color === 'blue' ? 'text-cyan-400' : 'text-amber-400';
     
     const colorClassTeam1 = getColorClass(finalColor1);
@@ -154,7 +149,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
                         <span className={`text-sm whitespace-nowrap mr-2 ${hasScored ? 'text-gray-100 font-medium' : 'text-gray-400'}`}>
                             {player.name}
                         </span>
-                        {/* Als gescoord: teamkleur. Als 0: donkergrijs. */}
                         <span className={`text-base font-bold ${hasScored ? scoreColorClass : 'text-gray-600'}`}>
                             {goals}
                         </span>
@@ -234,7 +228,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
               <div id={`session-content-${session.date}`} className="bg-gray-900 border-t border-gray-600">
                 <div className="p-6 w-full"> 
                     
-                    {/* AANGEPAST: Geen gradient meer, maar gewoon groen */}
+                    {/* Header aangepast naar Groen */}
                     <div className="mb-8 text-center">
                         <h3 className="text-4xl font-black text-green-500 tracking-tight">
                             BOUNCEBALL
@@ -242,13 +236,12 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
                         <div className="h-1 w-32 bg-green-500 mx-auto my-2 rounded-full"></div>
                         <p className="text-gray-300 font-medium text-lg mt-1 uppercase tracking-wide">{formatDate(session.date)}</p>
                     </div>
-                    {/* ----------------------------------------------- */}
 
                     <div className="grid grid-cols-1 gap-8">
-                    {/* Ronde 1 */}
+                    {/* Ronde 1 - Groen streepje */}
                     <div>
                         <div className="flex items-center mb-4">
-                            <div className="h-8 w-1 bg-gradient-to-b from-cyan-400 to-amber-400 rounded-full mr-3"></div>
+                            <div className="h-8 w-1 bg-green-500 rounded-full mr-3"></div>
                             <h3 className="text-2xl font-bold text-white uppercase tracking-wider">Ronde 1</h3>
                         </div>
                         <div className="space-y-6">
@@ -256,11 +249,11 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
                         </div>
                     </div>
 
-                    {/* Ronde 2 */}
+                    {/* Ronde 2 - Groen streepje */}
                     {session.round2Results.length > 0 && (
                         <div>
                             <div className="flex items-center mb-4 mt-4">
-                                <div className="h-8 w-1 bg-gradient-to-b from-amber-400 to-cyan-400 rounded-full mr-3"></div>
+                                <div className="h-8 w-1 bg-green-500 rounded-full mr-3"></div>
                                 <h3 className="text-2xl font-bold text-white uppercase tracking-wider">Ronde 2</h3>
                             </div>
                             <div className="space-y-6">
@@ -271,7 +264,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
                     </div>
                     
                     <div className="mt-10 pt-4 border-t border-gray-800 text-center text-gray-500 text-sm font-medium">
-                        Gegenereerd door de Bounceball App 🏆
+                        Gegenereerd door Bounceball App 🏆
                     </div>
                 </div>
               </div>
