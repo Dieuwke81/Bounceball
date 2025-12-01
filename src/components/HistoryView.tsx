@@ -78,7 +78,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     processResults('Ronde 1', session.round1Results);
     processResults('Ronde 2', session.round2Results);
 
-    text += '_Gegenereerd met Bounceball_ 🏆';
+    text += '_Gegenereerd met de Bounceball-app_ 🏆';
 
     // Open WhatsApp
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
