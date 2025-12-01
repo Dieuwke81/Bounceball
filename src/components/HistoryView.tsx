@@ -61,9 +61,12 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
 
     try {
         const canvas = await html2canvas(element, {
-            backgroundColor: '#111827', // Zeer donkere achtergrond (gray-900)
+            backgroundColor: '#111827', 
             scale: 2, 
             useCORS: true,
+            // Deze optie zorgt dat hij de volledige breedte berekent en niet afsnijdt
+            width: element.scrollWidth + 10, 
+            height: element.scrollHeight,
         });
 
         canvas.toBlob(async (blob) => {
@@ -111,11 +114,12 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
             {players.map(player => {
                 const goals = goalsMap.get(player.id);
                 return (
-                    <li key={player.id} className="flex justify-between items-center text-gray-100">
-                        <span className="truncate font-medium">{player.name}</span>
+                    <li key={player.id} className="flex justify-between items-center text-gray-100 pr-1">
+                        {/* AANPASSING 1: 'truncate' weggehaald, nu 'whitespace-nowrap' zodat naam heel blijft */}
+                        <span className="font-medium whitespace-nowrap mr-2">{player.name}</span>
                         {goals && goals > 0 ? (
-                            // HIER ZAT DE FOUT: Nu harde kleuren (Cyan achtergrond, Witte tekst)
-                            <span className="ml-3 font-bold text-white bg-cyan-600 text-xs rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 border border-cyan-400 shadow-sm">
+                            // AANPASSING 2: Cirkel groter gemaakt (w-7 h-7) en text-sm
+                            <span className="font-bold text-white bg-cyan-600 text-sm rounded-full w-7 h-7 flex items-center justify-center flex-shrink-0 border border-cyan-400 shadow-sm">
                                 {goals}
                             </span>
                         ) : null}
@@ -126,17 +130,16 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     );
 
     return (
-        // Lighter gray background for cards for better contrast
-        <div className="bg-gray-700/80 p-5 rounded-xl border border-gray-600 shadow-md flex flex-col">
+        <div className="bg-gray-700/80 p-5 rounded-xl border border-gray-600 shadow-md flex flex-col overflow-visible">
             <div className="flex-grow grid grid-cols-2 gap-6">
                 {/* Team 1 */}
-                <div>
-                    <h4 className="font-bold text-lg text-cyan-400 truncate mb-2 border-b border-gray-500 pb-2">Team {result.team1Index + 1}</h4>
+                <div className="overflow-visible">
+                    <h4 className="font-bold text-lg text-cyan-400 mb-2 border-b border-gray-500 pb-2 truncate">Team {result.team1Index + 1}</h4>
                     <PlayerListWithGoals players={team1Players} goalsMap={team1GoalsMap} />
                 </div>
                 {/* Team 2 */}
-                <div>
-                    <h4 className="font-bold text-lg text-cyan-400 truncate mb-2 border-b border-gray-500 pb-2">Team {result.team2Index + 1}</h4>
+                <div className="overflow-visible">
+                    <h4 className="font-bold text-lg text-cyan-400 mb-2 border-b border-gray-500 pb-2 truncate">Team {result.team2Index + 1}</h4>
                     <PlayerListWithGoals players={team2Players} goalsMap={team2GoalsMap} />
                 </div>
             </div>
@@ -179,11 +182,10 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
               </div>
             </button>
             
-            {/* Dit is het gedeelte dat op de foto komt */}
+            {/* Capture Area */}
             {expandedDate === session.date && (
-              <div id={`session-content-${session.date}`} className="p-6 bg-gray-900 border-t border-gray-600">
+              <div id={`session-content-${session.date}`} className="p-6 bg-gray-900 border-t border-gray-600 w-full" style={{ minWidth: '350px' }}>
                   
-                {/* Header op de foto */}
                 <div className="mb-8 text-center">
                     <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight" style={{WebkitTextFillColor: '#22d3ee'}}>
                         BOUNCEBALL
