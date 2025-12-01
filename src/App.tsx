@@ -140,11 +140,14 @@ useEffect(() => {
     setIsLoading(true);
     setError(null);
     try {
-      const { players, history, competitionName: name } = await getInitialData();
-        setRatingLogs(ratingLogs || []);
-      setPlayers(players);
-      setHistory(history);
-      setCompetitionName(name || null);
+      // DIT IS DE CORRECTE CODE
+const { players, history, competitionName: name, ratingLogs: logs } = await getInitialData(); 
+//                                               ^^^^^^^^^^^^^^^^^  <-- DIT ONTBRAK
+
+setPlayers(players);
+setHistory(history);
+setCompetitionName(name || null);
+setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
     } catch (e: any) {
       setError(e.message || "Er is een onbekende fout opgetreden bij het laden van de gegevens.");
     } finally {
