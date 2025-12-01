@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import type { Player } from '../types';
 
 interface MatchFormProps {
@@ -7,7 +8,7 @@ interface MatchFormProps {
 }
 
 const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
-  // 1. Verdeel de teams in paren (wedstrijden)
+  // Genereer de wedstrijden
   const matches = [];
   for (let i = 0; i < teams.length; i += 2) {
     if (teams[i + 1]) {
@@ -26,45 +27,52 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
     year: 'numeric'
   });
 
-  return (
-    <div className="print-container hidden">
+  // We gebruiken createPortal om dit component buiten de normale App-structuur te renderen.
+  // Dit maakt het makkelijker om de rest van de app te verbergen tijdens het printen.
+  return createPortal(
+    <div className="print-portal hidden">
       <style>
         {`
           @media print {
-            /* 1. Verberg ALLES in de app */
-            body * {
-              visibility: hidden;
+            /* 1. Reset de hele pagina: witte achtergrond, geen margins */
+            html, body {
+              background: white !important;
+              background-image: none !important; /* Forceer logo weg */
+              height: auto !important;
+              overflow: visible !important;
+              margin: 0 !important;
+              padding: 0 !important;
             }
 
-            /* 2. Maak alleen onze print-container zichtbaar */
-            .print-container, .print-container * {
-              visibility: visible;
+            /* 2. Verberg de normale React App (#root is standaard, soms heet het anders, dus we pakken alles behalve onze portal) */
+            body > *:not(.print-portal) {
+              display: none !important;
             }
 
-            /* 3. Positioneer de container absoluut bovenaan (NIET fixed!) */
-            .print-container {
+            /* 3. Toon onze Portal en positioneer hem linksboven */
+            .print-portal {
               display: block !important;
               position: absolute;
-              left: 0;
               top: 0;
+              left: 0;
               width: 100%;
               margin: 0;
-              padding: 0;
+              z-index: 9999;
               background-color: white;
               color: black;
             }
 
+            /* 4. Printer instellingen */
             @page {
               size: A4;
               margin: 10mm;
             }
 
-            /* 4. Forceer page-breaks correct per wedstrijd */
+            /* 5. Forceer page-breaks per wedstrijd */
             .match-page {
               page-break-after: always;
               break-after: page;
-              min-height: 90vh; 
-              width: 100%;
+              min-height: 90vh;
               display: flex;
               flex-direction: column;
             }
@@ -76,16 +84,15 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
             }
             
             /* Zorg dat kleuren geprint worden */
-            body {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
           }
         `}
       </style>
 
       {matches.map((match, index) => {
-        // Zorg dat de tabel altijd minimaal 6 regels heeft
         const maxRows = Math.max(match.blue.length, match.yellow.length, 6);
         const rows = Array.from({ length: maxRows });
 
@@ -201,7 +208,8 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
           </div>
         );
       })}
-    </div>
+    </div>,
+    document.body // <-- DIT IS DE MAGIE: Render direct aan de body!
   );
 };
 
