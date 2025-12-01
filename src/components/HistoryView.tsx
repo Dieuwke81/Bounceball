@@ -64,9 +64,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
             backgroundColor: '#111827', 
             scale: 2, 
             useCORS: true,
-            // Deze optie zorgt dat hij de volledige breedte berekent en niet afsnijdt
-            width: element.scrollWidth + 10, 
+            width: element.scrollWidth, 
             height: element.scrollHeight,
+            windowWidth: 1200, // Forceer een desktop-breedte voor de render zodat alles past
         });
 
         canvas.toBlob(async (blob) => {
@@ -110,19 +110,25 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     const team2GoalsMap = new Map(result.team2Goals.map(g => [g.playerId, g.count]));
 
     const PlayerListWithGoals: React.FC<{ players: Player[]; goalsMap: Map<number, number> }> = ({ players, goalsMap }) => (
-        <ul className="text-sm space-y-2 mt-2">
+        <ul className="space-y-1 mt-3">
             {players.map(player => {
-                const goals = goalsMap.get(player.id);
+                // Hier halen we de score op, of 0 als er geen score is
+                const goals = goalsMap.get(player.id) || 0;
+                
+                // Check of deze speler gescoord heeft voor de kleur
+                const hasScored = goals > 0;
+
                 return (
-                    <li key={player.id} className="flex justify-between items-center text-gray-100 pr-1">
-                        {/* AANPASSING 1: 'truncate' weggehaald, nu 'whitespace-nowrap' zodat naam heel blijft */}
-                        <span className="font-medium whitespace-nowrap mr-2">{player.name}</span>
-                        {goals && goals > 0 ? (
-                            // AANPASSING 2: Cirkel groter gemaakt (w-7 h-7) en text-sm
-                            <span className="font-bold text-white bg-cyan-600 text-sm rounded-full w-7 h-7 flex items-center justify-center flex-shrink-0 border border-cyan-400 shadow-sm">
-                                {goals}
-                            </span>
-                        ) : null}
+                    <li key={player.id} className="flex justify-between items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0">
+                        {/* Naam van de speler */}
+                        <span className={`text-sm whitespace-nowrap mr-2 ${hasScored ? 'text-gray-100 font-medium' : 'text-gray-400'}`}>
+                            {player.name}
+                        </span>
+
+                        {/* De Score: Geen bolletje meer, gewoon tekst */}
+                        <span className={`text-base font-bold ${hasScored ? 'text-cyan-400' : 'text-gray-600'}`}>
+                            {goals}
+                        </span>
                     </li>
                 );
             })}
@@ -130,22 +136,22 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     );
 
     return (
-        <div className="bg-gray-700/80 p-5 rounded-xl border border-gray-600 shadow-md flex flex-col overflow-visible">
-            <div className="flex-grow grid grid-cols-2 gap-6">
+        <div className="bg-gray-700/80 p-5 rounded-xl border border-gray-600 shadow-md flex flex-col">
+            <div className="flex-grow grid grid-cols-2 gap-8">
                 {/* Team 1 */}
-                <div className="overflow-visible">
+                <div className="overflow-hidden">
                     <h4 className="font-bold text-lg text-cyan-400 mb-2 border-b border-gray-500 pb-2 truncate">Team {result.team1Index + 1}</h4>
                     <PlayerListWithGoals players={team1Players} goalsMap={team1GoalsMap} />
                 </div>
                 {/* Team 2 */}
-                <div className="overflow-visible">
+                <div className="overflow-hidden">
                     <h4 className="font-bold text-lg text-cyan-400 mb-2 border-b border-gray-500 pb-2 truncate">Team {result.team2Index + 1}</h4>
                     <PlayerListWithGoals players={team2Players} goalsMap={team2GoalsMap} />
                 </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-gray-500 text-center bg-gray-800/50 rounded-lg mx-auto w-full">
-                <p className="text-4xl font-black text-white tracking-widest drop-shadow-lg py-2">
+            <div className="mt-6 pt-2 border-t border-gray-600 text-center">
+                <p className="text-4xl font-black text-white tracking-widest drop-shadow-md">
                     {score1} - {score2}
                 </p>
             </div>
@@ -184,7 +190,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
             
             {/* Capture Area */}
             {expandedDate === session.date && (
-              <div id={`session-content-${session.date}`} className="p-6 bg-gray-900 border-t border-gray-600 w-full" style={{ minWidth: '350px' }}>
+              <div id={`session-content-${session.date}`} className="p-6 bg-gray-900 border-t border-gray-600 w-full" style={{ minWidth: '400px' }}>
                   
                 <div className="mb-8 text-center">
                     <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight" style={{WebkitTextFillColor: '#22d3ee'}}>
