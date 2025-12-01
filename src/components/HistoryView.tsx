@@ -234,13 +234,15 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
               <div id={`session-content-${session.date}`} className="bg-gray-900 border-t border-gray-600">
                 <div className="p-6 w-full"> 
                     
+                    {/* AANGEPAST: Geen gradient meer, maar gewoon groen */}
                     <div className="mb-8 text-center">
-                        <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-amber-400 tracking-tight">
+                        <h3 className="text-4xl font-black text-green-500 tracking-tight">
                             BOUNCEBALL
                         </h3>
-                        <div className="h-1 w-32 bg-gradient-to-r from-cyan-400 to-amber-400 mx-auto my-2 rounded-full"></div>
+                        <div className="h-1 w-32 bg-green-500 mx-auto my-2 rounded-full"></div>
                         <p className="text-gray-300 font-medium text-lg mt-1 uppercase tracking-wide">{formatDate(session.date)}</p>
                     </div>
+                    {/* ----------------------------------------------- */}
 
                     <div className="grid grid-cols-1 gap-8">
                     {/* Ronde 1 */}
@@ -269,7 +271,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
                     </div>
                     
                     <div className="mt-10 pt-4 border-t border-gray-800 text-center text-gray-500 text-sm font-medium">
-                        Gegenereerd door Bounceball App 🏆
+                        Gegenereerd door de Bounceball App 🏆
                     </div>
                 </div>
               </div>
