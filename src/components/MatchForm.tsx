@@ -124,10 +124,10 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                 <table className="w-full border-collapse border border-black text-sm mb-1">
                     <thead>
                         <tr>
-                            <th className="border border-black bg-blue-600 text-white w-[30%] py-3 text-lg uppercase font-bold">
+                            <th className="border border-black bg-blue-600 text-white w-[20%] py-3 text-lg uppercase font-bold">
                                 TEAM BLAUW
                             </th>
-                            <th className="border border-black w-[20%] py-3 text-center text-gray-500 text-xs text-black">
+                            <th className="border border-black w-[30%] py-3 text-center text-gray-500 text-xs text-black">
                                 Doelpunten
                             </th>
                             <th className="border border-black bg-yellow-300 text-black w-[30%] py-3 text-lg uppercase font-bold">
@@ -203,10 +203,10 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                 <table className="w-full border-collapse border border-black text-sm mb-1">
                     <thead>
                         <tr>
-                            <th className="border border-black bg-blue-600 text-white w-[30%] py-3 text-lg uppercase font-bold">
+                            <th className="border border-black bg-blue-600 text-white w-[20%] py-3 text-lg uppercase font-bold">
                                 TEAM BLAUW
                             </th>
-                            <th className="border border-black w-[20%] py-3 text-center text-gray-500 text-xs text-black">
+                            <th className="border border-black w-[30%] py-3 text-center text-gray-500 text-xs text-black">
                                 Doelpunten
                             </th>
                             <th className="border border-black bg-yellow-300 text-black w-[30%] py-3 text-lg uppercase font-bold">
