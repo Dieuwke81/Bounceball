@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import type { Player, Match, Goal, MatchResult } from '../types';
 import TrophyIcon from './icons/TrophyIcon';
-import MatchForm from './MatchForm'; // <--- Zorg dat je deze hebt aangemaakt!
+import MatchForm from './MatchForm';
 
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 
@@ -22,6 +22,65 @@ interface TeamDisplayProps {
   onRegenerateTeams: () => void;
   actionInProgress: string | null;
 }
+
+// ============================================================================
+// NIEUWE COMPONENT: ScoreInput
+// Deze lost het probleem op dat je cursor verdwijnt na 1 cijfer typen.
+// ============================================================================
+const ScoreInput: React.FC<{
+  value: number;
+  onChange: (val: number) => void;
+  className?: string;
+}> = ({ value, onChange, className }) => {
+  // Lokale state om de waarde vast te houden TERWIJL je typt
+  const [localValue, setLocalValue] = useState<string>(value.toString());
+
+  // Als de score van buitenaf verandert (bijv. reset), update lokaal
+  useEffect(() => {
+    setLocalValue(value.toString());
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    // Sta alleen cijfers toe (of leeg)
+    if (val === '' || /^\d+$/.test(val)) {
+      setLocalValue(val);
+    }
+  };
+
+  const handleBlur = () => {
+    // Pas opslaan als je uit het vakje klikt
+    let num = parseInt(localValue, 10);
+    if (isNaN(num)) num = 0;
+    
+    if (num !== value) {
+      onChange(num);
+    }
+    // Zorg dat er geen lege string blijft staan, maar een 0 of het getal
+    setLocalValue(num.toString());
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={localValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className={className}
+      placeholder="0"
+    />
+  );
+};
+// ============================================================================
 
 const Spinner: React.FC<{className?: string}> = ({className}) => (
     <svg className={`animate-spin ${className || 'h-5 w-5'}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -49,7 +108,6 @@ const LoadingDots: React.FC = () => {
 
 
 // HULPFUNCTIE VOOR KLEUREN
-// Geeft 'blue' of 'yellow' terug op basis van team index
 const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
 
 
@@ -64,19 +122,17 @@ const MatchInputCard: React.FC<{
     const team1 = teams[match.team1Index];
     const team2 = teams[match.team2Index];
     
-    // --- SLIMME KLEUREN LOGICA ---
+    // --- KLEUREN LOGICA ---
     const baseColor1 = getBaseColor(match.team1Index);
     const baseColor2 = getBaseColor(match.team2Index);
 
     let finalColor1 = baseColor1;
     let finalColor2 = baseColor2;
 
-    // Conflict? Wissel rechts.
     if (baseColor1 === baseColor2) {
         finalColor2 = (baseColor2 === 'blue' ? 'yellow' : 'blue');
     }
 
-    // Vertaal naar Tailwind classes
     const leftColorClass = finalColor1 === 'blue' ? 'text-cyan-300' : 'text-amber-300';
     const rightColorClass = finalColor2 === 'blue' ? 'text-cyan-300' : 'text-amber-300';
     // -----------------------------
@@ -86,19 +142,18 @@ const MatchInputCard: React.FC<{
 
     const PlayerGoalInput: React.FC<{player: Player, teamIdentifier: 'team1' | 'team2'}> = ({ player, teamIdentifier }) => {
         const goals = getTeamGoals(teamIdentifier);
-        const goalCount = goals.find(g => g.playerId === player.id)?.count || '';
+        // Let op: goalCount is nu altijd een nummer (of 0 als het undefined is)
+        const goalCount = goals.find(g => g.playerId === player.id)?.count || 0;
 
         return (
             <div className="flex items-center justify-between space-x-2 bg-gray-600 p-2 rounded">
                 <span className="text-gray-200 flex-1 pr-2">{player.name}</span>
-                <input
-                    type="number"
+                
+                {/* HIER GEBRUIKEN WE NU DE NIEUWE ScoreInput COMPONENT */}
+                <ScoreInput
                     value={goalCount}
-                    onChange={(e) => onGoalChange(matchIndex, teamIdentifier, player.id, parseInt(e.target.value, 10) || 0)}
-                    min="0"
+                    onChange={(newVal) => onGoalChange(matchIndex, teamIdentifier, player.id, newVal)}
                     className="w-10 bg-gray-700 border border-gray-500 rounded-md py-1 px-2 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    aria-label={`Doelpunten voor ${player.name}`}
-                    placeholder="0"
                 />
             </div>
         )
@@ -139,7 +194,6 @@ const MatchResultDisplayCard: React.FC<{
     const team1Score = matchResult.team1Goals.reduce((sum, goal) => sum + goal.count, 0);
     const team2Score = matchResult.team2Goals.reduce((sum, goal) => sum + goal.count, 0);
     
-    // --- SLIMME KLEUREN LOGICA ---
     const baseColor1 = getBaseColor(matchResult.team1Index);
     const baseColor2 = getBaseColor(matchResult.team2Index);
 
@@ -152,7 +206,6 @@ const MatchResultDisplayCard: React.FC<{
 
     const team1Color = finalColor1 === 'blue' ? 'text-cyan-400/80' : 'text-amber-400/80';
     const team2Color = finalColor2 === 'blue' ? 'text-cyan-400/80' : 'text-amber-400/80';
-    // -----------------------------
 
     return (
         <div className="bg-gray-700/50 rounded-lg p-4">
@@ -181,8 +234,6 @@ const TeamCard: React.FC<{team: Player[], index: number, title: string}> = ({ te
     };
     const { totalRating, averageRating } = calculateTeamStats(team);
     
-    // Bij de teamkaarten (lijstjes) is er geen tegenstander, dus gebruiken we altijd de basiskleur.
-    // Index 0,2,4 = Blauw. Index 1,3,5 = Geel.
     const isBlueTeam = index % 2 === 0;
     const headerColor = isBlueTeam ? 'text-cyan-400' : 'text-amber-400';
     const borderColor = isBlueTeam ? 'border-cyan-500' : 'border-amber-500';
