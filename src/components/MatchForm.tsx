@@ -37,6 +37,13 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
       <style>
         {`
           @media print {
+            /* --- NIEUW: DIT STUKJE VERWIJDERT HET LOGO OP DE ACHTERGROND --- */
+            body::before {
+              display: none !important;
+              background-image: none !important;
+            }
+            /* ------------------------------------------------------------- */
+
             html, body {
               background: white !important;
               height: 100% !important;
