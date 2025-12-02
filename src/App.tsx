@@ -12,7 +12,7 @@ import HistoryView from './components/HistoryView';
 import PlayerDetail from './components/PlayerDetail';
 import ManualEntry from './components/ManualEntry';
 import CompetitionManagement from './components/CompetitionManagement';
-import TrophyRoom from './components/TrophyRoom'; // <--- NIEUWE IMPORT
+import TrophyRoom from './components/TrophyRoom';
 import { 
   getInitialData, 
   saveGameSession, 
@@ -20,8 +20,8 @@ import {
   updatePlayer, 
   deletePlayer, 
   setCompetitionName as setCompetitionNameService,
-  addTrophy,    // <--- NIEUWE IMPORT
-  deleteTrophy  // <--- NIEUWE IMPORT
+  addTrophy,
+  deleteTrophy
 } from './services/googleSheetService';
 
 import TrophyIcon from './components/icons/TrophyIcon';
@@ -35,17 +35,11 @@ import FutbolIcon from './components/icons/FutbolIcon';
 import SetupGuide from './components/SetupGuide';
 
 
-// AANGEPAST: 'trophyRoom' toegevoegd aan View type
 type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement' | 'trophyRoom';
 type Notification = { message: string; type: 'success' | 'error' };
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 
-// ============================================================================
-// WACHTWOORD BEVEILIGING
-// ============================================================================
 const ADMIN_PASSWORD = 'bounce';
-// ============================================================================
-
 
 const calculateRatingDeltas = (results: MatchResult[], currentTeams: Player[][]): { [key: number]: number } => {
     const ratingChanges: { [key: number]: number } = {};
@@ -59,10 +53,10 @@ const calculateRatingDeltas = (results: MatchResult[], currentTeams: Player[][])
         const team1Score = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
         const team2Score = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
-        if (team1Score > team2Score) { // Team 1 wins
+        if (team1Score > team2Score) { 
             team1.forEach(p => ratingChanges[p.id] = (ratingChanges[p.id] || 0) + ratingDelta);
             team2.forEach(p => ratingChanges[p.id] = (ratingChanges[p.id] || 0) - ratingDelta);
-        } else if (team2Score > team1Score) { // Team 2 wins
+        } else if (team2Score > team1Score) { 
             team1.forEach(p => ratingChanges[p.id] = (ratingChanges[p.id] || 0) - ratingDelta);
             team2.forEach(p => ratingChanges[p.id] = (ratingChanges[p.id] || 0) + ratingDelta);
         }
@@ -76,7 +70,7 @@ const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [history, setHistory] = useState<GameSession[]>([]);
   const [ratingLogs, setRatingLogs] = useState<RatingLogEntry[]>([]);
-  const [trophies, setTrophies] = useState<Trophy[]>([]); // <--- NIEUWE STATE VOOR PRIJZEN
+  const [trophies, setTrophies] = useState<Trophy[]>([]);
   const [attendingPlayerIds, setAttendingPlayerIds] = useState<Set<number>>(new Set());
   const [teams, setTeams] = useState<Player[][]>([]);
   const [originalTeams, setOriginalTeams] = useState<Player[][] | null>(null);
@@ -147,14 +141,13 @@ useEffect(() => {
     setIsLoading(true);
     setError(null);
     try {
-      // AANGEPAST: Haal ook 'trophies' op
       const { players, history, competitionName: name, ratingLogs: logs, trophies: fetchedTrophies } = await getInitialData(); 
 
       setPlayers(players);
       setHistory(history);
       setCompetitionName(name || null);
       setRatingLogs(logs || []);
-      setTrophies(fetchedTrophies || []); // Zet trophies in state
+      setTrophies(fetchedTrophies || []);
     } catch (e: any) {
       setError(e.message || "Er is een onbekende fout opgetreden bij het laden van de gegevens.");
     } finally {
@@ -610,16 +603,14 @@ useEffect(() => {
     }
   };
 
-  // --- NIEUWE HANDLERS VOOR PRIJZENKAST ---
   const handleAddTrophy = async (newTrophy: Omit<Trophy, 'id'>) => {
     try {
       await addTrophy(newTrophy);
       showNotification('Prijs succesvol toegevoegd aan de kast! 🏆', 'success');
-      // Ververs alle data om zeker te zijn van juiste ID's
       fetchData();
     } catch (e: any) {
       showNotification(`Fout bij prijs toevoegen: ${e.message}`, 'error');
-      throw e; // Laat TrophyRoom component weten dat het mis ging
+      throw e;
     }
   };
 
@@ -632,7 +623,6 @@ useEffect(() => {
       showNotification(`Fout bij verwijderen: ${e.message}`, 'error');
     }
   };
-  // ---------------------------------------
   
   const handleSelectPlayer = (playerId: number) => {
     setSelectedPlayerId(playerId);
@@ -796,7 +786,6 @@ useEffect(() => {
                 onSetCompetitionName={handleSetCompetitionName}
             />
         ) : <LoginScreen onLogin={handleLogin} />;
-      // --- NIEUWE CASE: TROPHY ROOM ---
       case 'trophyRoom':
         return (
             <TrophyRoom 
@@ -807,29 +796,33 @@ useEffect(() => {
                 onDeleteTrophy={handleDeleteTrophy}
             />
         );
-      // -------------------------------
       default:
         return <p>Ongeldige weergave</p>;
     }
   };
 
+  // --- AANGEPAST NAVIGATIE ITEM ---
+  // Dit zorgt voor mooie "tegels" in de grid layout
   const NavItem: React.FC<{view: View, label: string, icon: React.ReactNode, isProtected?: boolean}> = ({ view, label, icon, isProtected }) => (
     <button
       onClick={() => {
         if (view === 'main') setViewingArchive(null);
         setCurrentView(view);
       }}
-      className={`relative flex flex-col items-center justify-center space-y-1 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${currentView === view ? 'bg-gray-700 text-white' : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'}`}
+      className={`relative flex flex-col items-center justify-center space-y-2 p-4 rounded-xl transition-all duration-200 shadow-md ${
+        currentView === view 
+          ? 'bg-gradient-to-br from-cyan-600 to-cyan-800 text-white transform scale-[1.02]' 
+          : 'bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-white hover:scale-[1.02]'
+      }`}
     >
-      {isProtected && <LockIcon className="w-3 h-3 text-amber-400 absolute -top-1 -right-1" />}
-      {icon}
-      <span>{label}</span>
+      {isProtected && <LockIcon className="w-3 h-3 text-amber-400 absolute top-2 right-2" />}
+      <div className={`p-2 rounded-full ${currentView === view ? 'bg-white/20' : 'bg-gray-700'}`}>
+        {icon}
+      </div>
+      <span className="font-semibold text-sm">{label}</span>
     </button>
   );
   
-  // ============================================================================
-  // LOADING SCREEN
-  // ============================================================================
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
@@ -850,10 +843,8 @@ useEffect(() => {
     return <SetupGuide error={guideError} onRetry={fetchData} />;
   }
   
-  // ============================================================================
-
   return (
-    <div className="min-h-screen text-white">
+    <div className="min-h-screen text-white pb-8">
       <div className="container mx-auto p-4 md:p-6">
         <Header competitionName={competitionName} />
         
@@ -870,20 +861,20 @@ useEffect(() => {
             </div>
          )}
 
-        {/* --- NAVIGATION BAR --- */}
-        <nav className="mb-8 p-2 bg-gray-800 rounded-xl shadow-lg flex justify-around items-center flex-wrap gap-2">
-          {/* AANGEPAST: Icoon voor wedstrijd is nu FutbolIcon */}
-          <NavItem view="main" label="Wedstrijd" icon={<FutbolIcon className="w-6 h-6" />} />
-          
-          <NavItem view="stats" label="Statistieken" icon={<UsersIcon className="w-6 h-6" />} isProtected />
-          <NavItem view="history" label="Geschiedenis" icon={<ClockIcon className="w-6 h-6" />} />
-          
-          {/* NIEUW: Prijzenkast Knop */}
-          <NavItem view="trophyRoom" label="Prijzenkast" icon={<TrophyIcon className="w-6 h-6" />} />
-          
-          <NavItem view="playerManagement" label="Spelersbeheer" icon={<EditIcon className="w-6 h-6" />} isProtected />
-          <NavItem view="manualEntry" label="Handmatige Invoer" icon={<EditIcon className="w-6 h-6" />} />
-          <NavItem view="competitionManagement" label="Competitiebeheer" icon={<ArchiveIcon className="w-6 h-6" />} isProtected />
+        {/* --- AANGEPASTE NAVIGATIE: GRID LAYOUT --- */}
+        <nav className="mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            {/* RIJ 1: De belangrijkste gebruikers-acties */}
+            <NavItem view="main" label="Wedstrijd" icon={<FutbolIcon className="w-6 h-6" />} />
+            <NavItem view="stats" label="Statistieken" icon={<UsersIcon className="w-6 h-6" />} isProtected />
+            <NavItem view="history" label="Geschiedenis" icon={<ClockIcon className="w-6 h-6" />} />
+            <NavItem view="trophyRoom" label="Prijzenkast" icon={<TrophyIcon className="w-6 h-6" />} />
+            
+            {/* RIJ 2: Beheer & Invoer */}
+            <NavItem view="manualEntry" label="Handmatige Invoer" icon={<EditIcon className="w-6 h-6" />} />
+            <NavItem view="playerManagement" label="Spelersbeheer" icon={<EditIcon className="w-6 h-6" />} isProtected />
+            <NavItem view="competitionManagement" label="Competitiebeheer" icon={<ArchiveIcon className="w-6 h-6" />} isProtected />
+          </div>
         </nav>
         
         <main>
