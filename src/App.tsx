@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Player, Match, MatchResult, Goal, GameSession, NewPlayer, Constraint, RatingLogEntry } from './types';
+import type { Player, Match, MatchResult, Goal, GameSession, NewPlayer, Constraint, RatingLogEntry, Trophy } from './types';
 import Header from './components/Header';
 import PlayerList from './components/PlayerList';
 import TeamDisplay from './components/TeamDisplay';
@@ -13,7 +12,18 @@ import HistoryView from './components/HistoryView';
 import PlayerDetail from './components/PlayerDetail';
 import ManualEntry from './components/ManualEntry';
 import CompetitionManagement from './components/CompetitionManagement';
-import { getInitialData, saveGameSession, addPlayer, updatePlayer, deletePlayer, setCompetitionName as setCompetitionNameService } from './services/googleSheetService';
+import TrophyRoom from './components/TrophyRoom'; // <--- NIEUWE IMPORT
+import { 
+  getInitialData, 
+  saveGameSession, 
+  addPlayer, 
+  updatePlayer, 
+  deletePlayer, 
+  setCompetitionName as setCompetitionNameService,
+  addTrophy,    // <--- NIEUWE IMPORT
+  deleteTrophy  // <--- NIEUWE IMPORT
+} from './services/googleSheetService';
+
 import TrophyIcon from './components/icons/TrophyIcon';
 import UsersIcon from './components/icons/UsersIcon';
 import ClockIcon from './components/icons/ClockIcon';
@@ -25,13 +35,13 @@ import FutbolIcon from './components/icons/FutbolIcon';
 import SetupGuide from './components/SetupGuide';
 
 
-type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement';
+// AANGEPAST: 'trophyRoom' toegevoegd aan View type
+type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement' | 'trophyRoom';
 type Notification = { message: string; type: 'success' | 'error' };
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 
 // ============================================================================
 // WACHTWOORD BEVEILIGING
-// Pas hier het wachtwoord aan voor de beveiligde tabbladen.
 // ============================================================================
 const ADMIN_PASSWORD = 'bounce';
 // ============================================================================
@@ -65,12 +75,13 @@ const calculateRatingDeltas = (results: MatchResult[], currentTeams: Player[][])
 const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [history, setHistory] = useState<GameSession[]>([]);
-    const [ratingLogs, setRatingLogs] = useState<RatingLogEntry[]>([]);
+  const [ratingLogs, setRatingLogs] = useState<RatingLogEntry[]>([]);
+  const [trophies, setTrophies] = useState<Trophy[]>([]); // <--- NIEUWE STATE VOOR PRIJZEN
   const [attendingPlayerIds, setAttendingPlayerIds] = useState<Set<number>>(new Set());
   const [teams, setTeams] = useState<Player[][]>([]);
   const [originalTeams, setOriginalTeams] = useState<Player[][] | null>(null);
   const [teams2, setTeams2] = useState<Player[][] | null>(null);
-  const [currentRound, setCurrentRound] = useState(0); // 0: not started, 1: round 1, 2: round 2
+  const [currentRound, setCurrentRound] = useState(0); 
   const [round1Results, setRound1Results] = useState<MatchResult[]>([]);
   const [round2Pairings, setRound2Pairings] = useState<Match[]>([]);
   const [goalScorers, setGoalScorers] = useState<{ [key: string]: Goal[] }>({});
@@ -88,9 +99,7 @@ const App: React.FC = () => {
 
 const UNSAVED_GAME_KEY = 'bounceball_unsaved_game';
 
-// Effect om de status van een lopende wedstrijd op te slaan
 useEffect(() => {
-  // Sla alleen op als er een wedstrijd gestart is
   if (gameMode) {
     const stateToSave = {
       attendingPlayerIds: Array.from(attendingPlayerIds),
@@ -108,7 +117,6 @@ useEffect(() => {
   }
 }, [attendingPlayerIds, teams, originalTeams, teams2, currentRound, round1Results, round2Pairings, goalScorers, gameMode, constraints]);
 
-// Effect om bij het laden te vragen om een sessie te herstellen
 useEffect(() => {
   const savedGameJSON = localStorage.getItem(UNSAVED_GAME_KEY);
   if (savedGameJSON) {
@@ -126,7 +134,6 @@ useEffect(() => {
         setGameMode(savedGame.gameMode || null);
         setConstraints(savedGame.constraints || []);
       } else {
-        // Gebruiker wil niet herstellen, dus wis de opgeslagen data
         localStorage.removeItem(UNSAVED_GAME_KEY);
       }
     } catch (e) {
@@ -134,20 +141,20 @@ useEffect(() => {
       localStorage.removeItem(UNSAVED_GAME_KEY);
     }
   }
-}, []); // Deze lege array zorgt ervoor dat dit effect maar één keer wordt uitgevoerd als de app start
+}, []);
     
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // DIT IS DE CORRECTE CODE
-const { players, history, competitionName: name, ratingLogs: logs } = await getInitialData(); 
-//                                               ^^^^^^^^^^^^^^^^^  <-- DIT ONTBRAK
+      // AANGEPAST: Haal ook 'trophies' op
+      const { players, history, competitionName: name, ratingLogs: logs, trophies: fetchedTrophies } = await getInitialData(); 
 
-setPlayers(players);
-setHistory(history);
-setCompetitionName(name || null);
-setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
+      setPlayers(players);
+      setHistory(history);
+      setCompetitionName(name || null);
+      setRatingLogs(logs || []);
+      setTrophies(fetchedTrophies || []); // Zet trophies in state
     } catch (e: any) {
       setError(e.message || "Er is een onbekende fout opgetreden bij het laden van de gegevens.");
     } finally {
@@ -189,39 +196,25 @@ setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
 
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
-    
-    // Woorden die vaak in status-updates staan, maar geen namen zijn.
     const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
     const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper'];
 
     lines.forEach(line => {
       const trimmedLine = line.trim();
       if (!trimmedLine) return;
-      
       const lowerLine = trimmedLine.toLowerCase();
 
-      // Negeer regels die waarschijnlijk status-updates of data zijn.
-      if (nonNameIndicators.some(word => lowerLine.includes(word)) && lowerLine.length > 20) {
-        return;
-      }
-      if (monthNames.some(month => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) {
-        return;
-      }
+      if (nonNameIndicators.some(word => lowerLine.includes(word)) && lowerLine.length > 20) return;
+      if (monthNames.some(month => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
       
-      // *** DIT IS DE VERBETERING ***
-      // STAP 1: Verwijder EERST alle mogelijke onzichtbare tekens en andere WhatsApp-artefacten.
-      // Deze regex is uitgebreider en pakt meer variaties.
       let cleaned = trimmedLine
         .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
-        .replace(/\[.*?\]/, '') // Verwijder [18:30] etc.
-        // STAP 2: Verwijder nu pas het nummer, de punt en eventuele dubbele punten.
+        .replace(/\[.*?\]/, '')
         .replace(/^\s*\d+[\.\)]?\s*/, '')
-        .split(/[:\-\–]/)[0] // Stop bij een dubbele punt (bv. "Roy: aanwezig")
-        // STAP 3: Verwijder tekst tussen haakjes (bv. "(keeper)")
+        .split(/[:\-\–]/)[0]
         .replace(/[\(\[].*?[\)\]]/g, '')
         .trim();
 
-      // Voeg alleen namen toe die letters bevatten en niet te lang zijn.
       if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) {
          potentialNames.add(cleaned);
       }
@@ -248,7 +241,6 @@ setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
     
     potentialNames.forEach((originalName) => {
       const normalizedName = normalize(originalName);
-      // Probeer eerst de volledige naam, dan de eerste naam.
       const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
       if (matchedPlayer) {
         if (!newAttendingPlayerIds.has(matchedPlayer.id)) {
@@ -291,7 +283,6 @@ setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
       setGameMode(null);
       setActionInProgress(null);
       setConstraints([]);
-      // Wis de opgeslagen sessie uit de browser
       localStorage.removeItem(UNSAVED_GAME_KEY);
   };
 
@@ -305,19 +296,10 @@ setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
 
     if (mode === 'simple' || mode === 'doubleHeader') {
         numberOfTeams = 2;
-    } else { // Dit is de logica voor de 'Toernooi' modus
-        // Prioriteer het hoogste aantal wedstrijden (6 teams)
-        if (playerCount >= 24) {
-            numberOfTeams = 6;
-        } 
-        // Dan 4 teams
-        else if (playerCount >= 16) {
-            numberOfTeams = 4;
-        } 
-        // Fallback voor kleinere toernooien
-        else {
-            numberOfTeams = 2;
-        }
+    } else {
+        if (playerCount >= 24) { numberOfTeams = 6; } 
+        else if (playerCount >= 16) { numberOfTeams = 4; } 
+        else { numberOfTeams = 2; }
     }
       
     if (attendingPlayers.length < numberOfTeams) {
@@ -433,23 +415,18 @@ setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
         a.teamIndex - b.teamIndex
     );
     
-    // Slimmere paring: Voorkom rematches uit ronde 1
     const newPairings = [];
-    const availableTeams = [...teamPoints]; // Kopie van de ranglijst
+    const availableTeams = [...teamPoints];
 
     while (availableTeams.length > 0) {
-        // Pak het hoogst geplaatste team dat nog over is
         const teamA = availableTeams.shift(); 
         if (!teamA) break;
 
         let teamB = null;
         let teamBIndex = -1;
 
-        // Zoek de hoogst geplaatste tegenstander waartegen ze nog NIET hebben gespeeld
         for (let i = 0; i < availableTeams.length; i++) {
             const potentialOpponent = availableTeams[i];
-            
-            // Check in de resultaten of deze twee al tegen elkaar hebben gespeeld
             const alreadyPlayed = results.some(match => 
                 (match.team1Index === teamA.teamIndex && match.team2Index === potentialOpponent.teamIndex) ||
                 (match.team1Index === potentialOpponent.teamIndex && match.team2Index === teamA.teamIndex)
@@ -458,17 +435,15 @@ setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
             if (!alreadyPlayed) {
                 teamB = potentialOpponent;
                 teamBIndex = i;
-                break; // Gevonden!
+                break;
             }
         }
 
-        // Als iedereen al tegen elkaar heeft gespeeld (of er is geen keuze meer), pak gewoon de bovenste
         if (!teamB) {
             teamB = availableTeams[0];
             teamBIndex = 0;
         }
 
-        // Verwijder tegenstander uit de lijst en maak de wedstrijd
         if (teamB) {
             availableTeams.splice(teamBIndex, 1);
             newPairings.push({
@@ -489,15 +464,9 @@ setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
 
     try {
         const remainingPlayers = attendingPlayers;
-
-        if (remainingPlayers.length < 4) {
-            throw new Error("Niet genoeg spelers over om nieuwe teams te maken (minimaal 4).");
-        }
-
+        if (remainingPlayers.length < 4) throw new Error("Niet genoeg spelers over om nieuwe teams te maken (minimaal 4).");
         const numTeams = originalTeams.length;
-        if (remainingPlayers.length < numTeams) {
-            throw new Error(`Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`);
-        }
+        if (remainingPlayers.length < numTeams) throw new Error(`Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`);
 
         const regeneratedTeams = await generateTeams(remainingPlayers, numTeams, constraints);
 
@@ -640,6 +609,30 @@ setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
         showNotification(`Fout bij verwijderen: ${e.message}`, 'error');
     }
   };
+
+  // --- NIEUWE HANDLERS VOOR PRIJZENKAST ---
+  const handleAddTrophy = async (newTrophy: Omit<Trophy, 'id'>) => {
+    try {
+      await addTrophy(newTrophy);
+      showNotification('Prijs succesvol toegevoegd aan de kast! 🏆', 'success');
+      // Ververs alle data om zeker te zijn van juiste ID's
+      fetchData();
+    } catch (e: any) {
+      showNotification(`Fout bij prijs toevoegen: ${e.message}`, 'error');
+      throw e; // Laat TrophyRoom component weten dat het mis ging
+    }
+  };
+
+  const handleDeleteTrophy = async (id: string) => {
+    try {
+      await deleteTrophy(id);
+      setTrophies(prev => prev.filter(t => t.id !== id));
+      showNotification('Prijs verwijderd.', 'success');
+    } catch (e: any) {
+      showNotification(`Fout bij verwijderen: ${e.message}`, 'error');
+    }
+  };
+  // ---------------------------------------
   
   const handleSelectPlayer = (playerId: number) => {
     setSelectedPlayerId(playerId);
@@ -803,6 +796,18 @@ setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
                 onSetCompetitionName={handleSetCompetitionName}
             />
         ) : <LoginScreen onLogin={handleLogin} />;
+      // --- NIEUWE CASE: TROPHY ROOM ---
+      case 'trophyRoom':
+        return (
+            <TrophyRoom 
+                trophies={trophies}
+                players={players}
+                isAuthenticated={isManagementAuthenticated}
+                onAddTrophy={handleAddTrophy}
+                onDeleteTrophy={handleDeleteTrophy}
+            />
+        );
+      // -------------------------------
       default:
         return <p>Ongeldige weergave</p>;
     }
@@ -823,30 +828,23 @@ setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
   );
   
   // ============================================================================
-  // ROBUST LOADING & ERROR HANDLING LOGIC
-  // ============================================================================
-  // ============================================================================
   // LOADING SCREEN
   // ============================================================================
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
         <div className="text-center">
-            {/* HIERONDER IS AANGEPAST: PLAATJE I.P.V. ICOON */}
             <img 
               src="https://i.postimg.cc/XJy7yfJ2/bounceball.png" 
               alt="Laden..." 
               className="w-32 h-auto mx-auto mb-6 animate-bounce" 
             />
-            
             <p className="text-xl font-semibold animate-pulse">Gegevens laden...</p>
         </div>
       </div>
     );
   }
 
-  // Na het laden, als er een fout is OF er zijn geen spelers, toon de Koppelingsassistent.
-  // Dit is de enige controle en vangt alle fout-scenario's af.
   if (error || players.length === 0) {
     const guideError = error || "De app kon verbinding maken, maar heeft geen spelers gevonden. Dit is de meest voorkomende oorzaak van een 'leeg' scherm. Volg de stappen in de Koppelingsassistent om het probleem op te lossen.";
     return <SetupGuide error={guideError} onRetry={fetchData} />;
@@ -872,10 +870,17 @@ setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
             </div>
          )}
 
+        {/* --- NAVIGATION BAR --- */}
         <nav className="mb-8 p-2 bg-gray-800 rounded-xl shadow-lg flex justify-around items-center flex-wrap gap-2">
-          <NavItem view="main" label="Wedstrijd" icon={<TrophyIcon className="w-6 h-6" />} />
+          {/* AANGEPAST: Icoon voor wedstrijd is nu FutbolIcon */}
+          <NavItem view="main" label="Wedstrijd" icon={<FutbolIcon className="w-6 h-6" />} />
+          
           <NavItem view="stats" label="Statistieken" icon={<UsersIcon className="w-6 h-6" />} isProtected />
           <NavItem view="history" label="Geschiedenis" icon={<ClockIcon className="w-6 h-6" />} />
+          
+          {/* NIEUW: Prijzenkast Knop */}
+          <NavItem view="trophyRoom" label="Prijzenkast" icon={<TrophyIcon className="w-6 h-6" />} />
+          
           <NavItem view="playerManagement" label="Spelersbeheer" icon={<EditIcon className="w-6 h-6" />} isProtected />
           <NavItem view="manualEntry" label="Handmatige Invoer" icon={<EditIcon className="w-6 h-6" />} />
           <NavItem view="competitionManagement" label="Competitiebeheer" icon={<ArchiveIcon className="w-6 h-6" />} isProtected />
