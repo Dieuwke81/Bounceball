@@ -247,9 +247,9 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
             </div>
             
             {/* FOOTER */}
-            <div className="w-full text-center text-xs text-gray-400 mt-4 pt-4 border-t border-gray-200">
+            {/*  <div className="w-full text-center text-xs text-gray-400 mt-4 pt-4 border-t border-gray-200">
                 Gegenereerd door Bounceball App
-            </div>
+            </div>*/}
 
           </div>
         );
