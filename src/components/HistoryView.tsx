@@ -1,221 +1,371 @@
 import React, { useState } from 'react';
-import type { GameSession, Player } from '../types';
-import ChevronDownIcon from './icons/ChevronDownIcon';
-import ChevronUpIcon from './icons/ChevronUpIcon';
-import DownloadIcon from './icons/DownloadIcon';
-import ArchiveIcon from './icons/ArchiveIcon';
-import TrashIcon from './icons/TrashIcon';
+import type { GameSession, Player, MatchResult } from '../types';
+import html2canvas from 'html2canvas';
+
+const CameraIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M12 9a3.75 3.75 0 1 0 0 7.5A3.75 3.75 0 0 0 12 9Z" />
+    <path fillRule="evenodd" d="M9.348 2.818a1.5 1.5 0 0 0-1.414 1.182l-.45 1.795H4.5a2.25 2.25 0 0 0-2.25 2.25v10.5a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25V7.5a2.25 2.25 0 0 0-2.25-2.25h-2.985l-.45-1.795a1.5 1.5 0 0 0-1.414 1.182l-1.313.131a6.67 6.67 0 0 0-3.376 0l-1.313-.131Z" clipRule="evenodd" />
+  </svg>
+);
+
+const DownloadIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
+);
 
 interface HistoryViewProps {
   history: GameSession[];
   players: Player[];
-  onDeleteSession: (date: string) => void;
 }
 
-const HistoryView: React.FC<HistoryViewProps> = ({ history, players, onDeleteSession }) => {
-  const [expandedSessionDate, setExpandedSessionDate] = useState<string | null>(null);
+const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
+  if (history.length === 0) {
+    return (
+      <div className="bg-gray-800 rounded-xl shadow-lg p-8 text-center">
+        <h2 className="text-2xl font-bold text-white mb-2">Geen Geschiedenis</h2>
+        <p className="text-gray-400">Sla je eerste toernooi af om hier de geschiedenis te zien.</p>
+      </div>
+    );
+  }
 
   const toggleSession = (date: string) => {
-    setExpandedSessionDate(expandedSessionDate === date ? null : date);
+    setExpandedDate(prevDate => (prevDate === date ? null : date));
   };
 
   const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    } catch (e) {
-      return dateString;
-    }
+    return new Date(dateString).toLocaleDateString('nl-NL', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
 
-  const handleDeleteClick = (e: React.MouseEvent, date: string) => {
+  // --- CSV EXPORT FUNCTIE (AANGEPAST VOOR SPELER STATS) ---
+  const handleExportCSV = (e: React.MouseEvent, sessionsToExport: GameSession[], filenamePrefix: string) => {
     e.stopPropagation();
-    if (window.confirm("⚠️ Weet je het zeker?\n\nJe staat op het punt deze wedstrijd definitief te verwijderen. Dit kan niet ongedaan worden gemaakt.")) {
-      onDeleteSession(date);
+
+    // Headers voor gedetailleerde export
+    const headers = ['Datum', 'Ronde', 'Wedstrijd Nr', 'Team Kleur', 'Speler ID', 'Naam', 'Doelpunten'];
+    const rows: string[][] = [];
+
+    sessionsToExport.forEach(session => {
+        const dateStr = new Date(session.date).toLocaleDateString('nl-NL');
+        
+        const processMatches = (results: MatchResult[], roundName: string) => {
+            results.forEach((match, index) => {
+                const matchNumber = (index + 1).toString();
+
+                // Hulpfunctie om spelers van een team toe te voegen
+                const addTeamRows = (teamIndex: number, goalsArray: any[], teamColor: 'Blauw' | 'Geel') => {
+                    const teamPlayers = session.teams[teamIndex] || [];
+                    
+                    teamPlayers.forEach(player => {
+                        // Zoek hoeveel goals deze specifieke speler heeft gemaakt
+                        const playerGoalData = goalsArray.find(g => g.playerId === player.id);
+                        const goalsScored = playerGoalData ? playerGoalData.count : 0;
+
+                        rows.push([
+                            dateStr,
+                            roundName,
+                            matchNumber,
+                            teamColor,
+                            player.id.toString(),
+                            player.name,
+                            goalsScored.toString()
+                        ]);
+                    });
+                };
+
+                // Verwerk Team Blauw (Team 1)
+                addTeamRows(match.team1Index, match.team1Goals, 'Blauw');
+                
+                // Verwerk Team Geel (Team 2)
+                addTeamRows(match.team2Index, match.team2Goals, 'Geel');
+            });
+        };
+
+        processMatches(session.round1Results, 'Ronde 1');
+        processMatches(session.round2Results, 'Ronde 2');
+    });
+
+    // We gebruiken nu een PUNTKOMMA (;) als scheidingsteken.
+    // Dit werkt veel beter in Nederlandse Excel versies.
+    const csvContent = [
+        headers.join(';'),
+        ...rows.map(row => row.join(';'))
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `bounceball_stats_${filenamePrefix}_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+  };
+  // -----------------------------------------
+
+  const handleShareImage = async (e: React.MouseEvent, sessionDate: string) => {
+    e.stopPropagation();
+    
+    if (expandedDate !== sessionDate) {
+        setExpandedDate(sessionDate);
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
+    const elementId = `session-content-${sessionDate}`;
+    const element = document.getElementById(elementId);
+
+    if (!element) {
+        alert("Kan de uitslagen niet vinden om te delen.");
+        return;
+    }
+
+    setIsGeneratingImage(true);
+
+    try {
+        const fixedWidth = 700; 
+
+        const canvas = await html2canvas(element, {
+            backgroundColor: '#111827', 
+            scale: 2, 
+            useCORS: true,
+            width: fixedWidth, 
+            windowWidth: fixedWidth,
+            onclone: (clonedDoc) => {
+                const clonedElement = clonedDoc.getElementById(elementId);
+                if (clonedElement) {
+                    clonedElement.style.width = `${fixedWidth}px`;
+                    clonedElement.style.minWidth = `${fixedWidth}px`;
+                    clonedElement.style.maxWidth = `${fixedWidth}px`;
+                    clonedElement.style.height = 'auto';
+                    clonedElement.style.padding = '2rem';
+                }
+            }
+        });
+
+        canvas.toBlob(async (blob) => {
+            if (!blob) return;
+            const file = new File([blob], `Uitslagen-${sessionDate}.png`, { type: 'image/png' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Bounceball Uitslagen',
+                        text: `De uitslagen van ${formatDate(sessionDate)}! ⚽`,
+                    });
+                } catch (shareError) {
+                    console.log('Delen geannuleerd', shareError);
+                }
+            } else {
+                const link = document.createElement('a');
+                link.download = `Uitslagen-${sessionDate}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+            setIsGeneratingImage(false);
+        }, 'image/png');
+
+    } catch (error) {
+        console.error("Fout bij maken afbeelding:", error);
+        alert("Er ging iets mis bij het maken van de afbeelding.");
+        setIsGeneratingImage(false);
     }
   };
 
-  // --- 1. EXPORT PER SESSIE (Regel) ---
-  const exportSessionToCSV = (session: GameSession) => {
-    const playerStats = new Map<number, { goals: number; points: number }>();
-    const allMatches = [...session.round1Results, ...session.round2Results];
+  const MatchResultDisplay: React.FC<{ result: MatchResult; teams: Player[][] }> = ({ result, teams }) => {
+    const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
+    const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
-    allMatches.forEach(match => {
-        const team1 = session.teams[match.team1Index];
-        const team2 = session.teams[match.team2Index];
-        if(!team1 || !team2) return;
-        
-        const team1Score = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
-        const team2Score = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
+    const team1Players = teams[result.team1Index] || [];
+    const team2Players = teams[result.team2Index] || [];
 
-        let team1Points = 0;
-        let team2Points = 0;
-        if (team1Score > team2Score) team1Points = 3;
-        else if (team2Score > team1Score) team2Points = 3;
-        else { team1Points = 1; team2Points = 1; }
+    const team1GoalsMap = new Map(result.team1Goals.map(g => [g.playerId, g.count]));
+    const team2GoalsMap = new Map(result.team2Goals.map(g => [g.playerId, g.count]));
 
-        team1.forEach(p => {
-            const current = playerStats.get(p.id) || { goals: 0, points: 0 };
-            const pGoals = match.team1Goals.find(g => g.playerId === p.id)?.count || 0;
-            playerStats.set(p.id, { goals: current.goals + pGoals, points: current.points + team1Points });
-        });
-        team2.forEach(p => {
-            const current = playerStats.get(p.id) || { goals: 0, points: 0 };
-            const pGoals = match.team2Goals.find(g => g.playerId === p.id)?.count || 0;
-            playerStats.set(p.id, { goals: current.goals + pGoals, points: current.points + team2Points });
-        });
-    });
+    const getBaseColor = (idx: number) => (idx % 2 === 0 ? 'blue' : 'yellow');
 
-    let csvContent = "Naam,Rating,Goals,Punten\n";
-    const uniquePlayers = new Set<Player>();
-    session.teams.flat().forEach(p => uniquePlayers.add(p));
+    const baseColor1 = getBaseColor(result.team1Index);
+    const baseColor2 = getBaseColor(result.team2Index);
 
-    uniquePlayers.forEach(player => {
-        const stats = playerStats.get(player.id) || { goals: 0, points: 0 };
-        const rating = typeof player.rating === 'number' ? player.rating.toFixed(2) : player.rating;
-        csvContent += `${player.name},${rating},${stats.goals},${stats.points}\n`;
-    });
+    let finalColor1 = baseColor1;
+    let finalColor2 = baseColor2;
 
-    downloadCSV(csvContent, `Uitslag_${session.date.split('T')[0]}.csv`);
-  };
+    if (baseColor1 === baseColor2) {
+        finalColor2 = (baseColor2 === 'blue' ? 'yellow' : 'blue');
+    }
 
-  // --- 2. EXPORT ALLES (Groene knop bovenaan) ---
-  const exportAllToCSV = () => {
-    const stats = new Map<number, { name: string; rating: number; matches: number; goals: number; points: number }>();
+    const getColorClass = (color: string) => color === 'blue' ? 'text-cyan-400' : 'text-amber-400';
+    
+    const colorClassTeam1 = getColorClass(finalColor1);
+    const colorClassTeam2 = getColorClass(finalColor2);
 
-    history.forEach(session => {
-        const allMatches = [...session.round1Results, ...session.round2Results];
-        allMatches.forEach(match => {
-            const team1 = session.teams[match.team1Index];
-            const team2 = session.teams[match.team2Index];
-            if (!team1 || !team2) return;
+    const PlayerListWithGoals: React.FC<{ players: Player[]; goalsMap: Map<number, number>; scoreColorClass: string }> = ({ players, goalsMap, scoreColorClass }) => (
+        <ul className="space-y-1 mt-3">
+            {players.map(player => {
+                const goals = goalsMap.get(player.id) || 0;
+                const hasScored = goals > 0;
 
-            const score1 = match.team1Goals.reduce((a, b) => a + b.count, 0);
-            const score2 = match.team2Goals.reduce((a, b) => a + b.count, 0);
+                return (
+                    <li key={player.id} className="flex justify-between items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0">
+                        <span className={`text-sm whitespace-nowrap mr-2 ${hasScored ? 'text-gray-100 font-medium' : 'text-gray-400'}`}>
+                            {player.name}
+                        </span>
+                        <span className={`text-base font-bold ${hasScored ? scoreColorClass : 'text-gray-600'}`}>
+                            {goals}
+                        </span>
+                    </li>
+                );
+            })}
+        </ul>
+    );
 
-            let pts1 = 0; let pts2 = 0;
-            if (score1 > score2) pts1 = 3;
-            else if (score2 > score1) pts2 = 3;
-            else { pts1 = 1; pts2 = 1; }
+    return (
+        <div className="bg-gray-800 p-5 rounded-xl border border-gray-600/50 shadow-md flex flex-col">
+            <div className="flex-grow grid grid-cols-2 gap-8">
+                <div className="overflow-hidden">
+                    <h4 className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${colorClassTeam1}`}>
+                        Team {result.team1Index + 1}
+                    </h4>
+                    <PlayerListWithGoals 
+                        players={team1Players} 
+                        goalsMap={team1GoalsMap} 
+                        scoreColorClass={colorClassTeam1} 
+                    />
+                </div>
+                <div className="overflow-hidden">
+                    <h4 className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${colorClassTeam2}`}>
+                        Team {result.team2Index + 1}
+                    </h4>
+                    <PlayerListWithGoals 
+                        players={team2Players} 
+                        goalsMap={team2GoalsMap} 
+                        scoreColorClass={colorClassTeam2} 
+                    />
+                </div>
+            </div>
 
-            team1.forEach(p => {
-                const current = stats.get(p.id) || { name: p.name, rating: p.rating, matches: 0, goals: 0, points: 0 };
-                const goals = match.team1Goals.find(g => g.playerId === p.id)?.count || 0;
-                stats.set(p.id, { ...current, matches: current.matches + 1, goals: current.goals + goals, points: current.points + pts1 });
-            });
-            team2.forEach(p => {
-                const current = stats.get(p.id) || { name: p.name, rating: p.rating, matches: 0, goals: 0, points: 0 };
-                const goals = match.team2Goals.find(g => g.playerId === p.id)?.count || 0;
-                stats.set(p.id, { ...current, matches: current.matches + 1, goals: current.goals + goals, points: current.points + pts2 });
-            });
-        });
-    });
+            <div className="mt-6 pt-2 border-t border-gray-600 text-center flex justify-center items-center gap-4">
+                <span className={`text-4xl font-black tracking-widest drop-shadow-md ${colorClassTeam1}`}>{score1}</span>
+                <span className="text-2xl font-bold text-gray-500">-</span>
+                <span className={`text-4xl font-black tracking-widest drop-shadow-md ${colorClassTeam2}`}>{score2}</span>
+            </div>
+        </div>
+    );
+};
 
-    let csvContent = "Naam,Rating,Wedstrijden,Doelpunten,Punten,Gem. Punten/Wedstrijd\n";
-    Array.from(stats.values())
-        .sort((a, b) => b.points - a.points || b.goals - a.goals)
-        .forEach(stat => {
-            const avgPoints = stat.matches > 0 ? (stat.points / stat.matches).toFixed(2) : "0.00";
-            csvContent += `${stat.name},${stat.rating.toFixed(2)},${stat.matches},${stat.goals},${stat.points},${avgPoints}\n`;
-        });
-
-    downloadCSV(csvContent, `Totaal_Historie_${new Date().toISOString().split('T')[0]}.csv`);
-  };
-
-  const downloadCSV = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   return (
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
-      {/* HEADER MET DE GROENE KNOP TERUG */}
-      <div className="flex items-center justify-between mb-6">
-         <h2 className="text-2xl font-bold text-white">Wedstrijdgeschiedenis</h2>
-         
-         {/* DEZE KNOP IS HERSTELD */}
-         <button 
-            onClick={exportAllToCSV}
-            className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-md"
-            title="Download Volledige Historie (CSV)"
-         >
-            <DownloadIcon className="w-6 h-6" />
-         </button>
-      </div>
       
+      <div className="flex justify-between items-center mb-6">
+          <h2 className="text-3xl font-bold text-white">Wedstrijdgeschiedenis</h2>
+          
+          {/* EXPORT ALL KNOP */}
+          <button
+            onClick={(e) => handleExportCSV(e, history, 'COMPLETE_HISTORY')}
+            className="flex items-center space-x-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition-colors shadow-md"
+            title="Download complete geschiedenis als CSV"
+          >
+              <DownloadIcon className="w-5 h-5" />
+              <span className="hidden sm:inline text-sm font-bold">Alles naar CSV</span>
+          </button>
+      </div>
+
       <div className="space-y-4">
-        {history.length === 0 ? (
-          <p className="text-gray-400 text-center py-4">Nog geen wedstrijden gespeeld.</p>
-        ) : (
-          history.map((session) => (
-            <div key={session.date} className="bg-gray-700 rounded-lg overflow-hidden border border-gray-600">
-              <div 
-                className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-650 transition-colors"
-                onClick={() => toggleSession(session.date)}
-              >
-                <div>
-                  <h3 className="text-lg font-bold text-white capitalize">{formatDate(session.date)}</h3>
-                  <p className="text-sm text-gray-400">{session.date.split('T')[0]}</p>
+        {history.map(session => (
+          <div key={session.date} className="bg-gray-700 rounded-lg overflow-hidden">
+            <button
+              onClick={() => toggleSession(session.date)}
+              className="w-full text-left p-4 flex justify-between items-center hover:bg-gray-600 transition-colors"
+            >
+              <span className="font-bold text-lg text-white">{formatDate(session.date)}</span>
+              
+              <div className="flex items-center space-x-3">
+                
+                {/* EXPORT SINGLE KNOP */}
+                <div 
+                    onClick={(e) => handleExportCSV(e, [session], `MATCH_${session.date.split('T')[0]}`)}
+                    className="p-2 bg-green-700 hover:bg-green-600 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95 transform duration-150"
+                    title="Download deze wedstrijd als CSV"
+                >
+                    <DownloadIcon className="w-4 h-4" />
+                </div>
+
+                {/* DELEN AFBEELDING KNOP */}
+                <div 
+                    onClick={(e) => handleShareImage(e, session.date)}
+                    className="p-2 bg-cyan-600 hover:bg-cyan-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95 transform duration-150"
+                    title="Deel afbeelding via WhatsApp"
+                >
+                   {isGeneratingImage && expandedDate === session.date ? (
+                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                   ) : (
+                       <CameraIcon className="w-4 h-4" />
+                   )}
                 </div>
                 
-                <div className="flex items-center space-x-2">
-                  {/* CSV Button PER SESSIE */}
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); exportSessionToCSV(session); }}
-                    className="p-2 bg-cyan-600 hover:bg-cyan-700 rounded-full text-white transition-colors"
-                    title="Download CSV van deze avond"
-                  >
-                    <ArchiveIcon className="w-4 h-4" />
-                  </button>
-
-                  {/* Verwijder Knop */}
-                  <button 
-                    onClick={(e) => handleDeleteClick(e, session.date)}
-                    className="p-2 bg-red-900/50 hover:bg-red-600 text-red-200 hover:text-white rounded-full transition-all duration-200"
-                    title="Verwijder Wedstrijd"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </button>
-
-                  <div className="ml-2 text-gray-400">
-                    {expandedSessionDate === session.date ? <ChevronUpIcon className="w-6 h-6" /> : <ChevronDownIcon className="w-6 h-6" />}
-                  </div>
-                </div>
+                <span className={`transform transition-transform ${expandedDate === session.date ? 'rotate-180' : ''}`}>▼</span>
               </div>
+            </button>
+            
+            {expandedDate === session.date && (
+              <div id={`session-content-${session.date}`} className="bg-gray-900 border-t border-gray-600">
+                <div className="p-6 w-full"> 
+                    
+                    <div className="mb-8 text-center">
+                        <h3 className="text-4xl font-black text-green-500 tracking-tight">
+                            BOUNCEBALL
+                        </h3>
+                        <div className="h-1 w-32 bg-green-500 mx-auto my-2 rounded-full"></div>
+                        <p className="text-gray-300 font-medium text-lg mt-1 uppercase tracking-wide">{formatDate(session.date)}</p>
+                    </div>
 
-              {expandedSessionDate === session.date && (
-                <div className="p-4 border-t border-gray-600 bg-gray-800/50 text-sm text-gray-300">
-                    <div className="mb-4">
-                        <h4 className="font-bold text-white mb-2">Uitslagen</h4>
-                        {session.round1Results && session.round1Results.length > 0 ? (
-                            <ul className="space-y-1">
-                                {[...session.round1Results, ...session.round2Results].map((r: any, idx: number) => {
-                                    const score1 = r.team1Goals.reduce((a:any, b:any) => a + b.count, 0);
-                                    const score2 = r.team2Goals.reduce((a:any, b:any) => a + b.count, 0);
-                                    return (
-                                        <li key={idx} className="flex justify-between max-w-xs">
-                                            <span>Team {r.team1Index + 1} vs Team {r.team2Index + 1}</span>
-                                            <span className="font-mono font-bold text-white">{score1} - {score2}</span>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        ) : (
-                           <p className="italic text-gray-500">Geen details beschikbaar</p>
-                        )}
+                    <div className="grid grid-cols-1 gap-8">
+                    {/* Ronde 1 */}
+                    <div>
+                        <div className="flex items-center mb-4">
+                            <div className="h-8 w-1 bg-green-500 rounded-full mr-3"></div>
+                            <h3 className="text-2xl font-bold text-white uppercase tracking-wider">Ronde 1</h3>
+                        </div>
+                        <div className="space-y-6">
+                            {session.round1Results.map((r, i) => <MatchResultDisplay key={`r1-${i}`} result={r} teams={session.teams} />)}
+                        </div>
+                    </div>
+
+                    {/* Ronde 2 */}
+                    {session.round2Results.length > 0 && (
+                        <div>
+                            <div className="flex items-center mb-4 mt-4">
+                                <div className="h-8 w-1 bg-green-500 rounded-full mr-3"></div>
+                                <h3 className="text-2xl font-bold text-white uppercase tracking-wider">Ronde 2</h3>
+                            </div>
+                            <div className="space-y-6">
+                                {session.round2Results.map((r, i) => <MatchResultDisplay key={`r2-${i}`} result={r} teams={session.teams} />)}
+                            </div>
+                        </div>
+                    )}
+                    </div>
+                    
+                    <div className="mt-10 pt-4 border-t border-gray-800 text-center text-gray-500 text-sm font-medium">
+                        Gegenereerd door de Bounceball App
                     </div>
                 </div>
-              )}
-            </div>
-          ))
-        )}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
