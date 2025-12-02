@@ -863,7 +863,7 @@ useEffect(() => {
         {/* --- NIEUWE COMPACTE NAVIGATIE --- */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-8 shadow-xl border border-gray-700/50">
             <div className="flex flex-wrap justify-center gap-4 md:gap-8">
-                <NavItem view="main" label="Wedstrijd" icon={<FutbolIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-green-500 to-emerald-700" />
+                <NavItem view="main" label="Wedstrijd" icon={<FutbolIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-orange-500 to-red-800" />
                 <NavItem view="stats" label="Stats" icon={<UsersIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-blue-500 to-cyan-700" />
                 <NavItem view="history" label="Historie" icon={<ClockIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-purple-500 to-indigo-700" />
                 <NavItem view="trophyRoom" label="Prijzen" icon={<TrophyIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-amber-400 to-orange-600" />
@@ -871,7 +871,7 @@ useEffect(() => {
                 {/* De beheer knoppen iets kleiner of subtieler gescheiden? Voor nu in dezelfde flow. */}
                 <NavItem view="manualEntry" label="Invoer" icon={<EditIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-gray-500 to-gray-700" />
                 <NavItem view="playerManagement" label="Spelers" icon={<EditIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-pink-500 to-rose-700" />
-                <NavItem view="competitionManagement" label="Beheer" icon={<ArchiveIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-orange-500 to-red-800" />
+                <NavItem view="competitionManagement" label="Beheer" icon={<ArchiveIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-green-500 to-emerald-700" />
             </div>
         </div>
         
