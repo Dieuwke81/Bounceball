@@ -26,6 +26,13 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
     year: 'numeric'
   });
 
+  // Hulpfunctie voor gemiddelde rating
+  const calculateAverage = (team: Player[]): string => {
+    if (!team || team.length === 0) return '0.0';
+    const total = team.reduce((sum, p) => sum + (p.rating || 0), 0);
+    return (total / team.length).toFixed(1);
+  };
+
   return createPortal(
     <div className="print-portal hidden">
       <style>
@@ -77,8 +84,13 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
       </style>
 
       {matches.map((match, index) => {
+        // Zorg dat er altijd minimaal 6 rijen zijn
         const maxRows = Math.max(match.blue.length, match.yellow.length, 6);
         const rows = Array.from({ length: maxRows });
+
+        // Bereken de gemiddelden
+        const avgBlue = calculateAverage(match.blue);
+        const avgYellow = calculateAverage(match.yellow);
 
         return (
           <div key={index} className="match-page">
@@ -103,16 +115,12 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                 <table className="w-full border-collapse border border-black text-sm mb-4">
                     <thead>
                         <tr>
-                            {/* AANGEPAST: Breedte van 35% naar 25% voor namen */}
                             <th className="border border-black bg-blue-600 text-white w-[25%] py-2 text-lg uppercase">
                                 TEAM BLAUW
                             </th>
-                            {/* AANGEPAST: Breedte van 15% naar 25% voor doelpunten */}
                             <th className="border border-black w-[25%] py-2 text-center text-gray-500 text-xs text-black">
                                 Doelpunten
                             </th>
-                            
-                            {/* Zelfde aanpassing voor Geel */}
                             <th className="border border-black bg-yellow-300 text-black w-[25%] py-2 text-lg uppercase">
                                 TEAM GEEL
                             </th>
@@ -122,18 +130,36 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {rows.map((_, i) => (
-                            <tr key={i} className="h-10">
-                                <td className="border border-black px-2 font-bold text-base align-middle text-black">
-                                    {match.blue[i]?.name || ''}
-                                </td>
-                                <td className="border border-black"></td>
-                                <td className="border border-black px-2 font-bold text-base align-middle text-black">
-                                    {match.yellow[i]?.name || ''}
-                                </td>
-                                <td className="border border-black"></td>
-                            </tr>
-                        ))}
+                        {rows.map((_, i) => {
+                            // Logica voor Blauw: Toon naam, OF toon rating in het 6e vakje (index 5) als het leeg is
+                            const blueName = match.blue[i]?.name;
+                            let blueCellContent = <span className="font-bold text-base text-black">{blueName}</span>;
+                            
+                            if (!blueName && i === 5) {
+                                blueCellContent = <span className="text-gray-500 italic text-sm">Gem. Rating: {avgBlue}</span>;
+                            }
+
+                            // Logica voor Geel: Zelfde als Blauw
+                            const yellowName = match.yellow[i]?.name;
+                            let yellowCellContent = <span className="font-bold text-base text-black">{yellowName}</span>;
+
+                            if (!yellowName && i === 5) {
+                                yellowCellContent = <span className="text-gray-500 italic text-sm">Gem. Rating: {avgYellow}</span>;
+                            }
+
+                            return (
+                                <tr key={i} className="h-10">
+                                    <td className="border border-black px-2 align-middle">
+                                        {blueCellContent || ''}
+                                    </td>
+                                    <td className="border border-black"></td>
+                                    <td className="border border-black px-2 align-middle">
+                                        {yellowCellContent || ''}
+                                    </td>
+                                    <td className="border border-black"></td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
 
@@ -154,7 +180,6 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                 <table className="w-full border-collapse border border-black text-sm mb-4">
                     <thead>
                         <tr>
-                            {/* AANGEPAST: Ook hier 25% / 25% */}
                             <th className="border border-black bg-blue-600 text-white w-[25%] py-2 text-lg uppercase">
                                 TEAM BLAUW
                             </th>
