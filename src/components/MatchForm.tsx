@@ -93,7 +93,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
           <div key={index} className="match-page">
             
             {/* HEADER - Meer ruimte aan de bovenkant */}
-            <div className="flex items-center justify-between mb-4 border-b-2 border-gray-800 pb-4 pt-4">
+            <div className="flex items-center justify-between mb-2 border-b-2 border-gray-800 pb-4 pt-4">
                <div className="flex-shrink-0">
                  <img 
                    src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png" 
@@ -247,7 +247,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
             </div>
             
             {/* FOOTER */}
-            <div className="w-full text-center text-xs text-gray-400 mt-8 pt-4 border-t border-gray-200">
+            <div className="w-full text-center text-xs text-gray-400 mt-4 pt-4 border-t border-gray-200">
                 Gegenereerd door Bounceball App
             </div>
 
