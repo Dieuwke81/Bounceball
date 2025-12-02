@@ -83,7 +83,7 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
     if (isWinterA && !isWinterB) return -1;
     if (!isWinterA && isWinterB) return 1;
 
-    return b.localeCompare(a);
+    return a.localeCompare(b);
   });
 
   const getTrophyStyle = (type: TrophyType) => {
