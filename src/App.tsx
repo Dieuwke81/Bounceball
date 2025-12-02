@@ -871,7 +871,7 @@ useEffect(() => {
                 {/* De beheer knoppen iets kleiner of subtieler gescheiden? Voor nu in dezelfde flow. */}
                 <NavItem view="manualEntry" label="Invoer" icon={<EditIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-gray-500 to-gray-700" />
                 <NavItem view="playerManagement" label="Spelers" icon={<EditIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-pink-500 to-rose-700" />
-                <NavItem view="competitionManagement" label="Beheer" icon={<ArchiveIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-yellow-500 to-amber-800" />
+                <NavItem view="competitionManagement" label="Beheer" icon={<ArchiveIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-yellow-500 to-yellow-800" />
             </div>
         </div>
         
