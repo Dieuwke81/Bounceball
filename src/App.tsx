@@ -825,11 +825,20 @@ setRatingLogs(logs || []); // <-- Nu stoppen we de opgehaalde 'logs' in de state
   // ============================================================================
   // ROBUST LOADING & ERROR HANDLING LOGIC
   // ============================================================================
+  // ============================================================================
+  // LOADING SCREEN
+  // ============================================================================
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
         <div className="text-center">
-            <FutbolIcon className="w-16 h-16 text-cyan-400 mx-auto mb-4 animate-bounce" />
+            {/* HIERONDER IS AANGEPAST: PLAATJE I.P.V. ICOON */}
+            <img 
+              src="https://i.postimg.cc/XJy7yfJ2/bounceball.png" 
+              alt="Laden..." 
+              className="w-32 h-auto mx-auto mb-6 animate-bounce" 
+            />
+            
             <p className="text-xl font-semibold animate-pulse">Gegevens laden...</p>
         </div>
       </div>
