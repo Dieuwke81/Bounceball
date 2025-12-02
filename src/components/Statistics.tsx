@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
-// FutbolIcon is niet meer nodig
 import TrophyIcon from './icons/TrophyIcon';
-import ShieldIcon from './icons/ShieldIcon';
+// ShieldIcon is niet meer nodig, dus weggehaald
 import UsersIcon from './icons/UsersIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
 
@@ -371,7 +370,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        {/* --- AANGEPAST: NU GROTERE AFBEELDING --- */}
+        {/* Topscoorder met Afbeelding */}
         <StatCard title="Topscoorder" icon={
             <img 
                 src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" 
@@ -396,7 +395,14 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        <StatCard title="Beste verdediger" icon={<ShieldIcon className="w-6 h-6 text-fuchsia-400" />}>
+        {/* Beste Verdediger met Afbeelding */}
+        <StatCard title="Beste verdediger" icon={
+            <img 
+                src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" 
+                alt="Beste verdediger" 
+                className="w-12 h-12 object-contain" 
+            />
+        }>
           <StatList
             data={bestDefense}
             showAllFlag={showAll.defense}
