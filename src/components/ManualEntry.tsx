@@ -14,10 +14,10 @@ interface ManualEntryProps {
 }
 
 const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const UNSAVED_MANUAL_KEY = 'bounceball_unsaved_manual_entry';
 
 // ============================================================================
-// NIEUWE COMPONENT: ScoreInput
-// Lost het probleem van 'focus loss' op en maakt het veld leeg bij klikken op '0'.
+// SCORE INPUT COMPONENT
 // ============================================================================
 const ScoreInput: React.FC<{
   value: number;
@@ -76,6 +76,9 @@ const ScoreInput: React.FC<{
     />
   );
 };
+
+// ============================================================================
+// HELPER FUNCTIONS & CHIPS
 // ============================================================================
 
 const generatePairingsWithoutRematches = (
@@ -153,7 +156,6 @@ const MatchInput: React.FC<{
         return (
             <div className="flex items-center justify-between space-x-2 bg-gray-600 p-2 rounded">
                 <span className="text-gray-200 truncate">{player.name}</span>
-                {/* GEBRUIK HIER NU ScoreInput */}
                 <ScoreInput
                     value={goalCount}
                     onChange={(newVal) => onGoalChange(matchIndex, teamIdentifier, player.id, newVal)}
@@ -216,6 +218,9 @@ const MatchResultDisplayCard: React.FC<{
     );
 };
 
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 const ManualEntry: React.FC<ManualEntryProps> = ({ allPlayers, onSave, isLoading }) => {
   const [round, setRound] = useState(0); 
@@ -230,6 +235,53 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ allPlayers, onSave, isLoading
   const [round2Pairings, setRound2Pairings] = useState<Match[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // --- LOCAL STORAGE LOGIC ---
+  // 1. Load on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(UNSAVED_MANUAL_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (window.confirm("Er is een niet-opgeslagen handmatige invoer gevonden. Wil je deze herstellen?")) {
+            setRound(parsed.round || 0);
+            setTeamTextR1(parsed.teamTextR1 || Array(6).fill(''));
+            setTeamTextR2(parsed.teamTextR2 || Array(6).fill(''));
+            setRound1Teams(parsed.round1Teams || null);
+            setNumMatches(parsed.numMatches || 1);
+            setDate(parsed.date || new Date().toISOString().split('T')[0]);
+            setManualRound2(parsed.manualRound2 || false);
+            setGoalScorers(parsed.goalScorers || {});
+            setRound1Results(parsed.round1Results || []);
+            setRound2Pairings(parsed.round2Pairings || []);
+        } else {
+            localStorage.removeItem(UNSAVED_MANUAL_KEY);
+        }
+      } catch (e) {
+        console.error("Fout bij laden handmatige invoer", e);
+        localStorage.removeItem(UNSAVED_MANUAL_KEY);
+      }
+    }
+  }, []);
+
+  // 2. Save on change
+  useEffect(() => {
+    // Alleen opslaan als we niet in de 'init' state zitten om overschrijven bij laden te voorkomen
+    // Maar hier is het veilig omdat de load effect 1x draait.
+    const stateToSave = {
+        round,
+        teamTextR1,
+        teamTextR2,
+        round1Teams,
+        numMatches,
+        date,
+        manualRound2,
+        goalScorers,
+        round1Results,
+        round2Pairings
+    };
+    localStorage.setItem(UNSAVED_MANUAL_KEY, JSON.stringify(stateToSave));
+  }, [round, teamTextR1, teamTextR2, round1Teams, numMatches, date, manualRound2, goalScorers, round1Results, round2Pairings]);
+  // ---------------------------
  
   const playerMap = useMemo(() => {
     const map = new Map<string, Player>();
@@ -393,7 +445,11 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ allPlayers, onSave, isLoading
         }));
         onSave({ date: new Date(date).toISOString(), teams: round1Teams || parsedTeamsR1.teams, round1Results, round2Results });
     }
-    
+
+    // Clear local storage after successful save
+    localStorage.removeItem(UNSAVED_MANUAL_KEY);
+    // Optional: Reset state or navigate away?
+    // For now we assume the parent handles the UI feedback, but clearing storage is key.
   };
 
   const handleSaveSimpleMatch = () => {
@@ -403,7 +459,9 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ allPlayers, onSave, isLoading
         team2Goals: goalScorers['0-team2'] || [],
      }];
      onSave({ date: new Date(date).toISOString(), teams: round1Teams || parsedTeamsR1.teams, round1Results: results, round2Results: [] });
-    
+     
+     // Clear local storage
+     localStorage.removeItem(UNSAVED_MANUAL_KEY);
   }
   
 
