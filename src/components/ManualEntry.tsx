@@ -155,11 +155,12 @@ const MatchInput: React.FC<{
 
         return (
             <div className="flex items-center justify-between space-x-2 bg-gray-600 p-2 rounded">
-                <span className="text-gray-200 truncate">{player.name}</span>
+                {/* AANGEPAST: truncate verwijderd, flex-1 toegevoegd zodat de naam de ruimte pakt */}
+                <span className="text-gray-200 flex-1 pr-2 text-sm sm:text-base">{player.name}</span>
                 <ScoreInput
                     value={goalCount}
                     onChange={(newVal) => onGoalChange(matchIndex, teamIdentifier, player.id, newVal)}
-                    className="w-16 bg-gray-700 border border-gray-500 rounded-md py-1 px-2 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-12 bg-gray-700 border border-gray-500 rounded-md py-1 px-2 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
             </div>
         )
@@ -448,8 +449,6 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ allPlayers, onSave, isLoading
 
     // Clear local storage after successful save
     localStorage.removeItem(UNSAVED_MANUAL_KEY);
-    // Optional: Reset state or navigate away?
-    // For now we assume the parent handles the UI feedback, but clearing storage is key.
   };
 
   const handleSaveSimpleMatch = () => {
