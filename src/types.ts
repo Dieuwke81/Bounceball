@@ -61,5 +61,5 @@ export interface Trophy {
   id: string;        // Unieke ID (nodig om hem later te kunnen verwijderen)
   playerId: number;  // Koppeling aan de speler (via zijn ID)
   type: TrophyType;  // Het soort prijs (uit het lijstje hierboven)
-  year: number;      // Het jaartal
+  year: string;      // Het jaartal
 }
