@@ -93,7 +93,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
           <div key={index} className="match-page">
             
             {/* HEADER - Meer ruimte aan de bovenkant */}
-            <div className="flex items-center justify-between mb-10 border-b-2 border-gray-800 pb-4 pt-4">
+            <div className="flex items-center justify-between mb-4 border-b-2 border-gray-800 pb-4 pt-4">
                <div className="flex-shrink-0">
                  <img 
                    src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png" 
