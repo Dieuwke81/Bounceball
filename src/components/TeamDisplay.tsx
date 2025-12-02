@@ -24,8 +24,41 @@ interface TeamDisplayProps {
 }
 
 // ============================================================================
+// ICONS
+// ============================================================================
+
+const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+  </svg>
+);
+
+const PrinterIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
+  </svg>
+);
+
+const Spinner: React.FC<{className?: string}> = ({className}) => (
+    <svg className={`animate-spin ${className || 'h-5 w-5'}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+);
+
+const LoadingDots: React.FC = () => {
+    const [dots, setDots] = useState('');
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setDots(d => (d.length < 3 ? d + '.' : ''));
+        }, 300);
+        return () => clearInterval(timer);
+    }, []);
+    return <span className="w-4 inline-block text-left">{dots}</span>;
+};
+
+// ============================================================================
 // COMPONENT: ScoreInput
-// AANGEPAST: Nu met onFocus logic zodat de '0' direct verdwijnt bij klikken.
 // ============================================================================
 const ScoreInput: React.FC<{
   value: number;
@@ -45,13 +78,10 @@ const ScoreInput: React.FC<{
     }
   };
 
-  // NIEUW: Zodra je in het vakje klikt/tapt
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     if (localValue === '0') {
-        // Is het een 0? Maak het veld leeg zodat je direct kunt typen
         setLocalValue('');
     } else {
-        // Is het een ander getal? Selecteer alles zodat je het kunt overschrijven
         e.target.select();
     }
   };
@@ -74,12 +104,12 @@ const ScoreInput: React.FC<{
 
   return (
     <input
-      type="text" // 'text' i.p.v. 'number' voorkomt standaard browser pijltjes en scrolling
-      inputMode="numeric" // Dit forceert het numpad toetsenbord op mobiel
+      type="text"
+      inputMode="numeric"
       pattern="[0-9]*"
       value={localValue}
       onChange={handleChange}
-      onFocus={handleFocus} // <--- HIER ZIT DE UPDATE
+      onFocus={handleFocus}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       className={className}
@@ -87,36 +117,9 @@ const ScoreInput: React.FC<{
     />
   );
 };
-// ============================================================================
 
-const Spinner: React.FC<{className?: string}> = ({className}) => (
-    <svg className={`animate-spin ${className || 'h-5 w-5'}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-);
-
-const PrinterIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
-  </svg>
-);
-
-const LoadingDots: React.FC = () => {
-    const [dots, setDots] = useState('');
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setDots(d => (d.length < 3 ? d + '.' : ''));
-        }, 300);
-        return () => clearInterval(timer);
-    }, []);
-    return <span className="w-4 inline-block text-left">{dots}</span>;
-};
-
-
-// HULPFUNCTIE VOOR KLEUREN
+// Hulpfuncties
 const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
-
 
 const MatchInputCard: React.FC<{
     match: Match;
@@ -125,24 +128,18 @@ const MatchInputCard: React.FC<{
     goalScorers: TeamDisplayProps['goalScorers'];
     onGoalChange: TeamDisplayProps['onGoalChange'];
 }> = ({ match, matchIndex, teams, goalScorers, onGoalChange }) => {
-    
     const team1 = teams[match.team1Index];
     const team2 = teams[match.team2Index];
     
-    // --- KLEUREN LOGICA ---
     const baseColor1 = getBaseColor(match.team1Index);
     const baseColor2 = getBaseColor(match.team2Index);
-
     let finalColor1 = baseColor1;
     let finalColor2 = baseColor2;
-
     if (baseColor1 === baseColor2) {
         finalColor2 = (baseColor2 === 'blue' ? 'yellow' : 'blue');
     }
-
     const leftColorClass = finalColor1 === 'blue' ? 'text-cyan-300' : 'text-amber-300';
     const rightColorClass = finalColor2 === 'blue' ? 'text-cyan-300' : 'text-amber-300';
-    // -----------------------------
 
     const getTeamGoals = (teamIdentifier: 'team1' | 'team2') => goalScorers[`${matchIndex}-${teamIdentifier}`] || [];
     const getTeamScore = (teamIdentifier: 'team1' | 'team2') => getTeamGoals(teamIdentifier).reduce((sum, goal) => sum + goal.count, 0);
@@ -154,7 +151,6 @@ const MatchInputCard: React.FC<{
         return (
             <div className="flex items-center justify-between space-x-2 bg-gray-600 p-2 rounded">
                 <span className="text-gray-200 flex-1 pr-2">{player.name}</span>
-                
                 <ScoreInput
                     value={goalCount}
                     onChange={(newVal) => onGoalChange(matchIndex, teamIdentifier, player.id, newVal)}
@@ -167,7 +163,6 @@ const MatchInputCard: React.FC<{
     return (
         <div className="bg-gray-700 rounded-lg p-4">
             <div className="grid grid-cols-2 gap-4">
-                {/* Linker Kolom (Team 1) */}
                 <div className="space-y-3">
                     <div className="text-center">
                         <h4 className={`font-bold text-lg ${leftColorClass}`}>Team {match.team1Index + 1}</h4>
@@ -177,7 +172,6 @@ const MatchInputCard: React.FC<{
                         {team1.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier="team1" />)}
                     </div>
                 </div>
-                {/* Rechter Kolom (Team 2) */}
                 <div className="space-y-3">
                      <div className="text-center">
                         <h4 className={`font-bold text-lg ${rightColorClass}`}>Team {match.team2Index + 1}</h4>
@@ -192,23 +186,18 @@ const MatchInputCard: React.FC<{
     );
 };
 
-
 const MatchResultDisplayCard: React.FC<{
     matchResult: MatchResult;
 }> = ({ matchResult }) => {
     const team1Score = matchResult.team1Goals.reduce((sum, goal) => sum + goal.count, 0);
     const team2Score = matchResult.team2Goals.reduce((sum, goal) => sum + goal.count, 0);
-    
     const baseColor1 = getBaseColor(matchResult.team1Index);
     const baseColor2 = getBaseColor(matchResult.team2Index);
-
     let finalColor1 = baseColor1;
     let finalColor2 = baseColor2;
-
     if (baseColor1 === baseColor2) {
         finalColor2 = (baseColor2 === 'blue' ? 'yellow' : 'blue');
     }
-
     const team1Color = finalColor1 === 'blue' ? 'text-cyan-400/80' : 'text-amber-400/80';
     const team2Color = finalColor2 === 'blue' ? 'text-cyan-400/80' : 'text-amber-400/80';
 
@@ -238,7 +227,6 @@ const TeamCard: React.FC<{team: Player[], index: number, title: string}> = ({ te
         return { totalRating, averageRating };
     };
     const { totalRating, averageRating } = calculateTeamStats(team);
-    
     const isBlueTeam = index % 2 === 0;
     const headerColor = isBlueTeam ? 'text-cyan-400' : 'text-amber-400';
     const borderColor = isBlueTeam ? 'border-cyan-500' : 'border-amber-500';
@@ -252,9 +240,7 @@ const TeamCard: React.FC<{team: Player[], index: number, title: string}> = ({ te
                     <div className="flex items-center">
                       <span className="font-medium text-gray-200">{player.name}</span>
                       {player.isKeeper && (
-                        <span className="ml-2 text-xs font-semibold bg-amber-500 text-white py-0.5 px-2 rounded-full">
-                          K
-                        </span>
+                        <span className="ml-2 text-xs font-semibold bg-amber-500 text-white py-0.5 px-2 rounded-full">K</span>
                       )}
                     </div>
                   </div>
@@ -290,7 +276,6 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
     if (gameMode === 'simple' || gameMode === 'doubleHeader') {
         return [{ team1Index: 0, team2Index: 1 }];
     }
-    
     if (gameMode === 'tournament') {
         const matches: Match[] = [];
         for (let i = 0; i < teams.length; i += 2) {
@@ -306,6 +291,48 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
     return [];
   }, [teams, gameMode]);
 
+  // --- WHATSAPP LOGICA ---
+  const handleShareToWhatsApp = () => {
+    const today = new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+    const dateStr = today.charAt(0).toUpperCase() + today.slice(1);
+    
+    let text = `📅 *Bounceball - ${dateStr}*\n\n`;
+
+    // Helper: Bereken gem. rating
+    const getAvg = (team: Player[]) => {
+        if (!team || team.length === 0) return '0.00';
+        const total = team.reduce((sum, p) => sum + p.rating, 0);
+        return (total / team.length).toFixed(2);
+    };
+
+    round1Matches.forEach((match, index) => {
+        const team1 = teams[match.team1Index];
+        const team2 = teams[match.team2Index];
+        if (!team1 || !team2) return;
+        
+        const avg1 = getAvg(team1);
+        const avg2 = getAvg(team2);
+
+        text += `🔥 *Wedstrijd ${index + 1}*\n`;
+        
+        // Team 1
+        text += `🔵 *Team ${match.team1Index + 1}* (⭐ ${avg1})\n`;
+        team1.forEach(p => text += `- ${p.name}\n`);
+        
+        text += `\n   ⚡️  - VS -  ⚡️   \n\n`;
+
+        // Team 2
+        text += `🟡 *Team ${match.team2Index + 1}* (⭐ ${avg2})\n`;
+        team2.forEach(p => text += `- ${p.name}\n`);
+
+        text += `\n------------------\n\n`;
+    });
+
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+  // ----------------------
+
   const currentMatches = currentRound === 1 ? round1Matches : round2Pairings;
 
   return (
@@ -316,15 +343,26 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
           <h2 className="ml-3 text-2xl font-bold text-white">Wedstrijdoverzicht</h2>
         </div>
         
-        {/* --- DE PRINT KNOP --- */}
-        <button
-            onClick={() => window.print()}
-            className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95"
-            title="Print Wedstrijdformulier"
-        >
-            <PrinterIcon className="w-5 h-5" />
-            <span className="hidden sm:inline">Formulier</span>
-        </button>
+        <div className="flex space-x-2">
+            {/* WHATSAPP KNOP */}
+            <button
+                onClick={handleShareToWhatsApp}
+                className="flex items-center space-x-2 bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95"
+                title="Deel via WhatsApp"
+            >
+                <WhatsAppIcon className="w-5 h-5" />
+            </button>
+
+            {/* PRINT KNOP */}
+            <button
+                onClick={() => window.print()}
+                className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95"
+                title="Print Wedstrijdformulier"
+            >
+                <PrinterIcon className="w-5 h-5" />
+                <span className="hidden sm:inline">Formulier</span>
+            </button>
+        </div>
       </div>
 
       {/* --- DOUBLE HEADER LOGIC --- */}
