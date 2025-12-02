@@ -1,6 +1,4 @@
-
-
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Player, Goal, Match, MatchResult } from '../types';
 import EditIcon from './icons/EditIcon';
 
@@ -16,6 +14,69 @@ interface ManualEntryProps {
 }
 
 const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+// ============================================================================
+// NIEUWE COMPONENT: ScoreInput
+// Lost het probleem van 'focus loss' op en maakt het veld leeg bij klikken op '0'.
+// ============================================================================
+const ScoreInput: React.FC<{
+  value: number;
+  onChange: (val: number) => void;
+  className?: string;
+}> = ({ value, onChange, className }) => {
+  const [localValue, setLocalValue] = useState<string>(value.toString());
+
+  useEffect(() => {
+    setLocalValue(value.toString());
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val === '' || /^\d+$/.test(val)) {
+      setLocalValue(val);
+    }
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (localValue === '0') {
+        setLocalValue('');
+    } else {
+        e.target.select();
+    }
+  };
+
+  const handleBlur = () => {
+    let num = parseInt(localValue, 10);
+    if (isNaN(num)) num = 0;
+    
+    if (num !== value) {
+      onChange(num);
+    }
+    setLocalValue(num.toString());
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={localValue}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className={className}
+      placeholder="0"
+    />
+  );
+};
+// ============================================================================
 
 const generatePairingsWithoutRematches = (
   sortedTeams: { teamIndex: number; [key: string]: any }[],
@@ -36,7 +97,6 @@ const generatePairingsWithoutRematches = (
     let team2: { teamIndex: number; [key: string]: any } | undefined;
     let opponentIndexInAvailable = -1;
 
-    // Find the best-ranked opponent that is not a rematch
     for (let i = 0; i < available.length; i++) {
       const potentialOpponent = available[i];
       if (r1Opponents.get(team1.teamIndex) !== potentialOpponent.teamIndex) {
@@ -46,12 +106,9 @@ const generatePairingsWithoutRematches = (
       }
     }
     
-    // If a non-rematch opponent was found, remove them from available list
     if (team2 && opponentIndexInAvailable !== -1) {
       available.splice(opponentIndexInAvailable, 1);
     } else {
-      // Fallback: if all remaining opponents are rematches (e.g., in a 4-team tourney),
-      // just take the highest-ranked one.
       team2 = available.shift();
     }
 
@@ -65,7 +122,7 @@ const generatePairingsWithoutRematches = (
 
 const PlayerChip: React.FC<{player: Player}> = ({ player }) => (
     <div className="bg-green-800/50 flex items-center justify-between text-sm text-green-200 px-2 py-1 rounded">
-        <span>{player.name} {/*<span className="text-xs opacity-70">({player.rating})</span>*/}</span>
+        <span>{player.name}</span>
     </div>
 );
 
@@ -91,19 +148,16 @@ const MatchInput: React.FC<{
 
     const PlayerGoalInput: React.FC<{player: Player, teamIdentifier: 'team1' | 'team2'}> = ({ player, teamIdentifier }) => {
         const goals = getTeamGoals(teamIdentifier);
-        const goalCount = goals.find(g => g.playerId === player.id)?.count || '';
+        const goalCount = goals.find(g => g.playerId === player.id)?.count || 0;
 
         return (
             <div className="flex items-center justify-between space-x-2 bg-gray-600 p-2 rounded">
                 <span className="text-gray-200 truncate">{player.name}</span>
-                <input
-                    type="number"
+                {/* GEBRUIK HIER NU ScoreInput */}
+                <ScoreInput
                     value={goalCount}
-                    onChange={(e) => onGoalChange(matchIndex, teamIdentifier, player.id, parseInt(e.target.value, 10) || 0)}
-                    min="0"
+                    onChange={(newVal) => onGoalChange(matchIndex, teamIdentifier, player.id, newVal)}
                     className="w-16 bg-gray-700 border border-gray-500 rounded-md py-1 px-2 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    aria-label={`Doelpunten voor ${player.name}`}
-                    placeholder="0"
                 />
             </div>
         )
@@ -164,11 +218,11 @@ const MatchResultDisplayCard: React.FC<{
 
 
 const ManualEntry: React.FC<ManualEntryProps> = ({ allPlayers, onSave, isLoading }) => {
-  const [round, setRound] = useState(0); // 0: setup, 1: round 1, 1.5: manual pairing, 1.8: R2 setup, 2: round 2
+  const [round, setRound] = useState(0); 
   const [teamTextR1, setTeamTextR1] = useState<string[]>(Array(6).fill(''));
   const [teamTextR2, setTeamTextR2] = useState<string[]>(Array(6).fill(''));
   const [round1Teams, setRound1Teams] = useState<Player[][] | null>(null);
-  const [numMatches, setNumMatches] = useState(1); // 1 to 3
+  const [numMatches, setNumMatches] = useState(1); 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [manualRound2, setManualRound2] = useState(false);
   const [goalScorers, setGoalScorers] = useState<{ [key: string]: Goal[] }>({});
