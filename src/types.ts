@@ -43,3 +43,23 @@ export interface RatingLogEntry {
   playerId: number;
   rating: number;
 }
+
+// ============================================================================
+// NIEUWE TYPES VOOR DE PRIJZENKAST (TROPHY ROOM)
+// ============================================================================
+
+// De specifieke opties die je wilde voor de prijzen
+export type TrophyType = 
+  | 'Clubkampioen' | '2de' | '3de' 
+  | 'Topscoorder' | 'Verdediger' | 'Speler van het jaar'
+  | '1ste NK' | '2de NK' | '3de NK'
+  | '1ste Introductietoernooi' | '2de Introductietoernooi' | '3de Introductietoernooi'
+  | '1ste Wintertoernooi' | '2de Wintertoernooi' | '3de Wintertoernooi';
+
+// Het object hoe we een prijs opslaan in de database
+export interface Trophy {
+  id: string;        // Unieke ID (nodig om hem later te kunnen verwijderen)
+  playerId: number;  // Koppeling aan de speler (via zijn ID)
+  type: TrophyType;  // Het soort prijs (uit het lijstje hierboven)
+  year: number;      // Het jaartal
+}
