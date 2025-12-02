@@ -154,7 +154,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
 
                             return (
                                 /* Iets hogere regels (h-12) om pagina beter te vullen */
-                                <tr key={i} className="h-12">
+                                <tr key={i} className="h-10">
                                     <td className="border border-black px-3 align-middle bg-white">
                                         {blueContent || ''}
                                     </td>
@@ -219,7 +219,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                     </thead>
                     <tbody>
                         {rows.map((_, i) => (
-                            <tr key={i} className="h-12">
+                            <tr key={i} className="h-10">
                                 <td className="border border-black px-3 align-middle bg-white"></td>
                                 <td className="border border-black bg-white"></td>
                                 <td className="border border-black px-3 align-middle bg-white"></td>
