@@ -3,6 +3,13 @@ import type { Player, Match, Goal, MatchResult } from '../types';
 import TrophyIcon from './icons/TrophyIcon';
 import MatchForm from './MatchForm';
 
+// --- STAP 1: Vertel TypeScript dat 'confetti' op het window object bestaat ---
+declare global {
+  interface Window {
+    confetti: any;
+  }
+}
+
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 
 interface TeamDisplayProps {
@@ -280,6 +287,43 @@ const TeamCard: React.FC<{team: Player[], index: number, title: string}> = ({ te
 
 
 const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, currentRound, round1Results, round2Pairings, goalScorers, onGoalChange, onSaveRound1, onSaveFinalResults, onSaveSimpleMatch, onStartSecondDoubleHeaderMatch, onSaveDoubleHeader, onRegenerateTeams, actionInProgress }) => {
+  
+  // --- STAP 2: Laad de confetti code automatisch in ---
+  useEffect(() => {
+    // We checken of het script al bestaat om dubbel laden te voorkomen
+    if (!document.getElementById('confetti-script')) {
+        const script = document.createElement('script');
+        script.id = 'confetti-script';
+        script.src = "https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js";
+        script.async = true;
+        document.body.appendChild(script);
+    }
+  }, []);
+
+  // --- STAP 3: De Confetti Functie ---
+  const triggerFirework = () => {
+    if (window.confetti) {
+        const duration = 2 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+        const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+        const interval: any = setInterval(function() {
+            const timeLeft = animationEnd - Date.now();
+
+            if (timeLeft <= 0) {
+                return clearInterval(interval);
+            }
+
+            const particleCount = 50 * (timeLeft / duration);
+            // Confetti valt van boven, dus start iets hoger dan random
+            window.confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+            window.confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+        }, 250);
+    }
+  };
+
   if (teams.length === 0) {
     return null;
   }
@@ -407,6 +451,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
                               team2Goals: goalScorers['0-team2'] || [],
                           };
                           onSaveDoubleHeader(match2Result);
+                          triggerFirework(); // <--- CONFETTI
                       }}
                       className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
                       disabled={!!actionInProgress}
@@ -485,7 +530,10 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
                     
                     {isSimpleMatch && currentRound === 1 && (
                          <button
-                            onClick={() => onSaveSimpleMatch(round1Matches[0])}
+                            onClick={() => {
+                                onSaveSimpleMatch(round1Matches[0]);
+                                triggerFirework(); // <--- CONFETTI
+                            }}
                             className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 transform hover:scale-105 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
                             disabled={!!actionInProgress}
                             >
@@ -513,7 +561,10 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
                     {!isSimpleMatch && currentRound === 2 && (
                         <>
                             <button
-                                onClick={() => onSaveFinalResults(round2Pairings)}
+                                onClick={() => {
+                                    onSaveFinalResults(round2Pairings);
+                                    triggerFirework(); // <--- CONFETTI
+                                }}
                                 className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 transform hover:scale-105 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
                                 disabled={!!actionInProgress}
                             >
