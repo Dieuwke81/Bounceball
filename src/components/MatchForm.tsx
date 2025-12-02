@@ -8,6 +8,7 @@ interface MatchFormProps {
 }
 
 const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
+  // We koppelen teams aan elkaar (Team 0 vs Team 1, Team 2 vs Team 3, etc.)
   const matches = [];
   for (let i = 0; i < teams.length; i += 2) {
     if (teams[i + 1]) {
@@ -19,6 +20,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
     }
   }
 
+  // Datum formatteren
   const currentDate = date || new Date().toLocaleDateString('nl-NL', {
     weekday: 'long', 
     day: 'numeric', 
@@ -26,13 +28,14 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
     year: 'numeric'
   });
 
-  // Hulpfunctie voor gemiddelde rating
+  // Hulpfunctie: Bereken gemiddelde rating van een team
   const calculateAverage = (team: Player[]): string => {
     if (!team || team.length === 0) return '0.0';
     const total = team.reduce((sum, p) => sum + (p.rating || 0), 0);
     return (total / team.length).toFixed(1);
   };
 
+  // We gebruiken createPortal om buiten de normale app-structuur te renderen (handig voor print)
   return createPortal(
     <div className="print-portal hidden">
       <style>
@@ -46,9 +49,11 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               margin: 0 !important;
               padding: 0 !important;
             }
+            /* Verberg de normale app interface */
             body > *:not(.print-portal) {
               display: none !important;
             }
+            /* Toon het print formulier */
             .print-portal {
               display: block !important;
               position: absolute;
@@ -59,6 +64,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               z-index: 9999;
               background-color: white;
               color: black;
+              font-family: sans-serif;
             }
             @page {
               size: A4;
@@ -67,7 +73,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
             .match-page {
               page-break-after: always;
               break-after: page;
-              min-height: 90vh;
+              min-height: 95vh; /* Iets verhoogd om de pagina mooi te vullen */
               display: flex;
               flex-direction: column;
             }
@@ -75,6 +81,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               page-break-after: auto;
               break-after: auto;
             }
+            /* Zorg dat achtergrondkleuren (blauw/geel) geprint worden */
             * {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
@@ -84,139 +91,156 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
       </style>
 
       {matches.map((match, index) => {
-        // Zorg dat er altijd minimaal 6 rijen zijn
+        // Zorg altijd voor minimaal 6 rijen, zodat het formulier constant blijft
         const maxRows = Math.max(match.blue.length, match.yellow.length, 6);
         const rows = Array.from({ length: maxRows });
 
-        // Bereken de gemiddelden
+        // Bereken de gemiddeldes voor dit wedstrijdpaar
         const avgBlue = calculateAverage(match.blue);
         const avgYellow = calculateAverage(match.yellow);
 
         return (
           <div key={index} className="match-page">
             
-            {/* HEADER */}
-            <div className="text-center mb-6">
-              <h1 className="text-3xl font-bold uppercase tracking-wider mb-1 text-black">Wedstrijdformulier</h1>
-              <p className="text-sm text-gray-500">Bounceball Competitie</p>
+            {/* --- HEADER MET LOGO --- */}
+            <div className="flex items-center justify-between mb-6 border-b-2 border-gray-800 pb-4">
+               {/* Het Logo links */}
+               <div className="flex-shrink-0">
+                 <img 
+                   src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png" 
+                   alt="Logo" 
+                   className="h-24 w-auto object-contain"
+                 />
+               </div>
+
+               {/* Titel en Info rechts/midden */}
+               <div className="text-right flex-grow ml-6">
+                  <h1 className="text-4xl font-bold uppercase tracking-wider text-black leading-none mb-2">
+                    Wedstrijdformulier
+                  </h1>
+                  <div className="text-lg text-black">
+                     <span className="font-bold mr-4">Datum:</span> {currentDate}
+                  </div>
+                  <div className="text-lg text-black">
+                     <span className="font-bold mr-4">Zaal:</span> {match.matchNumber}
+                  </div>
+               </div>
             </div>
 
-            <div className="flex justify-between items-center mb-8 text-lg border-b-2 border-gray-800 pb-2 text-black">
-                <div><strong>Datum:</strong> {currentDate}</div>
-                <div><strong>Zaal:</strong> {match.matchNumber}</div>
-            </div>
-
-            {/* --- WEDSTRIJD 1 --- */}
-            <div className="mb-10 flex-grow">
+            {/* --- WEDSTRIJD 1 SECTIE --- */}
+            <div className="mb-8 flex-grow">
                 <div className="border-2 border-black text-center font-bold text-xl py-1 mb-2 uppercase bg-gray-100 text-black">
                     Wedstrijd 1
                 </div>
 
-                <table className="w-full border-collapse border border-black text-sm mb-4">
+                <table className="w-full border-collapse border border-black text-sm mb-6">
                     <thead>
                         <tr>
-                            <th className="border border-black bg-blue-600 text-white w-[25%] py-2 text-lg uppercase">
+                            <th className="border border-black bg-blue-600 text-white w-[25%] py-3 text-lg uppercase font-bold">
                                 TEAM BLAUW
                             </th>
-                            <th className="border border-black w-[25%] py-2 text-center text-gray-500 text-xs text-black">
+                            <th className="border border-black w-[25%] py-3 text-center text-gray-500 text-xs text-black">
                                 Doelpunten
                             </th>
-                            <th className="border border-black bg-yellow-300 text-black w-[25%] py-2 text-lg uppercase">
+                            <th className="border border-black bg-yellow-300 text-black w-[25%] py-3 text-lg uppercase font-bold">
                                 TEAM GEEL
                             </th>
-                            <th className="border border-black w-[25%] py-2 text-center text-gray-500 text-xs text-black">
+                            <th className="border border-black w-[25%] py-3 text-center text-gray-500 text-xs text-black">
                                 Doelpunten
                             </th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.map((_, i) => {
-                            // Logica voor Blauw: Toon naam, OF toon rating in het 6e vakje (index 5) als het leeg is
+                            // --- LOGICA VOOR BLAUW ---
                             const blueName = match.blue[i]?.name;
-                            let blueCellContent = <span className="font-bold text-base text-black">{blueName}</span>;
+                            let blueContent = <span className="font-bold text-base text-black">{blueName}</span>;
                             
+                            // Als er geen naam is, en het is de 6e rij (index 5), toon gemiddelde
                             if (!blueName && i === 5) {
-                                blueCellContent = <span className="text-gray-500 italic text-sm">Gem. Rating: {avgBlue}</span>;
+                                blueContent = <span className="text-gray-500 italic text-sm">Gem. Rating: {avgBlue}</span>;
                             }
 
-                            // Logica voor Geel: Zelfde als Blauw
+                            // --- LOGICA VOOR GEEL ---
                             const yellowName = match.yellow[i]?.name;
-                            let yellowCellContent = <span className="font-bold text-base text-black">{yellowName}</span>;
-
+                            let yellowContent = <span className="font-bold text-base text-black">{yellowName}</span>;
+                            
                             if (!yellowName && i === 5) {
-                                yellowCellContent = <span className="text-gray-500 italic text-sm">Gem. Rating: {avgYellow}</span>;
+                                yellowContent = <span className="text-gray-500 italic text-sm">Gem. Rating: {avgYellow}</span>;
                             }
 
                             return (
-                                <tr key={i} className="h-10">
-                                    <td className="border border-black px-2 align-middle">
-                                        {blueCellContent || ''}
+                                <tr key={i} className="h-12">
+                                    <td className="border border-black px-3 align-middle bg-white">
+                                        {blueContent || ''}
                                     </td>
-                                    <td className="border border-black"></td>
-                                    <td className="border border-black px-2 align-middle">
-                                        {yellowCellContent || ''}
+                                    <td className="border border-black bg-white"></td>
+                                    <td className="border border-black px-3 align-middle bg-white">
+                                        {yellowContent || ''}
                                     </td>
-                                    <td className="border border-black"></td>
+                                    <td className="border border-black bg-white"></td>
                                 </tr>
                             );
                         })}
                     </tbody>
                 </table>
 
-                <div className="flex items-end justify-center gap-6 text-black">
-                    <div className="text-xl font-bold">Eindstand:</div>
-                    <div className="text-2xl font-bold border-b-2 border-black w-20 text-center">&nbsp;</div>
-                    <div className="text-2xl font-bold">-</div>
-                    <div className="text-2xl font-bold border-b-2 border-black w-20 text-center">&nbsp;</div>
+                {/* Score vakken Wedstrijd 1 */}
+                <div className="flex items-end justify-center gap-4 text-black mb-4">
+                    <div className="text-xl font-bold mb-1">Eindstand:</div>
+                    <div className="border-2 border-black w-24 h-12 flex items-center justify-center bg-white"></div>
+                    <div className="text-2xl font-bold mb-1">-</div>
+                    <div className="border-2 border-black w-24 h-12 flex items-center justify-center bg-white"></div>
                 </div>
             </div>
 
-            {/* --- WEDSTRIJD 2 --- */}
+            {/* --- WEDSTRIJD 2 SECTIE --- */}
             <div className="mb-4 flex-grow">
                 <div className="border-2 border-black text-center font-bold text-xl py-1 mb-2 uppercase bg-gray-100 text-black">
                     Wedstrijd 2
                 </div>
 
-                <table className="w-full border-collapse border border-black text-sm mb-4">
+                <table className="w-full border-collapse border border-black text-sm mb-6">
                     <thead>
                         <tr>
-                            <th className="border border-black bg-blue-600 text-white w-[25%] py-2 text-lg uppercase">
+                            <th className="border border-black bg-blue-600 text-white w-[25%] py-3 text-lg uppercase font-bold">
                                 TEAM BLAUW
                             </th>
-                            <th className="border border-black w-[25%] py-2 text-center text-gray-500 text-xs text-black">
+                            <th className="border border-black w-[25%] py-3 text-center text-gray-500 text-xs text-black">
                                 Doelpunten
                             </th>
-                            <th className="border border-black bg-yellow-300 text-black w-[25%] py-2 text-lg uppercase">
+                            <th className="border border-black bg-yellow-300 text-black w-[25%] py-3 text-lg uppercase font-bold">
                                 TEAM GEEL
                             </th>
-                            <th className="border border-black w-[25%] py-2 text-center text-gray-500 text-xs text-black">
+                            <th className="border border-black w-[25%] py-3 text-center text-gray-500 text-xs text-black">
                                 Doelpunten
                             </th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.map((_, i) => (
-                            <tr key={i} className="h-10">
-                                <td className="border border-black px-2 text-gray-300"></td>
-                                <td className="border border-black"></td>
-                                <td className="border border-black px-2 text-gray-300"></td>
-                                <td className="border border-black"></td>
+                            <tr key={i} className="h-12">
+                                <td className="border border-black px-3 align-middle bg-white"></td>
+                                <td className="border border-black bg-white"></td>
+                                <td className="border border-black px-3 align-middle bg-white"></td>
+                                <td className="border border-black bg-white"></td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
 
-                <div className="flex items-end justify-center gap-6 text-black">
-                    <div className="text-xl font-bold">Eindstand:</div>
-                    <div className="text-2xl font-bold border-b-2 border-black w-20 text-center">&nbsp;</div>
-                    <div className="text-2xl font-bold">-</div>
-                    <div className="text-2xl font-bold border-b-2 border-black w-20 text-center">&nbsp;</div>
+                {/* Score vakken Wedstrijd 2 */}
+                <div className="flex items-end justify-center gap-4 text-black">
+                    <div className="text-xl font-bold mb-1">Eindstand:</div>
+                    <div className="border-2 border-black w-24 h-12 flex items-center justify-center bg-white"></div>
+                    <div className="text-2xl font-bold mb-1">-</div>
+                    <div className="border-2 border-black w-24 h-12 flex items-center justify-center bg-white"></div>
                 </div>
             </div>
             
-            {/* Footer */}
-            <div className="w-full text-center text-xs text-gray-400 mt-auto pb-4">
-                Wedstrijdformulier - Zaal {match.matchNumber} - Geprint via de Bounceball App
+            {/* FOOTER */}
+            <div className="w-full text-center text-xs text-gray-400 mt-auto pt-4 border-t border-gray-200">
+                Gegenereerd door Bounceball App
             </div>
 
           </div>
