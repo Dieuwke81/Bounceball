@@ -63,9 +63,21 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
     return acc;
   }, {} as { [year: string]: Trophy[] });
 
-  // Sorteer de jaren (Nieuwste boven)
-  // Omdat het strings zijn (bijv "2025/2"), werkt localeCompare goed om ze te sorteren.
-  const sortedYears = Object.keys(trophiesByYear).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+ // Sorteer de jaren (Nieuwste boven)
+  const sortedYears = Object.keys(trophiesByYear).sort((a, b) => {
+    // Probeer het jaartal (4 cijfers, bijv 2025) uit de tekst te vissen
+    const yearA = Number(a.match(/\d{4}/)?.[0]) || 0;
+    const yearB = Number(b.match(/\d{4}/)?.[0]) || 0;
+
+    // Als de jaren verschillen, is het makkelijk: hoogste jaar eerst
+    if (yearA !== yearB) {
+        return yearB - yearA;
+    }
+
+    // Als de jaren hetzelfde zijn (bijv. "Zomer 2025" vs "Winter 2025"),
+    // sorteer dan op het alfabet (Zomer komt dan voor Winter in aflopende volgorde)
+    return b.localeCompare(a);
+  });
 
   const getTrophyStyle = (type: TrophyType) => {
     if (type.includes('1ste') || type === 'Clubkampioen' || type === 'Speler van het jaar') return 'text-yellow-400';
