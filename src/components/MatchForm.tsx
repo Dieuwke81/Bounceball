@@ -195,7 +195,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
 
             {/* --- WEDSTRIJD 2 --- */}
             {/* margin-top-auto zorgt dat deze sectie netjes naar beneden zakt als er ruimte over is */}
-            <div className="mb-4 mt-auto">
+            <div className="mb-4">
                 <div className="border-2 border-black text-center font-bold text-xl py-2 mb-4 uppercase bg-gray-100 text-black">
                     Wedstrijd 2
                 </div>
