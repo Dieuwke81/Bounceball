@@ -116,7 +116,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
             </div>
 
             {/* --- WEDSTRIJD 1 --- */}
-            <div className="mb-8">
+            <div className="mb-2">
                 <div className="border-2 border-black text-center font-bold text-xl py-2 mb-4 uppercase bg-gray-100 text-black">
                     Wedstrijd 1
                 </div>
