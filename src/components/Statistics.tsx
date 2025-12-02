@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
-// FutbolIcon is niet meer nodig, dus weggehaald uit imports
+// FutbolIcon is niet meer nodig
 import TrophyIcon from './icons/TrophyIcon';
 import ShieldIcon from './icons/ShieldIcon';
 import UsersIcon from './icons/UsersIcon';
@@ -371,12 +371,12 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        {/* --- AANGEPAST: NU MET JOUW PLAATJE --- */}
+        {/* --- AANGEPAST: NU GROTERE AFBEELDING --- */}
         <StatCard title="Topscoorder" icon={
             <img 
                 src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" 
                 alt="Topscoorder" 
-                className="w-8 h-8 object-contain" 
+                className="w-12 h-12 object-contain" 
             />
         }>
            <StatList
