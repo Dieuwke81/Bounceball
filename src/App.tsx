@@ -801,25 +801,24 @@ useEffect(() => {
     }
   };
 
-  // --- AANGEPAST NAVIGATIE ITEM ---
-  // Dit zorgt voor mooie "tegels" in de grid layout
-  const NavItem: React.FC<{view: View, label: string, icon: React.ReactNode, isProtected?: boolean}> = ({ view, label, icon, isProtected }) => (
+  // --- AANGEPAST NAVIGATIE ITEM (COMPACT & SPEELS) ---
+  const NavItem: React.FC<{view: View, label: string, icon: React.ReactNode, isProtected?: boolean, colorClass?: string}> = ({ view, label, icon, isProtected, colorClass = 'bg-gray-700' }) => (
     <button
       onClick={() => {
         if (view === 'main') setViewingArchive(null);
         setCurrentView(view);
       }}
-      className={`relative flex flex-col items-center justify-center space-y-2 p-4 rounded-xl transition-all duration-200 shadow-md ${
-        currentView === view 
-          ? 'bg-gradient-to-br from-cyan-600 to-cyan-800 text-white transform scale-[1.02]' 
-          : 'bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-white hover:scale-[1.02]'
+      className={`group flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-200 active:scale-95 ${
+        currentView === view ? 'opacity-100' : 'opacity-70 hover:opacity-100'
       }`}
     >
-      {isProtected && <LockIcon className="w-3 h-3 text-amber-400 absolute top-2 right-2" />}
-      <div className={`p-2 rounded-full ${currentView === view ? 'bg-white/20' : 'bg-gray-700'}`}>
-        {icon}
+      <div className={`relative p-3 rounded-2xl shadow-lg mb-1 transition-transform group-hover:scale-110 ${colorClass}`}>
+        {isProtected && <LockIcon className="w-3 h-3 text-white absolute top-0 right-0 -mt-1 -mr-1 drop-shadow-md" />}
+        <div className="text-white drop-shadow-sm">
+            {icon}
+        </div>
       </div>
-      <span className="font-semibold text-sm">{label}</span>
+      <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">{label}</span>
     </button>
   );
   
@@ -861,21 +860,20 @@ useEffect(() => {
             </div>
          )}
 
-        {/* --- AANGEPASTE NAVIGATIE: GRID LAYOUT --- */}
-        <nav className="mb-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            {/* RIJ 1: De belangrijkste gebruikers-acties */}
-            <NavItem view="main" label="Wedstrijd" icon={<FutbolIcon className="w-6 h-6" />} />
-            <NavItem view="stats" label="Statistieken" icon={<UsersIcon className="w-6 h-6" />} isProtected />
-            <NavItem view="history" label="Geschiedenis" icon={<ClockIcon className="w-6 h-6" />} />
-            <NavItem view="trophyRoom" label="Prijzenkast" icon={<TrophyIcon className="w-6 h-6" />} />
-            
-            {/* RIJ 2: Beheer & Invoer */}
-            <NavItem view="manualEntry" label="Handmatige Invoer" icon={<EditIcon className="w-6 h-6" />} />
-            <NavItem view="playerManagement" label="Spelersbeheer" icon={<EditIcon className="w-6 h-6" />} isProtected />
-            <NavItem view="competitionManagement" label="Competitiebeheer" icon={<ArchiveIcon className="w-6 h-6" />} isProtected />
-          </div>
-        </nav>
+        {/* --- NIEUWE COMPACTE NAVIGATIE --- */}
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-8 shadow-xl border border-gray-700/50">
+            <div className="flex flex-wrap justify-center gap-4 md:gap-8">
+                <NavItem view="main" label="Wedstrijd" icon={<FutbolIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-green-500 to-emerald-700" />
+                <NavItem view="stats" label="Stats" icon={<UsersIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-blue-500 to-cyan-700" />
+                <NavItem view="history" label="Historie" icon={<ClockIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-purple-500 to-indigo-700" />
+                <NavItem view="trophyRoom" label="Prijzen" icon={<TrophyIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-amber-400 to-orange-600" />
+                
+                {/* De beheer knoppen iets kleiner of subtieler gescheiden? Voor nu in dezelfde flow. */}
+                <NavItem view="manualEntry" label="Invoer" icon={<EditIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-gray-500 to-gray-700" />
+                <NavItem view="playerManagement" label="Spelers" icon={<EditIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-pink-500 to-rose-700" />
+                <NavItem view="competitionManagement" label="Beheer" icon={<ArchiveIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-indigo-500 to-violet-800" />
+            </div>
+        </div>
         
         <main>
           {renderContent()}
