@@ -12,6 +12,7 @@ interface TrophyRoomProps {
   onDeleteTrophy: (id: string) => Promise<void>;
 }
 
+// Dit is de keuzelijst voor het toevoegen (mag uitgebreid zijn)
 const TROPHY_TYPES: TrophyType[] = [
   'Clubkampioen', '2de', '3de',
   'Topscoorder', 'Verdediger', 'Speler van het jaar',
@@ -20,26 +21,33 @@ const TROPHY_TYPES: TrophyType[] = [
   '1ste Wintertoernooi', '2de Wintertoernooi', '3de Wintertoernooi'
 ];
 
+// --- NIEUW: DIT BEPAALT DE VOLGORDE VAN WEERGEVE ---
+const SORT_ORDER: TrophyType[] = [
+  'Clubkampioen',
+  '2de',
+  '3de',
+  'Topscoorder',
+  'Verdediger',
+  'Speler van het jaar'
+  // Prijzen die hier niet tussen staan, komen automatisch achteraan
+];
+
 const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthenticated, onAddTrophy, onDeleteTrophy }) => {
-  // Form State
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | ''>('');
   const [selectedType, setSelectedType] = useState<TrophyType>('Clubkampioen');
-  
-  // AANGEPAST: Jaar is nu een string (tekst) zodat je '/' kunt gebruiken
   const [year, setYear] = useState<string>(String(new Date().getFullYear())); 
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPlayerId || !year) return; // Check of jaar is ingevuld
+    if (!selectedPlayerId || !year) return;
     
     setIsSubmitting(true);
     try {
       await onAddTrophy({
         playerId: Number(selectedPlayerId),
         type: selectedType,
-        year: year // Dit is nu een string
+        year: year 
       });
       setSelectedPlayerId('');
     } catch (error) {
@@ -56,26 +64,25 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
   }
 
   // Groepeer prijzen per jaar
-  // AANGEPAST: De key is nu string
   const trophiesByYear = [...trophies].reduce((acc, trophy) => {
     if (!acc[trophy.year]) acc[trophy.year] = [];
     acc[trophy.year].push(trophy);
     return acc;
   }, {} as { [year: string]: Trophy[] });
 
- // Sorteer de jaren (Nieuwste boven)
+  // Sorteer de jaren (Nieuwste boven, Winter boven Zomer)
   const sortedYears = Object.keys(trophiesByYear).sort((a, b) => {
-    // Probeer het jaartal (4 cijfers, bijv 2025) uit de tekst te vissen
     const yearA = Number(a.match(/\d{4}/)?.[0]) || 0;
     const yearB = Number(b.match(/\d{4}/)?.[0]) || 0;
 
-    // Als de jaren verschillen, is het makkelijk: hoogste jaar eerst
-    if (yearA !== yearB) {
-        return yearB - yearA;
-    }
+    if (yearA !== yearB) return yearB - yearA;
 
-    // Als de jaren hetzelfde zijn (bijv. "Zomer 2025" vs "Winter 2025"),
-    // sorteer dan op het alfabet (Zomer komt dan voor Winter in aflopende volgorde)
+    const isWinterA = a.toLowerCase().includes('winter');
+    const isWinterB = b.toLowerCase().includes('winter');
+
+    if (isWinterA && !isWinterB) return -1;
+    if (!isWinterA && isWinterB) return 1;
+
     return b.localeCompare(a);
   });
 
@@ -89,7 +96,7 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
   };
 
   const getTrophyIcon = (type: TrophyType) => {
-      // Je kunt hier ook je plaatjes (img) gebruiken als je dat wilt
+      // Gebruik je aangepaste afbeelding voor de verdediger als je die lokaal ook hebt
       if (type === 'Verdediger') return <ShieldIcon className="w-8 h-8" />;
       return <TrophyIcon className="w-8 h-8" />;
   };
@@ -97,7 +104,7 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
   return (
     <div className="space-y-8">
       
-      {/* --- ADMIN: TOEVOEGEN FORMULIER --- */}
+      {/* --- ADMIN FORM --- */}
       {isAuthenticated && (
         <div className="bg-gray-800 border-2 border-amber-500/30 rounded-xl p-6 shadow-lg">
           <h3 className="text-xl font-bold text-amber-400 mb-4 flex items-center">
@@ -129,15 +136,14 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
                 </select>
             </div>
 
-            {/* AANGEPAST: INPUT VELD VOOR JAAR */}
             <div>
                 <label className="block text-sm text-gray-400 mb-1">Jaar / Seizoen</label>
                 <input 
-                    type="text" // <-- DIT IS BELANGRIJK: TEXT IPV NUMBER
+                    type="text" 
                     value={year} 
-                    onChange={(e) => setYear(e.target.value)} // Geen Number(...) conversie meer
+                    onChange={(e) => setYear(e.target.value)} 
                     className="w-full bg-gray-700 text-white rounded p-2 border border-gray-600 focus:border-amber-500 outline-none"
-                    placeholder="bijv. 2025 of 2025/1"
+                    placeholder="bijv. 2025/1"
                 />
             </div>
 
@@ -152,7 +158,7 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
         </div>
       )}
 
-      {/* --- DISPLAY: DE PRIJZENKAST --- */}
+      {/* --- DISPLAY --- */}
       <div className="space-y-8">
         <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-white mb-2">De Prijzenkast 🏆</h2>
@@ -165,18 +171,29 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
             sortedYears.map(yearKey => {
                 const yearTrophies = trophiesByYear[yearKey];
 
+                // --- HIER GEBEURT DE SORTERING VAN DE PRIJZEN ---
+                const sortedTrophies = [...yearTrophies].sort((a, b) => {
+                    let indexA = SORT_ORDER.indexOf(a.type);
+                    let indexB = SORT_ORDER.indexOf(b.type);
+
+                    // Als een prijs niet in de lijst staat, zet hem achteraan (999)
+                    if (indexA === -1) indexA = 999;
+                    if (indexB === -1) indexB = 999;
+
+                    return indexA - indexB;
+                });
+                // ------------------------------------------------
+
                 return (
                     <div key={yearKey} className="relative">
-                        {/* Jaartal Divider */}
                         <div className="flex items-center mb-6">
                             <div className="flex-grow h-px bg-gray-700"></div>
                             <span className="px-4 text-2xl font-bold text-gray-500">{yearKey}</span>
                             <div className="flex-grow h-px bg-gray-700"></div>
                         </div>
 
-                        {/* Grid met Prijzen */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {yearTrophies.map(trophy => {
+                            {sortedTrophies.map(trophy => {
                                 const player = players.find(p => p.id === trophy.playerId);
                                 return (
                                     <div key={trophy.id} className="bg-gray-800 rounded-lg p-4 flex items-center shadow-md border border-gray-700 relative group hover:border-gray-500 transition-colors">
