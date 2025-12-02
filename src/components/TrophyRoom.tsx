@@ -1,4 +1,4 @@
-⁶import React, { useState } from 'react';
+import React, { useState } from 'react';
 import type { Player, Trophy, TrophyType } from '../types';
 import TrophyIcon from './icons/TrophyIcon';
 import ShieldIcon from './icons/ShieldIcon';
