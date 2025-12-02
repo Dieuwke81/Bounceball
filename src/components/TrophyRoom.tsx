@@ -76,7 +76,7 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
 
     // Als de jaren hetzelfde zijn (bijv. "Zomer 2025" vs "Winter 2025"),
     // sorteer dan op het alfabet (Zomer komt dan voor Winter in aflopende volgorde)
-    return b.localeCompare(a);
+    return a.localeCompare(b);
   });
 
   const getTrophyStyle = (type: TrophyType) => {
