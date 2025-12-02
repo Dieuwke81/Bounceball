@@ -1,5 +1,5 @@
 import { getScriptUrl } from './configService';
-import type { GameSession, NewPlayer, Player, RatingLogEntry } from '../types';
+import type { GameSession, NewPlayer, Player, RatingLogEntry, Trophy } from '../types';
 
 // Centralized error handling and JSON parsing for Apps Script calls
 const handleResponse = async (response: Response) => {
@@ -20,7 +20,6 @@ const handleResponse = async (response: Response) => {
     try {
         return JSON.parse(text);
     } catch (e) {
-        // If parsing fails, it might be a non-JSON success message or an HTML error page
         if (text.includes('<!DOCTYPE html>')) {
              throw new Error("De server stuurde een HTML-pagina terug in plaats van data. Dit wijst meestal op een inlog- of permissieprobleem bij Google.");
         }
@@ -54,21 +53,15 @@ const parseRatingLogs = (logs: any[]): RatingLogEntry[] => {
     if (!Array.isArray(logs)) return [];
     
     return logs.map(log => {
-        // 1. Probeer verschillende schrijfwijzen van de kolomnamen (Case-insensitive fallback)
-        // We checken zowel camelCase (playerId) als PascalCase (SpelerID) zoals in de sheet
         const rawRating = log.rating !== undefined ? log.rating : (log.Rating !== undefined ? log.Rating : undefined);
         const rawPlayerId = log.playerId !== undefined ? log.playerId : (log.SpelerID !== undefined ? log.SpelerID : (log.playerid !== undefined ? log.playerid : undefined));
         const rawDate = log.date !== undefined ? log.date : (log.Datum !== undefined ? log.Datum : (log.date !== undefined ? log.date : undefined));
 
-        // Als een van de velden ontbreekt, is de regel ongeldig
         if (rawRating === undefined || rawPlayerId === undefined || rawDate === undefined) {
             return null;
         }
 
-        // 2. Fix komma's in getallen (5,9 -> 5.9) voor Nederlandse sheets
         const ratingStr = String(rawRating).replace(',', '.');
-        
-        // 3. Zorg dat datum een string is
         const dateStr = String(rawDate);
         
         return {
@@ -77,13 +70,13 @@ const parseRatingLogs = (logs: any[]): RatingLogEntry[] => {
             rating: Number(ratingStr)
         };
     }).filter((log): log is RatingLogEntry => {
-        // 4. Filter ongeldige regels en null waarden eruit
         return log !== null && !isNaN(log.playerId) && !isNaN(log.rating) && log.playerId !== 0;
     });
 };
 
 // Main function to fetch all initial data
-export const getInitialData = async (): Promise<{ players: Player[], history: GameSession[], competitionName: string, ratingLogs: RatingLogEntry[] }> => {
+// AANGEPAST: Retourneert nu ook 'trophies'
+export const getInitialData = async (): Promise<{ players: Player[], history: GameSession[], competitionName: string, ratingLogs: RatingLogEntry[], trophies: Trophy[] }> => {
   const scriptUrl = getScriptUrl();
   if (!scriptUrl || !scriptUrl.includes('/exec')) {
       throw new Error("De geconfigureerde SCRIPT_URL is ongeldig. Voer een geldige 'Web App URL' in via het configuratiescherm.");
@@ -103,26 +96,26 @@ export const getInitialData = async (): Promise<{ players: Player[], history: Ga
     const data = await handleResponse(response);
     
     if (typeof data !== 'object' || data === null) {
-        throw new Error(`Onverwacht antwoord van de server. De server stuurde geen geldige data, maar dit: ${JSON.stringify(data)}`);
+        throw new Error(`Onverwacht antwoord van de server. De server stuurde geen geldige data.`);
     }
 
     if (data.status === 'error') {
       throw new Error(data.message);
     }
     
-    // The presence of the 'players' array is the primary indicator of a successful connection.
     if (!Array.isArray(data.players)) {
-        throw new Error(`Verbinding geslaagd, maar de server stuurde geen spelerslijst terug. Controleer of het 'Spelers' tabblad in je Google Sheet correct is ingesteld met de juiste kolomkoppen.`);
+        throw new Error(`Verbinding geslaagd, maar de server stuurde geen spelerslijst terug.`);
     }
 
-    // Filter out any potential null/undefined entries or players without an ID or name
     const validPlayers = data.players.filter((p: Player | null): p is Player => p !== null && p.id != null && typeof p.name === 'string' && p.name.trim() !== '');
 
     return {
       players: validPlayers,
       history: Array.isArray(data.history) ? data.history : [],
       competitionName: typeof data.competitionName === 'string' ? data.competitionName : '',
-      ratingLogs: parseRatingLogs(data.ratingLogs), // Gebruik de nieuwe, slimme parser
+      ratingLogs: parseRatingLogs(data.ratingLogs),
+      // NIEUW: Haal prijzen op, of geef lege lijst terug als ze nog niet bestaan
+      trophies: Array.isArray(data.trophies) ? data.trophies : [],
     };
   } catch (error: any) {
     console.error("Failed to fetch initial data:", error);
@@ -130,7 +123,6 @@ export const getInitialData = async (): Promise<{ players: Player[], history: Ga
   }
 };
 
-// Functie om een diagnostische test uit te voeren op de verbinding en sheet-instellingen
 export const runDiagnostics = async (): Promise<any> => {
   const scriptUrl = getScriptUrl();
   if (!scriptUrl || !scriptUrl.includes('/exec')) {
@@ -140,7 +132,7 @@ export const runDiagnostics = async (): Promise<any> => {
   try {
     const url = new URL(scriptUrl);
     url.searchParams.append('action', 'runDiagnostics');
-    url.searchParams.append('t', new Date().getTime().toString()); // Cache busting
+    url.searchParams.append('t', new Date().getTime().toString());
 
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -150,14 +142,12 @@ export const runDiagnostics = async (): Promise<any> => {
     
     const result = await handleResponse(response);
     if (result.status === 'error') {
-      // Her-werp script-side fouten om door de aanroeper te worden opgevangen
       throw new Error(result.message);
     }
     return result;
 
   } catch (error: any) {
     console.error("Diagnostische test mislukt:", error);
-    // Laat de component de UI voor deze fout afhandelen
     throw error;
   }
 };
@@ -184,4 +174,13 @@ export const deletePlayer = (id: number) => {
 // --- Competition Management ---
 export const setCompetitionName = (name: string) => {
     return postToAction('setCompetitionName', { name });
+};
+
+// --- Trophy Management (NIEUW) ---
+export const addTrophy = (trophy: Omit<Trophy, 'id'>) => {
+    return postToAction('addTrophy', trophy);
+};
+
+export const deleteTrophy = (id: string) => {
+    return postToAction('deleteTrophy', { id });
 };
