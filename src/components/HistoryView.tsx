@@ -46,12 +46,12 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
     });
   };
 
-  // --- CSV EXPORT FUNCTIE (AANGEPAST VOOR SPELER STATS) ---
+  // --- CSV EXPORT FUNCTIE (AANGEPAST MET PUNTEN) ---
   const handleExportCSV = (e: React.MouseEvent, sessionsToExport: GameSession[], filenamePrefix: string) => {
     e.stopPropagation();
 
-    // Headers voor gedetailleerde export
-    const headers = ['Datum', 'Ronde', 'Wedstrijd Nr', 'Team Kleur', 'Speler ID', 'Naam', 'Doelpunten'];
+    // AANGEPAST: Header 'Punten' toegevoegd
+    const headers = ['Datum', 'Ronde', 'Wedstrijd Nr', 'Team Kleur', 'Speler ID', 'Naam', 'Doelpunten', 'Punten'];
     const rows: string[][] = [];
 
     sessionsToExport.forEach(session => {
@@ -61,8 +61,26 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
             results.forEach((match, index) => {
                 const matchNumber = (index + 1).toString();
 
+                // 1. Bereken scores en punten voor deze wedstrijd
+                const score1 = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
+                const score2 = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
+
+                let points1 = 0;
+                let points2 = 0;
+
+                if (score1 > score2) {
+                    points1 = 3;
+                    points2 = 0;
+                } else if (score2 > score1) {
+                    points1 = 0;
+                    points2 = 3;
+                } else {
+                    points1 = 1;
+                    points2 = 1;
+                }
+
                 // Hulpfunctie om spelers van een team toe te voegen
-                const addTeamRows = (teamIndex: number, goalsArray: any[], teamColor: 'Blauw' | 'Geel') => {
+                const addTeamRows = (teamIndex: number, goalsArray: any[], teamColor: 'Blauw' | 'Geel', points: number) => {
                     const teamPlayers = session.teams[teamIndex] || [];
                     
                     teamPlayers.forEach(player => {
@@ -77,16 +95,17 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
                             teamColor,
                             player.id.toString(),
                             player.name,
-                            goalsScored.toString()
+                            goalsScored.toString(),
+                            points.toString() // AANGEPAST: Punten toegevoegd
                         ]);
                     });
                 };
 
                 // Verwerk Team Blauw (Team 1)
-                addTeamRows(match.team1Index, match.team1Goals, 'Blauw');
+                addTeamRows(match.team1Index, match.team1Goals, 'Blauw', points1);
                 
                 // Verwerk Team Geel (Team 2)
-                addTeamRows(match.team2Index, match.team2Goals, 'Geel');
+                addTeamRows(match.team2Index, match.team2Goals, 'Geel', points2);
             });
         };
 
@@ -94,8 +113,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
         processMatches(session.round2Results, 'Ronde 2');
     });
 
-    // We gebruiken nu een PUNTKOMMA (;) als scheidingsteken.
-    // Dit werkt veel beter in Nederlandse Excel versies.
     const csvContent = [
         headers.join(';'),
         ...rows.map(row => row.join(';'))
