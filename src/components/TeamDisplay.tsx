@@ -24,39 +24,45 @@ interface TeamDisplayProps {
 }
 
 // ============================================================================
-// NIEUWE COMPONENT: ScoreInput
-// Deze lost het probleem op dat je cursor verdwijnt na 1 cijfer typen.
+// COMPONENT: ScoreInput
+// AANGEPAST: Nu met onFocus logic zodat de '0' direct verdwijnt bij klikken.
 // ============================================================================
 const ScoreInput: React.FC<{
   value: number;
   onChange: (val: number) => void;
   className?: string;
 }> = ({ value, onChange, className }) => {
-  // Lokale state om de waarde vast te houden TERWIJL je typt
   const [localValue, setLocalValue] = useState<string>(value.toString());
 
-  // Als de score van buitenaf verandert (bijv. reset), update lokaal
   useEffect(() => {
     setLocalValue(value.toString());
   }, [value]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    // Sta alleen cijfers toe (of leeg)
     if (val === '' || /^\d+$/.test(val)) {
       setLocalValue(val);
     }
   };
 
+  // NIEUW: Zodra je in het vakje klikt/tapt
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (localValue === '0') {
+        // Is het een 0? Maak het veld leeg zodat je direct kunt typen
+        setLocalValue('');
+    } else {
+        // Is het een ander getal? Selecteer alles zodat je het kunt overschrijven
+        e.target.select();
+    }
+  };
+
   const handleBlur = () => {
-    // Pas opslaan als je uit het vakje klikt
     let num = parseInt(localValue, 10);
     if (isNaN(num)) num = 0;
     
     if (num !== value) {
       onChange(num);
     }
-    // Zorg dat er geen lege string blijft staan, maar een 0 of het getal
     setLocalValue(num.toString());
   };
 
@@ -68,11 +74,12 @@ const ScoreInput: React.FC<{
 
   return (
     <input
-      type="text"
-      inputMode="numeric"
+      type="text" // 'text' i.p.v. 'number' voorkomt standaard browser pijltjes en scrolling
+      inputMode="numeric" // Dit forceert het numpad toetsenbord op mobiel
       pattern="[0-9]*"
       value={localValue}
       onChange={handleChange}
+      onFocus={handleFocus} // <--- HIER ZIT DE UPDATE
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       className={className}
@@ -142,14 +149,12 @@ const MatchInputCard: React.FC<{
 
     const PlayerGoalInput: React.FC<{player: Player, teamIdentifier: 'team1' | 'team2'}> = ({ player, teamIdentifier }) => {
         const goals = getTeamGoals(teamIdentifier);
-        // Let op: goalCount is nu altijd een nummer (of 0 als het undefined is)
         const goalCount = goals.find(g => g.playerId === player.id)?.count || 0;
 
         return (
             <div className="flex items-center justify-between space-x-2 bg-gray-600 p-2 rounded">
                 <span className="text-gray-200 flex-1 pr-2">{player.name}</span>
                 
-                {/* HIER GEBRUIKEN WE NU DE NIEUWE ScoreInput COMPONENT */}
                 <ScoreInput
                     value={goalCount}
                     onChange={(newVal) => onGoalChange(matchIndex, teamIdentifier, player.id, newVal)}
