@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+⁶import React, { useState } from 'react';
 import type { Player, Trophy, TrophyType } from '../types';
 import TrophyIcon from './icons/TrophyIcon';
 import ShieldIcon from './icons/ShieldIcon';
@@ -83,7 +83,7 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
     if (isWinterA && !isWinterB) return -1;
     if (!isWinterA && isWinterB) return 1;
 
-    return a.localeCompare(b);
+    return b.localeCompare(a);
   });
 
   const getTrophyStyle = (type: TrophyType) => {
