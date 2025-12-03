@@ -78,7 +78,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
     }, [trophies, player.id]);
 
     const getTrophyStyle = (type: TrophyType) => {
-        if (type.includes('1ste') || type === 'Clubkampioen') return 'text-amber-400 border-amber-400/30 bg-amber-400/10';
+        if (type.includes('1ste') || type === 'Clubkampioen') return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600 font-bold text-lg border-amber-400/30 bg-amber-400/10';
         if (type.includes('2de')) return 'text-slate-500 border-slate-500/30 bg-slate-500/10';
         if (type.includes('3de')) return 'text-amber-800 border-amber-800/30 bg-amber-800/10';
         if (type === 'Topscoorder') return 'text-yellow-300 border-yellow-300/30 bg-yellow-300/10';
