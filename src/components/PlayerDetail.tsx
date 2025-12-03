@@ -86,7 +86,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
             return 'text-slate-500 border-slate-500/30 bg-slate-500/10';
         
         if (type.includes('3de')) 
-            return 'text-amber-800 border-amber-800/30 bg-amber-800/10';
+            return 'text-amber-700 border-amber-700/30 bg-amber-700/10';
         
         if (type === 'Topscoorder') 
             return 'text-yellow-300 border-yellow-300/30 bg-yellow-300/10';
