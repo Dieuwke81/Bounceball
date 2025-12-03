@@ -1,27 +1,41 @@
 import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
 
-// --- IMPORTS ---
-import UsersIcon from './icons/UsersIcon';
-import ChartBarIcon from './icons/ChartBarIcon';
-import PrinterIcon from './icons/PrinterIcon';
+// ============================================================================
+// 1. INLINE ICONEN (Zodat de app NOOIT crasht op ontbrekende bestanden)
+// ============================================================================
 
-// --- SLIMME PRINT FUNCTIE ---
+const PrinterIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
+  </svg>
+);
+
+const UsersIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+  </svg>
+);
+
+const ChartBarIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+  </svg>
+);
+
+// ============================================================================
+// 2. PRINT FUNCTIE (Zorgt dat alleen het gekozen blokje geprint wordt)
+// ============================================================================
 const printSection = (elementId: string) => {
     const style = document.createElement('style');
     style.innerHTML = `
         @media print {
-            /* 1. Maak ALLES op de pagina onzichtbaar (maar laat het wel bestaan) */
             body * {
                 visibility: hidden;
             }
-            
-            /* 2. Maak ALLEEN het gekozen blokje zichtbaar */
             #${elementId}, #${elementId} * {
                 visibility: visible;
             }
-
-            /* 3. Positioneer het blokje linksboven op het papier */
             #${elementId} {
                 position: absolute;
                 left: 0;
@@ -29,16 +43,12 @@ const printSection = (elementId: string) => {
                 width: 100%;
                 margin: 0;
                 padding: 0;
-                background-color: #1f2937 !important; /* Zorg voor achtergrondkleur */
-                color: white !important; /* Zorg voor tekstkleur */
+                background-color: white !important;
+                color: black !important;
             }
-
-            /* 4. Verberg de knopjes binnen dat blokje */
             #${elementId} button {
                 display: none !important;
             }
-            
-            /* 5. Forceer het printen van achtergrondkleuren */
             * {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
@@ -46,13 +56,8 @@ const printSection = (elementId: string) => {
         }
     `;
     document.head.appendChild(style);
-    
     window.print();
-    
-    // Ruim de stijl weer op na het printen (kleine vertraging voor browser)
-    setTimeout(() => {
-        document.head.removeChild(style);
-    }, 500);
+    setTimeout(() => { document.head.removeChild(style); }, 500);
 };
 
 // ============================================================================
@@ -258,7 +263,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   }
 
-  // --- STATCARD COMPONENT ---
+  // --- STATCARD COMPONENT (MET ID & PRINT KNOP) ---
   const StatCard: React.FC<{ 
       id: string, 
       title: string, 
@@ -342,7 +347,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     <>
       <div className="flex justify-between items-center mb-6 px-2">
          <h2 className="text-2xl font-bold text-white">Statistieken</h2>
-         {/* ALGEMENE PRINT KNOP (PRINT GEWOON DE PAGINA) */}
+         {/* ALGEMENE PRINT KNOP */}
          <button
             onClick={() => window.print()}
             className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg"
@@ -360,6 +365,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
+        {/* COMPETITIE */}
         <StatCard id="stat-competition" title="Competitie" icon={
             <img 
                 src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
@@ -388,6 +394,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
+        {/* TOPSCOORDER */}
         <StatCard id="stat-topscorers" title="Topscoorder" icon={
             <img 
                 src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" 
@@ -416,6 +423,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
+        {/* BESTE VERDEDIGER */}
         <StatCard id="stat-defense" title="Beste verdediger" icon={
             <img 
                 src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" 
@@ -444,6 +452,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
         
+        {/* MEEST AANWEZIG */}
         <StatCard id="stat-attendance" title="Meest aanwezig" icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
           <StatList
             data={mostAttended}
@@ -468,6 +477,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
       <div id="stat-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative group">
         <div className="absolute top-2 right-2 z-10">
+             {/* SPECIFIEKE PRINTKNOP VOOR GRAFIEKEN */}
              <button 
                 onClick={() => printSection('stat-charts')}
                 className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors shadow-lg"
