@@ -230,11 +230,11 @@ const getTrophyIcon = (type: TrophyType) => {
       <div className="space-y-8">
         <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-white mb-2">De Prijzenkast 🏆</h2>
-            <p className="text-gray-400">Ere wie ere toekomt.</p>
+            <p className="text-gray-400">Ere wie ere toekomt</p>
             
             {/* NIEUWE ZIN: */}
             <p className="mt-2 font-bold text-green-500 text-sm animate-pulse font-mono ">
-                ERELID: Bram van Sprang.
+                ERELID: Bram van Sprang
             </p>
         </div>
 
