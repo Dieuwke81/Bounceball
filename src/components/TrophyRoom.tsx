@@ -87,7 +87,9 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
   });
 
   const getTrophyStyle = (type: TrophyType) => {
-    if (type.includes('1ste') || type === 'Clubkampioen') return 'text-amber-400';
+    if (type.includes('1ste') || type === 'Clubkampioen') return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600 font-bold text-lg';
+  Hier staat jouw gouden tekst!
+</p>
     if (type.includes('2de')) return 'text-slate-500';
     if (type.includes('3de')) return 'text-amber-800';
     if (type === 'Topscoorder') return 'text-yellow-300';
