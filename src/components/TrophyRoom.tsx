@@ -233,7 +233,7 @@ const getTrophyIcon = (type: TrophyType) => {
             <p className="text-gray-400">Ere wie ere toekomt.</p>
             
             {/* NIEUWE ZIN: */}
-            <p className="font-bold text-green-500 text-sm mt-2">
+            <p className="mt-2 font-bold text-green-500 text-sm animate-pulse font-mono ">
                 ERELID: Bram van Sprang.
             </p>
         </div>
