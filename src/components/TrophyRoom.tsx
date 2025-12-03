@@ -115,6 +115,15 @@ const getTrophyIcon = (type: TrophyType) => {
     />
   );
   }
+  if (type === 'Clubkampioen') {
+  return (
+    <img
+      src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png"
+      alt="Clubkampioen"
+      className="w-8 h-8"
+    />
+  );
+  }
   
 /*  if (type === 'Topscoorder') return <FireIcon className="w-8 h-8" />;
   if (type.includes('1ste')) return <CrownIcon className="w-8 h-8" />;
