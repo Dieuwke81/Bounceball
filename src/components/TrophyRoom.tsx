@@ -231,6 +231,11 @@ const getTrophyIcon = (type: TrophyType) => {
         <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-white mb-2">De Prijzenkast 🏆</h2>
             <p className="text-gray-400">Ere wie ere toekomt.</p>
+            
+            {/* NIEUWE ZIN: */}
+            <p className="text-gray-500 text-sm mt-2">
+                ERELID: Bram van Sprang.
+            </p>
         </div>
 
         {sortedYears.length === 0 ? (
