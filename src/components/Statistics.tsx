@@ -1,34 +1,27 @@
 import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
 
-// --- IMPORTS (De iconen die je al hebt) ---
+// --- IMPORTS ---
 import UsersIcon from './icons/UsersIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
+import PrinterIcon from './icons/PrinterIcon';
 
-// --- PRINTER ICON (Inline, zodat hij altijd werkt) ---
-const PrinterIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
-  </svg>
-);
-
-// --- DE SLIMME PRINT FUNCTIE ---
+// --- SLIMME PRINT FUNCTIE ---
 const printSection = (elementId: string) => {
-    // We maken een tijdelijk stijlblok aan dat ALLEEN tijdens het printen geldt
     const style = document.createElement('style');
     style.innerHTML = `
         @media print {
-            /* Verberg ALLES op de pagina */
+            /* 1. Maak ALLES op de pagina onzichtbaar (maar laat het wel bestaan) */
             body * {
                 visibility: hidden;
             }
             
-            /* Maak het gekozen blokje (en de inhoud) zichtbaar */
+            /* 2. Maak ALLEEN het gekozen blokje zichtbaar */
             #${elementId}, #${elementId} * {
                 visibility: visible;
             }
 
-            /* Positioneer het blokje linksboven op het papier */
+            /* 3. Positioneer het blokje linksboven op het papier */
             #${elementId} {
                 position: absolute;
                 left: 0;
@@ -36,17 +29,16 @@ const printSection = (elementId: string) => {
                 width: 100%;
                 margin: 0;
                 padding: 0;
-                background-color: white !important; /* Wit papier bespaart inkt */
-                color: black !important; /* Zwarte tekst voor leesbaarheid */
-                box-shadow: none !important;
+                background-color: #1f2937 !important; /* Zorg voor achtergrondkleur */
+                color: white !important; /* Zorg voor tekstkleur */
             }
 
-            /* Verberg de printknop zelf op het papier */
+            /* 4. Verberg de knopjes binnen dat blokje */
             #${elementId} button {
                 display: none !important;
             }
             
-            /* Zorg dat achtergrondkleurtjes van labels (groen/geel) wel geprint worden */
+            /* 5. Forceer het printen van achtergrondkleuren */
             * {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
@@ -57,7 +49,7 @@ const printSection = (elementId: string) => {
     
     window.print();
     
-    // Ruim de stijl weer op na het printen (anders blijft je scherm raar)
+    // Ruim de stijl weer op na het printen (kleine vertraging voor browser)
     setTimeout(() => {
         document.head.removeChild(style);
     }, 500);
@@ -266,9 +258,9 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   }
 
-  // --- STATCARD MET UNIEK ID VOOR PRINTEN ---
+  // --- STATCARD COMPONENT ---
   const StatCard: React.FC<{ 
-      id: string, // Dit ID is cruciaal voor de printfunctie
+      id: string, 
       title: string, 
       icon: React.ReactNode, 
       children: React.ReactNode, 
@@ -280,7 +272,6 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             {icon}
             <h3 className="ml-3 text-2xl font-bold text-white">{title}</h3>
         </div>
-        {/* De Printknop die de printSection functie aanroept met het specifieke ID */}
         <button 
             onClick={() => printSection(id)}
             className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors"
@@ -334,7 +325,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             return renderRow(item, index);
         })}
         {filteredData.length > 10 && (
-          <div className="mt-2">
+          <div className="mt-2 no-print">
             <button 
               onClick={toggleShowAll}
               className="w-full text-center py-2 text-sm text-cyan-400 hover:text-cyan-300 font-semibold rounded-lg hover:bg-gray-700/50 transition-colors"
@@ -347,89 +338,11 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   };
 
-  const AttendanceChart: React.FC<{ data: {date: string, count: number}[] }> = ({ data }) => {
-      if (data.length < 2) {
-          return <p className="text-gray-400 text-center py-8">Niet genoeg data voor een grafiek.</p>;
-      }
-
-      const W = 500, H = 200, P = 30;
-      const minCount = Math.min(...data.map(d => d.count));
-      const maxCount = Math.max(...data.map(d => d.count));
-      const countRange = Math.max(1, maxCount - minCount);
-
-      const points = data.map((d, i) => {
-          const x = (i / (data.length - 1)) * (W - P * 2) + P;
-          const y = H - P - ((d.count - minCount) / countRange) * (H - P * 2);
-          return `${x},${y}`;
-      }).join(' ');
-      
-      const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('nl-NL', { month: 'short', day: 'numeric' });
-
-      return (
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
-            <line x1={P} y1={H - P} x2={W - P} y2={H - P} className="stroke-gray-600" strokeWidth="1" />
-            <text x={P - 10} y={P + 5} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{maxCount}</text>
-            <text x={P - 10} y={H - P} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{minCount}</text>
-            <polyline fill="none" className="stroke-cyan-400" strokeWidth="2" points={points} />
-            {data.map((d, i) => {
-                const x = (i / (data.length - 1)) * (W - P * 2) + P;
-                const y = H - P - ((d.count - minCount) / countRange) * (H - P * 2);
-                return (
-                    <circle key={i} cx={x} cy={y} r="3" className="fill-cyan-400 stroke-gray-800" strokeWidth="2">
-                        <title>{`${formatDate(d.date)}: ${d.count} spelers`}</title>
-                    </circle>
-                );
-            })}
-             <text x={P} y={H - P + 15} textAnchor="start" className="fill-gray-400 text-xs">{formatDate(data[0].date)}</text>
-             <text x={W - P} y={H - P + 15} textAnchor="end" className="fill-gray-400 text-xs">{formatDate(data[data.length - 1].date)}</text>
-        </svg>
-    );
-  };
-  
-    const GoalDifferenceChart: React.FC<{ data: { date: string, avgDiff: number }[] }> = ({ data }) => {
-    if (data.length < 2) {
-      return <p className="text-gray-400 text-center py-8">Niet genoeg data voor een grafiek.</p>;
-    }
-
-    const W = 500, H = 200, P = 30;
-    const minDiff = Math.min(...data.map(d => d.avgDiff));
-    const maxDiff = Math.max(...data.map(d => d.avgDiff));
-    const diffRange = Math.max(0.1, maxDiff - minDiff);
-
-    const points = data.map((d, i) => {
-      const x = (i / (data.length - 1)) * (W - P * 2) + P;
-      const y = H - P - ((d.avgDiff - minDiff) / diffRange) * (H - P * 2);
-      return `${x},${y}`;
-    }).join(' ');
-
-    const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('nl-NL', { month: 'short', day: 'numeric' });
-
-    return (
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
-        <line x1={P} y1={H - P} x2={W - P} y2={H - P} className="stroke-gray-600" strokeWidth="1" />
-        <text x={P - 10} y={P + 5} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{maxDiff.toFixed(1)}</text>
-        <text x={P - 10} y={H - P} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{minDiff.toFixed(1)}</text>
-        <polyline fill="none" className="stroke-fuchsia-400" strokeWidth="2" points={points} />
-         {data.map((d, i) => {
-            const x = (i / (data.length - 1)) * (W - P * 2) + P;
-            const y = H - P - ((d.avgDiff - minDiff) / diffRange) * (H - P * 2);
-            return (
-                <circle key={i} cx={x} cy={y} r="3" className="fill-fuchsia-400 stroke-gray-800" strokeWidth="2">
-                    <title>{`${formatDate(d.date)}: gem. doelsaldo ${d.avgDiff.toFixed(2)}`}</title>
-                </circle>
-            );
-        })}
-        <text x={P} y={H - P + 15} textAnchor="start" className="fill-gray-400 text-xs">{formatDate(data[0].date)}</text>
-        <text x={W - P} y={H - P + 15} textAnchor="end" className="fill-gray-400 text-xs">{formatDate(data[data.length - 1].date)}</text>
-      </svg>
-    );
-  };
-  
   return (
     <>
       <div className="flex justify-between items-center mb-6 px-2">
          <h2 className="text-2xl font-bold text-white">Statistieken</h2>
-         {/* ALGEMENE PRINT KNOP */}
+         {/* ALGEMENE PRINT KNOP (PRINT GEWOON DE PAGINA) */}
          <button
             onClick={() => window.print()}
             className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg"
@@ -447,7 +360,6 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
-        {/* ID TOEGEVOEGD: COMPETITIE */}
         <StatCard id="stat-competition" title="Competitie" icon={
             <img 
                 src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
@@ -476,7 +388,6 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        {/* ID TOEGEVOEGD: TOPSCOORDER */}
         <StatCard id="stat-topscorers" title="Topscoorder" icon={
             <img 
                 src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" 
@@ -505,7 +416,6 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        {/* ID TOEGEVOEGD: VERDEDIGER */}
         <StatCard id="stat-defense" title="Beste verdediger" icon={
             <img 
                 src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" 
@@ -534,7 +444,6 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
         
-        {/* ID TOEGEVOEGD: AANWEZIGHEID */}
         <StatCard id="stat-attendance" title="Meest aanwezig" icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
           <StatList
             data={mostAttended}
@@ -559,7 +468,6 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
       <div id="stat-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative group">
         <div className="absolute top-2 right-2 z-10">
-             {/* SPECIFIEKE PRINTKNOP VOOR GRAFIEKEN */}
              <button 
                 onClick={() => printSection('stat-charts')}
                 className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors shadow-lg"
