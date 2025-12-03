@@ -2,15 +2,10 @@ import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
 
 // --- IMPORTS ---
+// Zorg dat deze bestanden bestaan in je 'components/icons' map!
 import UsersIcon from './icons/UsersIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
-import PrinterIcon from './icons/PrinterIcon'; // <--- Nu netjes geïmporteerd
-
-// Deze zijn niet meer nodig voor de weergave (want we gebruiken plaatjes), 
-// maar laat ik even staan voor de zekerheid zodat er niets crasht bij het laden.
-import TrophyIcon from './icons/TrophyIcon';
-import ShieldIcon from './icons/ShieldIcon';
-import FutbolIcon from './icons/FutbolIcon';
+import PrinterIcon from './icons/PrinterIcon';
 
 // --- FUNCTIE OM SPECIFIEK DEEL TE PRINTEN ---
 const printSection = (elementId: string) => {
@@ -40,6 +35,8 @@ const printSection = (elementId: string) => {
     window.print();
     setTimeout(() => { document.head.removeChild(style); }, 500);
 };
+
+// ============================================================================
 
 interface StatisticsProps {
   history: GameSession[];
@@ -242,6 +239,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   }
 
+  // --- STATCARD COMPONENT ---
   const StatCard: React.FC<{ 
       id: string, 
       title: string, 
