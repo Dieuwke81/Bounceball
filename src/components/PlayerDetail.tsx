@@ -12,7 +12,7 @@ interface PlayerDetailProps {
   history: GameSession[];
   players: Player[];
   ratingLogs: RatingLogEntry[];
-  trophies: Trophy[]; // <--- Prijzen toegevoegd
+  trophies: Trophy[];
   onBack: () => void;
 }
 
@@ -58,35 +58,50 @@ const RelationshipList: React.FC<{
 const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, ratingLogs, trophies, onBack }) => {
     const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
 
-    // 1. Filter de prijzen van deze speler en sorteer ze
+    // 1. Filter en sorteer prijzen
     const playerTrophies = useMemo(() => {
         if (!trophies) return [];
         return trophies
             .filter(t => t.playerId === player.id)
             .sort((a, b) => {
-                // Sorteer op jaar (nieuwste eerst)
                 const yearA = Number(a.year.match(/\d{4}/)?.[0]) || 0;
                 const yearB = Number(b.year.match(/\d{4}/)?.[0]) || 0;
                 if (yearA !== yearB) return yearB - yearA;
                 
-                // Winter boven Zomer (Alfabetisch: W komt na Z, dus draai om voor Zomer eerst of juist andersom)
-                // Hier: Winter (W) komt alfabetisch na Zomer (Z) niet, maar we willen Winter vaak boven Zomer in hetzelfde jaar? 
-                // Of juist Zomer boven Winter? De vorige keer wilde je Zomer boven Winter.
-                return a.year.localeCompare(b.year); 
+                const isWinterA = a.year.toLowerCase().includes('winter');
+                const isWinterB = b.year.toLowerCase().includes('winter');
+                if (isWinterA && !isWinterB) return -1;
+                if (!isWinterA && isWinterB) return 1;
+                
+                return b.year.localeCompare(a.year);
             });
     }, [trophies, player.id]);
 
-    // 2. Helper voor de styling van de prijs-box
+    // 2. JOUW SPECIFIEKE KLEUREN (HERSTELD)
     const getTrophyStyle = (type: TrophyType) => {
-        if (type.includes('1ste') || type === 'Clubkampioen' || type === 'Speler van het jaar') return 'text-yellow-400 border-yellow-500/30 bg-yellow-900/10';
-        if (type.includes('2de')) return 'text-gray-300 border-gray-400/30 bg-gray-700/30';
-        if (type.includes('3de')) return 'text-amber-600 border-amber-600/30 bg-amber-900/10';
-        if (type === 'Topscoorder') return 'text-cyan-400 border-cyan-500/30 bg-cyan-900/10';
-        if (type === 'Verdediger') return 'text-fuchsia-400 border-fuchsia-500/30 bg-fuchsia-900/10';
+        if (type.includes('1ste') || type === 'Clubkampioen') 
+            return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600 font-bold text-lg border-amber-400/30 bg-amber-400/10';
+        
+        if (type.includes('2de')) 
+            return 'text-slate-500 border-slate-500/30 bg-slate-500/10';
+        
+        if (type.includes('3de')) 
+            return 'text-amber-800 border-amber-800/30 bg-amber-800/10';
+        
+        if (type === 'Topscoorder') 
+            return 'text-yellow-300 border-yellow-300/30 bg-yellow-300/10';
+        
+        if (type === 'Verdediger') 
+            return 'text-red-500 border-red-500/30 bg-red-500/10';
+        
+        if (type === 'Speler van het jaar') 
+            return 'text-green-500 border-green-500/30 bg-green-500/10';
+        
+        // Fallback
         return 'text-white border-gray-500/30';
     };
 
-    // 3. Helper voor het plaatje (VERVANGT DE LANGE LIJST UIT JE SCREENSHOT)
+    // 3. JOUW AFBEELDINGEN (GEEN TYPEFOUTEN MEER)
     const getTrophyContent = (type: TrophyType) => {
         const images: {[key: string]: string} = {
             'Verdediger': 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
@@ -101,7 +116,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
             '1ste NK': 'https://i.postimg.cc/GhXMP4q5/20251203-184928-0000.png',
             '2de NK': 'https://i.postimg.cc/wM0kkrcm/20251203-185040-0000.png',
             '3de NK': 'https://i.postimg.cc/MpcYydnC/20251203-185158-0000.png',
-            '1ste Wintertoernooi': 'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png', // Voorbeeld, vul aan indien nodig
+            '1ste Wintertoernooi': 'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
             '2de Wintertoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
             '3de Wintertoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png'
         };
@@ -112,7 +127,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
             return <img src={imageUrl} alt={type} className="w-8 h-8 object-contain" />;
         }
 
-        // Fallback als er geen plaatje is
+        // Fallback
         if (type === 'Verdediger') return <ShieldIcon className="w-6 h-6" />;
         return <TrophyIcon className="w-6 h-6" />;
     };
@@ -281,7 +296,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                 </div>
             </div>
 
-            {/* --- PRIJZENKAST BLOK (GEINSERT) --- */}
+            {/* --- PRIJZENKAST BLOK (NU MET JUISTE KLEUREN) --- */}
             {playerTrophies.length > 0 && (
                 <div className="mb-8 p-4 bg-gradient-to-r from-gray-750 to-gray-800 rounded-xl border border-gray-600/50">
                     <h3 className="text-lg font-bold text-amber-400 mb-3 flex items-center">
@@ -302,7 +317,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                     </div>
                 </div>
             )}
-            {/* ----------------------------------- */}
+            {/* ------------------------------------------------ */}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <StatCard title="Gespeeld" value={stats.gamesPlayed} />
@@ -311,7 +326,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                 <StatCard title="Vorm" value={`${stats.wins}-${stats.draws}-${stats.losses}`} subtext="W-G-V" />
             </div>
 
-            {/* NIEUWE GRAFIEK BLOK: All-time */}
             <div className="bg-gray-700 p-4 rounded-lg mb-8">
                 <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
                     <ChartBarIcon className="w-5 h-5 text-green-400" />
@@ -324,7 +338,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                 )}
             </div>
             
-            {/* OUDE GRAFIEK BLOK: Seizoen */}
             <div className="bg-gray-700 p-4 rounded-lg mb-8">
                 <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
                     <ChartBarIcon className="w-5 h-5 text-cyan-400" />
