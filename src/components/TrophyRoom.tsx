@@ -71,17 +71,17 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
   }, {} as { [year: string]: Trophy[] });
 
   // Sorteer de jaren (Nieuwste boven, Winter boven Zomer)
-  const sortedYears = Object.keys(trophiesByYear).sort((a, b) => {
+  const sortedYears = Object.keys(trophiesByYear).sort((b, a) => {
     const yearA = Number(a.match(/\d{4}/)?.[0]) || 0;
     const yearB = Number(b.match(/\d{4}/)?.[0]) || 0;
 
     if (yearA !== yearB) return yearB - yearA;
 
-    const isWinterA = a.toLowerCase().includes('zomer');
-    const isWinterB = b.toLowerCase().includes('zomer');
+    const isWinterA = a.toLowerCase().includes('winter');
+    const isWinterB = b.toLowerCase().includes('winter');
 
-    if (isZomerA && !isZomerB) return -1;
-    if (!isZomerA && isZomerB) return 1;
+    if (isWinterA && !isWinterB) return -1;
+    if (!isWinterA && isWinterB) return 1;
 
     return b.localeCompare(a);
   });
