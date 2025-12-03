@@ -152,6 +152,15 @@ const getTrophyIcon = (type: TrophyType) => {
     />
   );
   }
+  if (type.includes('Speler van het jaar')) {
+  return (
+    <img
+      src="https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png"
+      alt="Speler van het jaar"
+      className="w-8 h-10"
+    />
+  );
+  }
 /*  if (type === 'Topscoorder') return <FireIcon className="w-8 h-8" />;
   if (type.includes('1ste')) return <CrownIcon className="w-8 h-8" />;
   if (type.includes('2de')) return <MedalIcon className="w-8 h-8" />;
