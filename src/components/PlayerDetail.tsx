@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import type { Player, GameSession, RatingLogEntry } from '../types';
+import type { Player, GameSession, RatingLogEntry, Trophy, TrophyType } from '../types';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
 import ShieldIcon from './icons/ShieldIcon';
 import TrophyIcon from './icons/TrophyIcon';
@@ -12,6 +12,7 @@ interface PlayerDetailProps {
   history: GameSession[];
   players: Player[];
   ratingLogs: RatingLogEntry[];
+  trophies: Trophy[]; // <--- NIEUW: Prijzenlijst prop
   onBack: () => void;
 }
 
@@ -54,8 +55,37 @@ const RelationshipList: React.FC<{
 );
 
 
-const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, ratingLogs, onBack }) => {
+const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, ratingLogs, trophies, onBack }) => {
     const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
+
+    // --- NIEUW: Filter prijzen van deze speler ---
+    const playerTrophies = useMemo(() => {
+        if (!trophies) return [];
+        return trophies
+            .filter(t => t.playerId === player.id)
+            .sort((a, b) => {
+                // Sorteer op jaar (nieuwste eerst)
+                const yearA = Number(a.year.match(/\d{4}/)?.[0]) || 0;
+                const yearB = Number(b.year.match(/\d{4}/)?.[0]) || 0;
+                if (yearA !== yearB) return yearB - yearA;
+                // Winter boven Zomer
+                const isWinterA = a.year.toLowerCase().includes('winter');
+                const isWinterB = b.year.toLowerCase().includes('winter');
+                if (isWinterA && !isWinterB) return -1;
+                if (!isWinterA && isWinterB) return 1;
+                return b.year.localeCompare(a.year);
+            });
+    }, [trophies, player.id]);
+
+    const getTrophyStyle = (type: TrophyType) => {
+        if (type.includes('1ste') || type === 'Clubkampioen' || type === 'Speler van het jaar') return 'text-yellow-400 border-yellow-500/30 bg-yellow-900/10';
+        if (type.includes('2de')) return 'text-gray-300 border-gray-400/30 bg-gray-700/30';
+        if (type.includes('3de')) return 'text-amber-600 border-amber-600/30 bg-amber-900/10';
+        if (type === 'Topscoorder') return 'text-cyan-400 border-cyan-500/30 bg-cyan-900/10';
+        if (type === 'Verdediger') return 'text-fuchsia-400 border-fuchsia-500/30 bg-fuchsia-900/10';
+        return 'text-white border-gray-500/30';
+    };
+    // ---------------------------------------------
 
     const stats = useMemo(() => {
         let wins = 0;
@@ -139,7 +169,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
         return { wins, losses, draws, gamesPlayed, goalsScored, bestTeammates, worstTeammates, bestOpponents, worstOpponents, mostFrequentTeammates };
     }, [player.id, history]);
 
-    // 1. Berekening Seizoen History (op basis van terugrekenen uit wedstrijden)
+    // 1. Berekening Seizoen History
     const ratingHistory = useMemo(() => {
         const historyPoints: { date: string; rating: number }[] = [];
         let currentRating = player.rating;
@@ -189,14 +219,12 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
         return historyPoints.reverse();
     }, [player.id, player.rating, history]);
 
-    // 2. Berekening All Time History (op basis van logs uit sheet)
+    // 2. Berekening All Time History
     const allTimeRatingHistory = useMemo(() => {
-        // Filter logs voor deze speler
         const logs = ratingLogs
             .filter(log => log.playerId === player.id)
             .map(log => ({ date: log.date, rating: log.rating }));
         
-        // Sorteer op datum
         return logs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [player.id, ratingLogs]);
 
@@ -222,6 +250,29 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                     </div>
                 </div>
             </div>
+
+            {/* --- NIEUW: PRIJZENKAST BLOK --- */}
+            {playerTrophies.length > 0 && (
+                <div className="mb-8 p-4 bg-gradient-to-r from-gray-750 to-gray-800 rounded-xl border border-gray-600/50">
+                    <h3 className="text-lg font-bold text-amber-400 mb-3 flex items-center">
+                        <TrophyIcon className="w-5 h-5 mr-2" /> Prijzenkast
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {playerTrophies.map(trophy => (
+                            <div key={trophy.id} className={`flex items-center p-3 rounded-lg border ${getTrophyStyle(trophy.type)}`}>
+                                <div className="mr-3">
+                                    {trophy.type === 'Verdediger' ? <ShieldIcon className="w-6 h-6" /> : <TrophyIcon className="w-6 h-6" />}
+                                </div>
+                                <div>
+                                    <div className="font-bold text-sm">{trophy.type}</div>
+                                    <div className="text-xs opacity-80">{trophy.year}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            {/* ------------------------------- */}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <StatCard title="Gespeeld" value={stats.gamesPlayed} />
