@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
-// TrophyIcon, ShieldIcon en FutbolIcon zijn nu allemaal vervangen door plaatjes, dus niet meer nodig
 import UsersIcon from './icons/UsersIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
 
@@ -274,7 +273,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
-        {/* --- AANGEPAST: COMPETITIE MET NIEUW PLAATJE --- */}
+        {/* --- HIER IS HET AANGEPAST: NU MET JOUW PLAATJE --- */}
         <StatCard title="Competitie" icon={
             <img 
                 src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
