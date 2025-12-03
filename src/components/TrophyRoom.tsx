@@ -87,11 +87,12 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
   });
 
   const getTrophyStyle = (type: TrophyType) => {
-    if (type.includes('1ste') || type === 'Clubkampioen' || type === 'Speler van het jaar') return 'text-yellow-400';
-    if (type.includes('2de')) return 'text-gray-300';
-    if (type.includes('3de')) return 'text-amber-600';
-    if (type === 'Topscoorder') return 'text-cyan-400';
-    if (type === 'Verdediger') return 'text-fuchsia-400';
+    if (type.includes('1ste') || type === 'Clubkampioen') return 'text-yellow-400';
+    if (type.includes('2de')) return 'text-slate-600';
+    if (type.includes('3de')) return 'text-amber-800';
+    if (type === 'Topscoorder') return 'text-yellow-300';
+    if (type === 'Verdediger') return 'text-red-500';
+    if (type === 'Speler van het jaar') return 'text-white-500';
     return 'text-white';
   };
 
