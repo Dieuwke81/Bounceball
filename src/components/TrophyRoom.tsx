@@ -111,7 +111,7 @@ const getTrophyIcon = (type: TrophyType) => {
     <img
       src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png"
       alt="Topscoorder"
-      className="w-10 h-10"
+      className="w-8 h-10"
     />
   );
   }
