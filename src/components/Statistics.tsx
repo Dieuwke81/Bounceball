@@ -352,7 +352,13 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <StatCard title="Competitie" icon={<TrophyIcon className="w-6 h-6 text-amber-400" />}>
+        <StatCard title="Competitie" icon={
+            <img 
+                src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
+                alt="Topscoorder" 
+                className="w-12 h-12 object-contain" 
+            />
+        }>
            <StatList
             data={competitionPoints}
             showAllFlag={showAll.points}
