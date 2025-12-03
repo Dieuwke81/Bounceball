@@ -92,7 +92,7 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
     if (type.includes('3de')) return 'text-amber-800';
     if (type === 'Topscoorder') return 'text-yellow-300';
     if (type === 'Verdediger') return 'text-red-500';
-    if (type === 'Speler van het jaar') return 'text-violet-800';
+    if (type === 'Speler van het jaar') return 'text-green-500';
     return 'text-white';
   };
 
