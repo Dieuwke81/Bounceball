@@ -107,11 +107,11 @@ const getTrophyIcon = (type: TrophyType) => {
 };
   
   
-  {/*  const getTrophyIcon = (type: TrophyType) => {
+  /*  const getTrophyIcon = (type: TrophyType) => {
       // Gebruik je aangepaste afbeelding voor de verdediger als je die lokaal ook hebt
       if (type === 'Verdediger') return <ShieldIcon className="w-8 h-8" />;
       return <TrophyIcon className="w-8 h-8" />;
-  };*/}
+  };*/
 
   return (
     <div className="space-y-8">
