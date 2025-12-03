@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
 
 // ============================================================================
-// INLINE ICONEN (Zzodat we niet afhankelijk zijn van externe bestanden)
+// INLINE ICONEN & HELPER FUNCTIES
 // ============================================================================
 
 const UsersIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -23,8 +23,45 @@ const PrinterIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-// Trophies en Shields hebben we niet meer nodig als component, want we gebruiken afbeeldingen.
-// Dus die imports laten we weg om fouten te voorkomen.
+// Hulpfunctie om TrophyIcon te simuleren (zodat we geen import error krijgen)
+const TrophyIcon: React.FC<{ className?: string }> = ({ className }) => null;
+
+// --- FUNCTIE OM SPECIFIEK DEEL TE PRINTEN ---
+const printSection = (elementId: string) => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #${elementId}, #${elementId} * {
+                visibility: visible;
+            }
+            #${elementId} {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 20px;
+                background-color: #1f2937 !important; /* Zorg voor donkere achtergrond bij print */
+                color: white !important;
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact;
+            }
+            /* Verberg de printknoppen op papier */
+            button {
+                display: none !important;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+    window.print();
+    // Verwijder style na printen (timeout nodig voor sommige browsers)
+    setTimeout(() => {
+        document.head.removeChild(style);
+    }, 1000);
+};
 
 // ============================================================================
 
@@ -51,11 +88,9 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
     history.forEach(session => {
         const attendingIds = new Set<number>();
-        if (session.teams) {
-            session.teams.flat().forEach(player => {
-                if (player && player.id) attendingIds.add(player.id);
-            });
-        }
+        session.teams.flat().forEach(player => {
+            attendingIds.add(player.id);
+        });
         attendingIds.forEach(id => {
             playerGamesMap.set(id, (playerGamesMap.get(id) || 0) + 1);
         });
@@ -68,13 +103,13 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     const map = new Map<number, number>();
     history.forEach(session => {
         [...session.round1Results, ...session.round2Results].forEach(match => {
-            if (session.teams && session.teams[match.team1Index] && session.teams[match.team2Index]) {
+            if (session.teams[match.team1Index] && session.teams[match.team2Index]) {
                 const playersInMatch = [
                     ...session.teams[match.team1Index],
                     ...session.teams[match.team2Index]
                 ];
                 playersInMatch.forEach(player => {
-                    if (player && player.id) map.set(player.id, (map.get(player.id) || 0) + 1);
+                    map.set(player.id, (map.get(player.id) || 0) + 1);
                 });
             }
         });
@@ -109,7 +144,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     const stats = new Map<number, number>();
     history.forEach(session => {
       [...session.round1Results, ...session.round2Results].forEach(match => {
-        if (!session.teams || !session.teams[match.team1Index] || !session.teams[match.team2Index]) return;
+        if (!session.teams[match.team1Index] || !session.teams[match.team2Index]) return;
         const team1Players = session.teams[match.team1Index];
         const team2Players = session.teams[match.team2Index];
         const team1Score = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
@@ -144,7 +179,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     const stats = new Map<number, number>();
     history.forEach(session => {
       [...session.round1Results, ...session.round2Results].forEach(match => {
-        if (!session.teams || !session.teams[match.team1Index] || !session.teams[match.team2Index]) return;
+        if (!session.teams[match.team1Index] || !session.teams[match.team2Index]) return;
         const team1Players = session.teams[match.team1Index];
         const team2Players = session.teams[match.team2Index];
         const team1Score = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
@@ -189,7 +224,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     return history
         .map(session => ({
             date: session.date,
-            count: session.teams ? session.teams.flat().length : 0,
+            count: session.teams.flat().length,
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [history]);
@@ -231,11 +266,28 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   }
 
-  const StatCard: React.FC<{ title: string, icon: React.ReactNode, children: React.ReactNode, className?: string }> = ({ title, icon, children, className }) => (
-    <div className={`bg-gray-800 rounded-xl shadow-lg p-6 ${className}`}>
-      <div className="flex items-center mb-4">
-        {icon}
-        <h3 className="ml-3 text-2xl font-bold text-white">{title}</h3>
+  // --- AANGEPASTE STATCARD MET ID & PRINTKNOP ---
+  const StatCard: React.FC<{ 
+      id: string, // ID toegevoegd
+      title: string, 
+      icon: React.ReactNode, 
+      children: React.ReactNode, 
+      className?: string 
+  }> = ({ id, title, icon, children, className }) => (
+    <div id={id} className={`bg-gray-800 rounded-xl shadow-lg p-6 ${className} relative group`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center">
+            {icon}
+            <h3 className="ml-3 text-2xl font-bold text-white">{title}</h3>
+        </div>
+        {/* Print Knop (verschijnt bij hover op desktop, altijd zichtbaar op mobiel) */}
+        <button 
+            onClick={() => printSection(id)}
+            className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors"
+            title={`Print ${title}`}
+        >
+            <PrinterIcon className="w-5 h-5" />
+        </button>
       </div>
       <div className="space-y-3">{children}</div>
     </div>
@@ -272,20 +324,18 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       toggleShowAll: () => void,
       renderRow: (item: any, index: number) => React.ReactNode
   }> = ({ data, showAllFlag, toggleShowAll, renderRow }) => {
-    // EXTRA BEVEILIGING: Filter spelers die niet meer bestaan
+    // Check of speler bestaat
     const filteredData = data.filter(item => item && item.playerId && playerMap.has(item.playerId));
-    
     const displayedData = showAllFlag ? filteredData : filteredData.slice(0, 10);
     return (
       <>
         {displayedData.map((item, index) => {
-            // EXTRA BEVEILIGING: We checken of de speler bestaat voor we hem renderen
             const player = playerMap.get(item.playerId);
             if (!player) return null;
             return renderRow(item, index);
         })}
         {filteredData.length > 10 && (
-          <div className="mt-2">
+          <div className="mt-2 no-print"> {/* no-print class zorgt dat deze knop niet geprint wordt als je gewoon ctrl+p doet */}
             <button 
               onClick={toggleShowAll}
               className="w-full text-center py-2 text-sm text-cyan-400 hover:text-cyan-300 font-semibold rounded-lg hover:bg-gray-700/50 transition-colors"
@@ -380,25 +430,25 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     <>
       <div className="flex justify-between items-center mb-6 px-2">
          <h2 className="text-2xl font-bold text-white">Statistieken</h2>
+         {/* Algemene Printknop (print alles) */}
          <button
             onClick={() => window.print()}
             className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg"
-            title="Print Statistieken"
+            title="Print Alles"
          >
             <PrinterIcon className="w-5 h-5" />
-            <span className="hidden sm:inline">Print</span>
+            <span className="hidden sm:inline">Alles Printen</span>
          </button>
       </div>
 
       <div className="text-center mb-8">
           <p className="text-gray-400">Statistieken gebaseerd op <span className="font-bold text-white">{totalSessions}</span> speeldagen. <span className="italic">Voor de ranglijsten (gem.) moet een speler minimaal <span className="font-bold text-white">{minGames}</span> keer aanwezig zijn geweest.</span></p>
-  <p className="text-green-500 text-sm mt-2 italic">Klik op een speler om de individuele statistieken te zien.</p>
+          <p className="text-green-500 text-sm mt-2 italic">Klik op een speler om de individuele statistieken te zien.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
-        {/* Competitie */}
-        <StatCard title="Competitie" icon={
+        <StatCard id="stat-competition" title="Competitie" icon={
             <img 
                 src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
                 alt="Competitie" 
@@ -411,7 +461,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             toggleShowAll={() => setShowAll(s => ({...s, points: !s.points}))}
             renderRow={(p, i) => {
                 const player = playerMap.get(p.playerId);
-                if (!player) return null; // SAFETY CHECK
+                if (!player) return null;
                 return (
                     <StatRow 
                         key={p.playerId} 
@@ -426,8 +476,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        {/* Topscoorder */}
-        <StatCard title="Topscoorder" icon={
+        <StatCard id="stat-topscorers" title="Topscoorder" icon={
             <img 
                 src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" 
                 alt="Topscoorder" 
@@ -455,8 +504,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        {/* Beste Verdediger */}
-        <StatCard title="Beste verdediger" icon={
+        <StatCard id="stat-defense" title="Beste verdediger" icon={
             <img 
                 src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" 
                 alt="Beste verdediger" 
@@ -484,8 +532,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
         
-        {/* Meest Aanwezig */}
-        <StatCard title="Meest aanwezig" icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
+        <StatCard id="stat-attendance" title="Meest aanwezig" icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
           <StatList
             data={mostAttended}
             showAllFlag={showAll.attendance}
@@ -507,11 +554,22 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
         </StatCard>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <StatCard title="Aanwezigheids Trend" icon={<ChartBarIcon className="w-6 h-6 text-cyan-400" />}>
+      <div id="stat-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative group">
+        {/* EEN PRINTKNOP VOOR BEIDE GRAFIEKEN */}
+        <div className="absolute top-2 right-2 z-10">
+             <button 
+                onClick={() => printSection('stat-charts')}
+                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors shadow-lg"
+                title="Print Grafieken"
+            >
+                <PrinterIcon className="w-5 h-5" />
+            </button>
+        </div>
+
+        <StatCard id="chart-attendance" title="Aanwezigheids Trend" icon={<ChartBarIcon className="w-6 h-6 text-cyan-400" />}>
           <AttendanceChart data={attendanceHistory} />
         </StatCard>
-        <StatCard title="Balans van Teams (Gem. Doelsaldo)" icon={<ChartBarIcon className="w-6 h-6 text-fuchsia-400" />}>
+        <StatCard id="chart-balance" title="Balans van Teams (Gem. Doelsaldo)" icon={<ChartBarIcon className="w-6 h-6 text-fuchsia-400" />}>
           <GoalDifferenceChart data={goalDifferenceHistory} />
         </StatCard>
       </div>
