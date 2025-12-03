@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react'; // useState toegevoegd
 import type { Player, GameSession, RatingLogEntry, Trophy, TrophyType } from '../types';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
 import ShieldIcon from './icons/ShieldIcon';
@@ -6,13 +6,15 @@ import TrophyIcon from './icons/TrophyIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
 import RatingChart from './RatingChart';
 import UsersIcon from './icons/UsersIcon';
+import PrinterIcon from './icons/PrinterIcon'; // Nieuwe import
+import PlayerPrintView from './PlayerPrintView'; // Nieuwe import
 
 interface PlayerDetailProps {
   player: Player;
   history: GameSession[];
   players: Player[];
   ratingLogs: RatingLogEntry[];
-  trophies: Trophy[];
+  trophies: Trophy[]; 
   onBack: () => void;
 }
 
@@ -56,9 +58,11 @@ const RelationshipList: React.FC<{
 
 
 const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, ratingLogs, trophies, onBack }) => {
+    const [isPrinting, setIsPrinting] = useState(false); // State voor printen
+
     const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
 
-    // 1. Filter en sorteer prijzen
+    // --- NIEUW: Filter prijzen van deze speler ---
     const playerTrophies = useMemo(() => {
         if (!trophies) return [];
         return trophies
@@ -72,36 +76,20 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                 const isWinterB = b.year.toLowerCase().includes('winter');
                 if (isWinterA && !isWinterB) return -1;
                 if (!isWinterA && isWinterB) return 1;
-                
                 return b.year.localeCompare(a.year);
             });
     }, [trophies, player.id]);
 
-    // 2. JOUW SPECIFIEKE KLEUREN (HERSTELD)
     const getTrophyStyle = (type: TrophyType) => {
-        if (type.includes('1ste') || type === 'Clubkampioen') 
-            return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600 font-bold text-lg border-amber-400/30 bg-amber-400/10';
-        
-        if (type.includes('2de')) 
-            return 'text-slate-500 border-slate-500/30 bg-slate-500/10';
-        
-        if (type.includes('3de')) 
-            return 'text-amber-700 border-amber-700/30 bg-amber-700/10';
-        
-        if (type === 'Topscoorder') 
-            return 'text-yellow-300 border-yellow-300/30 bg-yellow-300/10';
-        
-        if (type === 'Verdediger') 
-            return 'text-red-500 border-red-500/30 bg-red-500/10';
-        
-        if (type === 'Speler van het jaar') 
-            return 'text-green-500 border-green-500/30 bg-green-500/10';
-        
-        // Fallback
+        if (type.includes('1ste') || type === 'Clubkampioen') return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600 font-bold text-lg border-amber-400/30 bg-amber-400/10';
+        if (type.includes('2de')) return 'text-slate-500 border-slate-500/30 bg-slate-500/10';
+        if (type.includes('3de')) return 'text-amber-800 border-amber-800/30 bg-amber-800/10';
+        if (type === 'Topscoorder') return 'text-yellow-300 border-yellow-300/30 bg-yellow-300/10';
+        if (type === 'Verdediger') return 'text-red-500 border-red-500/30 bg-red-500/10';
+      if (type === 'Speler van het jaar') return 'text-green-500 border-green-500/30 bg-green-500/10';
         return 'text-white border-gray-500/30';
     };
 
-    // 3. JOUW AFBEELDINGEN (GEEN TYPEFOUTEN MEER)
     const getTrophyContent = (type: TrophyType) => {
         const images: {[key: string]: string} = {
             'Verdediger': 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
@@ -127,11 +115,10 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
             return <img src={imageUrl} alt={type} className="w-8 h-8 object-contain" />;
         }
 
-        // Fallback
         if (type === 'Verdediger') return <ShieldIcon className="w-6 h-6" />;
         return <TrophyIcon className="w-6 h-6" />;
     };
-
+    
     const stats = useMemo(() => {
         let wins = 0;
         let losses = 0;
@@ -275,32 +262,53 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
 
     return (
         <div className="bg-gray-800 rounded-xl shadow-lg p-6">
-            <div className="flex items-center mb-6">
-                <button onClick={onBack} className="p-2 mr-4 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-colors">
-                    <ArrowLeftIcon className="w-6 h-6" />
-                </button>
-                {player.photoBase64 && (
-                    <img 
-                        src={player.photoBase64} 
-                        alt={player.name}
-                        className="w-16 h-16 rounded-full object-cover mr-4 border-2 border-cyan-400"
-                    />
-                )}
-                <div>
-                    <h2 className="text-3xl font-bold text-white">{player.name}</h2>
-                    <div className="flex items-center mt-1">
-                        <span className="text-lg font-semibold bg-cyan-500 text-white py-1 px-3 rounded-full">{player.rating.toFixed(1)}</span>
-                        {player.isKeeper && <span className="ml-2 text-xs font-semibold bg-amber-500 text-white py-0.5 px-2 rounded-full">K</span>}
-                        {player.isFixedMember && <span className="ml-2 text-xs font-semibold bg-green-500 text-white py-0.5 px-2 rounded-full">Lid</span>}
+            {/* --- PRINT VIEW RENDEREN ALS ER GEPRINT MOET WORDEN --- */}
+            {isPrinting && (
+                <PlayerPrintView 
+                    player={player} 
+                    stats={stats} // 'stats' wordt hierboven berekend
+                    trophies={playerTrophies} 
+                    onClose={() => setIsPrinting(false)} 
+                />
+            )}
+
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                    <button onClick={onBack} className="p-2 mr-4 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-colors">
+                        <ArrowLeftIcon className="w-6 h-6" />
+                    </button>
+                    {player.photoBase64 && (
+                        <img 
+                            src={player.photoBase64} 
+                            alt={player.name}
+                            className="w-16 h-16 rounded-full object-cover mr-4 border-2 border-cyan-400"
+                        />
+                    )}
+                    <div>
+                        <h2 className="text-3xl font-bold text-white">{player.name}</h2>
+                        <div className="flex items-center mt-1">
+                            <span className="text-lg font-semibold bg-cyan-500 text-white py-1 px-3 rounded-full">{player.rating.toFixed(1)}</span>
+                            {player.isKeeper && <span className="ml-2 text-xs font-semibold bg-amber-500 text-white py-0.5 px-2 rounded-full">K</span>}
+                            {player.isFixedMember && <span className="ml-2 text-xs font-semibold bg-green-500 text-white py-0.5 px-2 rounded-full">Lid</span>}
+                        </div>
                     </div>
                 </div>
+
+                {/* --- PRINT KNOP (RECHTS BOVEN) --- */}
+                <button 
+                    onClick={() => setIsPrinting(true)} 
+                    className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors"
+                    title="Spelersprofiel Printen"
+                >
+                    <PrinterIcon className="w-6 h-6" />
+                </button>
             </div>
 
-            {/* --- PRIJZENKAST BLOK (NU MET JUISTE KLEUREN) --- */}
+            {/* --- NIEUW: PRIJZENKAST BLOK (MET JUISTE KLEUREN) --- */}
             {playerTrophies.length > 0 && (
                 <div className="mb-8 p-4 bg-gradient-to-r from-gray-750 to-gray-800 rounded-xl border border-gray-600/50">
-                    <h3 className="text-lg font-bold text-white-500 mb-3 flex items-center">
-                        <div className="w-5 h-5 mr-2" /> Prijzenkast 🏆
+                    <h3 className="text-lg font-bold text-white-400 mb-3 flex items-center">
+                        <TrophyIcon className="w-5 h-5 mr-2" /> Prijzenkast 🏆
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {playerTrophies.map(trophy => (
@@ -317,7 +325,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                     </div>
                 </div>
             )}
-            {/* ------------------------------------------------ */}
+            {/* ---------------------------------------------------- */}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <StatCard title="Gespeeld" value={stats.gamesPlayed} />
@@ -326,6 +334,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                 <StatCard title="Vorm" value={`${stats.wins}-${stats.draws}-${stats.losses}`} subtext="W-G-V" />
             </div>
 
+            {/* NIEUWE GRAFIEK BLOK: All-time */}
             <div className="bg-gray-700 p-4 rounded-lg mb-8">
                 <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
                     <ChartBarIcon className="w-5 h-5 text-green-400" />
@@ -338,6 +347,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                 )}
             </div>
             
+            {/* OUDE GRAFIEK BLOK: Seizoen */}
             <div className="bg-gray-700 p-4 rounded-lg mb-8">
                 <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
                     <ChartBarIcon className="w-5 h-5 text-cyan-400" />
