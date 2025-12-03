@@ -54,7 +54,7 @@ const PlayerManagement: React.FC<PlayerManagementProps> = ({ players, onAdd, onU
       <div className="bg-gray-800 rounded-xl shadow-lg p-6">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center">
-            <UsersIcon className="w-8 h-8 text-cyan-400" />
+            <UsersIcon className="w-8 h-8 text-green-500" />
             <h2 className="ml-3 text-3xl font-bold text-white">Spelersbeheer</h2>
           </div>
           <button
