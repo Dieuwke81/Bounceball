@@ -107,20 +107,13 @@ const getTrophyIcon = (type: TrophyType) => {
   );
   }
   
-  if (type === 'Topscoorder') return <FireIcon className="w-8 h-8" />;
-/*  if (type.includes('1ste')) return <CrownIcon className="w-8 h-8" />;
+ /* if (type === 'Topscoorder') return <FireIcon className="w-8 h-8" />;
+  if (type.includes('1ste')) return <CrownIcon className="w-8 h-8" />;
   if (type.includes('2de')) return <MedalIcon className="w-8 h-8" />;
   if (type.includes('3de')) return <BronzeIcon className="w-8 h-8" />;
-  
+  */
   return <TrophyIcon className="w-8 h-8" />;
 };
-  
-  
-   const getTrophyIcon = (type: TrophyType) => {
-      // Gebruik je aangepaste afbeelding voor de verdediger als je die lokaal ook hebt
-      if (type === 'Verdediger') return <ShieldIcon className="w-8 h-8" />;
-      return <TrophyIcon className="w-8 h-8" />;
-  };*/
 
   return (
     <div className="space-y-8">
