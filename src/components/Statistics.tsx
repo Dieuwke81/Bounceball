@@ -1,67 +1,66 @@
 import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
 
-// ============================================================================
-// INLINE ICONEN (Zodat we zeker weten dat ze bestaan en niet crashen)
-// ============================================================================
+// --- IMPORTS (De iconen die je al hebt) ---
+import UsersIcon from './icons/UsersIcon';
+import ChartBarIcon from './icons/ChartBarIcon';
 
+// --- PRINTER ICON (Inline, zodat hij altijd werkt) ---
 const PrinterIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
   </svg>
 );
 
-const UsersIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-  </svg>
-);
-
-const ChartBarIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-  </svg>
-);
-
-const TrophyIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0V5.375ac0-.621-.504-1.125-1.125-1.125h-2.25c-.621 0-1.125.504-1.125 1.125v9.75" />
-  </svg>
-);
-
-const ShieldIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
-  </svg>
-);
-
-// --- PRINT FUNCTIE ---
+// --- DE SLIMME PRINT FUNCTIE ---
 const printSection = (elementId: string) => {
+    // We maken een tijdelijk stijlblok aan dat ALLEEN tijdens het printen geldt
     const style = document.createElement('style');
     style.innerHTML = `
         @media print {
-            body > * { display: none !important; }
-            #${elementId} {
-                display: block !important;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100% !important;
-                height: auto !important;
-                margin: 0 !important;
-                padding: 20px !important;
-                z-index: 9999 !important;
-                background-color: #1f2937 !important;
-                color: white !important;
+            /* Verberg ALLES op de pagina */
+            body * {
+                visibility: hidden;
             }
-            #${elementId} * { visibility: visible !important; }
-            button { display: none !important; }
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            
+            /* Maak het gekozen blokje (en de inhoud) zichtbaar */
+            #${elementId}, #${elementId} * {
+                visibility: visible;
+            }
+
+            /* Positioneer het blokje linksboven op het papier */
+            #${elementId} {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                background-color: white !important; /* Wit papier bespaart inkt */
+                color: black !important; /* Zwarte tekst voor leesbaarheid */
+                box-shadow: none !important;
+            }
+
+            /* Verberg de printknop zelf op het papier */
+            #${elementId} button {
+                display: none !important;
+            }
+            
+            /* Zorg dat achtergrondkleurtjes van labels (groen/geel) wel geprint worden */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         }
     `;
     document.head.appendChild(style);
+    
     window.print();
-    setTimeout(() => { document.head.removeChild(style); }, 500);
+    
+    // Ruim de stijl weer op na het printen (anders blijft je scherm raar)
+    setTimeout(() => {
+        document.head.removeChild(style);
+    }, 500);
 };
 
 // ============================================================================
@@ -267,9 +266,9 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   }
 
-  // --- STATCARD COMPONENT (MET ID & PRINT KNOP) ---
+  // --- STATCARD MET UNIEK ID VOOR PRINTEN ---
   const StatCard: React.FC<{ 
-      id: string, 
+      id: string, // Dit ID is cruciaal voor de printfunctie
       title: string, 
       icon: React.ReactNode, 
       children: React.ReactNode, 
@@ -281,6 +280,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             {icon}
             <h3 className="ml-3 text-2xl font-bold text-white">{title}</h3>
         </div>
+        {/* De Printknop die de printSection functie aanroept met het specifieke ID */}
         <button 
             onClick={() => printSection(id)}
             className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors"
@@ -334,7 +334,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             return renderRow(item, index);
         })}
         {filteredData.length > 10 && (
-          <div className="mt-2 no-print">
+          <div className="mt-2">
             <button 
               onClick={toggleShowAll}
               className="w-full text-center py-2 text-sm text-cyan-400 hover:text-cyan-300 font-semibold rounded-lg hover:bg-gray-700/50 transition-colors"
@@ -429,7 +429,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     <>
       <div className="flex justify-between items-center mb-6 px-2">
          <h2 className="text-2xl font-bold text-white">Statistieken</h2>
-         {/* Algemene Printknop */}
+         {/* ALGEMENE PRINT KNOP */}
          <button
             onClick={() => window.print()}
             className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg"
@@ -447,7 +447,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
-        {/* COMPETITIE - MET PLAATJE */}
+        {/* ID TOEGEVOEGD: COMPETITIE */}
         <StatCard id="stat-competition" title="Competitie" icon={
             <img 
                 src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
@@ -476,7 +476,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        {/* TOPSCOORDER - MET PLAATJE */}
+        {/* ID TOEGEVOEGD: TOPSCOORDER */}
         <StatCard id="stat-topscorers" title="Topscoorder" icon={
             <img 
                 src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" 
@@ -505,7 +505,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        {/* BESTE VERDEDIGER - MET PLAATJE */}
+        {/* ID TOEGEVOEGD: VERDEDIGER */}
         <StatCard id="stat-defense" title="Beste verdediger" icon={
             <img 
                 src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" 
@@ -534,7 +534,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
         
-        {/* MEEST AANWEZIG - MET ICOON */}
+        {/* ID TOEGEVOEGD: AANWEZIGHEID */}
         <StatCard id="stat-attendance" title="Meest aanwezig" icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
           <StatList
             data={mostAttended}
@@ -559,6 +559,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
       <div id="stat-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative group">
         <div className="absolute top-2 right-2 z-10">
+             {/* SPECIFIEKE PRINTKNOP VOOR GRAFIEKEN */}
              <button 
                 onClick={() => printSection('stat-charts')}
                 className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors shadow-lg"
