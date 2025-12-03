@@ -202,8 +202,8 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
                                             {getTrophyIcon(trophy.type)}
                                         </div>
                                         <div>
-                                            <h4 className={`font-bold text-sm ${getTrophyStyle(trophy.type)}`}>{trophy.type}</h4>
-                                            <p className="text-white text-lg font-medium truncate">{player ? player.name : 'Onbekend'}</p>
+                                            <h4 className={`font-bold text-sm leading-tight ${getTrophyStyle(trophy.type)}`}>{trophy.type}</h4>
+                                            <p className="text-white text-lg font-medium truncate leading-tight">{player ? player.name : 'Onbekend'}</p>
                                         </div>
                                         
                                         {isAuthenticated && (
