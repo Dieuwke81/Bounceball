@@ -106,8 +106,17 @@ const getTrophyIcon = (type: TrophyType) => {
     />
   );
   }
+  if (type === 'Topscoorder') {
+  return (
+    <img
+      src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png"
+      alt="Topscoorder"
+      className="w-10 h-10"
+    />
+  );
+  }
   
- /* if (type === 'Topscoorder') return <FireIcon className="w-8 h-8" />;
+/*  if (type === 'Topscoorder') return <FireIcon className="w-8 h-8" />;
   if (type.includes('1ste')) return <CrownIcon className="w-8 h-8" />;
   if (type.includes('2de')) return <MedalIcon className="w-8 h-8" />;
   if (type.includes('3de')) return <BronzeIcon className="w-8 h-8" />;
