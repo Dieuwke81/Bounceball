@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
-import TrophyIcon from './icons/TrophyIcon';
-// ShieldIcon is niet meer nodig, dus weggehaald
+// TrophyIcon en ShieldIcon zijn niet meer nodig nu we overal plaatjes hebben
 import UsersIcon from './icons/UsersIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
 
@@ -266,84 +265,6 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   };
 
-  const AttendanceChart: React.FC<{ data: {date: string, count: number}[] }> = ({ data }) => {
-      if (data.length < 2) {
-          return <p className="text-gray-400 text-center py-8">Niet genoeg data voor een grafiek.</p>;
-      }
-
-      const W = 500, H = 200, P = 30;
-      const minCount = Math.min(...data.map(d => d.count));
-      const maxCount = Math.max(...data.map(d => d.count));
-      const countRange = Math.max(1, maxCount - minCount);
-
-      const points = data.map((d, i) => {
-          const x = (i / (data.length - 1)) * (W - P * 2) + P;
-          const y = H - P - ((d.count - minCount) / countRange) * (H - P * 2);
-          return `${x},${y}`;
-      }).join(' ');
-      
-      const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('nl-NL', { month: 'short', day: 'numeric' });
-
-      return (
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
-            <line x1={P} y1={H - P} x2={W - P} y2={H - P} className="stroke-gray-600" strokeWidth="1" />
-            <text x={P - 10} y={P + 5} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{maxCount}</text>
-            <text x={P - 10} y={H - P} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{minCount}</text>
-            <polyline fill="none" className="stroke-cyan-400" strokeWidth="2" points={points} />
-            {data.map((d, i) => {
-                const x = (i / (data.length - 1)) * (W - P * 2) + P;
-                const y = H - P - ((d.count - minCount) / countRange) * (H - P * 2);
-                return (
-                    <circle key={i} cx={x} cy={y} r="3" className="fill-cyan-400 stroke-gray-800" strokeWidth="2">
-                        <title>{`${formatDate(d.date)}: ${d.count} spelers`}</title>
-                    </circle>
-                );
-            })}
-             <text x={P} y={H - P + 15} textAnchor="start" className="fill-gray-400 text-xs">{formatDate(data[0].date)}</text>
-             <text x={W - P} y={H - P + 15} textAnchor="end" className="fill-gray-400 text-xs">{formatDate(data[data.length - 1].date)}</text>
-        </svg>
-    );
-  };
-  
-    const GoalDifferenceChart: React.FC<{ data: { date: string, avgDiff: number }[] }> = ({ data }) => {
-    if (data.length < 2) {
-      return <p className="text-gray-400 text-center py-8">Niet genoeg data voor een grafiek.</p>;
-    }
-
-    const W = 500, H = 200, P = 30;
-    const minDiff = Math.min(...data.map(d => d.avgDiff));
-    const maxDiff = Math.max(...data.map(d => d.avgDiff));
-    const diffRange = Math.max(0.1, maxDiff - minDiff);
-
-    const points = data.map((d, i) => {
-      const x = (i / (data.length - 1)) * (W - P * 2) + P;
-      const y = H - P - ((d.avgDiff - minDiff) / diffRange) * (H - P * 2);
-      return `${x},${y}`;
-    }).join(' ');
-
-    const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('nl-NL', { month: 'short', day: 'numeric' });
-
-    return (
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
-        <line x1={P} y1={H - P} x2={W - P} y2={H - P} className="stroke-gray-600" strokeWidth="1" />
-        <text x={P - 10} y={P + 5} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{maxDiff.toFixed(1)}</text>
-        <text x={P - 10} y={H - P} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{minDiff.toFixed(1)}</text>
-        <polyline fill="none" className="stroke-fuchsia-400" strokeWidth="2" points={points} />
-         {data.map((d, i) => {
-            const x = (i / (data.length - 1)) * (W - P * 2) + P;
-            const y = H - P - ((d.avgDiff - minDiff) / diffRange) * (H - P * 2);
-            return (
-                <circle key={i} cx={x} cy={y} r="3" className="fill-fuchsia-400 stroke-gray-800" strokeWidth="2">
-                    <title>{`${formatDate(d.date)}: gem. doelsaldo ${d.avgDiff.toFixed(2)}`}</title>
-                </circle>
-            );
-        })}
-        <text x={P} y={H - P + 15} textAnchor="start" className="fill-gray-400 text-xs">{formatDate(data[0].date)}</text>
-        <text x={W - P} y={H - P + 15} textAnchor="end" className="fill-gray-400 text-xs">{formatDate(data[data.length - 1].date)}</text>
-      </svg>
-    );
-  };
-  
   return (
     <>
       <div className="text-center mb-8">
@@ -352,7 +273,15 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <StatCard title="Competitie" icon={<TrophyIcon className="w-6 h-6 text-amber-400" />}>
+        
+        {/* --- AANGEPAST: COMPETITIE MET NIEUW PLAATJE --- */}
+        <StatCard title="Competitie" icon={
+            <img 
+                src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
+                alt="Competitie" 
+                className="w-12 h-12 object-contain" 
+            />
+        }>
            <StatList
             data={competitionPoints}
             showAllFlag={showAll.points}
