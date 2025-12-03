@@ -12,7 +12,6 @@ interface TrophyRoomProps {
   onDeleteTrophy: (id: string) => Promise<void>;
 }
 
-// Dit is de keuzelijst voor het toevoegen (mag uitgebreid zijn)
 const TROPHY_TYPES: TrophyType[] = [
   'Clubkampioen', '2de', '3de',
   'Topscoorder', 'Verdediger', 'Speler van het jaar',
@@ -21,7 +20,6 @@ const TROPHY_TYPES: TrophyType[] = [
   '1ste Wintertoernooi', '2de Wintertoernooi', '3de Wintertoernooi'
 ];
 
-// --- NIEUW: DIT BEPAALT DE VOLGORDE VAN WEERGEVE ---
 const SORT_ORDER: TrophyType[] = [
   'Clubkampioen',
   '2de',
@@ -29,7 +27,6 @@ const SORT_ORDER: TrophyType[] = [
   'Topscoorder',
   'Verdediger',
   'Speler van het jaar'
-  // Prijzen die hier niet tussen staan, komen automatisch achteraan
 ];
 
 const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthenticated, onAddTrophy, onDeleteTrophy }) => {
@@ -63,14 +60,12 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
     }
   }
 
-  // Groepeer prijzen per jaar
   const trophiesByYear = [...trophies].reduce((acc, trophy) => {
     if (!acc[trophy.year]) acc[trophy.year] = [];
     acc[trophy.year].push(trophy);
     return acc;
   }, {} as { [year: string]: Trophy[] });
 
-  // Sorteer de jaren (Nieuwste boven, Winter boven Zomer)
   const sortedYears = Object.keys(trophiesByYear).sort((a, b) => {
     const yearA = Number(a.match(/\d{4}/)?.[0]) || 0;
     const yearB = Number(b.match(/\d{4}/)?.[0]) || 0;
@@ -96,78 +91,37 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
     return 'text-white';
   };
 
-const getTrophyIcon = (type: TrophyType) => {
-  if (type === 'Verdediger') {
-  return (
-    <img
-      src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png"
-      alt="Verdediger"
-      className="w-8 h-8"
-    />
-  );
-  }
-  if (type === 'Topscoorder') {
-  return (
-    <img
-      src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png"
-      alt="Topscoorder"
-      className="w-8 h-10"
-    />
-  );
-  }
-  if (type === 'Clubkampioen') {
-  return (
-    <img
-      src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png"
-      alt="Clubkampioen"
-      className="w-8 h-8"
-    />
-  );
-  }
-  
-  if (type.includes('2de')) {
-  return (
-    <img
-      src="https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png"
-      alt="2de"
-      className="w-8 h-9"
-    />
-  );
-  }
-  if (type.includes('3de')) {
-  return (
-    <img
-      src="https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png"
-      alt="3de"
-      className="w-8 h-8"
-    />
-  );
-  }
-  if (type.includes('1ste')) {
-  return (
-    <img
-      src="https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png"
-      alt="1ste"
-      className="w-8 h-10"
-    />
-  );
-  }
-  if (type.includes('Speler van het jaar')) {
-  return (
-    <img
-      src="https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png"
-      alt="Speler van het jaar"
-      className="w-8 h-10"
-    />
-  );
-  }
-/*  if (type === 'Topscoorder') return <FireIcon className="w-8 h-8" />;
-  if (type.includes('1ste')) return <CrownIcon className="w-8 h-8" />;
-  if (type.includes('2de')) return <MedalIcon className="w-8 h-8" />;
-  if (type.includes('3de')) return <BronzeIcon className="w-8 h-8" />;
-  */
-  return <TrophyIcon className="w-8 h-8" />;
-};
+  // --- HIER IS DE AANGEPASTE FUNCTIE MET ALLE PLAATJES ---
+  const getTrophyIcon = (type: TrophyType) => {
+    const images: { [key: string]: string } = {
+        'Verdediger': 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
+        'Topscoorder': 'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
+        'Clubkampioen': 'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
+        '2de': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+        '3de': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+        'Speler van het jaar': 'https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png',
+        '1ste Introductietoernooi': 'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
+        '2de Introductietoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+        '3de Introductietoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+        '1ste NK': 'https://i.postimg.cc/GhXMP4q5/20251203-184928-0000.png',
+        '2de NK': 'https://i.postimg.cc/wM0kkrcm/20251203-185040-0000.png',
+        '3de NK': 'https://i.postimg.cc/MpcYydnC/20251203-185158-0000.png',
+        '1ste Wintertoernooi': 'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png', 
+        '2de Wintertoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+        '3de Wintertoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png'
+    };
+
+    const imageUrl = images[type];
+
+    if (imageUrl) {
+        return <img src={imageUrl} alt={type} className="w-8 h-8 object-contain" />;
+    }
+    
+    // Fallback
+    if (type === 'Verdediger') return <ShieldIcon className="w-8 h-8" />;
+    return <TrophyIcon className="w-8 h-8" />;
+  };
+  // ---------------------------------------------------------
 
   return (
     <div className="space-y-8">
@@ -232,7 +186,6 @@ const getTrophyIcon = (type: TrophyType) => {
             <h2 className="text-3xl font-bold text-white mb-2">De Prijzenkast 🏆</h2>
             <p className="text-gray-400">Ere wie ere toekomt</p>
             
-            {/* NIEUWE ZIN: */}
             <p className="mt-2 font-bold text-green-500 text-sm animate-pulse font-mono ">
                 ERELID: Bram van Sprang
             </p>
@@ -244,18 +197,13 @@ const getTrophyIcon = (type: TrophyType) => {
             sortedYears.map(yearKey => {
                 const yearTrophies = trophiesByYear[yearKey];
 
-                // --- HIER GEBEURT DE SORTERING VAN DE PRIJZEN ---
                 const sortedTrophies = [...yearTrophies].sort((a, b) => {
                     let indexA = SORT_ORDER.indexOf(a.type);
                     let indexB = SORT_ORDER.indexOf(b.type);
-
-                    // Als een prijs niet in de lijst staat, zet hem achteraan (999)
                     if (indexA === -1) indexA = 999;
                     if (indexB === -1) indexB = 999;
-
                     return indexA - indexB;
                 });
-                // ------------------------------------------------
 
                 return (
                     <div key={yearKey} className="relative">
