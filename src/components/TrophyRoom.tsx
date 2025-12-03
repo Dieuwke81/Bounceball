@@ -106,7 +106,7 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
       
       {/* --- ADMIN FORM --- */}
       {isAuthenticated && (
-        <div className="bg-gray-800 border-2 border-amber-500/30 rounded-xl p-6 shadow-lg">
+        <div className="bg-gray-800 border-2 border-green-500/30 rounded-xl p-6 shadow-lg">
           <h3 className="text-xl font-bold text-amber-400 mb-4 flex items-center">
             <span className="mr-2">+</span> Prijs Uitrijken
           </h3>
