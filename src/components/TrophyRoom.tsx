@@ -97,9 +97,18 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
   };
 
 const getTrophyIcon = (type: TrophyType) => {
-  if (type === 'Verdediger') return <img src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" className="w-8 h-8" />;
+  if (type === 'Verdediger') {
+  return (
+    <img
+      src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png"
+      alt="Verdediger"
+      className="w-8 h-8"
+    />
+  );
+  }
+  
   if (type === 'Topscoorder') return <FireIcon className="w-8 h-8" />;
-  if (type.includes('1ste')) return <CrownIcon className="w-8 h-8" />;
+/*  if (type.includes('1ste')) return <CrownIcon className="w-8 h-8" />;
   if (type.includes('2de')) return <MedalIcon className="w-8 h-8" />;
   if (type.includes('3de')) return <BronzeIcon className="w-8 h-8" />;
   
@@ -107,7 +116,7 @@ const getTrophyIcon = (type: TrophyType) => {
 };
   
   
-  /*  const getTrophyIcon = (type: TrophyType) => {
+   const getTrophyIcon = (type: TrophyType) => {
       // Gebruik je aangepaste afbeelding voor de verdediger als je die lokaal ook hebt
       if (type === 'Verdediger') return <ShieldIcon className="w-8 h-8" />;
       return <TrophyIcon className="w-8 h-8" />;
