@@ -12,7 +12,7 @@ interface PlayerDetailProps {
   history: GameSession[];
   players: Player[];
   ratingLogs: RatingLogEntry[];
-  trophies: Trophy[]; // <--- NIEUW: Prijzenlijst prop
+  trophies: Trophy[]; // <--- Prijzen toegevoegd
   onBack: () => void;
 }
 
@@ -58,7 +58,7 @@ const RelationshipList: React.FC<{
 const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, ratingLogs, trophies, onBack }) => {
     const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
 
-    // --- NIEUW: Filter prijzen van deze speler ---
+    // 1. Filter de prijzen van deze speler en sorteer ze
     const playerTrophies = useMemo(() => {
         if (!trophies) return [];
         return trophies
@@ -68,25 +68,54 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                 const yearA = Number(a.year.match(/\d{4}/)?.[0]) || 0;
                 const yearB = Number(b.year.match(/\d{4}/)?.[0]) || 0;
                 if (yearA !== yearB) return yearB - yearA;
-                // Winter boven Zomer
-                const isWinterA = a.year.toLowerCase().includes('winter');
-                const isWinterB = b.year.toLowerCase().includes('winter');
-                if (isWinterA && !isWinterB) return -1;
-                if (!isWinterA && isWinterB) return 1;
-                return b.year.localeCompare(a.year);
+                
+                // Winter boven Zomer (Alfabetisch: W komt na Z, dus draai om voor Zomer eerst of juist andersom)
+                // Hier: Winter (W) komt alfabetisch na Zomer (Z) niet, maar we willen Winter vaak boven Zomer in hetzelfde jaar? 
+                // Of juist Zomer boven Winter? De vorige keer wilde je Zomer boven Winter.
+                return a.year.localeCompare(b.year); 
             });
     }, [trophies, player.id]);
 
+    // 2. Helper voor de styling van de prijs-box
     const getTrophyStyle = (type: TrophyType) => {
-        if (type.includes('1ste') || type === 'Clubkampioen') return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600 font-bold text-lg border-amber-400/30 bg-amber-400/10';
-        if (type.includes('2de')) return 'text-slate-500 border-slate-500/30 bg-slate-500/10';
-        if (type.includes('3de')) return 'text-amber-800 border-amber-800/30 bg-amber-800/10';
-        if (type === 'Topscoorder') return 'text-yellow-300 border-yellow-300/30 bg-yellow-300/10';
-        if (type === 'Verdediger') return 'text-red-500 border-red-500/30 bg-red-500/10';
-      if (type === 'Speler van het jaar') return 'text-green-500 border-green-500/30 bg-green-500/10';
+        if (type.includes('1ste') || type === 'Clubkampioen' || type === 'Speler van het jaar') return 'text-yellow-400 border-yellow-500/30 bg-yellow-900/10';
+        if (type.includes('2de')) return 'text-gray-300 border-gray-400/30 bg-gray-700/30';
+        if (type.includes('3de')) return 'text-amber-600 border-amber-600/30 bg-amber-900/10';
+        if (type === 'Topscoorder') return 'text-cyan-400 border-cyan-500/30 bg-cyan-900/10';
+        if (type === 'Verdediger') return 'text-fuchsia-400 border-fuchsia-500/30 bg-fuchsia-900/10';
         return 'text-white border-gray-500/30';
     };
-    // ---------------------------------------------
+
+    // 3. Helper voor het plaatje (VERVANGT DE LANGE LIJST UIT JE SCREENSHOT)
+    const getTrophyContent = (type: TrophyType) => {
+        const images: {[key: string]: string} = {
+            'Verdediger': 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
+            'Topscoorder': 'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
+            'Clubkampioen': 'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
+            '2de': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+            '3de': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+            'Speler van het jaar': 'https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png',
+            '1ste Introductietoernooi': 'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
+            '2de Introductietoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+            '3de Introductietoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+            '1ste NK': 'https://i.postimg.cc/GhXMP4q5/20251203-184928-0000.png',
+            '2de NK': 'https://i.postimg.cc/wM0kkrcm/20251203-185040-0000.png',
+            '3de NK': 'https://i.postimg.cc/MpcYydnC/20251203-185158-0000.png',
+            '1ste Wintertoernooi': 'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png', // Voorbeeld, vul aan indien nodig
+            '2de Wintertoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+            '3de Wintertoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png'
+        };
+
+        const imageUrl = images[type];
+
+        if (imageUrl) {
+            return <img src={imageUrl} alt={type} className="w-8 h-8 object-contain" />;
+        }
+
+        // Fallback als er geen plaatje is
+        if (type === 'Verdediger') return <ShieldIcon className="w-6 h-6" />;
+        return <TrophyIcon className="w-6 h-6" />;
+    };
 
     const stats = useMemo(() => {
         let wins = 0;
@@ -252,57 +281,18 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                 </div>
             </div>
 
-            {/* --- NIEUW: PRIJZENKAST BLOK --- */}
+            {/* --- PRIJZENKAST BLOK (GEINSERT) --- */}
             {playerTrophies.length > 0 && (
                 <div className="mb-8 p-4 bg-gradient-to-r from-gray-750 to-gray-800 rounded-xl border border-gray-600/50">
-                    <h3 className="text-lg font-bold text-white-400 mb-3 flex items-center">
+                    <h3 className="text-lg font-bold text-amber-400 mb-3 flex items-center">
                         <TrophyIcon className="w-5 h-5 mr-2" /> Prijzenkast
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {playerTrophies.map(trophy => (
                             <div key={trophy.id} className={`flex items-center p-3 rounded-lg border ${getTrophyStyle(trophy.type)}`}>
                                 <div className="mr-3">
-    {trophy.type === 'Verdediger' ? (
-        // Plaatje voor Verdediger
-        <img src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" className="w-8 h-8 object-contain" />
-    ) : trophy.type === 'Topscoorder' ? (
-        // Plaatje voor Topscoorder
-        <img src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" className="w-8 h-8 object-contain" />
-    ) : trophy.type === 'Clubkampioen' ? (
-        // Plaatje voor Clubkampioen
-        <img src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" className="w-8 h-8 object-contain" />
-    ) : trophy.type === '2de' ? (
-        // Plaatje voor 2de
-        <img src="https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png" className="w-8 h-8 object-contain" />
-    ) : trophy.type === '3de' ? (
-        // Plaatje voor 3de
-        <img src="https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png" className="w-8 h-8 object-contain" />
-    ) : trophy.type === 'Speler van het jaar' ? (
-        // Plaatje voor Speler van het jaar
-        <img src="https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png" className="w-8 h-8 object-contain" />
-    ) : trophy.type === 'ste Introductietoernooi' ? (
-        // Plaatje voor 1ste Introductietoernooi
-        <img src="https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png" className="w-8 h-8 object-contain" />
-    ) : trophy.type === '2de Introductitoernooi' ? (
-        // Plaatje voor 2de Introductietoernooi
-        <img src="https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png" className="w-8 h-8 object-contain" />
-    ) : trophy.type === '3de Introductietoernooi' ? (
-        // Plaatje voor 3de Introductietoernooi
-        <img src="https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png" className="w-8 h-8 object-contain" />
-    ) : trophy.type === 'ste NK' ? (
-        // Plaatje voor 1ste NK
-        <img src="https://i.postimg.cc/GhXMP4q5/20251203-184928-0000.png" className="w-8 h-8 object-contain" />
-    ) : trophy.type === '2de NK' ? (
-        // Plaatje voor 2de NK
-        <img src="https://i.postimg.cc/wM0kkrcm/20251203-185040-0000.png" className="w-8 h-8 object-contain" />
-    ) : trophy.type === '3de NK' ? (
-        // Plaatje voor 3de NK
-        <img src="https://i.postimg.cc/MpcYydnC/20251203-185158-0000.png" className="w-8 h-8 object-contain" /         
-                            ) : (
-        // Plaatje voor de rest
-        <TrophyIcon className="w-6 h-6" />
-    )}
-</div>
+                                    {getTrophyContent(trophy.type)}
+                                </div>
                                 <div>
                                     <div className="font-bold text-sm">{trophy.type}</div>
                                     <div className="text-xs opacity-80">{trophy.year}</div>
@@ -312,7 +302,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                     </div>
                 </div>
             )}
-            {/* ------------------------------- */}
+            {/* ----------------------------------- */}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <StatCard title="Gespeeld" value={stats.gamesPlayed} />
