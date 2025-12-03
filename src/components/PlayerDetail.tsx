@@ -261,8 +261,17 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                         {playerTrophies.map(trophy => (
                             <div key={trophy.id} className={`flex items-center p-3 rounded-lg border ${getTrophyStyle(trophy.type)}`}>
                                 <div className="mr-3">
-                                    {trophy.type === 'Verdediger' ? <ShieldIcon className="w-6 h-6" /> : <TrophyIcon className="w-6 h-6" />}
-                                </div>
+    {trophy.type === 'Verdediger' ? (
+        // Plaatje voor Verdediger
+        <img src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" className="w-8 h-8 object-contain" />
+    ) : trophy.type === 'Topscoorder' ? (
+        // Plaatje voor Topscoorder
+        <img src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" className="w-8 h-8 object-contain" />
+    ) : (
+        // Plaatje voor de rest (Clubkampioen, etc.)
+        <TrophyIcon className="w-6 h-6" />
+    )}
+</div>
                                 <div>
                                     <div className="font-bold text-sm">{trophy.type}</div>
                                     <div className="text-xs opacity-80">{trophy.year}</div>
