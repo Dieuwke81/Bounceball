@@ -277,8 +277,27 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
     ) : trophy.type === '3de' ? (
         // Plaatje voor 3de
         <img src="https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png" className="w-8 h-8 object-contain" />
-                                    
-                              
+    ) : trophy.type === 'Speler van het jaar' ? (
+        // Plaatje voor Speler van het jaar
+        <img src="https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png" className="w-8 h-8 object-contain" />
+    ) : trophy.type === 'ste Introductietoernooi' ? (
+        // Plaatje voor 1ste Introductietoernooi
+        <img src="https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png" className="w-8 h-8 object-contain" />
+    ) : trophy.type === '2de Introductitoernooi' ? (
+        // Plaatje voor 2de Introductietoernooi
+        <img src="https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png" className="w-8 h-8 object-contain" />
+    ) : trophy.type === '3de Introductietoernooi' ? (
+        // Plaatje voor 3de Introductietoernooi
+        <img src="https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png" className="w-8 h-8 object-contain" />
+    ) : trophy.type === 'ste NK' ? (
+        // Plaatje voor 1ste NK
+        <img src="https://i.postimg.cc/GhXMP4q5/20251203-184928-0000.png" className="w-8 h-8 object-contain" />
+    ) : trophy.type === '2de NK' ? (
+        // Plaatje voor 2de NK
+        <img src="https://i.postimg.cc/wM0kkrcm/20251203-185040-0000.png" className="w-8 h-8 object-contain" />
+    ) : trophy.type === '3de NK' ? (
+        // Plaatje voor 3de NK
+        <img src="https://i.postimg.cc/MpcYydnC/20251203-185158-0000.png" className="w-8 h-8 object-contain" /         
                             ) : (
         // Plaatje voor de rest
         <TrophyIcon className="w-6 h-6" />
