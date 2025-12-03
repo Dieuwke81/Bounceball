@@ -172,7 +172,7 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
             <button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50"
+                className="bg-green-500 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50"
             >
                 {isSubmitting ? 'Bezig...' : 'Toevoegen'}
             </button>
