@@ -863,15 +863,15 @@ useEffect(() => {
         {/* --- NIEUWE COMPACTE NAVIGATIE --- */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-8 shadow-xl border border-gray-700/50">
             <div className="flex flex-wrap justify-center gap-4 md:gap-8">
-                <NavItem view="main" label="Wedstrijd" icon={<FutbolIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-red-300 to-red-800" />
+                <NavItem view="main" label="Wedstrijd" icon={<FutbolIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-red-200 to-red-800" />
                 <NavItem view="stats" label="Stats" icon={<UsersIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-orange-200 to-orange-800" />
-                <NavItem view="history" label="Historie" icon={<ClockIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-lime-300 to-lima-600" />
+                <NavItem view="history" label="Historie" icon={<ClockIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-lime-200 to-lima-800" />
                 <NavItem view="trophyRoom" label="Prijzen" icon={<TrophyIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-teal-200 to-teal-800" />
                 
                 {/* De beheer knoppen iets kleiner of subtieler gescheiden? Voor nu in dezelfde flow. */}
-                <NavItem view="manualEntry" label="Invoer" icon={<EditIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-blue-300 to-blue-700" />
-                <NavItem view="playerManagement" label="Spelers" icon={<EditIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-violet-300 to-violet-700" />
-                <NavItem view="competitionManagement" label="Beheer" icon={<ArchiveIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-pink-300 to-pink-700" />
+                <NavItem view="manualEntry" label="Invoer" icon={<EditIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-blue-200 to-blue-800" />
+                <NavItem view="playerManagement" label="Spelers" icon={<EditIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-violet-200 to-violet-800" />
+                <NavItem view="competitionManagement" label="Beheer" icon={<ArchiveIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-pink-200 to-pink-800" />
             </div>
         </div>
         
