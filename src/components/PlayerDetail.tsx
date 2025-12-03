@@ -83,7 +83,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
         if (type.includes('3de')) return 'text-amber-800 border-amber-800/30 bg-amber-800/10';
         if (type === 'Topscoorder') return 'text-yellow-300 border-yellow-300/30 bg-yellow-300/10';
         if (type === 'Verdediger') return 'text-red-500 border-red-500/30 bg-red-500/10';
-      if (type === 'Soeler van het jaar') return 'text-violet-800 border-violet-800/30 bg-violet-800/10';
+      if (type === 'Speler van het jaar') return 'text-violet-800 border-violet-800/30 bg-violet-800/10';
         return 'text-white border-gray-500/30';
     };
     // ---------------------------------------------
