@@ -130,7 +130,7 @@ const getTrophyIcon = (type: TrophyType) => {
     <img
       src="https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png"
       alt="2de"
-      className="w-8 h-8"
+      className="w-7 h-7"
     />
   );
   }
@@ -139,6 +139,15 @@ const getTrophyIcon = (type: TrophyType) => {
     <img
       src="https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png"
       alt="3de"
+      className="w-6 h-6"
+    />
+  );
+  }
+  if (type.includes('1ste')) {
+  return (
+    <img
+      src="https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png"
+      alt="1ste"
       className="w-8 h-8"
     />
   );
