@@ -125,6 +125,24 @@ const getTrophyIcon = (type: TrophyType) => {
   );
   }
   
+  if (type.includes('2de')) {
+  return (
+    <img
+      src="https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png"
+      alt="2de"
+      className="w-8 h-8"
+    />
+  );
+  }
+  if (type.includes('3de')) {
+  return (
+    <img
+      src="https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png"
+      alt="3de"
+      className="w-8 h-8"
+    />
+  );
+  }
 /*  if (type === 'Topscoorder') return <FireIcon className="w-8 h-8" />;
   if (type.includes('1ste')) return <CrownIcon className="w-8 h-8" />;
   if (type.includes('2de')) return <MedalIcon className="w-8 h-8" />;
