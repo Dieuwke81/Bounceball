@@ -80,8 +80,8 @@ const TrophyRoom: React.FC<TrophyRoomProps> = ({ trophies, players, isAuthentica
     const isWinterA = a.toLowerCase().includes('winter');
     const isWinterB = b.toLowerCase().includes('winter');
 
-    if (!isWinterA && isWinterB) return 1;
-    if (isWinterA && !isWinterB) return -1;
+    if (isWinterA && !isWinterB) return 1;
+    if (!isWinterA && isWinterB) return -1;
 
     return b.localeCompare(a);
   });
