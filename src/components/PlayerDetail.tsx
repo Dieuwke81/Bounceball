@@ -78,11 +78,11 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
     }, [trophies, player.id]);
 
     const getTrophyStyle = (type: TrophyType) => {
-        if (type.includes('1ste') || type === 'Clubkampioen' || type === 'Speler van het jaar') return 'text-yellow-400 border-yellow-500/30 bg-yellow-900/10';
+        if (type.includes('1ste') || type === 'Clubkampioen' || type === 'Speler van het jaar') return 'text-amber-400 border-amber-400/30 bg-amber-600/10';
         if (type.includes('2de')) return 'text-gray-300 border-gray-400/30 bg-gray-700/30';
         if (type.includes('3de')) return 'text-amber-600 border-amber-600/30 bg-amber-900/10';
-        if (type === 'Topscoorder') return 'text-cyan-400 border-cyan-500/30 bg-cyan-900/10';
-        if (type === 'Verdediger') return 'text-fuchsia-400 border-fuchsia-500/30 bg-fuchsia-900/10';
+        if (type === 'Topscoorder') return 'text-yellow-500 border-yellow-500/30 bg-yellow-900/10';
+        if (type === 'Verdediger') return 'text-red-400 border-red-500/30 bg-red-900/10';
         return 'text-white border-gray-500/30';
     };
     // ---------------------------------------------
