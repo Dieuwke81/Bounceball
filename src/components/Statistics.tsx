@@ -1,6 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
-// TrophyIcon en ShieldIcon zijn niet meer nodig nu we overal plaatjes hebben
+// WE LATEN ZE LEKKER STAAN OM CRASHES TE VOORKOMEN:
+import FutbolIcon from './icons/FutbolIcon';
+import TrophyIcon from './icons/TrophyIcon';
+import ShieldIcon from './icons/ShieldIcon';
 import UsersIcon from './icons/UsersIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
 
@@ -274,7 +277,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
-        {/* --- AANGEPAST: COMPETITIE MET NIEUW PLAATJE --- */}
+        {/* COMPETITIE - MET NIEUW PLAATJE */}
         <StatCard title="Competitie" icon={
             <img 
                 src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
@@ -299,7 +302,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        {/* Topscoorder met Afbeelding */}
+        {/* TOPSCOORDER - MET PLAATJE */}
         <StatCard title="Topscoorder" icon={
             <img 
                 src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" 
@@ -324,7 +327,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        {/* Beste Verdediger met Afbeelding */}
+        {/* BESTE VERDEDIGER - MET PLAATJE */}
         <StatCard title="Beste verdediger" icon={
             <img 
                 src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" 
@@ -349,6 +352,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
         
+        {/* MEEST AANWEZIG - MET ICOON */}
         <StatCard title="Meest aanwezig" icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
           <StatList
             data={mostAttended}
