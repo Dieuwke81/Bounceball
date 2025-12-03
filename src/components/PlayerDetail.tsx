@@ -273,7 +273,11 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
     ) : trophy.type === '2de' ? (
         // Plaatje voor 2de
         <img src="https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png" className="w-8 h-8 object-contain" />
+    ) : trophy.type === '3de' ? (
+        // Plaatje voor 3de
+        <img src="https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png" className="w-8 h-8 object-contain" />
                                     
+                              
                             ) : (
         // Plaatje voor de rest
         <TrophyIcon className="w-6 h-6" />
