@@ -93,7 +93,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players }) => {
                             roundName,
                             matchNumber,
                             teamColor,
-                            player.id.toString(),
+                            player.excelID.toString(),
                             player.name,
                             goalsScored.toString(),
                             points.toString() // AANGEPAST: Punten toegevoegd
