@@ -5,6 +5,7 @@ export interface Player {
   isKeeper: boolean;
   isFixedMember: boolean;
   photoBase64?: string;
+  excelId?: string;
 }
 
 export type NewPlayer = Omit<Player, 'id'>;
