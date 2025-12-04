@@ -160,7 +160,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             playerId,
             count,
             percentage: (count / totalSessions) * 100,
-            meetsThreshold: count >= minGames
+            meetsThreshold: true 
         }))
         .sort((a, b) => b.count - a.count);
   }, [playerGames, totalSessions, minGames]);
