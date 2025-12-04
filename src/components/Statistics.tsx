@@ -1,15 +1,99 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
 import UsersIcon from './icons/UsersIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
-import StatsPrintDocument, { PrintData } from './StatsPrintDocument'; // <--- ZORG DAT JE DEZE HEBT
+import TrophyIcon from './icons/TrophyIcon';
 
-// --- EXTRA ICOONTJE VOOR DE KNOP ---
+// ============================================================================
+// 1. DE PRINT FUNCTIE (De "Atoombom" oplossing)
+// ============================================================================
+const printStatsTable = (title: string, headers: string[], rows: (string | number)[][]) => {
+    // Maak een onzichtbaar iframe aan
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    // De HTML die we in het iframe gaan spuiten (alleen de tabel!)
+    const content = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Bounceball Statistieken</title>
+            <style>
+                body { font-family: sans-serif; padding: 20px; }
+                h1 { text-align: center; text-transform: uppercase; margin-bottom: 5px; font-size: 24px; }
+                h2 { text-align: center; margin-top: 0; color: #555; font-size: 18px; margin-bottom: 30px; }
+                table { width: 100%; border-collapse: collapse; }
+                th { background-color: #f3f4f6; padding: 10px; border: 1px solid #000; text-align: left; }
+                td { padding: 8px; border: 1px solid #000; }
+                tr:nth-child(even) { background-color: #f9fafb; }
+                .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #888; }
+                .text-right { text-align: right; }
+                .text-center { text-align: center; }
+            </style>
+        </head>
+        <body>
+            <h1>Bounceball Statistieken</h1>
+            <h2>${title}</h2>
+            <table>
+                <thead>
+                    <tr>
+                        ${headers.map(h => `<th>${h}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map((row, i) => `
+                        <tr>
+                            ${row.map((cell, j) => `
+                                <td class="${j === 0 ? 'text-center' : j > 1 ? 'text-right' : ''}">
+                                    ${cell}
+                                </td>
+                            `).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div class="footer">Gegenereerd op ${new Date().toLocaleDateString('nl-NL')}</div>
+        </body>
+        </html>
+    `;
+
+    // Schrijf de inhoud naar het iframe
+    const doc = iframe.contentWindow?.document;
+    if (doc) {
+        doc.open();
+        doc.write(content);
+        doc.close();
+
+        // Wacht heel even en print dan het iframe
+        setTimeout(() => {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+            // Opruimen na printen
+            setTimeout(() => {
+                document.body.removeChild(iframe);
+            }, 1000);
+        }, 500);
+    }
+};
+
+// ============================================================================
+// 2. ICONS
+// ============================================================================
 const PrinterIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
   </svg>
 );
+
+// ============================================================================
+// 3. HOOFD COMPONENT
+// ============================================================================
 
 interface StatisticsProps {
   history: GameSession[];
@@ -25,25 +109,9 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     defense: false,
   });
   
-  // State voor de printer data
-  const [printData, setPrintData] = useState<PrintData | null>(null);
-
-  // Effect: Als printData gevuld wordt, trigger de print dialoog
-  useEffect(() => {
-      if (printData) {
-          const timer = setTimeout(() => {
-              window.print();
-              // Na printen (of annuleren) data weer wissen
-              // Timeout iets langer om zeker te zijn dat dialoog open is
-              setTimeout(() => setPrintData(null), 500); 
-          }, 100);
-          return () => clearTimeout(timer);
-      }
-  }, [printData]);
-  
   const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
 
-  // --- ALLE BEREKENINGEN (ONGEOBJEZIGD) ---
+  // --- BEREKENINGEN (ONGEOBJEZIGD) ---
   const { playerGames, totalSessions, minGames } = useMemo(() => {
     const playerGamesMap = new Map<number, number>();
     const sessions = history.length;
@@ -220,78 +288,49 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
   }, [history]);
 
 
-  // --- FUNCTIES OM TE PRINTEN ---
-  // Deze zetten de data om naar een tabel formaat en triggeren de print
-
-  const printCompetition = () => {
-      const rows = competitionPoints
-        .filter(p => playerMap.has(p.playerId))
-        .map((p, i) => [
-            `${i + 1}`,
-            playerMap.get(p.playerId)?.name || 'Onbekend',
-            p.points,
-            p.games,
-            p.avg.toFixed(2)
-        ]);
-        
-      setPrintData({
-          title: "Competitie Stand",
-          headers: ["#", "Speler", "Punten", "Wedstrijden", "Gemiddelde"],
-          rows: rows
-      });
+  // --- PRINT HANDLERS (Die nu direct printStatsTable aanroepen) ---
+  
+  const handlePrintCompetition = () => {
+      const rows = competitionPoints.filter(p => playerMap.has(p.playerId)).map((p, i) => [
+          `${i + 1}`,
+          playerMap.get(p.playerId)?.name || 'Onbekend',
+          p.points,
+          p.games,
+          p.avg.toFixed(2)
+      ]);
+      printStatsTable("Competitie Stand", ["#", "Speler", "Punten", "Wedstrijden", "Gemiddelde"], rows);
   };
 
-  const printTopScorers = () => {
-      const rows = topScorers
-        .filter(p => playerMap.has(p.playerId))
-        .map((p, i) => [
-            `${i + 1}`,
-            playerMap.get(p.playerId)?.name || 'Onbekend',
-            p.goals,
-            p.games,
-            p.avg.toFixed(2)
-        ]);
-        
-      setPrintData({
-          title: "Topscoorders",
-          headers: ["#", "Speler", "Doelpunten", "Wedstrijden", "Gemiddelde"],
-          rows: rows
-      });
+  const handlePrintTopScorers = () => {
+      const rows = topScorers.filter(p => playerMap.has(p.playerId)).map((p, i) => [
+          `${i + 1}`,
+          playerMap.get(p.playerId)?.name || 'Onbekend',
+          p.goals,
+          p.games,
+          p.avg.toFixed(2)
+      ]);
+      printStatsTable("Topscoorders", ["#", "Speler", "Doelpunten", "Wedstrijden", "Gem. Goals"], rows);
   };
 
-  const printDefense = () => {
-      const rows = bestDefense
-        .filter(p => playerMap.has(p.playerId))
-        .map((p, i) => [
-            `${i + 1}`,
-            playerMap.get(p.playerId)?.name || 'Onbekend',
-            (p.avg * p.games).toFixed(0),
-            p.games,
-            p.avg.toFixed(2)
-        ]);
-        
-      setPrintData({
-          title: "Beste Verdediger",
-          headers: ["#", "Speler", "Tegengoals", "Wedstrijden", "Gemiddelde"],
-          rows: rows
-      });
+  const handlePrintDefense = () => {
+      const rows = bestDefense.filter(p => playerMap.has(p.playerId)).map((p, i) => [
+          `${i + 1}`,
+          playerMap.get(p.playerId)?.name || 'Onbekend',
+          (p.avg * p.games).toFixed(0),
+          p.games,
+          p.avg.toFixed(2)
+      ]);
+      printStatsTable("Beste Verdediger", ["#", "Speler", "Tegengoals", "Wedstrijden", "Gem. Tegengoals"], rows);
   };
 
-  const printAttendance = () => {
-      const rows = mostAttended
-        .filter(p => playerMap.has(p.playerId))
-        .map((p, i) => [
-            `${i + 1}`,
-            playerMap.get(p.playerId)?.name || 'Onbekend',
-            p.count,
-            `${p.percentage.toFixed(0)}%`
-        ]);
-        
-      setPrintData({
-          title: "Aanwezigheid",
-          headers: ["#", "Speler", "Aantal keer", "Percentage"],
-          rows: rows
-      });
+  const handlePrintAttendance = () => {
+      const rows = mostAttended.filter(p => playerMap.has(p.playerId)).map((p, i) => [
+          `${i + 1}`,
+          playerMap.get(p.playerId)?.name || 'Onbekend',
+          p.count,
+          `${p.percentage.toFixed(0)}%`
+      ]);
+      printStatsTable("Aanwezigheid", ["#", "Speler", "Aantal keer", "Percentage"], rows);
   };
 
 
@@ -304,15 +343,15 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   }
 
-  // --- COMPONENTEN VOOR UI ---
-  
+  // --- STAT CARD MET PRINT KNOP ---
   const StatCard: React.FC<{ 
       title: string, 
       icon: React.ReactNode, 
       children: React.ReactNode, 
+      className?: string,
       onPrint?: () => void 
-  }> = ({ title, icon, children, onPrint }) => (
-    <div className={`bg-gray-800 rounded-xl shadow-lg p-6 relative group`}>
+  }> = ({ title, icon, children, className, onPrint }) => (
+    <div className={`bg-gray-800 rounded-xl shadow-lg p-6 ${className} relative group`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
             {icon}
@@ -386,6 +425,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   };
 
+  // --- GRAFIEKEN ---
   const AttendanceChart: React.FC<{ data: {date: string, count: number}[] }> = ({ data }) => {
       if (data.length < 2) return <p className="text-gray-400 text-center py-8">Niet genoeg data.</p>;
       const W = 500, H = 200, P = 30;
@@ -446,8 +486,18 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
   
   return (
     <>
-      {/* HET VERBORGEN PRINT FORMULIER */}
-      <StatsPrintDocument data={printData} />
+      <div className="flex justify-between items-center mb-6 px-2">
+         <h2 className="text-2xl font-bold text-white">Statistieken</h2>
+         {/* Algemene Printknop */}
+         <button
+            onClick={() => window.print()}
+            className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg"
+            title="Print Huidige Pagina"
+         >
+            <PrinterIcon className="w-5 h-5" />
+            <span className="hidden sm:inline">Pagina Printen</span>
+         </button>
+      </div>
 
       <div className="text-center mb-8">
           <p className="text-gray-400">Statistieken gebaseerd op <span className="font-bold text-white">{totalSessions}</span> speeldagen. <span className="italic">Voor de ranglijsten (gem.) moet een speler minimaal <span className="font-bold text-white">{minGames}</span> keer aanwezig zijn geweest.</span></p>
@@ -456,8 +506,8 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
-        {/* COMPETITIE */}
-        <StatCard title="Competitie" onPrint={printCompetition} icon={
+        {/* COMPETITIE - MET PLAATJE & PRINT KNOP */}
+        <StatCard title="Competitie" onPrint={handlePrintCompetition} icon={
             <img 
                 src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
                 alt="Competitie" 
@@ -468,21 +518,25 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             data={competitionPoints}
             showAllFlag={showAll.points}
             toggleShowAll={() => setShowAll(s => ({...s, points: !s.points}))}
-            renderRow={(p, i) => (
-                <StatRow 
-                    key={p.playerId} 
-                    rank={i + 1} 
-                    player={playerMap.get(p.playerId)!}
-                    value={p.avg.toFixed(2)}
-                    subtext={`${p.points}pt / ${p.games}w`}
-                    meetsThreshold={p.meetsThreshold}
-                />
-            )}
+            renderRow={(p, i) => {
+                const player = playerMap.get(p.playerId);
+                if (!player) return null;
+                return (
+                    <StatRow 
+                        key={p.playerId} 
+                        rank={i + 1} 
+                        player={player}
+                        value={p.avg.toFixed(2)}
+                        subtext={`${p.points}pt / ${p.games}w`}
+                        meetsThreshold={p.meetsThreshold}
+                    />
+                );
+            }}
            />
         </StatCard>
 
-        {/* TOPSCOORDER */}
-        <StatCard title="Topscoorder" onPrint={printTopScorers} icon={
+        {/* TOPSCOORDER - MET PLAATJE & PRINT KNOP */}
+        <StatCard title="Topscoorder" onPrint={handlePrintTopScorers} icon={
             <img 
                 src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" 
                 alt="Topscoorder" 
@@ -493,21 +547,25 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             data={topScorers}
             showAllFlag={showAll.scorers}
             toggleShowAll={() => setShowAll(s => ({...s, scorers: !s.scorers}))}
-            renderRow={(p, i) => (
-                <StatRow 
-                    key={p.playerId}
-                    rank={i + 1}
-                    player={playerMap.get(p.playerId)!}
-                    value={p.avg.toFixed(2)}
-                    subtext={`${p.goals}d / ${p.games}w`}
-                    meetsThreshold={p.meetsThreshold}
-                />
-            )}
+            renderRow={(p, i) => {
+                const player = playerMap.get(p.playerId);
+                if (!player) return null;
+                return (
+                    <StatRow 
+                        key={p.playerId}
+                        rank={i + 1}
+                        player={player}
+                        value={p.avg.toFixed(2)}
+                        subtext={`${p.goals}d / ${p.games}w`}
+                        meetsThreshold={p.meetsThreshold}
+                    />
+                );
+            }}
            />
         </StatCard>
 
-        {/* BESTE VERDEDIGER */}
-        <StatCard title="Beste verdediger" onPrint={printDefense} icon={
+        {/* BESTE VERDEDIGER - MET PLAATJE & PRINT KNOP */}
+        <StatCard title="Beste verdediger" onPrint={handlePrintDefense} icon={
             <img 
                 src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" 
                 alt="Beste verdediger" 
@@ -518,34 +576,42 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             data={bestDefense}
             showAllFlag={showAll.defense}
             toggleShowAll={() => setShowAll(s => ({...s, defense: !s.defense}))}
-            renderRow={(p, i) => (
-                <StatRow 
-                    key={p.playerId}
-                    rank={i + 1}
-                    player={playerMap.get(p.playerId)!}
-                    value={p.avg.toFixed(2)}
-                    subtext={`${p.games} wedstrijden`}
-                    meetsThreshold={p.meetsThreshold}
-                />
-            )}
+            renderRow={(p, i) => {
+                const player = playerMap.get(p.playerId);
+                if (!player) return null;
+                return (
+                    <StatRow 
+                        key={p.playerId}
+                        rank={i + 1}
+                        player={player}
+                        value={p.avg.toFixed(2)}
+                        subtext={`${p.games} wedstrijden`}
+                        meetsThreshold={p.meetsThreshold}
+                    />
+                );
+            }}
            />
         </StatCard>
         
-        {/* MEEST AANWEZIG */}
-        <StatCard title="Meest aanwezig" onPrint={printAttendance} icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
+        {/* MEEST AANWEZIG - MET ICOON & PRINT KNOP */}
+        <StatCard title="Meest aanwezig" onPrint={handlePrintAttendance} icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
           <StatList
             data={mostAttended}
             showAllFlag={showAll.attendance}
             toggleShowAll={() => setShowAll(s => ({...s, attendance: !s.attendance}))}
-            renderRow={(p, i) => (
-                <StatRow 
-                    key={p.playerId}
-                    rank={i + 1}
-                    player={playerMap.get(p.playerId)!}
-                    value={`${p.count}x`}
-                    subtext={`${p.percentage.toFixed(0)}%`}
-                />
-            )}
+            renderRow={(p, i) => {
+                const player = playerMap.get(p.playerId);
+                if (!player) return null;
+                return (
+                    <StatRow 
+                        key={p.playerId}
+                        rank={i + 1}
+                        player={player}
+                        value={`${p.count}x`}
+                        subtext={`${p.percentage.toFixed(0)}%`}
+                    />
+                );
+            }}
            />
         </StatCard>
       </div>
