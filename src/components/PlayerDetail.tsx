@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'; // useState toegevoegd
+import React, { useMemo, useState } from 'react';
 import type { Player, GameSession, RatingLogEntry, Trophy, TrophyType } from '../types';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
 import ShieldIcon from './icons/ShieldIcon';
@@ -6,8 +6,8 @@ import TrophyIcon from './icons/TrophyIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
 import RatingChart from './RatingChart';
 import UsersIcon from './icons/UsersIcon';
-import PrinterIcon from './icons/PrinterIcon'; // Nieuwe import
-import PlayerPrintView from './PlayerPrintView'; // Nieuwe import
+import PrinterIcon from './icons/PrinterIcon';
+import PlayerPrintView from './PlayerPrintView';
 
 interface PlayerDetailProps {
   player: Player;
@@ -58,11 +58,9 @@ const RelationshipList: React.FC<{
 
 
 const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, ratingLogs, trophies, onBack }) => {
-    const [isPrinting, setIsPrinting] = useState(false); // State voor printen
-
+    const [isPrinting, setIsPrinting] = useState(false);
     const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
 
-    // --- NIEUW: Filter prijzen van deze speler ---
     const playerTrophies = useMemo(() => {
         if (!trophies) return [];
         return trophies
@@ -71,7 +69,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                 const yearA = Number(a.year.match(/\d{4}/)?.[0]) || 0;
                 const yearB = Number(b.year.match(/\d{4}/)?.[0]) || 0;
                 if (yearA !== yearB) return yearB - yearA;
-                
                 const isWinterA = a.year.toLowerCase().includes('winter');
                 const isWinterB = b.year.toLowerCase().includes('winter');
                 if (isWinterA && !isWinterB) return -1;
@@ -81,17 +78,20 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
     }, [trophies, player.id]);
 
     const getTrophyStyle = (type: TrophyType) => {
-        if (type.includes('1ste') || type === 'Clubkampioen') return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600 font-bold text-lg border-amber-400/30 bg-amber-400/10';
-        if (type.includes('2de')) return 'text-slate-500 border-slate-500/30 bg-slate-500/10';
-        if (type.includes('3de')) return 'text-amber-800 border-amber-800/30 bg-amber-800/10';
-        if (type === 'Topscoorder') return 'text-yellow-300 border-yellow-300/30 bg-yellow-300/10';
-        if (type === 'Verdediger') return 'text-red-500 border-red-500/30 bg-red-500/10';
-      if (type === 'Speler van het jaar') return 'text-green-500 border-green-500/30 bg-green-500/10';
+        if (type.includes('1ste') || type === 'Clubkampioen' || type === 'Speler van het jaar') return 'text-yellow-400 border-yellow-500/30 bg-yellow-900/10';
+        if (type.includes('2de')) return 'text-gray-300 border-gray-400/30 bg-gray-700/30';
+        if (type.includes('3de')) return 'text-amber-600 border-amber-600/30 bg-amber-900/10';
+        if (type === 'Topscoorder') return 'text-cyan-400 border-cyan-500/30 bg-cyan-900/10';
+        if (type === 'Verdediger') return 'text-fuchsia-400 border-fuchsia-500/30 bg-fuchsia-900/10';
         return 'text-white border-gray-500/30';
     };
 
+    // ... (Hulpfunctie getTrophyContent blijft hetzelfde, die heb je al) ...
+    // Voor de volledigheid en om errors te voorkomen, hier de korte versie (gebruik jouw eigen images object hier!)
     const getTrophyContent = (type: TrophyType) => {
-        const images: {[key: string]: string} = {
+        // ... PLAK HIER JOUW IMAGE LOGICA ...
+        // Als je die niet bij de hand hebt, gebruik dan voor nu even iconen, maar ik ga er vanuit dat je die uit de vorige versie hebt.
+         const images: {[key: string]: string} = {
             'Verdediger': 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
             'Topscoorder': 'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
             'Clubkampioen': 'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
@@ -108,23 +108,20 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
             '2de Wintertoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
             '3de Wintertoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png'
         };
-
         const imageUrl = images[type];
-
-        if (imageUrl) {
-            return <img src={imageUrl} alt={type} className="w-8 h-8 object-contain" />;
-        }
-
+        if (imageUrl) return <img src={imageUrl} alt={type} className="w-8 h-8 object-contain" />;
         if (type === 'Verdediger') return <ShieldIcon className="w-6 h-6" />;
         return <TrophyIcon className="w-6 h-6" />;
     };
-    
+
     const stats = useMemo(() => {
         let wins = 0;
         let losses = 0;
         let draws = 0;
+        let points = 0; // <--- HIER IS DE VARIABELE DIE JE NODIG HEBT
         let gamesPlayed = 0;
         let goalsScored = 0;
+        
         const teammateFrequency = new Map<number, number>();
         const teammateWins = new Map<number, number>();
         const teammateLosses = new Map<number, number>();
@@ -166,9 +163,18 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                 const playerTeamScore = playerTeamGoalsList.reduce((sum, g) => sum + g.count, 0);
                 const opponentTeamScore = opponentTeamGoalsList.reduce((sum, g) => sum + g.count, 0);
 
-                if (playerTeamScore > opponentTeamScore) wins++;
-                else if (opponentTeamScore > playerTeamScore) losses++;
-                else draws++;
+                // --- HIER WORDEN DE PUNTEN BEREKEND ---
+                if (playerTeamScore > opponentTeamScore) {
+                    wins++;
+                    points += 3; // Winst = 3 punten
+                } else if (opponentTeamScore > playerTeamScore) {
+                    losses++;
+                    // Verlies = 0 punten
+                } else {
+                    draws++;
+                    points += 1; // Gelijk = 1 punt
+                }
+                // --------------------------------------
 
                 const teammates = session.teams[playerTeamIndex!].filter(p => p.id !== player.id);
                 const opponents = session.teams[opponentTeamIndex];
@@ -198,10 +204,9 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
         const worstOpponents = [...opponentLosses.entries()].sort((a, b) => b[1] - a[1]);
         const mostFrequentTeammates = [...teammateFrequency.entries()].sort((a, b) => b[1] - a[1]);
 
-        return { wins, losses, draws, gamesPlayed, goalsScored, bestTeammates, worstTeammates, bestOpponents, worstOpponents, mostFrequentTeammates };
+        return { wins, losses, draws, points, gamesPlayed, goalsScored, bestTeammates, worstTeammates, bestOpponents, worstOpponents, mostFrequentTeammates };
     }, [player.id, history]);
 
-    // 1. Berekening Seizoen History
     const ratingHistory = useMemo(() => {
         const historyPoints: { date: string; rating: number }[] = [];
         let currentRating = player.rating;
@@ -251,7 +256,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
         return historyPoints.reverse();
     }, [player.id, player.rating, history]);
 
-    // 2. Berekening All Time History
     const allTimeRatingHistory = useMemo(() => {
         const logs = ratingLogs
             .filter(log => log.playerId === player.id)
@@ -260,19 +264,19 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
         return logs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [player.id, ratingLogs]);
 
+    // Gemiddelde punten berekenen voor display
+    const avgPoints = stats.gamesPlayed > 0 ? stats.points / stats.gamesPlayed : 0;
+
     return (
         <div className="bg-gray-800 rounded-xl shadow-lg p-6">
-            {/* --- PRINT VIEW RENDEREN ALS ER GEPRINT MOET WORDEN --- */}
             {isPrinting && (
                 <PlayerPrintView 
                     player={player} 
-                    stats={stats} // 'stats' wordt hierboven berekend
+                    stats={stats} 
                     trophies={playerTrophies} 
-                    players={players}
-                  // DEZE TWEE REGELS TOEVOEGEN:
+                    players={players} 
                     seasonHistory={ratingHistory}
                     allTimeHistory={allTimeRatingHistory}
-                    // ----------------------------
                     onClose={() => setIsPrinting(false)} 
                 />
             )}
@@ -292,87 +296,3 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                     <div>
                         <h2 className="text-3xl font-bold text-white">{player.name}</h2>
                         <div className="flex items-center mt-1">
-                            <span className="text-lg font-semibold bg-cyan-500 text-white py-1 px-3 rounded-full">{player.rating.toFixed(1)}</span>
-                            {player.isKeeper && <span className="ml-2 text-xs font-semibold bg-amber-500 text-white py-0.5 px-2 rounded-full">K</span>}
-                            {player.isFixedMember && <span className="ml-2 text-xs font-semibold bg-green-500 text-white py-0.5 px-2 rounded-full">Lid</span>}
-                        </div>
-                    </div>
-                </div>
-
-                {/* --- PRINT KNOP (RECHTS BOVEN) --- */}
-                <button 
-                    onClick={() => setIsPrinting(true)} 
-                    className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors"
-                    title="Spelersprofiel Printen"
-                >
-                    <PrinterIcon className="w-6 h-6" />
-                </button>
-            </div>
-
-            {/* --- NIEUW: PRIJZENKAST BLOK (MET JUISTE KLEUREN) --- */}
-            {playerTrophies.length > 0 && (
-                <div className="mb-8 p-4 bg-gradient-to-r from-gray-750 to-gray-800 rounded-xl border border-gray-600/50">
-                    <h3 className="text-lg font-bold text-white-400 mb-3 flex items-center">
-                        <TrophyIcon className="w-5 h-5 mr-2" /> Prijzenkast 🏆
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {playerTrophies.map(trophy => (
-                            <div key={trophy.id} className={`flex items-center p-3 rounded-lg border ${getTrophyStyle(trophy.type)}`}>
-                                <div className="mr-3">
-                                    {getTrophyContent(trophy.type)}
-                                </div>
-                                <div>
-                                    <div className="font-bold text-sm">{trophy.type}</div>
-                                    <div className="text-xs opacity-80">{trophy.year}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-            {/* ---------------------------------------------------- */}
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <StatCard title="Gespeeld" value={stats.gamesPlayed} />
-                <StatCard title="Gewonnen" value={`${Math.round((stats.wins / (stats.gamesPlayed || 1)) * 100)}%`} subtext={`${stats.wins} van ${stats.gamesPlayed}`} />
-                <StatCard title="Goals" value={stats.goalsScored} subtext={`${(stats.goalsScored / (stats.gamesPlayed || 1)).toFixed(2)} gem.`} />
-                <StatCard title="Vorm" value={`${stats.wins}-${stats.draws}-${stats.losses}`} subtext="W-G-V" />
-            </div>
-
-            {/* NIEUWE GRAFIEK BLOK: All-time */}
-            <div className="bg-gray-700 p-4 rounded-lg mb-8">
-                <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
-                    <ChartBarIcon className="w-5 h-5 text-green-400" />
-                    <span className="ml-2">All-time Rating Verloop</span>
-                </h4>
-                {allTimeRatingHistory.length > 1 ? (
-                    <RatingChart data={allTimeRatingHistory} />
-                ) : (
-                    <p className="text-gray-500 text-sm text-center py-4">Nog niet genoeg data over meerdere seizoenen.</p>
-                )}
-            </div>
-            
-            {/* OUDE GRAFIEK BLOK: Seizoen */}
-            <div className="bg-gray-700 p-4 rounded-lg mb-8">
-                <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
-                    <ChartBarIcon className="w-5 h-5 text-cyan-400" />
-                    <span className="ml-2">Seizoen Rating Verloop</span>
-                </h4>
-                <RatingChart data={ratingHistory} />
-            </div>
-
-            <div className="bg-gray-700 p-4 rounded-lg mb-6">
-                <RelationshipList title="Vaakste Medespeler (Top 5)" data={stats.mostFrequentTeammates} playerMap={playerMap} icon={<UsersIcon className="w-5 h-5 text-cyan-400" />} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <RelationshipList title="Beste Medespelers" data={stats.bestTeammates} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
-                <RelationshipList title="Lastige Medespelers" data={stats.worstTeammates} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
-                <RelationshipList title="Makkelijke Tegenstanders" data={stats.bestOpponents} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
-                <RelationshipList title="Moeilijke Tegenstanders" data={stats.worstOpponents} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
-            </div>
-        </div>
-    );
-};
-
-export default PlayerDetail;
