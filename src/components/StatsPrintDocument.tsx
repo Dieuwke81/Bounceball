@@ -8,7 +8,6 @@ export interface PrintData {
 }
 
 const StatsPrintDocument: React.FC<{ data: PrintData | null }> = ({ data }) => {
-  // Als er geen data is, renderen we niets (dus beïnvloeden we de app niet)
   if (!data) return null;
 
   return createPortal(
@@ -16,24 +15,18 @@ const StatsPrintDocument: React.FC<{ data: PrintData | null }> = ({ data }) => {
       <style>
         {`
           @media print {
-            /* 1. ALLES VERBERGEN */
             html, body {
-              visibility: hidden !important;
-              background-color: white !important;
-              height: auto !important;
+              background: white !important;
+              color: black !important;
+              height: 100%;
               margin: 0 !important;
               padding: 0 !important;
               overflow: visible !important;
             }
-            
-            /* Verberg alle elementen die niet onze portal zijn */
             body > *:not(.print-portal) {
               display: none !important;
             }
-
-            /* 2. ALLEEN DIT FORMULIER TONEN */
             .print-portal {
-              visibility: visible !important;
               display: block !important;
               position: absolute;
               top: 0;
@@ -41,104 +34,62 @@ const StatsPrintDocument: React.FC<{ data: PrintData | null }> = ({ data }) => {
               width: 100%;
               min-height: 100vh;
               z-index: 99999;
-              background-color: white;
+              background: white;
               color: black;
               font-family: sans-serif;
-              padding: 20mm; /* Standaard A4 marge */
+              padding: 20mm;
             }
             
-            /* 3. DE OPMAAK VAN DE LIJST */
-            .header-container {
-                text-align: center;
-                margin-bottom: 30px;
-                border-bottom: 2px solid #000;
-                padding-bottom: 10px;
-            }
+            h1 { text-align: center; font-size: 24pt; margin-bottom: 10px; text-transform: uppercase; }
+            h2 { text-align: center; font-size: 16pt; color: #555; margin-top: 0; margin-bottom: 30px; }
             
-            h1 {
-                font-size: 24pt;
-                text-transform: uppercase;
-                margin: 0 0 10px 0;
-            }
+            table { width: 100%; border-collapse: collapse; font-size: 12pt; }
+            th { background: #f0f0f0; font-weight: bold; border-bottom: 2px solid black; text-align: left; padding: 8px; }
+            td { border-bottom: 1px solid #ddd; padding: 8px; }
+            tr:nth-child(even) td { background: #f9f9f9; }
             
-            h2 {
-                font-size: 16pt;
-                font-weight: normal;
-                color: #444;
-                margin: 0;
-            }
-
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 20px;
-                font-size: 12pt;
-            }
-
-            th {
-                border-bottom: 2px solid #000;
-                text-align: left;
-                padding: 8px;
-                font-weight: bold;
-                background-color: #f0f0f0 !important; /* Lichtgrijs voor kop */
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact;
-            }
-
-            td {
-                border-bottom: 1px solid #ddd;
-                padding: 8px;
-            }
-
-            tr:nth-child(even) td {
-                background-color: #f9f9f9 !important;
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact;
-            }
-
-            /* Kolom uitlijning */
-            .col-center { text-align: center; }
+            .col-rank { width: 50px; text-align: center; font-weight: bold; }
             .col-right { text-align: right; }
-            .font-bold { font-weight: bold; }
+            
+            .footer {
+                position: fixed; bottom: 0; left: 0; right: 0;
+                text-align: center; font-size: 9pt; color: #888;
+            }
           }
         `}
       </style>
 
       <div className="print-content">
-        <div className="header-container">
-            <h1>Bounceball</h1>
-            <h2>{data.title}</h2>
-        </div>
+        <h1>Bounceball</h1>
+        <h2>{data.title}</h2>
 
         <table>
-            <thead>
-                <tr>
-                    {data.headers.map((h, i) => (
-                        <th key={i} className={i === 0 ? 'col-center' : i > 1 ? 'col-right' : ''}>
-                            {h}
-                        </th>
-                    ))}
-                </tr>
-            </thead>
-            <tbody>
-                {data.rows.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                        {row.map((cell, cellIndex) => (
-                            <td key={cellIndex} className={
-                                cellIndex === 0 ? 'col-center font-bold' : 
-                                cellIndex === 1 ? 'font-bold' : 
-                                'col-right'
-                            }>
-                                {cell}
-                            </td>
-                        ))}
-                    </tr>
+          <thead>
+            <tr>
+              {data.headers.map((h, i) => (
+                <th key={i} className={i === 0 ? 'col-rank' : i > 1 ? 'col-right' : ''}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.rows.map((row, rIndex) => (
+              <tr key={rIndex}>
+                {row.map((cell, cIndex) => (
+                  <td key={cIndex} className={
+                    cIndex === 0 ? 'col-rank' : 
+                    cIndex === 1 ? 'font-bold' : 
+                    'col-right'
+                  }>
+                    {cell}
+                  </td>
                 ))}
-            </tbody>
+              </tr>
+            ))}
+          </tbody>
         </table>
         
-        <div style={{ marginTop: '40px', textAlign: 'center', fontSize: '10pt', color: '#888' }}>
-            Uitgedraaid op {new Date().toLocaleDateString('nl-NL')}
+        <div className="footer">
+            Gegenereerd door Bounceball App - {new Date().toLocaleDateString('nl-NL')}
         </div>
       </div>
     </div>,
