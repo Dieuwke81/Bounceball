@@ -296,3 +296,80 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                     <div>
                         <h2 className="text-3xl font-bold text-white">{player.name}</h2>
                         <div className="flex items-center mt-1">
+                            <span className="text-lg font-semibold bg-cyan-500 text-white py-1 px-3 rounded-full">{player.rating.toFixed(1)}</span>
+                            {player.isKeeper && <span className="ml-2 text-xs font-semibold bg-amber-500 text-white py-0.5 px-2 rounded-full">K</span>}
+                            {player.isFixedMember && <span className="ml-2 text-xs font-semibold bg-green-500 text-white py-0.5 px-2 rounded-full">Lid</span>}
+                        </div>
+                    </div>
+                </div>
+                <button onClick={() => setIsPrinting(true)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors" title="Spelersprofiel Printen">
+                    <PrinterIcon className="w-6 h-6" />
+                </button>
+            </div>
+
+            {playerTrophies.length > 0 && (
+                <div className="mb-8 p-4 bg-gradient-to-r from-gray-750 to-gray-800 rounded-xl border border-gray-600/50">
+                    <h3 className="text-lg font-bold text-white-400 mb-3 flex items-center">
+                        <TrophyIcon className="w-5 h-5 mr-2" /> Prijzenkast 🏆
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {playerTrophies.map(trophy => (
+                            <div key={trophy.id} className={`flex items-center p-3 rounded-lg border ${getTrophyStyle(trophy.type)}`}>
+                                <div className="mr-3">
+                                    {getTrophyContent(trophy.type)}
+                                </div>
+                                <div>
+                                    <div className="font-bold text-sm">{trophy.type}</div>
+                                    <div className="text-xs opacity-80">{trophy.year}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <StatCard title="Gespeeld" value={stats.gamesPlayed} />
+                <StatCard title="Gewonnen" value={`${Math.round((stats.wins / (stats.gamesPlayed || 1)) * 100)}%`} subtext={`${stats.wins} van ${stats.gamesPlayed}`} />
+                <StatCard title="Goals" value={stats.goalsScored} subtext={`${(stats.goalsScored / (stats.gamesPlayed || 1)).toFixed(2)} gem.`} />
+                
+                {/* HIER ZIE JE HET GEMIDDELDE PUNTEN AANTAL OOK IN DE APP */}
+                <StatCard title="Gem. Punten" value={avgPoints.toFixed(2)} subtext={`Totaal: ${stats.points}`} />
+            </div>
+
+            {/* ... (De rest van de grafieken en relaties blijft hetzelfde) ... */}
+            <div className="bg-gray-700 p-4 rounded-lg mb-8">
+                <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
+                    <ChartBarIcon className="w-5 h-5 text-green-400" />
+                    <span className="ml-2">All-time Rating Verloop</span>
+                </h4>
+                {allTimeRatingHistory.length > 1 ? (
+                    <RatingChart data={allTimeRatingHistory} />
+                ) : (
+                    <p className="text-gray-500 text-sm text-center py-4">Nog niet genoeg data over meerdere seizoenen.</p>
+                )}
+            </div>
+            
+            <div className="bg-gray-700 p-4 rounded-lg mb-8">
+                <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
+                    <ChartBarIcon className="w-5 h-5 text-cyan-400" />
+                    <span className="ml-2">Seizoen Rating Verloop</span>
+                </h4>
+                <RatingChart data={ratingHistory} />
+            </div>
+
+            <div className="bg-gray-700 p-4 rounded-lg mb-6">
+                <RelationshipList title="Vaakste Medespeler (Top 5)" data={stats.mostFrequentTeammates} playerMap={playerMap} icon={<UsersIcon className="w-5 h-5 text-cyan-400" />} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <RelationshipList title="Beste Medespelers" data={stats.bestTeammates} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
+                <RelationshipList title="Lastige Medespelers" data={stats.worstTeammates} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
+                <RelationshipList title="Makkelijke Tegenstanders" data={stats.bestOpponents} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
+                <RelationshipList title="Moeilijke Tegenstanders" data={stats.worstOpponents} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
+            </div>
+        </div>
+    );
+};
+
+export default PlayerDetail;
