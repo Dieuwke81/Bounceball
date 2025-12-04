@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
+// We importeren alle iconen voor de zekerheid om crashes te voorkomen
+import TrophyIcon from './icons/TrophyIcon';
+import ShieldIcon from './icons/ShieldIcon';
 import UsersIcon from './icons/UsersIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
-import TrophyIcon from './icons/TrophyIcon'; // Toch nodig voor default icon als fallback
-import ShieldIcon from './icons/ShieldIcon'; // Toch nodig voor default icon als fallback
+import FutbolIcon from './icons/FutbolIcon';
 
 interface StatisticsProps {
   history: GameSession[];
@@ -19,8 +21,8 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     defense: false,
   });
 
-  // --- NIEUWE STATE: SCHAKELAAR VOOR FILTEREN ---
-  const [showIneligible, setShowIneligible] = useState(true);
+  // De schakelaar: standaard verbergen we mensen die te weinig speelden
+  const [showIneligible, setShowIneligible] = useState(false);
   
   const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
 
@@ -158,7 +160,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             playerId,
             count,
             percentage: (count / totalSessions) * 100,
-            meetsThreshold: count >= minGames // Ook hier threshold toevoegen voor consistentie
+            meetsThreshold: count >= minGames
         }))
         .sort((a, b) => b.count - a.count);
   }, [playerGames, totalSessions, minGames]);
@@ -245,24 +247,27 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     </button>
   );
 
-  // --- AANGEPASTE STATLIST DIE FILTERT OP DE SCHAKELAAR ---
+  // --- DE VEILIGE LIJST WEERGAVE ---
   const StatList: React.FC<{
       data: any[];
       showAllFlag: boolean,
       toggleShowAll: () => void,
       renderRow: (item: any, index: number) => React.ReactNode
   }> = ({ data, showAllFlag, toggleShowAll, renderRow }) => {
-    // Stap 1: Filter eerst de spelers die bestaan
-    // Stap 2: Kijk naar de schakelaar. 
-    //         Als showIneligible = true, toon iedereen. 
-    //         Als showIneligible = false, toon alleen degenen die meetsThreshold hebben.
+    // 1. Filter ongeldige spelers (die verwijderd zijn maar nog in stats staan)
+    // 2. Pas het filter toe van de schakelaar (wel/niet tonen als < minGames)
     const filteredData = data.filter(item => {
-        if (!playerMap.has(item.playerId)) return false;
-        if (!showIneligible && !item.meetsThreshold) return false; // HIER ZIT DE LOGICA
+        if (!playerMap.has(item.playerId)) return false; // Voorkomt crash!
+        if (!showIneligible && !item.meetsThreshold) return false; // Schakelaar logica
         return true;
     });
 
     const displayedData = showAllFlag ? filteredData : filteredData.slice(0, 10);
+    
+    if (displayedData.length === 0) {
+        return <p className="text-gray-500 text-sm text-center italic">Geen spelers voldoen aan de criteria.</p>
+    }
+
     return (
       <>
         {displayedData.map(renderRow)}
@@ -280,6 +285,84 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   };
 
+  const AttendanceChart: React.FC<{ data: {date: string, count: number}[] }> = ({ data }) => {
+      if (data.length < 2) {
+          return <p className="text-gray-400 text-center py-8">Niet genoeg data voor een grafiek.</p>;
+      }
+
+      const W = 500, H = 200, P = 30;
+      const minCount = Math.min(...data.map(d => d.count));
+      const maxCount = Math.max(...data.map(d => d.count));
+      const countRange = Math.max(1, maxCount - minCount);
+
+      const points = data.map((d, i) => {
+          const x = (i / (data.length - 1)) * (W - P * 2) + P;
+          const y = H - P - ((d.count - minCount) / countRange) * (H - P * 2);
+          return `${x},${y}`;
+      }).join(' ');
+      
+      const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('nl-NL', { month: 'short', day: 'numeric' });
+
+      return (
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
+            <line x1={P} y1={H - P} x2={W - P} y2={H - P} className="stroke-gray-600" strokeWidth="1" />
+            <text x={P - 10} y={P + 5} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{maxCount}</text>
+            <text x={P - 10} y={H - P} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{minCount}</text>
+            <polyline fill="none" className="stroke-cyan-400" strokeWidth="2" points={points} />
+            {data.map((d, i) => {
+                const x = (i / (data.length - 1)) * (W - P * 2) + P;
+                const y = H - P - ((d.count - minCount) / countRange) * (H - P * 2);
+                return (
+                    <circle key={i} cx={x} cy={y} r="3" className="fill-cyan-400 stroke-gray-800" strokeWidth="2">
+                        <title>{`${formatDate(d.date)}: ${d.count} spelers`}</title>
+                    </circle>
+                );
+            })}
+             <text x={P} y={H - P + 15} textAnchor="start" className="fill-gray-400 text-xs">{formatDate(data[0].date)}</text>
+             <text x={W - P} y={H - P + 15} textAnchor="end" className="fill-gray-400 text-xs">{formatDate(data[data.length - 1].date)}</text>
+        </svg>
+    );
+  };
+  
+    const GoalDifferenceChart: React.FC<{ data: { date: string, avgDiff: number }[] }> = ({ data }) => {
+    if (data.length < 2) {
+      return <p className="text-gray-400 text-center py-8">Niet genoeg data voor een grafiek.</p>;
+    }
+
+    const W = 500, H = 200, P = 30;
+    const minDiff = Math.min(...data.map(d => d.avgDiff));
+    const maxDiff = Math.max(...data.map(d => d.avgDiff));
+    const diffRange = Math.max(0.1, maxDiff - minDiff);
+
+    const points = data.map((d, i) => {
+      const x = (i / (data.length - 1)) * (W - P * 2) + P;
+      const y = H - P - ((d.avgDiff - minDiff) / diffRange) * (H - P * 2);
+      return `${x},${y}`;
+    }).join(' ');
+
+    const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('nl-NL', { month: 'short', day: 'numeric' });
+
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
+        <line x1={P} y1={H - P} x2={W - P} y2={H - P} className="stroke-gray-600" strokeWidth="1" />
+        <text x={P - 10} y={P + 5} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{maxDiff.toFixed(1)}</text>
+        <text x={P - 10} y={H - P} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{minDiff.toFixed(1)}</text>
+        <polyline fill="none" className="stroke-fuchsia-400" strokeWidth="2" points={points} />
+         {data.map((d, i) => {
+            const x = (i / (data.length - 1)) * (W - P * 2) + P;
+            const y = H - P - ((d.avgDiff - minDiff) / diffRange) * (H - P * 2);
+            return (
+                <circle key={i} cx={x} cy={y} r="3" className="fill-fuchsia-400 stroke-gray-800" strokeWidth="2">
+                    <title>{`${formatDate(d.date)}: gem. doelsaldo ${d.avgDiff.toFixed(2)}`}</title>
+                </circle>
+            );
+        })}
+        <text x={P} y={H - P + 15} textAnchor="start" className="fill-gray-400 text-xs">{formatDate(data[0].date)}</text>
+        <text x={W - P} y={H - P + 15} textAnchor="end" className="fill-gray-400 text-xs">{formatDate(data[data.length - 1].date)}</text>
+      </svg>
+    );
+  };
+  
   return (
     <>
       <div className="text-center mb-4">
@@ -305,9 +388,10 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
               </div>
           </label>
       </div>
-      {/* --------------------- */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        
+        {/* COMPETITIE - MET PLAATJE */}
         <StatCard title="Competitie" icon={
             <img 
                 src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
@@ -319,19 +403,25 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             data={competitionPoints}
             showAllFlag={showAll.points}
             toggleShowAll={() => setShowAll(s => ({...s, points: !s.points}))}
-            renderRow={(p, i) => (
-                <StatRow 
-                    key={p.playerId} 
-                    rank={i + 1} 
-                    player={playerMap.get(p.playerId)!}
-                    value={p.avg.toFixed(2)}
-                    subtext={`${p.points}pt / ${p.games}w`}
-                    meetsThreshold={p.meetsThreshold}
-                />
-            )}
+            renderRow={(p, i) => {
+                // CRASH PREVENTIE: Check of speler bestaat
+                const player = playerMap.get(p.playerId);
+                if (!player) return null;
+                return (
+                    <StatRow 
+                        key={p.playerId} 
+                        rank={i + 1} 
+                        player={player}
+                        value={p.avg.toFixed(2)}
+                        subtext={`${p.points}pt / ${p.games}w`}
+                        meetsThreshold={p.meetsThreshold}
+                    />
+                );
+            }}
            />
         </StatCard>
 
+        {/* TOPSCOORDER - MET PLAATJE */}
         <StatCard title="Topscoorder" icon={
             <img 
                 src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" 
@@ -343,19 +433,24 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             data={topScorers}
             showAllFlag={showAll.scorers}
             toggleShowAll={() => setShowAll(s => ({...s, scorers: !s.scorers}))}
-            renderRow={(p, i) => (
-                <StatRow 
-                    key={p.playerId}
-                    rank={i + 1}
-                    player={playerMap.get(p.playerId)!}
-                    value={p.avg.toFixed(2)}
-                    subtext={`${p.goals}d / ${p.games}w`}
-                    meetsThreshold={p.meetsThreshold}
-                />
-            )}
+            renderRow={(p, i) => {
+                const player = playerMap.get(p.playerId);
+                if (!player) return null;
+                return (
+                    <StatRow 
+                        key={p.playerId}
+                        rank={i + 1}
+                        player={player}
+                        value={p.avg.toFixed(2)}
+                        subtext={`${p.goals}d / ${p.games}w`}
+                        meetsThreshold={p.meetsThreshold}
+                    />
+                );
+            }}
            />
         </StatCard>
 
+        {/* BESTE VERDEDIGER - MET PLAATJE */}
         <StatCard title="Beste verdediger" icon={
             <img 
                 src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" 
@@ -367,16 +462,20 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             data={bestDefense}
             showAllFlag={showAll.defense}
             toggleShowAll={() => setShowAll(s => ({...s, defense: !s.defense}))}
-            renderRow={(p, i) => (
-                <StatRow 
-                    key={p.playerId}
-                    rank={i + 1}
-                    player={playerMap.get(p.playerId)!}
-                    value={p.avg.toFixed(2)}
-                    subtext={`${p.games} wedstrijden`}
-                    meetsThreshold={p.meetsThreshold}
-                />
-            )}
+            renderRow={(p, i) => {
+                const player = playerMap.get(p.playerId);
+                if (!player) return null;
+                return (
+                    <StatRow 
+                        key={p.playerId}
+                        rank={i + 1}
+                        player={player}
+                        value={p.avg.toFixed(2)}
+                        subtext={`${p.games} wedstrijden`}
+                        meetsThreshold={p.meetsThreshold}
+                    />
+                );
+            }}
            />
         </StatCard>
         
@@ -385,16 +484,20 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             data={mostAttended}
             showAllFlag={showAll.attendance}
             toggleShowAll={() => setShowAll(s => ({...s, attendance: !s.attendance}))}
-            renderRow={(p, i) => (
-                <StatRow 
-                    key={p.playerId}
-                    rank={i + 1}
-                    player={playerMap.get(p.playerId)!}
-                    value={`${p.count}x`}
-                    subtext={`${p.percentage.toFixed(0)}%`}
-                    meetsThreshold={p.meetsThreshold} // Ook hier de kleur rood als ze te weinig hebben gespeeld
-                />
-            )}
+            renderRow={(p, i) => {
+                const player = playerMap.get(p.playerId);
+                if (!player) return null;
+                return (
+                    <StatRow 
+                        key={p.playerId}
+                        rank={i + 1}
+                        player={player}
+                        value={`${p.count}x`}
+                        subtext={`${p.percentage.toFixed(0)}%`}
+                        meetsThreshold={p.meetsThreshold}
+                    />
+                );
+            }}
            />
         </StatCard>
       </div>
