@@ -269,6 +269,10 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                     stats={stats} // 'stats' wordt hierboven berekend
                     trophies={playerTrophies} 
                     players={players}
+                  // DEZE TWEE REGELS TOEVOEGEN:
+                    seasonHistory={ratingHistory}
+                    allTimeHistory={allTimeRatingHistory}
+                    // ----------------------------
                     onClose={() => setIsPrinting(false)} 
                 />
             )}
