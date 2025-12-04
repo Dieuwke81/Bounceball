@@ -268,6 +268,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                     player={player} 
                     stats={stats} // 'stats' wordt hierboven berekend
                     trophies={playerTrophies} 
+                    players={players}
                     onClose={() => setIsPrinting(false)} 
                 />
             )}
