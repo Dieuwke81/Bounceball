@@ -480,6 +480,8 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
         </StatCard>
         
         <StatCard title="Meest aanwezig" icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
+        
+<p className="text-gray-400 text-sm italic mb-3 -mt-1">Er zijn {totalSessions} speelavonden geweest</p>
           <StatList
             data={mostAttended}
             showAllFlag={showAll.attendance}
