@@ -99,7 +99,12 @@ const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHi
   return (
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
       <div className="flex items-center mb-6">
-        <ArchiveIcon className="w-8 h-8 text-green-500" />
+        {/*    <ArchiveIcon className="w-8 h-8 text-green-500" /> /* */}
+        <img 
+  src="https://cdn-icons-png.flaticon.com/512/14887/14887963.png" 
+  alt="Archief" 
+  className="w-8 h-8 object-contain" 
+/>
         <h2 className="ml-3 text-3xl font-bold text-white">Competitiebeheer</h2>
       </div>
 
