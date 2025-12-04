@@ -110,7 +110,7 @@ const CompetitionManagement: React.FC<CompetitionManagementProps> = ({ currentHi
 
       <div className="bg-gray-700 rounded-lg p-6 mb-8">
             <div className="flex items-center mb-4">
-                <EditIcon className="w-6 h-6 text-amber-400" />
+                <EditIcon className="w-6 h-6 text-cyan-600" />
                 <h3 className="ml-3 text-xl font-bold text-white">Competitienaam Aanpassen</h3>
             </div>
             <p className="text-gray-400 mb-4">
