@@ -1,32 +1,9 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
-import StatsPrintDocument, { PrintData } from './StatsPrintDocument'; 
-
-// ============================================================================
-// INLINE ICONEN (VEILIGHEID: GEEN IMPORTS NODIG)
-// ============================================================================
-
-const PrinterIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
-  </svg>
-);
-
-const UsersIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-  </svg>
-);
-
-const ChartBarIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-  </svg>
-);
-
-// ============================================================================
-// HOOFD COMPONENT
-// ============================================================================
+import TrophyIcon from './icons/TrophyIcon';
+// ShieldIcon is niet meer nodig, dus weggehaald
+import UsersIcon from './icons/UsersIcon';
+import ChartBarIcon from './icons/ChartBarIcon';
 
 interface StatisticsProps {
   history: GameSession[];
@@ -42,24 +19,8 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     defense: false,
   });
   
-  // State voor de printer data
-  const [printData, setPrintData] = useState<PrintData | null>(null);
-
-  // Effect: Als printData gevuld wordt, trigger de print dialoog
-  useEffect(() => {
-      if (printData) {
-          const timer = setTimeout(() => {
-              window.print();
-              // Na printen data weer wissen
-              setTimeout(() => setPrintData(null), 500); 
-          }, 100);
-          return () => clearTimeout(timer);
-      }
-  }, [printData]);
-  
   const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
 
-  // --- BEREKENINGEN ---
   const { playerGames, totalSessions, minGames } = useMemo(() => {
     const playerGamesMap = new Map<number, number>();
     const sessions = history.length;
@@ -129,11 +90,11 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
         const team1Score = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
         const team2Score = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
-        if (team1Score > team2Score) { 
+        if (team1Score > team2Score) { // Team 1 wins
           team1Players.forEach(player => stats.set(player.id, (stats.get(player.id) || 0) + 3));
-        } else if (team2Score > team1Score) { 
+        } else if (team2Score > team1Score) { // Team 2 wins
           team2Players.forEach(player => stats.set(player.id, (stats.get(player.id) || 0) + 3));
-        } else { 
+        } else { // Draw
           team1Players.forEach(player => stats.set(player.id, (stats.get(player.id) || 0) + 1));
           team2Players.forEach(player => stats.set(player.id, (stats.get(player.id) || 0) + 1));
         }
@@ -200,74 +161,40 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
   const attendanceHistory = useMemo(() => {
     if (!history) return [];
-    return history.map(session => ({
-        date: session.date,
-        count: session.teams.flat().length,
-    })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return history
+        .map(session => ({
+            date: session.date,
+            count: session.teams.flat().length,
+        }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [history]);
 
   const goalDifferenceHistory = useMemo(() => {
     if (!history || history.length === 0) return [];
-    return history.map(session => {
-        const allMatches = [...session.round1Results, ...session.round2Results];
-        if (allMatches.length === 0) return null;
-        const totalDifference = allMatches.reduce((total, match) => {
-            const team1Score = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
-            const team2Score = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
-            return total + Math.abs(team1Score - team2Score);
-        }, 0);
-        return {
-            date: session.date,
-            avgDiff: totalDifference / allMatches.length,
-        };
-    }).filter((item): item is {date: string; avgDiff: number} => item !== null).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    return history
+        .map(session => {
+            const allMatches = [...session.round1Results, ...session.round2Results];
+            if (allMatches.length === 0) {
+                return null;
+            }
+
+            const totalDifference = allMatches.reduce((total, match) => {
+                const team1Score = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
+                const team2Score = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
+                return total + Math.abs(team1Score - team2Score);
+            }, 0);
+
+            const averageDifference = totalDifference / allMatches.length;
+
+            return {
+                date: session.date,
+                avgDiff: averageDifference,
+            };
+        })
+        .filter((item): item is {date: string; avgDiff: number} => item !== null)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [history]);
-
-
-  // --- PRINT HANDLERS (Vullen de data voor de print view) ---
-  
-  const handlePrintCompetition = () => {
-      const rows = competitionPoints.filter(p => playerMap.has(p.playerId)).map((p, i) => [
-          `${i + 1}`,
-          playerMap.get(p.playerId)?.name || 'Onbekend',
-          p.points,
-          p.games,
-          p.avg.toFixed(2)
-      ]);
-      setPrintData({ title: "Competitie Stand", headers: ["#", "Speler", "Punten", "Wedstr.", "Gem."], rows: rows });
-  };
-
-  const handlePrintTopScorers = () => {
-      const rows = topScorers.filter(p => playerMap.has(p.playerId)).map((p, i) => [
-          `${i + 1}`,
-          playerMap.get(p.playerId)?.name || 'Onbekend',
-          p.goals,
-          p.games,
-          p.avg.toFixed(2)
-      ]);
-      setPrintData({ title: "Topscoorders", headers: ["#", "Speler", "Doelpunten", "Wedstr.", "Gem."], rows: rows });
-  };
-
-  const handlePrintDefense = () => {
-      const rows = bestDefense.filter(p => playerMap.has(p.playerId)).map((p, i) => [
-          `${i + 1}`,
-          playerMap.get(p.playerId)?.name || 'Onbekend',
-          (p.avg * p.games).toFixed(0),
-          p.games,
-          p.avg.toFixed(2)
-      ]);
-      setPrintData({ title: "Beste Verdediger", headers: ["#", "Speler", "Tegengoals", "Wedstr.", "Gem."], rows: rows });
-  };
-
-  const handlePrintAttendance = () => {
-      const rows = mostAttended.filter(p => playerMap.has(p.playerId)).map((p, i) => [
-          `${i + 1}`,
-          playerMap.get(p.playerId)?.name || 'Onbekend',
-          p.count,
-          `${p.percentage.toFixed(0)}%`
-      ]);
-      setPrintData({ title: "Aanwezigheid", headers: ["#", "Speler", "Aantal", "%"], rows: rows });
-  };
 
 
   if (history.length === 0) {
@@ -279,29 +206,11 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   }
 
-  // --- STAT CARD MET PRINT KNOP ---
-  const StatCard: React.FC<{ 
-      title: string, 
-      icon: React.ReactNode, 
-      children: React.ReactNode, 
-      className?: string,
-      onPrint?: () => void 
-  }> = ({ title, icon, children, className, onPrint }) => (
-    <div className={`bg-gray-800 rounded-xl shadow-lg p-6 ${className} relative group`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center">
-            {icon}
-            <h3 className="ml-3 text-2xl font-bold text-white">{title}</h3>
-        </div>
-        {onPrint && (
-            <button 
-                onClick={onPrint}
-                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors shadow-md"
-                title={`Print ${title}`}
-            >
-                <PrinterIcon className="w-5 h-5" />
-            </button>
-        )}
+  const StatCard: React.FC<{ title: string, icon: React.ReactNode, children: React.ReactNode, className?: string }> = ({ title, icon, children, className }) => (
+    <div className={`bg-gray-800 rounded-xl shadow-lg p-6 ${className}`}>
+      <div className="flex items-center mb-4">
+        {icon}
+        <h3 className="ml-3 text-2xl font-bold text-white">{title}</h3>
       </div>
       <div className="space-y-3">{children}</div>
     </div>
@@ -338,17 +247,13 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       toggleShowAll: () => void,
       renderRow: (item: any, index: number) => React.ReactNode
   }> = ({ data, showAllFlag, toggleShowAll, renderRow }) => {
-    const filteredData = data.filter(item => item && item.playerId && playerMap.has(item.playerId));
+    const filteredData = data.filter(item => playerMap.has(item.playerId));
     const displayedData = showAllFlag ? filteredData : filteredData.slice(0, 10);
     return (
       <>
-        {displayedData.map((item, index) => {
-            const player = playerMap.get(item.playerId);
-            if (!player) return null;
-            return renderRow(item, index);
-        })}
+        {displayedData.map(renderRow)}
         {filteredData.length > 10 && (
-          <div className="mt-2 no-print">
+          <div className="mt-2">
             <button 
               onClick={toggleShowAll}
               className="w-full text-center py-2 text-sm text-cyan-400 hover:text-cyan-300 font-semibold rounded-lg hover:bg-gray-700/50 transition-colors"
@@ -361,112 +266,180 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   };
 
+  const AttendanceChart: React.FC<{ data: {date: string, count: number}[] }> = ({ data }) => {
+      if (data.length < 2) {
+          return <p className="text-gray-400 text-center py-8">Niet genoeg data voor een grafiek.</p>;
+      }
+
+      const W = 500, H = 200, P = 30;
+      const minCount = Math.min(...data.map(d => d.count));
+      const maxCount = Math.max(...data.map(d => d.count));
+      const countRange = Math.max(1, maxCount - minCount);
+
+      const points = data.map((d, i) => {
+          const x = (i / (data.length - 1)) * (W - P * 2) + P;
+          const y = H - P - ((d.count - minCount) / countRange) * (H - P * 2);
+          return `${x},${y}`;
+      }).join(' ');
+      
+      const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('nl-NL', { month: 'short', day: 'numeric' });
+
+      return (
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
+            <line x1={P} y1={H - P} x2={W - P} y2={H - P} className="stroke-gray-600" strokeWidth="1" />
+            <text x={P - 10} y={P + 5} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{maxCount}</text>
+            <text x={P - 10} y={H - P} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{minCount}</text>
+            <polyline fill="none" className="stroke-cyan-400" strokeWidth="2" points={points} />
+            {data.map((d, i) => {
+                const x = (i / (data.length - 1)) * (W - P * 2) + P;
+                const y = H - P - ((d.count - minCount) / countRange) * (H - P * 2);
+                return (
+                    <circle key={i} cx={x} cy={y} r="3" className="fill-cyan-400 stroke-gray-800" strokeWidth="2">
+                        <title>{`${formatDate(d.date)}: ${d.count} spelers`}</title>
+                    </circle>
+                );
+            })}
+             <text x={P} y={H - P + 15} textAnchor="start" className="fill-gray-400 text-xs">{formatDate(data[0].date)}</text>
+             <text x={W - P} y={H - P + 15} textAnchor="end" className="fill-gray-400 text-xs">{formatDate(data[data.length - 1].date)}</text>
+        </svg>
+    );
+  };
+  
+    const GoalDifferenceChart: React.FC<{ data: { date: string, avgDiff: number }[] }> = ({ data }) => {
+    if (data.length < 2) {
+      return <p className="text-gray-400 text-center py-8">Niet genoeg data voor een grafiek.</p>;
+    }
+
+    const W = 500, H = 200, P = 30;
+    const minDiff = Math.min(...data.map(d => d.avgDiff));
+    const maxDiff = Math.max(...data.map(d => d.avgDiff));
+    const diffRange = Math.max(0.1, maxDiff - minDiff);
+
+    const points = data.map((d, i) => {
+      const x = (i / (data.length - 1)) * (W - P * 2) + P;
+      const y = H - P - ((d.avgDiff - minDiff) / diffRange) * (H - P * 2);
+      return `${x},${y}`;
+    }).join(' ');
+
+    const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('nl-NL', { month: 'short', day: 'numeric' });
+
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
+        <line x1={P} y1={H - P} x2={W - P} y2={H - P} className="stroke-gray-600" strokeWidth="1" />
+        <text x={P - 10} y={P + 5} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{maxDiff.toFixed(1)}</text>
+        <text x={P - 10} y={H - P} dominantBaseline="middle" textAnchor="end" className="fill-gray-400 text-xs">{minDiff.toFixed(1)}</text>
+        <polyline fill="none" className="stroke-fuchsia-400" strokeWidth="2" points={points} />
+         {data.map((d, i) => {
+            const x = (i / (data.length - 1)) * (W - P * 2) + P;
+            const y = H - P - ((d.avgDiff - minDiff) / diffRange) * (H - P * 2);
+            return (
+                <circle key={i} cx={x} cy={y} r="3" className="fill-fuchsia-400 stroke-gray-800" strokeWidth="2">
+                    <title>{`${formatDate(d.date)}: gem. doelsaldo ${d.avgDiff.toFixed(2)}`}</title>
+                </circle>
+            );
+        })}
+        <text x={P} y={H - P + 15} textAnchor="start" className="fill-gray-400 text-xs">{formatDate(data[0].date)}</text>
+        <text x={W - P} y={H - P + 15} textAnchor="end" className="fill-gray-400 text-xs">{formatDate(data[data.length - 1].date)}</text>
+      </svg>
+    );
+  };
+  
   return (
     <>
-      {/* HIER WORDT HET PRINT FORMULIER IN DE PAGINA GEZET */}
-      <StatsPrintDocument data={printData} />
-
       <div className="text-center mb-8">
           <p className="text-gray-400">Statistieken gebaseerd op <span className="font-bold text-white">{totalSessions}</span> speeldagen. <span className="italic">Voor de ranglijsten (gem.) moet een speler minimaal <span className="font-bold text-white">{minGames}</span> keer aanwezig zijn geweest.</span></p>
-          <p className="text-green-500 text-sm mt-2 italic">Klik op een speler om de individuele statistieken te zien.</p>
+  <p className="text-green-500 text-sm mt-2 italic">Klik op een speler om de individuele statistieken te zien.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        
-        {/* COMPETITIE */}
-        <StatCard title="Competitie" onPrint={handlePrintCompetition} icon={
-            <img src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" alt="Competitie" className="w-12 h-12 object-contain" />
+        <StatCard title="Competitie" icon={
+            <img 
+                src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
+                alt="Topscoorder" 
+                className="w-12 h-12 object-contain" 
+            />
         }>
            <StatList
             data={competitionPoints}
             showAllFlag={showAll.points}
             toggleShowAll={() => setShowAll(s => ({...s, points: !s.points}))}
-            renderRow={(p, i) => {
-                const player = playerMap.get(p.playerId);
-                if (!player) return null;
-                return (
-                    <StatRow 
-                        key={p.playerId} 
-                        rank={i + 1} 
-                        player={player}
-                        value={p.avg.toFixed(2)}
-                        subtext={`${p.points}pt / ${p.games}w`}
-                        meetsThreshold={p.meetsThreshold}
-                    />
-                );
-            }}
+            renderRow={(p, i) => (
+                <StatRow 
+                    key={p.playerId} 
+                    rank={i + 1} 
+                    player={playerMap.get(p.playerId)!}
+                    value={p.avg.toFixed(2)}
+                    subtext={`${p.points}pt / ${p.games}w`}
+                    meetsThreshold={p.meetsThreshold}
+                />
+            )}
            />
         </StatCard>
 
-        {/* TOPSCOORDER */}
-        <StatCard title="Topscoorder" onPrint={handlePrintTopScorers} icon={
-            <img src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" alt="Topscoorder" className="w-12 h-12 object-contain" />
+        {/* Topscoorder met Afbeelding */}
+        <StatCard title="Topscoorder" icon={
+            <img 
+                src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" 
+                alt="Topscoorder" 
+                className="w-12 h-12 object-contain" 
+            />
         }>
            <StatList
             data={topScorers}
             showAllFlag={showAll.scorers}
             toggleShowAll={() => setShowAll(s => ({...s, scorers: !s.scorers}))}
-            renderRow={(p, i) => {
-                const player = playerMap.get(p.playerId);
-                if (!player) return null;
-                return (
-                    <StatRow 
-                        key={p.playerId}
-                        rank={i + 1}
-                        player={player}
-                        value={p.avg.toFixed(2)}
-                        subtext={`${p.goals}d / ${p.games}w`}
-                        meetsThreshold={p.meetsThreshold}
-                    />
-                );
-            }}
+            renderRow={(p, i) => (
+                <StatRow 
+                    key={p.playerId}
+                    rank={i + 1}
+                    player={playerMap.get(p.playerId)!}
+                    value={p.avg.toFixed(2)}
+                    subtext={`${p.goals}d / ${p.games}w`}
+                    meetsThreshold={p.meetsThreshold}
+                />
+            )}
            />
         </StatCard>
 
-        {/* BESTE VERDEDIGER */}
-        <StatCard title="Beste verdediger" onPrint={handlePrintDefense} icon={
-            <img src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" alt="Beste verdediger" className="w-12 h-12 object-contain" />
+        {/* Beste Verdediger met Afbeelding */}
+        <StatCard title="Beste verdediger" icon={
+            <img 
+                src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" 
+                alt="Beste verdediger" 
+                className="w-12 h-12 object-contain" 
+            />
         }>
           <StatList
             data={bestDefense}
             showAllFlag={showAll.defense}
             toggleShowAll={() => setShowAll(s => ({...s, defense: !s.defense}))}
-            renderRow={(p, i) => {
-                const player = playerMap.get(p.playerId);
-                if (!player) return null;
-                return (
-                    <StatRow 
-                        key={p.playerId}
-                        rank={i + 1}
-                        player={player}
-                        value={p.avg.toFixed(2)}
-                        subtext={`${p.games} wedstrijden`}
-                        meetsThreshold={p.meetsThreshold}
-                    />
-                );
-            }}
+            renderRow={(p, i) => (
+                <StatRow 
+                    key={p.playerId}
+                    rank={i + 1}
+                    player={playerMap.get(p.playerId)!}
+                    value={p.avg.toFixed(2)}
+                    subtext={`${p.games} wedstrijden`}
+                    meetsThreshold={p.meetsThreshold}
+                />
+            )}
            />
         </StatCard>
         
-        {/* MEEST AANWEZIG */}
-        <StatCard title="Meest aanwezig" onPrint={handlePrintAttendance} icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
+        <StatCard title="Meest aanwezig" icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
           <StatList
             data={mostAttended}
             showAllFlag={showAll.attendance}
             toggleShowAll={() => setShowAll(s => ({...s, attendance: !s.attendance}))}
-            renderRow={(p, i) => {
-                const player = playerMap.get(p.playerId);
-                if (!player) return null;
-                return (
-                    <StatRow 
-                        key={p.playerId}
-                        rank={i + 1}
-                        player={player}
-                        value={`${p.count}x`}
-                        subtext={`${p.percentage.toFixed(0)}%`}
-                    />
-                );
-            }}
+            renderRow={(p, i) => (
+                <StatRow 
+                    key={p.playerId}
+                    rank={i + 1}
+                    player={playerMap.get(p.playerId)!}
+                    value={`${p.count}x`}
+                    subtext={`${p.percentage.toFixed(0)}%`}
+                />
+            )}
            />
         </StatCard>
       </div>
