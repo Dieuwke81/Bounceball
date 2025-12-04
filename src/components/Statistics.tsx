@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
 
 // ============================================================================
-// 1. ALLE ICONEN INLINE (VOORKOMT CRASHES & ZWARTE SCHERMEN)
+// 1. ALLE ICONEN INLINE (VOORKOMT CRASHES & ZWARTE SCHERMEN) 
+
 // ============================================================================
 
 const PrinterIcon = ({ className }: { className?: string }) => (
