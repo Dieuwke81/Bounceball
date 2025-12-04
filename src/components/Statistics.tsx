@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import type { GameSession, Player } from '../types';
 import UsersIcon from './icons/UsersIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
-import StatsPrintDocument, { PrintData } from './StatsPrintDocument'; // <--- NIEUWE IMPORT
+import StatsPrintDocument, { PrintData } from './StatsPrintDocument'; // <--- ZORG DAT JE DEZE HEBT
 
 // --- EXTRA ICOONTJE VOOR DE KNOP ---
 const PrinterIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -25,15 +25,16 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     defense: false,
   });
   
-  // State voor het printen
+  // State voor de printer data
   const [printData, setPrintData] = useState<PrintData | null>(null);
 
-  // Effect: Als printData gevuld wordt, wacht even (zodat React kan renderen) en open dan de printer
+  // Effect: Als printData gevuld wordt, trigger de print dialoog
   useEffect(() => {
       if (printData) {
           const timer = setTimeout(() => {
               window.print();
               // Na printen (of annuleren) data weer wissen
+              // Timeout iets langer om zeker te zijn dat dialoog open is
               setTimeout(() => setPrintData(null), 500); 
           }, 100);
           return () => clearTimeout(timer);
@@ -42,6 +43,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
   
   const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
 
+  // --- ALLE BEREKENINGEN (ONGEOBJEZIGD) ---
   const { playerGames, totalSessions, minGames } = useMemo(() => {
     const playerGamesMap = new Map<number, number>();
     const sessions = history.length;
@@ -218,17 +220,20 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
   }, [history]);
 
 
-  // --- PRINT HANDLERS (Vullen de data voor de print view) ---
-  
-  const handlePrintCompetition = () => {
-      const rows = competitionPoints.filter(p => playerMap.has(p.playerId)).map((p, i) => [
-          i + 1, 
-          playerMap.get(p.playerId)?.name || '-',
-          p.points,
-          p.games,
-          p.avg.toFixed(2)
-      ]);
-      
+  // --- FUNCTIES OM TE PRINTEN ---
+  // Deze zetten de data om naar een tabel formaat en triggeren de print
+
+  const printCompetition = () => {
+      const rows = competitionPoints
+        .filter(p => playerMap.has(p.playerId))
+        .map((p, i) => [
+            `${i + 1}`,
+            playerMap.get(p.playerId)?.name || 'Onbekend',
+            p.points,
+            p.games,
+            p.avg.toFixed(2)
+        ]);
+        
       setPrintData({
           title: "Competitie Stand",
           headers: ["#", "Speler", "Punten", "Wedstrijden", "Gemiddelde"],
@@ -236,15 +241,17 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       });
   };
 
-  const handlePrintTopScorers = () => {
-      const rows = topScorers.filter(p => playerMap.has(p.playerId)).map((p, i) => [
-          i + 1, 
-          playerMap.get(p.playerId)?.name || '-',
-          p.goals,
-          p.games,
-          p.avg.toFixed(2)
-      ]);
-      
+  const printTopScorers = () => {
+      const rows = topScorers
+        .filter(p => playerMap.has(p.playerId))
+        .map((p, i) => [
+            `${i + 1}`,
+            playerMap.get(p.playerId)?.name || 'Onbekend',
+            p.goals,
+            p.games,
+            p.avg.toFixed(2)
+        ]);
+        
       setPrintData({
           title: "Topscoorders",
           headers: ["#", "Speler", "Doelpunten", "Wedstrijden", "Gemiddelde"],
@@ -252,30 +259,34 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       });
   };
 
-  const handlePrintDefense = () => {
-      const rows = bestDefense.filter(p => playerMap.has(p.playerId)).map((p, i) => [
-          i + 1, 
-          playerMap.get(p.playerId)?.name || '-',
-          (p.avg * p.games).toFixed(0), // Total goals against
-          p.games,
-          p.avg.toFixed(2)
-      ]);
-      
+  const printDefense = () => {
+      const rows = bestDefense
+        .filter(p => playerMap.has(p.playerId))
+        .map((p, i) => [
+            `${i + 1}`,
+            playerMap.get(p.playerId)?.name || 'Onbekend',
+            (p.avg * p.games).toFixed(0),
+            p.games,
+            p.avg.toFixed(2)
+        ]);
+        
       setPrintData({
-          title: "Beste Verdediger (Minste tegengoals)",
+          title: "Beste Verdediger",
           headers: ["#", "Speler", "Tegengoals", "Wedstrijden", "Gemiddelde"],
           rows: rows
       });
   };
 
-  const handlePrintAttendance = () => {
-      const rows = mostAttended.filter(p => playerMap.has(p.playerId)).map((p, i) => [
-          i + 1, 
-          playerMap.get(p.playerId)?.name || '-',
-          p.count,
-          `${p.percentage.toFixed(0)}%`
-      ]);
-      
+  const printAttendance = () => {
+      const rows = mostAttended
+        .filter(p => playerMap.has(p.playerId))
+        .map((p, i) => [
+            `${i + 1}`,
+            playerMap.get(p.playerId)?.name || 'Onbekend',
+            p.count,
+            `${p.percentage.toFixed(0)}%`
+        ]);
+        
       setPrintData({
           title: "Aanwezigheid",
           headers: ["#", "Speler", "Aantal keer", "Percentage"],
@@ -293,15 +304,15 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   }
 
-  // --- STAT CARD MET PRINT KNOP ---
+  // --- COMPONENTEN VOOR UI ---
+  
   const StatCard: React.FC<{ 
       title: string, 
       icon: React.ReactNode, 
       children: React.ReactNode, 
-      className?: string,
       onPrint?: () => void 
-  }> = ({ title, icon, children, className, onPrint }) => (
-    <div className={`bg-gray-800 rounded-xl shadow-lg p-6 ${className} relative group`}>
+  }> = ({ title, icon, children, onPrint }) => (
+    <div className={`bg-gray-800 rounded-xl shadow-lg p-6 relative group`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
             {icon}
@@ -435,10 +446,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
   
   return (
     <>
-      {/* 
-          DIT IS HET VERBORGEN PRINT FORMULIER
-          Dit wordt alleen getoond als printData is gevuld, en wordt dan geprint.
-      */}
+      {/* HET VERBORGEN PRINT FORMULIER */}
       <StatsPrintDocument data={printData} />
 
       <div className="text-center mb-8">
@@ -448,8 +456,8 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
-        {/* COMPETITIE - MET PLAATJE & PRINT KNOP */}
-        <StatCard title="Competitie" onPrint={handlePrintCompetition} icon={
+        {/* COMPETITIE */}
+        <StatCard title="Competitie" onPrint={printCompetition} icon={
             <img 
                 src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
                 alt="Competitie" 
@@ -460,25 +468,21 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             data={competitionPoints}
             showAllFlag={showAll.points}
             toggleShowAll={() => setShowAll(s => ({...s, points: !s.points}))}
-            renderRow={(p, i) => {
-                const player = playerMap.get(p.playerId);
-                if (!player) return null;
-                return (
-                    <StatRow 
-                        key={p.playerId} 
-                        rank={i + 1} 
-                        player={player}
-                        value={p.avg.toFixed(2)}
-                        subtext={`${p.points}pt / ${p.games}w`}
-                        meetsThreshold={p.meetsThreshold}
-                    />
-                );
-            }}
+            renderRow={(p, i) => (
+                <StatRow 
+                    key={p.playerId} 
+                    rank={i + 1} 
+                    player={playerMap.get(p.playerId)!}
+                    value={p.avg.toFixed(2)}
+                    subtext={`${p.points}pt / ${p.games}w`}
+                    meetsThreshold={p.meetsThreshold}
+                />
+            )}
            />
         </StatCard>
 
-        {/* TOPSCOORDER - MET PLAATJE & PRINT KNOP */}
-        <StatCard title="Topscoorder" onPrint={handlePrintTopScorers} icon={
+        {/* TOPSCOORDER */}
+        <StatCard title="Topscoorder" onPrint={printTopScorers} icon={
             <img 
                 src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" 
                 alt="Topscoorder" 
@@ -489,25 +493,21 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             data={topScorers}
             showAllFlag={showAll.scorers}
             toggleShowAll={() => setShowAll(s => ({...s, scorers: !s.scorers}))}
-            renderRow={(p, i) => {
-                const player = playerMap.get(p.playerId);
-                if (!player) return null;
-                return (
-                    <StatRow 
-                        key={p.playerId}
-                        rank={i + 1}
-                        player={player}
-                        value={p.avg.toFixed(2)}
-                        subtext={`${p.goals}d / ${p.games}w`}
-                        meetsThreshold={p.meetsThreshold}
-                    />
-                );
-            }}
+            renderRow={(p, i) => (
+                <StatRow 
+                    key={p.playerId}
+                    rank={i + 1}
+                    player={playerMap.get(p.playerId)!}
+                    value={p.avg.toFixed(2)}
+                    subtext={`${p.goals}d / ${p.games}w`}
+                    meetsThreshold={p.meetsThreshold}
+                />
+            )}
            />
         </StatCard>
 
-        {/* BESTE VERDEDIGER - MET PLAATJE & PRINT KNOP */}
-        <StatCard title="Beste verdediger" onPrint={handlePrintDefense} icon={
+        {/* BESTE VERDEDIGER */}
+        <StatCard title="Beste verdediger" onPrint={printDefense} icon={
             <img 
                 src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" 
                 alt="Beste verdediger" 
@@ -518,42 +518,34 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             data={bestDefense}
             showAllFlag={showAll.defense}
             toggleShowAll={() => setShowAll(s => ({...s, defense: !s.defense}))}
-            renderRow={(p, i) => {
-                const player = playerMap.get(p.playerId);
-                if (!player) return null;
-                return (
-                    <StatRow 
-                        key={p.playerId}
-                        rank={i + 1}
-                        player={player}
-                        value={p.avg.toFixed(2)}
-                        subtext={`${p.games} wedstrijden`}
-                        meetsThreshold={p.meetsThreshold}
-                    />
-                );
-            }}
+            renderRow={(p, i) => (
+                <StatRow 
+                    key={p.playerId}
+                    rank={i + 1}
+                    player={playerMap.get(p.playerId)!}
+                    value={p.avg.toFixed(2)}
+                    subtext={`${p.games} wedstrijden`}
+                    meetsThreshold={p.meetsThreshold}
+                />
+            )}
            />
         </StatCard>
         
-        {/* MEEST AANWEZIG - MET ICOON & PRINT KNOP */}
-        <StatCard title="Meest aanwezig" onPrint={handlePrintAttendance} icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
+        {/* MEEST AANWEZIG */}
+        <StatCard title="Meest aanwezig" onPrint={printAttendance} icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
           <StatList
             data={mostAttended}
             showAllFlag={showAll.attendance}
             toggleShowAll={() => setShowAll(s => ({...s, attendance: !s.attendance}))}
-            renderRow={(p, i) => {
-                const player = playerMap.get(p.playerId);
-                if (!player) return null;
-                return (
-                    <StatRow 
-                        key={p.playerId}
-                        rank={i + 1}
-                        player={player}
-                        value={`${p.count}x`}
-                        subtext={`${p.percentage.toFixed(0)}%`}
-                    />
-                );
-            }}
+            renderRow={(p, i) => (
+                <StatRow 
+                    key={p.playerId}
+                    rank={i + 1}
+                    player={playerMap.get(p.playerId)!}
+                    value={`${p.count}x`}
+                    subtext={`${p.percentage.toFixed(0)}%`}
+                />
+            )}
            />
         </StatCard>
       </div>
