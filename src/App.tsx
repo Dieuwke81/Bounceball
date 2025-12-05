@@ -35,7 +35,7 @@ import FutbolIcon from './components/icons/FutbolIcon';
 import SetupGuide from './components/SetupGuide';
 
 
-type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement' | 'trophyRoom';
+type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement' | 'trophyRoom' | 'rules';
 type Notification = { message: string; type: 'success' | 'error' };
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 
