@@ -123,8 +123,8 @@ const Rules: React.FC = () => {
 
       <Section title="Keeper">
         <ul className="list-disc ml-6">
-          <li>Keeper mag handen/voeten gebruiken binnen de cirkel.</li>
-          <li>6 seconden vasthouden maximaal.</li>
+          <li>Het team speelt met een vaste of wisselende keeper. Dit dient vooraf aangegeven te worden.</li>
+          <li>De keeper mag de bal binnen het keepersgebied met zijn/haar hele lichaam tegenhouden, inclusief handen en voeten. De bal moet zich binnen de cirkel bevinden voordat de keeper deze met de hand mag pakken. De keeper hoeft door voor zelf niet in de cirkel te zijn.</li>
           <li>Buiten cirkel geen handen/voeten → penalty.</li>
         </ul>
       </Section>
