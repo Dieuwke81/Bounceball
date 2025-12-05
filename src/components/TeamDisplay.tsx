@@ -3,6 +3,13 @@ import type { Player, Match, Goal, MatchResult } from '../types';
 import TrophyIcon from './icons/TrophyIcon';
 import MatchForm from './MatchForm';
 
+// --- STAP 1: Vertel TypeScript dat 'confetti' op het window object bestaat ---
+declare global {
+  interface Window {
+    confetti: any;
+  }
+}
+
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 
 interface TeamDisplayProps {
@@ -24,7 +31,7 @@ interface TeamDisplayProps {
 }
 
 // ============================================================================
-// ICONS
+// ICONS & SPINNERS
 // ============================================================================
 
 const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -118,9 +125,12 @@ const ScoreInput: React.FC<{
   );
 };
 
-// Hulpfuncties
+// Hulpfunctie om basiskleur te bepalen op basis van index
 const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
 
+// ============================================================================
+// WEDSTRIJD CARD (AANGEPAST: ALTIJD BLAUW LINKS, GEEL RECHTS)
+// ============================================================================
 const MatchInputCard: React.FC<{
     match: Match;
     matchIndex: number;
@@ -128,29 +138,51 @@ const MatchInputCard: React.FC<{
     goalScorers: TeamDisplayProps['goalScorers'];
     onGoalChange: TeamDisplayProps['onGoalChange'];
 }> = ({ match, matchIndex, teams, goalScorers, onGoalChange }) => {
-    const team1 = teams[match.team1Index];
-    const team2 = teams[match.team2Index];
     
-    const baseColor1 = getBaseColor(match.team1Index);
-    const baseColor2 = getBaseColor(match.team2Index);
-    let finalColor1 = baseColor1;
-    let finalColor2 = baseColor2;
-    if (baseColor1 === baseColor2) {
-        finalColor2 = (baseColor2 === 'blue' ? 'yellow' : 'blue');
-    }
-    const leftColorClass = finalColor1 === 'blue' ? 'text-cyan-300' : 'text-amber-300';
-    const rightColorClass = finalColor2 === 'blue' ? 'text-cyan-300' : 'text-amber-300';
+    // 1. Haal de teams op
+    const team1Data = teams[match.team1Index];
+    const team2Data = teams[match.team2Index];
 
-    const getTeamGoals = (teamIdentifier: 'team1' | 'team2') => goalScorers[`${matchIndex}-${teamIdentifier}`] || [];
-    const getTeamScore = (teamIdentifier: 'team1' | 'team2') => getTeamGoals(teamIdentifier).reduce((sum, goal) => sum + goal.count, 0);
+    // 2. Bepaal de 'natuurlijke' kleur
+    const color1 = getBaseColor(match.team1Index);
+    const color2 = getBaseColor(match.team2Index);
+
+    // 3. Logica: Wie moet er LINKS (Blauw) en wie RECHTS (Geel)?
+    let blueTeam, yellowTeam;
+    let blueIdentifier: 'team1' | 'team2';
+    let yellowIdentifier: 'team1' | 'team2';
+    let blueTeamIndex, yellowTeamIndex;
+
+    // SCENARIO: Team 1 is Geel en Team 2 is Blauw -> OMDRAAIEN
+    if (color1 === 'yellow' && color2 === 'blue') {
+        blueTeam = team2Data;       blueIdentifier = 'team2';   blueTeamIndex = match.team2Index;
+        yellowTeam = team1Data;     yellowIdentifier = 'team1'; yellowTeamIndex = match.team1Index;
+    } 
+    // STANDAARD: Team 1 is Blauw, Team 2 is Geel (of allebei zelfde kleur, dan fallback)
+    else {
+        blueTeam = team1Data;       blueIdentifier = 'team1';   blueTeamIndex = match.team1Index;
+        yellowTeam = team2Data;     yellowIdentifier = 'team2'; yellowTeamIndex = match.team2Index;
+    }
+
+    // --- FORCEER KLEUREN ---
+    const leftColorClass = 'text-cyan-300';
+    const rightColorClass = 'text-amber-300';
+    const leftBorderClass = 'border-cyan-500/30';
+    const rightBorderClass = 'border-amber-500/30';
+
+    // Hulpfunctie score
+    const getTeamScore = (identifier: 'team1' | 'team2') => {
+        const goals = goalScorers[`${matchIndex}-${identifier}`] || [];
+        return goals.reduce((sum, g) => sum + g.count, 0);
+    };
 
     const PlayerGoalInput: React.FC<{player: Player, teamIdentifier: 'team1' | 'team2'}> = ({ player, teamIdentifier }) => {
-        const goals = getTeamGoals(teamIdentifier);
+        const goals = goalScorers[`${matchIndex}-${teamIdentifier}`] || [];
         const goalCount = goals.find(g => g.playerId === player.id)?.count || 0;
 
         return (
-            <div className="flex items-center justify-between space-x-2 bg-gray-600 p-2 rounded">
-                <span className="text-gray-200 flex-1 pr-2">{player.name}</span>
+            <div className="flex items-center justify-between space-x-2 bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
+                <span className="text-gray-200 flex-1 pr-2 truncate">{player.name}</span>
                 <ScoreInput
                     value={goalCount}
                     onChange={(newVal) => onGoalChange(matchIndex, teamIdentifier, player.id, newVal)}
@@ -161,24 +193,33 @@ const MatchInputCard: React.FC<{
     }
 
     return (
-        <div className="bg-gray-700 rounded-lg p-4">
+        <div className="bg-gray-700 rounded-lg p-4 shadow-md">
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-3">
+                {/* LINKS: ALTIJD BLAUW */}
+                <div className={`space-y-3 border-t-4 ${leftBorderClass} pt-2`}>
                     <div className="text-center">
-                        <h4 className={`font-bold text-lg ${leftColorClass}`}>Team {match.team1Index + 1}</h4>
-                        <p className="text-3xl font-bold text-white">{getTeamScore('team1')}</p>
+                        <h4 className={`font-bold text-lg ${leftColorClass} flex flex-col`}>
+                            <span>Team {blueTeamIndex + 1}</span>
+                            <span className="text-xs opacity-70">BLAUW</span>
+                        </h4>
+                        <p className="text-3xl font-bold text-white mt-1">{getTeamScore(blueIdentifier)}</p>
                     </div>
                     <div className="space-y-2 pr-1">
-                        {team1.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier="team1" />)}
+                        {blueTeam.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier={blueIdentifier} />)}
                     </div>
                 </div>
-                <div className="space-y-3">
+                
+                {/* RECHTS: ALTIJD GEEL */}
+                <div className={`space-y-3 border-t-4 ${rightBorderClass} pt-2`}>
                      <div className="text-center">
-                        <h4 className={`font-bold text-lg ${rightColorClass}`}>Team {match.team2Index + 1}</h4>
-                        <p className="text-3xl font-bold text-white">{getTeamScore('team2')}</p>
+                        <h4 className={`font-bold text-lg ${rightColorClass} flex flex-col`}>
+                            <span>Team {yellowTeamIndex + 1}</span>
+                            <span className="text-xs opacity-70">GEEL</span>
+                        </h4>
+                        <p className="text-3xl font-bold text-white mt-1">{getTeamScore(yellowIdentifier)}</p>
                     </div>
                     <div className="space-y-2 pr-1">
-                        {team2.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier="team2" />)}
+                        {yellowTeam.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier={yellowIdentifier} />)}
                     </div>
                 </div>
             </div>
@@ -186,34 +227,51 @@ const MatchInputCard: React.FC<{
     );
 };
 
+// ============================================================================
+// UITSLAG CARD (AANGEPAST: OOK ALTIJD BLAUW LINKS)
+// ============================================================================
 const MatchResultDisplayCard: React.FC<{
     matchResult: MatchResult;
 }> = ({ matchResult }) => {
-    const team1Score = matchResult.team1Goals.reduce((sum, goal) => sum + goal.count, 0);
-    const team2Score = matchResult.team2Goals.reduce((sum, goal) => sum + goal.count, 0);
-    const baseColor1 = getBaseColor(matchResult.team1Index);
-    const baseColor2 = getBaseColor(matchResult.team2Index);
-    let finalColor1 = baseColor1;
-    let finalColor2 = baseColor2;
-    if (baseColor1 === baseColor2) {
-        finalColor2 = (baseColor2 === 'blue' ? 'yellow' : 'blue');
+    const score1 = matchResult.team1Goals.reduce((sum, g) => sum + g.count, 0);
+    const score2 = matchResult.team2Goals.reduce((sum, g) => sum + g.count, 0);
+    
+    const color1 = getBaseColor(matchResult.team1Index);
+    const color2 = getBaseColor(matchResult.team2Index);
+
+    let leftText, rightText, leftScore, rightScore;
+    
+    // Als Team 1 Geel was en Team 2 Blauw -> Wisselen
+    if (color1 === 'yellow' && color2 === 'blue') {
+        leftText = `Team ${matchResult.team2Index + 1}`; // Blauw Team Naam
+        rightText = `Team ${matchResult.team1Index + 1}`; // Geel Team Naam
+        leftScore = score2;
+        rightScore = score1;
+    } else {
+        // Normaal
+        leftText = `Team ${matchResult.team1Index + 1}`;
+        rightText = `Team ${matchResult.team2Index + 1}`;
+        leftScore = score1;
+        rightScore = score2;
     }
-    const team1Color = finalColor1 === 'blue' ? 'text-cyan-400/80' : 'text-amber-400/80';
-    const team2Color = finalColor2 === 'blue' ? 'text-cyan-400/80' : 'text-amber-400/80';
+
+    // Forceer kleuren
+    const leftColor = 'text-cyan-400/80'; // Blauw
+    const rightColor = 'text-amber-400/80'; // Geel
 
     return (
-        <div className="bg-gray-700/50 rounded-lg p-4">
+        <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600/30">
             <div className="flex justify-between items-center text-center">
                 <div className="w-2/5">
-                    <h4 className={`font-semibold text-base truncate ${team1Color}`}>Team {matchResult.team1Index + 1}</h4>
+                    <h4 className={`font-semibold text-base truncate ${leftColor}`}>{leftText}</h4>
                 </div>
                 <div className="w-1/5">
                     <p className="text-2xl font-bold text-white/90">
-                        {team1Score} - {team2Score}
+                        {leftScore} - {rightScore}
                     </p>
                 </div>
                 <div className="w-2/5">
-                    <h4 className={`font-semibold text-base truncate ${team2Color}`}>Team {matchResult.team2Index + 1}</h4>
+                    <h4 className={`font-semibold text-base truncate ${rightColor}`}>{rightText}</h4>
                 </div>
             </div>
         </div>
@@ -227,6 +285,7 @@ const TeamCard: React.FC<{team: Player[], index: number, title: string}> = ({ te
         return { totalRating, averageRating };
     };
     const { totalRating, averageRating } = calculateTeamStats(team);
+    
     const isBlueTeam = index % 2 === 0;
     const headerColor = isBlueTeam ? 'text-cyan-400' : 'text-amber-400';
     const borderColor = isBlueTeam ? 'border-cyan-500' : 'border-amber-500';
@@ -266,6 +325,35 @@ const TeamCard: React.FC<{team: Player[], index: number, title: string}> = ({ te
 
 
 const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, currentRound, round1Results, round2Pairings, goalScorers, onGoalChange, onSaveRound1, onSaveFinalResults, onSaveSimpleMatch, onStartSecondDoubleHeaderMatch, onSaveDoubleHeader, onRegenerateTeams, actionInProgress }) => {
+  
+  // --- CONFETTI LOAD ---
+  useEffect(() => {
+    if (!document.getElementById('confetti-script')) {
+        const script = document.createElement('script');
+        script.id = 'confetti-script';
+        script.src = "https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js";
+        script.async = true;
+        document.body.appendChild(script);
+    }
+  }, []);
+
+  // --- CONFETTI FUNCTIE ---
+  const triggerFirework = () => {
+    if (window.confetti) {
+        const duration = 2 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+        const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+        const interval: any = setInterval(function() {
+            const timeLeft = animationEnd - Date.now();
+            if (timeLeft <= 0) return clearInterval(interval);
+            const particleCount = 50 * (timeLeft / duration);
+            window.confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+            window.confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+        }, 250);
+    }
+  };
+
   if (teams.length === 0) {
     return null;
   }
@@ -295,10 +383,8 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
   const handleShareToWhatsApp = () => {
     const today = new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
     const dateStr = today.charAt(0).toUpperCase() + today.slice(1);
-    
     let text = `📅 *Bounceball - ${dateStr}*\n\n`;
 
-    // Helper: Bereken gem. rating
     const getAvg = (team: Player[]) => {
         if (!team || team.length === 0) return '0.00';
         const total = team.reduce((sum, p) => sum + p.rating, 0);
@@ -310,28 +396,35 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
         const team2 = teams[match.team2Index];
         if (!team1 || !team2) return;
         
-        const avg1 = getAvg(team1);
-        const avg2 = getAvg(team2);
+        // Kleur bepalen en wisselen indien nodig
+        const color1 = getBaseColor(match.team1Index);
+        const color2 = getBaseColor(match.team2Index);
+        
+        let blueTeam = team1;
+        let yellowTeam = team2;
+        let blueIdx = match.team1Index;
+        let yellowIdx = match.team2Index;
+
+        if (color1 === 'yellow' && color2 === 'blue') {
+            blueTeam = team2; blueIdx = match.team2Index;
+            yellowTeam = team1; yellowIdx = match.team1Index;
+        }
+
+        const avgBlue = getAvg(blueTeam);
+        const avgYellow = getAvg(yellowTeam);
 
         text += `🔥 *Wedstrijd ${index + 1}*\n`;
-        
-        // Team 1
-        text += `🔵 *Team ${match.team1Index + 1}* (⭐ ${avg1})\n`;
-        team1.forEach(p => text += `- ${p.name}\n`);
-        
+        text += `🔵 *Team ${blueIdx + 1}* (⭐ ${avgBlue})\n`;
+        blueTeam.forEach(p => text += `- ${p.name}\n`);
         text += `\n   ⚡️  - VS -  ⚡️   \n\n`;
-
-        // Team 2
-        text += `🟡 *Team ${match.team2Index + 1}* (⭐ ${avg2})\n`;
-        team2.forEach(p => text += `- ${p.name}\n`);
-
+        text += `🟡 *Team ${yellowIdx + 1}* (⭐ ${avgYellow})\n`;
+        yellowTeam.forEach(p => text += `- ${p.name}\n`);
         text += `\n------------------\n\n`;
     });
 
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
-  // ----------------------
 
   const currentMatches = currentRound === 1 ? round1Matches : round2Pairings;
 
@@ -344,21 +437,10 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
         </div>
         
         <div className="flex space-x-2">
-            {/* WHATSAPP KNOP */}
-            <button
-                onClick={handleShareToWhatsApp}
-                className="flex items-center space-x-2 bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95"
-                title="Deel via WhatsApp"
-            >
+            <button onClick={handleShareToWhatsApp} className="flex items-center space-x-2 bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95" title="Deel via WhatsApp">
                 <WhatsAppIcon className="w-5 h-5" />
             </button>
-
-            {/* PRINT KNOP */}
-            <button
-                onClick={() => window.print()}
-                className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95"
-                title="Print Wedstrijdformulier"
-            >
+            <button onClick={() => window.print()} className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95" title="Print Wedstrijdformulier">
                 <PrinterIcon className="w-5 h-5" />
                 <span className="hidden sm:inline">Formulier</span>
             </button>
@@ -445,6 +527,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
                               team2Goals: goalScorers['0-team2'] || [],
                           };
                           onSaveDoubleHeader(match2Result);
+                          triggerFirework();
                       }}
                       className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
                       disabled={!!actionInProgress}
@@ -523,7 +606,10 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
                     
                     {isSimpleMatch && currentRound === 1 && (
                          <button
-                            onClick={() => onSaveSimpleMatch(round1Matches[0])}
+                            onClick={() => {
+                                onSaveSimpleMatch(round1Matches[0]);
+                                triggerFirework();
+                            }}
                             className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 transform hover:scale-105 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
                             disabled={!!actionInProgress}
                             >
@@ -551,7 +637,10 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
                     {!isSimpleMatch && currentRound === 2 && (
                         <>
                             <button
-                                onClick={() => onSaveFinalResults(round2Pairings)}
+                                onClick={() => {
+                                    onSaveFinalResults(round2Pairings);
+                                    triggerFirework();
+                                }}
                                 className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 transform hover:scale-105 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
                                 disabled={!!actionInProgress}
                             >
