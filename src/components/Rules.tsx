@@ -96,10 +96,18 @@ const Rules: React.FC = () => {
 
       <Section title="Vrijeslag & Penalty">
         <ul className="list-disc ml-6">
-          <li>Vrijeslag bij overtredingen buiten het keepersgebied.</li>
-          <li>Penalty bij overtredingen binnen het keepersgebied.</li>
+          <li>Een vrijeslag wordt gegeven bij een overtreding buiten het keepersgebied.</li>
+          <li>De volgende acties zijn overtredingen:
+            <ul className="list-disc ml-6">
+  <li>Een tegenstander vasthouden.</li>
+  <li>De bal opzettelijk tegenhouden met been, voet, hand of arm. We spreken van opzettelijk als het been of arm bewust dan wel onbewust wordt uitgestoken.</li>
+<li>Foutief gebruik van de stick.</li>
+<li>Iemand raken met de stick op de benen.</li>
         </ul>
-      </Section>
+            <li>Een vrijeslag mag direct op doel geschoten worden. Tegenstanders mogen een muur opstellen, maar deze moet minstens twee sticks afstand hebben tot de bal.</li>
+            <li>Een penalty volgt bij een overtreding binnen het keepersgebied. De bal ligt dan op de lijn van het keepersgebied en er wordt geen muur opgesteld. Alle spelers blijven buiten het keepersgebied tot de penalty genomen is. Het spel gaat direct verder.</li>
+   </ul>
+          </Section>
 
       <Section title="Keeper">
         <ul className="list-disc ml-6">
