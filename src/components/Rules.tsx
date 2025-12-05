@@ -163,7 +163,7 @@ const Rules: React.FC = () => {
           <li>Vaste leden hebben tot vrijdag 18:00 uur voorrang op aanmelden. De niet vaste leden kunnen zich dan inschrijven als reserve. Na vrijdag 18:00 uur worden de reserves onderaan de lijst toegevoegd.</li>
           <li>Een introducee die voor de allereerste keer meedoet mag gewoon opgegeven worden, ook voor vrijdag 18:00. Dit om de drempel laag te houden. LET OP: alleen de eerste keer.</li>
           <li>Aanmelden kan tot zondag 23:59 uur, zo ook afmelden. Hierna kan afmelden alleen met een geldige reden.</li>
-          <li>Het maximaal aantal deelnemers hangt af van het aantal zaaldelen; 1 zaal: 8 tot 10 spelers. 2 zalen: 16 tot 20 spelers. 3 zalen: 24 tot 30 soelers.</li>
+          <li>Het maximaal aantal deelnemers hangt af van het aantal zaaldelen; 1 zaal: 8 tot 10 spelers. 2 zalen: 16 tot 20 spelers. 3 zalen: 24 tot 30 spelers.</li>
         </ul>
       </Section>
 
