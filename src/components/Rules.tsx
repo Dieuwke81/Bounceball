@@ -32,10 +32,10 @@ const Rules: React.FC = () => {
 
       <Section title="Algemene Spelregels">
         <ul className="list-disc ml-6">
-          <li>Een wedstrijd duurt meestal 50 minuten.</li>
-          <li>Bij het signaal van de klok stopt de wedstrijd direct (penalty mag nog).</li>
-          <li>Speelhelft wisselen mag halverwege, indien gewenst.</li>
-          <li>Teamgrootte: meestal 4 tegen 4, soms 5 met wissel.</li>
+          <li>Een wedstrijd duurt meestal 50 minuten, maar deze tijd kan worden aangepast als dat duidelijk wordt afgesproken.</li>
+          <li>Zodra de tijd (op de klok van de sporthal) om is, stopt de wedstrijd direct (geen blessuretijd). Als er nog een penalty genomen moet worden, mag dat nog wel. Dit geldt ook voor een eventuele pauze indien er met 4 in een team gespeeld wordt. Die pauze duurt 5min na 25 min speeltijd.</li>
+          <li>Halverwege de wedstrijd kan er van speelhelft gewisseld worden als één van de teams dat wil. Als beide teams geen behoefte hebben aan het wisselen van helft, hoeft het niet.</li>
+          <li>De grootte van de teams hangt af van de zaal en het aantal spelers. In een zaal van een derde van een zaalvoetbalveld spelen we 4 tegen 4, inclusief keepers, of in teams van 5 met een wissel</li>
         </ul>
       </Section>
 
