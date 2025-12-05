@@ -114,10 +114,10 @@ const Rules: React.FC = () => {
     </li>
 
     <li>
-      Een penalty volgt bij een overtreding binnen het keepersgebied. De bal ligt dan op de lijn van
-      het keepersgebied en er wordt geen muur opgesteld. Alle spelers blijven buiten het
+      Een penalty dient genomen te worden vanaf de lijn van het keepersgebied en er wordt geen muur opgesteld. Alle spelers blijven buiten het
       keepersgebied tot de penalty genomen is. Het spel gaat direct verder.
     </li>
+    <li>Een penalty dient genomen te worden door de gene die hem verdiend heeft.</li>
   </ul>
 </Section>
 
@@ -130,6 +130,7 @@ const Rules: React.FC = () => {
           <li>Bij het uitnemen mag de keeper de bal gooien, schoppen of slaan en is niet verplicht de stick te gebruiken. Buiten het keepersgebied mag de keeper de bal alleen met hoofd of romp verplaatsen.</li>
           <li>Wisselen van keeper mag alleen als deze de bal vast heeft.</li>
           <li>De keeper mag niet met zijn/haar stick gooien. (penalty)</li>
+          <li>De keeper is niet verplicht om met stick te spelen, maar kan dan niks buiten het keepersgebied.</li>
           <li>De keeper mag de bal maar 1 keer met de handen vastpakken. De bal moet eerst een andere speler hebben geraakt voor hij/zij de bal weer met de handen mag pakken.</li>
         </ul>
       </Section>
