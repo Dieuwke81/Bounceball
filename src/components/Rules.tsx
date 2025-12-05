@@ -19,8 +19,10 @@ const Rules: React.FC = () => {
       </h1>
 
       <Section title="Doel van het Spel">
-        <p>Het team dat aan het einde van de wedstrijd de meeste doelpunten heeft, wint.</p>
-      </Section>
+        <ul className="list-disc ml-6">
+        <li>Het team dat aan het einde van de wedstrijd de meeste doelpunten heeft, wint.</li>
+        </ul>
+        </Section>
 
       <Section title="Sportiviteit & Respect">
         <ul className="list-disc ml-6">
@@ -41,9 +43,12 @@ const Rules: React.FC = () => {
 
       <Section title="Wisselen">
         <ul className="list-disc ml-6">
-          <li>Teams met 5 spelers gebruiken wissels.</li>
-          <li>Elke 5 minuten wordt gewisseld wanneer de keeper de bal vast heeft.</li>
-          <li>Wissels houden de score bij en bepalen keeper-regels.</li>
+          <li>Als er 5 spelers in een team zijn, wordt er gespeeld met wissels.</li>
+          <li>De volgorde van wisselen staat op het wedstrijdformulier. De eerste wedstrijd wordt er van boven naar beneden gewisseld en de tweede wedstrijd van beneden naar boven.</li>
+          <li>Er dient elke 5 minuten gewisseld te worden. Zodra het tijd is én de keeper heeft de bal vast wordt er gewisseld.</li>
+          <li>Als de wedstrijd niet in een 5 minuten kader begint pak je de meest logische wisselstand ( bijv. Bij 12min over, wissel je om 15min over. En bij 13min over, wissel je om 20min over)</li>
+          <li>Wissels houden de score bij.</li>
+          <li>Bij een wisselende keeper wisselt de keeper mee zoals op het wedstijdformulier is aangegeven. Bij een vaste keeper wisselt de keeper niet.</li>
         </ul>
       </Section>
 
