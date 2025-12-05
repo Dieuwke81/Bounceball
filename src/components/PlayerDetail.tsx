@@ -308,25 +308,29 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
             </div>
 
             {playerTrophies.length > 0 && (
-                <div className="mb-8 p-4 bg-gradient-to-r from-gray-750 to-gray-800 rounded-xl border border-gray-600/50">
-                    <h3 className="text-lg font-bold text-white-400 mb-3 flex items-center">
-                        <h3 className="w-5 h-5 mr-2" /> Prijzenkast 🏆
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {playerTrophies.map(trophy => (
-                            <div key={trophy.id} className={`flex items-center p-3 rounded-lg border ${getTrophyStyle(trophy.type)}`}>
-                                <div className="mr-3">
-                                    {getTrophyContent(trophy.type)}
-                                </div>
-                                <div>
-                                    <div className="font-bold text-sm">{trophy.type}</div>
-                                    <div className="text-xs opacity-80">{trophy.year}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
+  <div className="mb-8 p-4 bg-gradient-to-r from-gray-700 to-gray-800 rounded-xl border border-gray-600/50">
+    <h3 className="text-lg font-bold text-white mb-3 flex items-center">
+      <TrophyIcon className="w-5 h-5 mr-2 text-yellow-400" />
+      Prijzenkast 🏆
+    </h3>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {playerTrophies.map(trophy => (
+        <div
+          key={trophy.id}
+          className={`flex items-center p-3 rounded-lg border ${getTrophyStyle(trophy.type)}`}
+        >
+          <div className="mr-3">
+            {getTrophyContent(trophy.type)}
+          </div>
+          <div>
+            <div className="font-bold text-sm">{trophy.type}</div>
+            <div className="text-xs opacity-80">{trophy.year}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <StatCard title="Gespeeld" value={stats.gamesPlayed} />
