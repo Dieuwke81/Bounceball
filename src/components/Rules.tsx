@@ -136,9 +136,15 @@ const Rules: React.FC = () => {
 
       <Section title="Gebruik van de Stick">
         <ul className="list-disc ml-6">
-          <li>Stick moet laag blijven bij hinderen.</li>
-          <li>Stick mag alleen de bal raken.</li>
-          <li>Speler zonder stick → lichaamscontact = penalty.</li>
+          <li>Bij het hinderen van een tegenstander mag er met de stick worden gegooid, zolang dit veilig gebeurt. De stick moet richting de grond blijven gericht en mag niet omhoog gaan.</li>
+          <li>Als je je stick gooit gelden de vokgende regels:</li>
+          <ul className="list-disc ml-6">
+          <li>De stick mag alleen de bal raken.</li>
+            <li>Totdat de stick is opgehaald, mag hij geen invloed hebben op het spel.</li>
+            <li>Een speler zonder stick die een bal op het lichaam krijgt (ook per ongeluk) of de tegenstander hindert, veroorzaakt een penalty.</li>
+            </ul>
+            <li>Een tegenstander die in balbezit is mag geslagen worden met het tampongedeelte van de stick. Dit mag uitsluitend tegen de rug en schouders. Dit mag alleen dienen voor het hinderen van de tegenstander en nooit voor het pijnigen van deze speler. Zodra de speler de bal niet meer in bezit heeft mag deze ook niet meer geraakt worden met de stick.</li>
+        <li>Je mag met je stick de stick van je tegenstander weg tikken (niet slaan) zodat deze de bal niet meer kan spelen.</li>
         </ul>
       </Section>
 
