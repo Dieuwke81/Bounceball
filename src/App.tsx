@@ -1236,63 +1236,72 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* NAVIGATIEBALK */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-8 shadow-xl border border-gray-700/50">
-          <div className="flex flex-wrap justify-center gap-4 md:gap-8">
-            <NavItem
-              view="main"
-              label="Wedstrijd"
-              icon={<FutbolIcon className="w-6 h-6" />}
-              colorClass="bg-gradient-to-br from-red-200 to-red-800"
-            />
-            <NavItem
-              view="rules"
-              label="Regels"
-              icon={<BookOpenIcon className="w-6 h-6" />}
-              colorClass="bg-gradient-to-br from-sky-200 to-sky-800"
-            />
-            <NavItem
-              view="stats"
-              label="Statistieken"
-              icon={<UsersIcon className="w-6 h-6" />}
-              isProtected
-              colorClass="bg-gradient-to-br from-orange-200 to-orange-800"
-            />
-            <NavItem
-              view="history"
-              label="Geschiedenis"
-              icon={<ClockIcon className="w-6 h-6" />}
-              isProtected
-              colorClass="bg-gradient-to-br from-lime-200 to-lime-800"
-            />
-            <NavItem
-              view="trophyRoom"
-              label="Prijzen"
-              icon={<TrophyIcon className="w-6 h-6" />}
-              colorClass="bg-gradient-to-br from-teal-200 to-teal-800"
-            />
-            <NavItem
-              view="manualEntry"
-              label="Invoer"
-              icon={<EditIcon className="w-6 h-6" />}
-              colorClass="bg-gradient-to-br from-blue-200 to-blue-800"
-            />
-            <NavItem
-              view="playerManagement"
-              label="Spelers"
-              icon={<EditIcon className="w-6 h-6" />}
-              isProtected
-              colorClass="bg-gradient-to-br from-violet-200 to-violet-800"
-            />
-            <NavItem
-              view="competitionManagement"
-              label="Beheer"
-              icon={<ArchiveIcon className="w-6 h-6" />}
-              isProtected
-              colorClass="bg-gradient-to-br from-pink-200 to-pink-800"
-            />
-          </div>
-        </div>
+        {/* --- NAVIGATIE: 2 x 4 GRID --- */}
+<div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-8 shadow-xl border border-gray-700/50">
+  <div className="grid grid-cols-4 gap-x-6 gap-y-6 justify-items-center">
+
+    <NavItem
+      view="main"
+      label="Wedstrijd"
+      icon={<FutbolIcon className="w-6 h-6" />}
+      colorClass="bg-gradient-to-br from-red-200 to-red-800"
+    />
+
+    <NavItem
+      view="rules"
+      label="Regels"
+      icon={<BookOpenIcon className="w-6 h-6" />}
+      colorClass="bg-gradient-to-br from-sky-200 to-sky-800"
+    />
+
+    <NavItem
+      view="stats"
+      label="Statistieken"
+      icon={<UsersIcon className="w-6 h-6" />}
+      isProtected
+      colorClass="bg-gradient-to-br from-orange-200 to-orange-800"
+    />
+
+    <NavItem
+      view="history"
+      label="Geschiedenis"
+      icon={<ClockIcon className="w-6 h-6" />}
+      isProtected
+      colorClass="bg-gradient-to-br from-lime-200 to-lime-800"
+    />
+
+    <NavItem
+      view="trophyRoom"
+      label="Prijzen"
+      icon={<TrophyIcon className="w-6 h-6" />}
+      colorClass="bg-gradient-to-br from-teal-200 to-teal-800"
+    />
+
+    <NavItem
+      view="manualEntry"
+      label="Invoer"
+      icon={<EditIcon className="w-6 h-6" />}
+      colorClass="bg-gradient-to-br from-blue-200 to-blue-800"
+    />
+
+    <NavItem
+      view="playerManagement"
+      label="Spelers"
+      icon={<EditIcon className="w-6 h-6" />}
+      isProtected
+      colorClass="bg-gradient-to-br from-violet-200 to-violet-800"
+    />
+
+    <NavItem
+      view="competitionManagement"
+      label="Beheer"
+      icon={<ArchiveIcon className="w-6 h-6" />}
+      isProtected
+      colorClass="bg-gradient-to-br from-pink-200 to-pink-800"
+    />
+
+  </div>
+</div>
 
         <main>{renderContent()}</main>
       </div>
