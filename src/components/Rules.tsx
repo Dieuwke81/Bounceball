@@ -137,7 +137,7 @@ const Rules: React.FC = () => {
       <Section title="Gebruik van de Stick">
         <ul className="list-disc ml-6">
           <li>Bij het hinderen van een tegenstander mag er met de stick worden gegooid, zolang dit veilig gebeurt. De stick moet richting de grond blijven gericht en mag niet omhoog gaan.</li>
-          <li>Als je je stick gooit gelden de vokgende regels:</li>
+          <li>Als je je stick gooit gelden de volgende regels:</li>
           <ul className="list-disc ml-6">
           <li>De stick mag alleen de bal raken.</li>
             <li>Totdat de stick is opgehaald, mag hij geen invloed hebben op het spel.</li>
@@ -149,17 +149,21 @@ const Rules: React.FC = () => {
       </Section>
 
       <Section title="Klassement">
-        <p>
-          3 punten voor winst, 1 voor gelijkspel, 0 bij verlies.
-          Klassement op basis van gemiddelde punten per wedstrijd.
-        </p>
+        <ul className="list-disc ml-6">
+          <li>Elk teamlid krijgt 3 punten voor een gewonnen wedstrijd, 1 punt voor een gelijkspel en 0 punten bij verlies.</li>
+      <li>Na de eerste wedstrijd spelen de winnende teams tegen elkaar, net als de verliezende teams.</li>
+          <li>Het klassement wordt berekend op basis van het gemiddeld aantal punten per wedstrijd. Spelers moeten minimaal 50% van de wedstrijden hebben gespeeld om mee te tellen voor het klassement.</li>
+          <li>Bij gelijke stand geeft het gemiddelde aantal doelpunten de doorslag.</li>
+          <il>Ook wordt er bijgehouden wie er gemiddeld de meeeste doelpunten heeft gescoord en wie er gemiddeld de minste doelpunten heeft tegengekregen.</il>
+        </ul>
       </Section>
 
       <Section title="Aanmelden & Afmelden">
         <ul className="list-disc ml-6">
-          <li>Vaste leden hebben tot vrijdag 18:00 voorrang.</li>
-          <li>Introducee mag 1e keer altijd meedoen.</li>
-          <li>Aan-/afmelden tot zondag 23:59.</li>
+          <li>Vaste leden hebben tot vrijdag 18:00 uur voorrang op aanmelden. De niet vaste leden kunnen zich dan inschrijven als reserve. Na vrijdag 18:00 uur worden de reserves onderaan de lijst toegevoegd.</li>
+          <li>Een introducee die voor de allereerste keer meedoet mag gewoon opgegeven worden, ook voor vrijdag 18:00. Dit om de drempel laag te houden. LET OP: alleen de eerste keer.</li>
+          <li>Aanmelden kan tot zondag 23:59 uur, zo ook afmelden. Hierna kan afmelden alleen met een geldige reden.</li>
+          <li>Het maximaal aantal deelnemers hangt af van het aantal zaaldelen; 1 zaal: 8 tot 10 spelers. 2 zalen: 16 tot 20 spelers. 3 zalen: 24 tot 30 soelers.</li>
         </ul>
       </Section>
 
