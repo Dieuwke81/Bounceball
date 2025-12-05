@@ -65,8 +65,8 @@ const Rules: React.FC = () => {
 
       <Section title="Materiaal">
         <ul className="list-disc ml-6">
-          <li>Een plastic bal, kleiner dan handbal.</li>
-          <li>Tamponsticks van gelijke lengte per team.</li>
+          <li>We spelen Bounceball met een plastic bal, kleiner dan een handbal en groter dan een honkbal.</li>
+          <li>Elke speler gebruikt een tamponstick. Alle sticks moeten dezelfde grootte hebben en niet aangepast zijn. Elk team gebruikt dezelfde kleur sticks.</li>
         </ul>
       </Section>
 
