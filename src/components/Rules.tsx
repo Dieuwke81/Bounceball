@@ -117,7 +117,7 @@ const Rules: React.FC = () => {
       Een penalty dient genomen te worden vanaf de lijn van het keepersgebied en er wordt geen muur opgesteld. Alle spelers blijven buiten het
       keepersgebied tot de penalty genomen is. Het spel gaat direct verder.
     </li>
-    <li>Een penalty dient genomen te worden door de gene die hem verdiend heeft.</li>
+    <li>Een penalty dient genomen te worden door degene die hem verdiend heeft.</li>
   </ul>
 </Section>
 
@@ -155,7 +155,7 @@ const Rules: React.FC = () => {
       <li>Na de eerste wedstrijd spelen de winnende teams tegen elkaar, net als de verliezende teams.</li>
           <li>Het klassement wordt berekend op basis van het gemiddeld aantal punten per wedstrijd. Spelers moeten minimaal 50% van de wedstrijden hebben gespeeld om mee te tellen voor het klassement.</li>
           <li>Bij gelijke stand geeft het gemiddelde aantal doelpunten de doorslag.</li>
-          <il>Ook wordt er bijgehouden wie er gemiddeld de meeeste doelpunten heeft gescoord en wie er gemiddeld de minste doelpunten heeft tegengekregen.</il>
+          <li>Ook wordt er bijgehouden wie er gemiddeld de meeste doelpunten heeft gescoord en wie er gemiddeld de minste doelpunten heeft tegengekregen.</il>
         </ul>
       </Section>
 
