@@ -372,7 +372,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
       {/* --- DE SCHAKELAAR --- */}
       <div className="flex justify-center items-center mb-8">
-          <label className="flex items-center cursor-pointer p-3 bg-gray-800 rounded-lg shadow-md border border-gray-700 hover:bg-gray-750 transition-colors">
+          <label className="flex items-center cursor-pointer p-3 bg-gray-800 rounded-lg shadow-md border border-gray-700 hover:bg-gray-700 transition-colors">
               <div className="relative">
                   <input 
                     type="checkbox" 
