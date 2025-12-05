@@ -872,7 +872,7 @@ useEffect(() => {
             <div className="flex flex-wrap justify-center gap-4 md:gap-8">
                 <NavItem view="main" label="Wedstrijd" icon={<FutbolIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-red-200 to-red-800" />
                 <NavItem view="stats" label="Statistieken" icon={<UsersIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-orange-200 to-orange-800" />
-                <NavItem view="history" label="Geschiedenis" icon={<ClockIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-lime-200 to-lima-800" />
+                <NavItem view="history" label="Geschiedenis" icon={<ClockIcon className="w-6 h-6" />} isProtected colorClass="bg-gradient-to-br from-lime-200 to-lime-800" />
                 <NavItem view="trophyRoom" label="Prijzen" icon={<TrophyIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-teal-200 to-teal-800" />
                 
                 {/* De beheer knoppen iets kleiner of subtieler gescheiden? Voor nu in dezelfde flow. */}
