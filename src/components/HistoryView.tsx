@@ -237,13 +237,13 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, players, onDeleteSes
             <div className="flex-grow grid grid-cols-2 gap-8">
                 <div className="overflow-hidden">
                     <h4 className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${leftColorClass}`}>
-                        Team {leftTeamIdx + 1} <span className="text-xs opacity-70 ml-1">(Blauw)</span>
+                        Team {leftTeamIdx + 1}
                     </h4>
                     <PlayerListWithGoals players={team1Players} goalsMap={team1GoalsMap} scoreColorClass={leftColorClass} />
                 </div>
                 <div className="overflow-hidden">
                     <h4 className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${rightColorClass}`}>
-                        Team {rightTeamIdx + 1} <span className="text-xs opacity-70 ml-1">(Geel)</span>
+                        Team {rightTeamIdx + 1}
                     </h4>
                     <PlayerListWithGoals players={team2Players} goalsMap={team2GoalsMap} scoreColorClass={rightColorClass} />
                 </div>
