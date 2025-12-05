@@ -3,7 +3,7 @@ import BookOpenIcon from "./icons/BookOpenIcon";
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-5 mb-6 shadow-md">
-    <h2 className="text-xl font-bold text-cyan-300 mb-3 flex items-center gap-2">
+    <h2 className="text-xl font-bold text-green-500 mb-3 flex items-center gap-2">
       <BookOpenIcon className="w-5 h-5" />
       {title}
     </h2>
