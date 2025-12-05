@@ -171,6 +171,7 @@ const Rules: React.FC = () => {
               <li>3 zalen: 24 tot 30 spelers.</li>
         </ul>
           </li>
+        </ul>
       </Section>
 
       <p className="text-center text-gray-500 mt-10 text-xs">
