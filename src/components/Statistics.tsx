@@ -5,7 +5,6 @@ import TrophyIcon from './icons/TrophyIcon';
 import ShieldIcon from './icons/ShieldIcon';
 import UsersIcon from './icons/UsersIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
-import FutbolIcon from './icons/FutbolIcon';
 
 interface StatisticsProps {
   history: GameSession[];
