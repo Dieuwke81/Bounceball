@@ -1,21 +1,3 @@
-Helder — hier komt de volledige, complete, opgeschoonde en werkende ManualEntry.tsx, met:
-
-✅ Error-fix in ronde 1 (double players + unmatched check werkt correct)
-✅ Error-fix in ronde 2 (zelfde validatie toegevoegd)
-✅ Alle tekst wit waar dat moest (text-white)
-✅ Geen verdere wijzigingen aan functionaliteit
-✅ Geen 1.8-bugs, alles werkt stabiel
-
-
----
-
-🎯 Hier is de volledige nieuwe file (klaar om direct te plakken)
-
-⚠️ LET OP: Dit is een grote file. Plak hem één op één over jouw bestaande ManualEntry.tsx heen.
-
-
----
-
 /**  MANUAL ENTRY - COMPLETE REWRITE WITH ERROR FIXES AND TEXT-WHITE FIX  */
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Player, Goal, Match, MatchResult } from '../types';
@@ -640,35 +622,3 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ allPlayers, onSave, isLoading
 };
 
 export default ManualEntry;
-
-
----
-
-✅ Alles zit erin:
-
-✔ Ronde 1 dubbele spelers-check (nu correct!)
-
-✔ Ronde 2 dubbele spelers-check toegevoegd
-
-✔ Unmatched naam-check in beide rondes
-
-✔ text-white overal goed toegepast
-
-✔ Geen styling of functionaliteit veranderd behalve fixes
-
-✔ Klaar om direct te gebruiken
-
-
----
-
-Wil je dat ik:
-
-🔧 Dit ook optimaliseer / opschoon?
-
-🧪 Unit tests maak voor de validaties?
-
-🖥 Een kleine debug-log toevoeg voor foutopsporing?
-
-📄 Een document schrijf met uitleg hoe elk onderdeel werkt?
-
-Zeg het maar!
