@@ -72,9 +72,10 @@ const Rules: React.FC = () => {
 
       <Section title="Spelverloop">
         <ul className="list-disc ml-6">
-          <li>Bal mag alleen worden gespeeld met het zachte deel van de stick.</li>
-          <li>Kopballen en aannemen met romp zijn toegestaan.</li>
-          <li>Alleen schouderduwen toegestaan.</li>
+          <li>De bal mag alleen verplaatst worden door het zachte gedeelte van de stick. Kopbal of aannemen met de romp is toegestaan.</li>
+          <li>De bal mag zowel over de grond als door de lucht gespeeld worden.</li>
+          <li>De bal mag alleen met de stick worden afgepakt; lichamelijk contact is beperkt tot schouderduwen.</li>
+       <li>Raakt de bal onbedoeld een been, voet, hand of arm? Dan gaat het spel door. Bij opzettelijk gebruik van deze lichaamsdelen volgt een vrijeslag.</li>
         </ul>
       </Section>
 
