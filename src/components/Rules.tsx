@@ -54,10 +54,12 @@ const Rules: React.FC = () => {
 
       <Section title="Speelveld">
         <ul className="list-disc ml-6">
-          <li>We spelen op 1/3 zaalvoetbalveld.</li>
-          <li>Geen uitballen aan de zijkant, spel gaat door.</li>
-          <li>Keeperbal wanneer bal tegen/achter doel komt.</li>
-          <li>Muren moeten worden vermeden i.v.m. veiligheid.</li>
+          <li>We spelen meestal in een zaal van een derde van een zaalvoetbalveld.</li>
+          <li>Er zijn geen lijnen aan de zijkanten of achterkant, dus de bal blijft altijd in het spel. De enige uitzondering is als de bal op of achter het doel komt (dan is het keeperbal).</li>
+          <li>Komt de bal op de tribune en stuitert hij, zonder bemoeienis van toeschouwers, terug het veld in? Dan gaat het spel gewoon door.</li>
+          <li>Het keepersgebied wordt aangegeven door een halve cirkel rond het doel. Het doel zelf staat met de palen op de achterlijn, die dient als doellijn. Mocht het zijn dat de doelpalen over de doellijn staan, dan is de (denkbeeldige) doellijn tussen de palen.</li>
+      <li>Spelers moeten rekening houden met de muren; contact moet vermeden worden om blessures te voorkomen.</ul>
+       <li>In de zaal mag 1 bank staan ten behoeve van de wisselspelers, verder dient de zaal leeg te zijn van banken of andere attributen. Ook geen grote sporttassen op of bij de bank. Dit i.v.m. de veiligheid.</li>
         </ul>
       </Section>
 
