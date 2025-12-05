@@ -81,15 +81,16 @@ const Rules: React.FC = () => {
 
       <Section title="Verdediging">
         <ul className="list-disc ml-6">
-          <li>Verdedigen mag met “sfinx”-houding.</li>
-          <li>Duisen of duiken is penalty.</li>
+          <li>Een verdediger mag in de ‘sfinx’-houding een schot blokkeren door op één knie te gaan zitten en zijn stick voor zich te houden.</li>
+          <li>Andere verdedigende bewegingen, zoals voor de bal duiken, zijn niet toegestaan en worden bestraft met een penalty.</li>
         </ul>
       </Section>
 
       <Section title="Doelpunten">
         <ul className="list-disc ml-6">
-          <li>Doelpunt telt als de bal volledig over de doellijn is.</li>
-          <li>Eigen doelpunt telt altijd.</li>
+          <li>Een doelpunt is geldig als de bal volledig en op correcte wijze over de doellijn gaat, waarbij de bal als laatste met het tampongedeelte van de stick is geraakt.</li>
+          <li>Een eigen doelpunt telt altijd, ongeacht hoe de bal wordt geraakt.</li>
+          <li>Na een doelpunt brengt de keeper de bal terug in het spel door deze eerst met de hand vast te pakken.</li>
         </ul>
       </Section>
 
