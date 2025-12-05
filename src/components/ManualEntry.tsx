@@ -266,6 +266,16 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ allPlayers, onSave, isLoading
 
   // 2. Save on change
   useEffect(() => {
+
+    const isEmptyState = 
+        round === 0 && 
+        teamTextR1.every(t => t === '') && 
+        teamTextR2.every(t => t === '') &&
+        numMatches === 1;
+
+    if (isEmptyState) {
+        return; 
+    }
     // Alleen opslaan als we niet in de 'init' state zitten om overschrijven bij laden te voorkomen
     // Maar hier is het veilig omdat de load effect 1x draait.
     const stateToSave = {
