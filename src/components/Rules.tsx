@@ -18,174 +18,152 @@ const Rules: React.FC = () => {
         Bounceball Spelregels
       </h1>
 
-      {/* Doel van het spel */}
       <Section title="Doel van het Spel">
         <ul className="list-disc ml-6">
-          <li>Het team dat aan het einde van de wedstrijd de meeste doelpunten heeft, wint.</li>
+        <li>Het team dat aan het einde van de wedstrijd de meeste doelpunten heeft, wint.</li>
         </ul>
-      </Section>
+        </Section>
 
-      {/* Sportiviteit */}
       <Section title="Sportiviteit & Respect">
         <ul className="list-disc ml-6">
-          <li>We spelen voor ons plezier en vinden sportiviteit en respect voor elkaar heel belangrijk. Onsportief gedrag en blessures moeten zoveel mogelijk worden voorkomen. Iedereen die zich onsportief of agressief gedraagt, wordt hierop aangesproken.</li>
-          <li>Het is de bedoeling dat iedereen in een veilige en prettige sfeer kan spelen: voor, tijdens en na de wedstrijd.</li>
-          <li>Wie herhaaldelijk ongewenst gedrag vertoont, kan worden geschorst of uit de vereniging worden gezet.</li>
-        </ul>
-      </Section>
+        <li>We spelen voor ons plezier en vinden sportiviteit en respect voor elkaar heel belangrijk. Onsportief gedrag en blessures moeten zoveel mogelijk worden voorkomen. Iedereen die zich onsportief of agressief gedraagt, wordt hierop aangesproken.</li>
+<li>Het is de bedoeling dat iedereen in een veilige en prettige sfeer kan spelen, voor, tijdens, en na de wedstrijd.</li>
+<li>Wie herhaaldelijk ongewenst gedrag vertoont, kan worden geschorst of zelfs uit de vereniging worden gezet.</li>
+    </ul>
+</Section>
 
-      {/* Algemene regels */}
       <Section title="Algemene Spelregels">
         <ul className="list-disc ml-6">
           <li>Een wedstrijd duurt meestal 50 minuten, maar deze tijd kan worden aangepast als dat duidelijk wordt afgesproken.</li>
-          <li>Zodra de tijd (op de klok van de sporthal) om is, stopt de wedstrijd direct (geen blessuretijd). Penalties die nog genomen moeten worden, gaan wel door.</li>
-          <li>Halverwege de wedstrijd kan er van speelhelft worden gewisseld als één van de teams dat wil.</li>
-          <li>In een zaal van een derde van een zaalvoetbalveld spelen we 4 tegen 4 (incl. keeper) of 5 met wissels.</li>
+          <li>Zodra de tijd (op de klok van de sporthal) om is, stopt de wedstrijd direct (geen blessuretijd). Als er nog een penalty genomen moet worden, mag dat nog wel. Dit geldt ook voor een eventuele pauze indien er met 4 in een team gespeeld wordt. Die pauze duurt 5min na 25 min speeltijd.</li>
+          <li>Halverwege de wedstrijd kan er van speelhelft gewisseld worden als één van de teams dat wil. Als beide teams geen behoefte hebben aan het wisselen van helft, hoeft het niet.</li>
+          <li>De grootte van de teams hangt af van de zaal en het aantal spelers. In een zaal van een derde van een zaalvoetbalveld spelen we 4 tegen 4, inclusief keepers, of in teams van 5 met een wissel</li>
         </ul>
       </Section>
 
-      {/* Wissels */}
       <Section title="Wisselen">
         <ul className="list-disc ml-6">
-          <li>Bij 5 spelers per team wordt er gespeeld met wissels.</li>
-          <li>De eerste wedstrijd wordt er van boven naar beneden gewisseld, de tweede van beneden naar boven.</li>
-          <li>Er wordt elke 5 minuten gewisseld zodra de keeper de bal vastheeft.</li>
-          <li>Start de wedstrijd niet op een 5-minutenpunt, dan neem je de eerstvolgende logische wisseltijd.</li>
+          <li>Als er 5 spelers in een team zijn, wordt er gespeeld met wissels.</li>
+          <li>De volgorde van wisselen staat op het wedstrijdformulier. De eerste wedstrijd wordt er van boven naar beneden gewisseld en de tweede wedstrijd van beneden naar boven.</li>
+          <li>Er dient elke 5 minuten gewisseld te worden. Zodra het tijd is én de keeper heeft de bal vast wordt er gewisseld.</li>
+          <li>Als de wedstrijd niet in een 5 minuten kader begint pak je de meest logische wisselstand ( bijv. Bij 12min over, wissel je om 15min over. En bij 13min over, wissel je om 20min over)</li>
           <li>Wissels houden de score bij.</li>
-          <li>Bij een wisselende keeper wisselt de keeper mee; bij een vaste keeper niet.</li>
+          <li>Bij een wisselende keeper wisselt de keeper mee zoals op het wedstrijdformulier is aangegeven. Bij een vaste keeper wisselt de keeper niet.</li>
         </ul>
       </Section>
 
-      {/* Speelveld */}
       <Section title="Speelveld">
         <ul className="list-disc ml-6">
-          <li>De wedstrijd vindt meestal plaats in één derde zaalvoetbalveld.</li>
-          <li>Er zijn geen zijlijnen; de bal blijft altijd in het spel behalve wanneer deze op of achter het doel komt.</li>
-          <li>Stuitert de bal via de tribune terug het veld in zonder toeschouwercontact? Dan gaat het spel door.</li>
-          <li>Het keepersgebied is een halve cirkel rond het doel. De denkbeeldige lijn tussen de palen is de doellijn.</li>
-          <li>Contact met muren moet worden vermeden.</li>
-          <li>Er mag één bank voor wissels staan; overige objecten moeten uit de zaal voor veiligheid.</li>
+          <li>We spelen meestal in een zaal van een derde van een zaalvoetbalveld.</li>
+          <li>Er zijn geen lijnen aan de zijkanten of achterkant, dus de bal blijft altijd in het spel. De enige uitzondering is als de bal op of achter het doel komt (dan is het keeperbal).</li>
+          <li>Komt de bal op de tribune en stuitert hij, zonder bemoeienis van toeschouwers, terug het veld in? Dan gaat het spel gewoon door.</li>
+          <li>Het keepersgebied wordt aangegeven door een halve cirkel rond het doel. Het doel zelf staat met de palen op de achterlijn, die dient als doellijn. Mocht het zijn dat de doelpalen over de doellijn staan, dan is de (denkbeeldige) doellijn tussen de palen.</li>
+      <li>Spelers moeten rekening houden met de muren; contact moet vermeden worden om blessures te voorkomen.</li>
+       <li>In de zaal mag 1 bank staan ten behoeve van de wisselspelers, verder dient de zaal leeg te zijn van banken of andere attributen. Ook geen grote sporttassen op of bij de bank. Dit i.v.m. de veiligheid.</li>
         </ul>
       </Section>
 
-      {/* Materiaal */}
       <Section title="Materiaal">
         <ul className="list-disc ml-6">
-          <li>We spelen met een plastic bal, kleiner dan een handbal.</li>
-          <li>Iedere speler gebruikt een tamponstick. Alle sticks binnen een team hebben dezelfde lengte en kleur.</li>
+          <li>We spelen Bounceball met een plastic bal, kleiner dan een handbal en groter dan een honkbal.</li>
+          <li>Elke speler gebruikt een tamponstick. Alle sticks moeten dezelfde grootte hebben en niet aangepast zijn. Elk team gebruikt dezelfde kleur sticks.</li>
         </ul>
       </Section>
 
-      {/* Spelverloop */}
       <Section title="Spelverloop">
         <ul className="list-disc ml-6">
-          <li>De bal mag alleen gespeeld worden met het zachte gedeelte van de stick. Kopballen en aannemen met de romp zijn toegestaan.</li>
-          <li>De bal mag over de grond en door de lucht gespeeld worden.</li>
-          <li>Lichamelijk contact is beperkt tot schouderduwen.</li>
-          <li>Raakt de bal een been, voet, hand of arm per ongeluk? Dan gaat het spel door. Opzettelijk gebruik = vrijeslag.</li>
+          <li>De bal mag alleen verplaatst worden door het zachte gedeelte van de stick. Kopbal of aannemen met de romp is toegestaan.</li>
+          <li>De bal mag zowel over de grond als door de lucht gespeeld worden.</li>
+          <li>De bal mag alleen met de stick worden afgepakt; lichamelijk contact is beperkt tot schouderduwen.</li>
+       <li>Raakt de bal onbedoeld een been, voet, hand of arm? Dan gaat het spel door. Bij opzettelijk gebruik van deze lichaamsdelen volgt een vrijeslag.</li>
         </ul>
       </Section>
 
-      {/* Verdediging */}
       <Section title="Verdediging">
         <ul className="list-disc ml-6">
-          <li>Een verdediger mag in ‘sfinx’-houding een schot blokkeren.</li>
-          <li>Duiken of voor de bal springen is niet toegestaan en leidt tot een penalty.</li>
+          <li>Een verdediger mag in de ‘sfinx’-houding een schot blokkeren door op één knie te gaan zitten en zijn stick voor zich te houden.</li>
+          <li>Andere verdedigende bewegingen, zoals voor de bal duiken, zijn niet toegestaan en worden bestraft met een penalty.</li>
         </ul>
       </Section>
 
-      {/* Doelpunten */}
       <Section title="Doelpunten">
         <ul className="list-disc ml-6">
-          <li>Een doelpunt telt wanneer de bal volledig en correct over de doellijn gaat en als laatste met het tampongedeelte is geraakt.</li>
-          <li>Eigen doelpunten tellen altijd.</li>
-          <li>Na een doelpunt brengt de keeper de bal in door hem eerst met de hand vast te pakken.</li>
+          <li>Een doelpunt is geldig als de bal volledig en op correcte wijze over de doellijn gaat, waarbij de bal als laatste met het tampongedeelte van de stick is geraakt.</li>
+          <li>Een eigen doelpunt telt altijd, ongeacht hoe de bal wordt geraakt.</li>
+          <li>Na een doelpunt brengt de keeper de bal terug in het spel door deze eerst met de hand vast te pakken.</li>
         </ul>
       </Section>
 
-      {/* Vrijeslag & Penalty */}
       <Section title="Vrijeslag & Penalty">
-        <ul className="list-disc ml-6">
-          <li>Een vrijeslag wordt gegeven bij overtredingen buiten het keepersgebied.</li>
+  <ul className="list-disc ml-6">
+    <li>Een vrijeslag wordt gegeven bij een overtreding buiten het keepersgebied.</li>
 
-          <li>
-            De volgende acties zijn overtredingen:
-            <ul className="list-disc ml-6 mt-1">
-              <li>Een tegenstander vasthouden.</li>
-              <li>De bal opzettelijk tegenhouden met been, voet, hand of arm.</li>
-              <li>Foutief gebruik van de stick.</li>
-              <li>Iemand raken met de stick op de benen.</li>
-            </ul>
-          </li>
+    <li>
+      De volgende acties zijn overtredingen:
+      <ul className="list-disc ml-6">
+        <li>Een tegenstander vasthouden.</li>
+        <li>De bal opzettelijk tegenhouden met been, voet, hand of arm.</li>
+        <li>Foutief gebruik van de stick.</li>
+        <li>Iemand raken met de stick op de benen.</li>
+      </ul>
 
-          <li>Een vrijeslag mag direct op doel worden geschoten. De muur staat op minimaal twee sticks afstand.</li>
+    <li>
+      Een vrijeslag mag direct op doel geschoten worden. Tegenstanders mogen een muur opstellen,
+      maar deze moet minstens twee sticks afstand hebben tot de bal.
+    </li>
 
-          <li>
-            Een penalty volgt bij een overtreding in het keepersgebied. De bal staat op de rand van het gebied; er is geen muur.
-            Alle spelers blijven buiten het gebied tot de penalty is genomen.
-          </li>
-          <li>Een penalty wordt genomen door degene die hem verdiend heeft.</li>
-        </ul>
-      </Section>
+    <li>
+      Een penalty dient genomen te worden vanaf de lijn van het keepersgebied en er wordt geen muur opgesteld. Alle spelers blijven buiten het
+      keepersgebied tot de penalty genomen is. Het spel gaat direct verder.
+    </li>
+    <li>Een penalty dient genomen te worden door degene die hem verdiend heeft.</li>
+  </ul>
+</Section>
 
-      {/* Keeper */}
       <Section title="Keeper">
         <ul className="list-disc ml-6">
-          <li>Het team speelt met een vaste of wisselende keeper. Dit wordt vooraf bepaald.</li>
-          <li>De keeper mag binnen het gebied met het hele lichaam verdedigen. De bal moet in het gebied liggen om hem met de hand vast te pakken.</li>
-          <li>Hand- of voetcontact buiten het gebied = penalty.</li>
+          <li>Het team speelt met een vaste of wisselende keeper. Dit dient vooraf aangegeven te worden.</li>
+          <li>De keeper mag de bal binnen het keepersgebied met zijn/haar hele lichaam tegenhouden, inclusief handen en voeten. De bal moet zich binnen de cirkel bevinden voordat de keeper deze met de hand mag pakken. De keeper hoeft daarvoor zelf niet in de cirkel te zijn.</li>
+          <li>Komt de keeper uit zijn/haar gebied en raakt hij/zij de bal met handen of voeten, dan volgt een penalty.</li>
           <li>De keeper mag de bal maximaal 6 seconden vasthouden.</li>
-          <li>Bij het uitnemen mag de keeper gooien, schoppen of slaan.</li>
-          <li>Keeper wisselen mag alleen wanneer deze de bal vastheeft.</li>
-          <li>De keeper mag niet met de stick gooien.</li>
-          <li>De keeper mag de bal maar één keer met de handen vastpakken totdat een andere speler hem heeft geraakt.</li>
+          <li>Bij het uitnemen mag de keeper de bal gooien, schoppen of slaan en is niet verplicht de stick te gebruiken. Buiten het keepersgebied mag de keeper de bal alleen met hoofd of romp verplaatsen.</li>
+          <li>Wisselen van keeper mag alleen als deze de bal vast heeft.</li>
+          <li>De keeper mag niet met zijn/haar stick gooien. (penalty)</li>
+          
+          <li>De keeper mag de bal maar 1 keer met de handen vastpakken. De bal moet eerst een andere speler hebben geraakt voor hij/zij de bal weer met de handen mag pakken.</li>
         </ul>
       </Section>
 
-      {/* Gebruik van de stick */}
       <Section title="Gebruik van de Stick">
         <ul className="list-disc ml-6">
-          <li>Je mag je stick gooien om te hinderen, zolang dit veilig gebeurt en richting de grond.</li>
-
-          <li>
-            Als je je stick gooit, gelden de volgende regels:
-            <ul className="list-disc ml-6 mt-1">
-              <li>De stick mag alleen de bal raken.</li>
-              <li>Totdat de stick is opgepakt, mag hij geen invloed hebben op het spel.</li>
-              <li>Een speler zonder stick die de bal op het lichaam krijgt of hindert, veroorzaakt een penalty.</li>
+          <li>Bij het hinderen van een tegenstander mag er met de stick worden gegooid, zolang dit veilig gebeurt. De stick moet richting de grond blijven gericht en mag niet omhoog gaan.</li>
+          <li>Als je je stick gooit gelden de volgende regels:</li>
+          <ul className="list-disc ml-6">
+          <li>De stick mag alleen de bal raken.</li>
+            <li>Totdat de stick is opgehaald, mag hij geen invloed hebben op het spel.</li>
+            <li>Een speler zonder stick die een bal op het lichaam krijgt (ook per ongeluk) of de tegenstander hindert, veroorzaakt een penalty.</li>
             </ul>
-          </li>
-
-          <li>Een tegenstander in balbezit mag met het tampongedeelte op rug en schouders worden gehinderd, maar nooit pijn gedaan.</li>
-          <li>Een tegenstander die de bal niet meer heeft, mag niet meer worden geraakt met de stick.</li>
-          <li>Je mag de stick van een tegenstander weg tikken (niet slaan) om hem te hinderen.</li>
+            <li>Een tegenstander die in balbezit is mag geslagen worden met het tampongedeelte van de stick. Dit mag uitsluitend tegen de rug en schouders. Dit mag alleen dienen voor het hinderen van de tegenstander en nooit voor het pijnigen van deze speler. Zodra de speler de bal niet meer in bezit heeft mag deze ook niet meer geraakt worden met de stick.</li>
+        <li>Je mag met je stick de stick van je tegenstander weg tikken (niet slaan) zodat deze de bal niet meer kan spelen.</li>
         </ul>
       </Section>
 
-      {/* Klassement */}
       <Section title="Klassement">
         <ul className="list-disc ml-6">
-          <li>3 punten voor winst, 1 voor gelijkspel, 0 voor verlies.</li>
-          <li>Na de eerste wedstrijd spelen winnaars tegen winnaars en verliezers tegen verliezers.</li>
-          <li>Het klassement wordt berekend op basis van gemiddelde punten per wedstrijd. Minimaal 50% deelname vereist.</li>
+          <li>Elk teamlid krijgt 3 punten voor een gewonnen wedstrijd, 1 punt voor een gelijkspel en 0 punten bij verlies.</li>
+      <li>Na de eerste wedstrijd spelen de winnende teams tegen elkaar, net als de verliezende teams.</li>
+          <li>Het klassement wordt berekend op basis van het gemiddeld aantal punten per wedstrijd. Spelers moeten minimaal 50% van de wedstrijden hebben gespeeld om mee te tellen voor het klassement.</li>
           <li>Bij gelijke stand geeft het gemiddelde aantal doelpunten de doorslag.</li>
-          <li>Er wordt bijgehouden wie gemiddeld de meeste doelpunten scoort en wie gemiddeld de minste doelpunten tegen krijgt.</li>
+          <li>Ook wordt er bijgehouden wie er gemiddeld de meeste doelpunten heeft gescoord en wie er gemiddeld de minste doelpunten heeft tegengekregen.</li>
         </ul>
       </Section>
 
-      {/* Aanmelden */}
       <Section title="Aanmelden & Afmelden">
         <ul className="list-disc ml-6">
-          <li>Vaste leden hebben tot vrijdag 18:00 uur voorrang op aanmelden.</li>
-          <li>Een introducee mag de eerste keer zonder beperkingen meedoen.</li>
-          <li>Aan- en afmelden kan tot zondag 23:59 uur. Daarna alleen met geldige reden.</li>
-          <li>Maximaal aantal deelnemers hangt af van de zaalindeling:
-            <ul className="list-disc ml-6">
-              <li>1 zaal: 8–10 spelers</li>
-              <li>2 zalen: 16–20 spelers</li>
-              <li>3 zalen: 24–30 spelers</li>
-            </ul>
-          </li>
+          <li>Vaste leden hebben tot vrijdag 18:00 uur voorrang op aanmelden. De niet vaste leden kunnen zich dan inschrijven als reserve. Na vrijdag 18:00 uur worden de reserves onderaan de lijst toegevoegd.</li>
+          <li>Een introducee die voor de allereerste keer meedoet mag gewoon opgegeven worden, ook voor vrijdag 18:00. Dit om de drempel laag te houden. LET OP: alleen de eerste keer.</li>
+          <li>Aanmelden kan tot zondag 23:59 uur, zo ook afmelden. Hierna kan afmelden alleen met een geldige reden.</li>
+          <li>Het maximaal aantal deelnemers hangt af van het aantal zaaldelen; 1 zaal: 8 tot 10 spelers. 2 zalen: 16 tot 20 spelers. 3 zalen: 24 tot 30 spelers.</li>
         </ul>
       </Section>
 
