@@ -754,6 +754,8 @@ useEffect(() => {
     switch(currentView) {
       case 'main':
         return renderMainView();
+        case 'rules':
+  return <Rules />;
       case 'stats':
         return isManagementAuthenticated ? (
           <Statistics history={activeHistory} players={players} onSelectPlayer={handleSelectPlayer} />
