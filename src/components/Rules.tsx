@@ -8,7 +8,7 @@ const highlight = (text: string, query: string) => {
   const regex = new RegExp(`(${query})`, "gi");
   return text.replace(
     regex,
-    "<mark class='bg-yellow-500 text-black'>$1</mark>"
+    "<mark class='bg-green-200 text-black'>$1</mark>"
   );
 };
 
