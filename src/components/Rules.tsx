@@ -124,7 +124,7 @@ const Rules: React.FC = () => {
       <Section title="Keeper">
         <ul className="list-disc ml-6">
           <li>Het team speelt met een vaste of wisselende keeper. Dit dient vooraf aangegeven te worden.</li>
-          <li>De keeper mag de bal binnen het keepersgebied met zijn/haar hele lichaam tegenhouden, inclusief handen en voeten. De bal moet zich binnen de cirkel bevinden voordat de keeper deze met de hand mag pakken. De keeper hoeft door voor zelf niet in de cirkel te zijn.</li>
+          <li>De keeper mag de bal binnen het keepersgebied met zijn/haar hele lichaam tegenhouden, inclusief handen en voeten. De bal moet zich binnen de cirkel bevinden voordat de keeper deze met de hand mag pakken. De keeper hoeft daarvoor zelf niet in de cirkel te zijn.</li>
           <li>Komt de keeper uit zijn/haar gebied en raakt hij/zij de bal met handen of voeten, dan volgt een penalty.</li>
           <li>De keeper mag de bal maximaal 6 seconden vasthouden.</li>
           <li>Bij het uitnemen mag de keeper de bal gooien, schoppen of slaan en is niet verplicht de stick te gebruiken. Buiten het keepersgebied mag de keeper de bal alleen met hoofd of romp verplaatsen.</li>
