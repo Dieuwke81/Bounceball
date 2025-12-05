@@ -24,9 +24,9 @@ const Rules: React.FC = () => {
 
       <Section title="Sportiviteit & Respect">
         <ul className="list-disc ml-6">
-        <li>We spelen voor ons plezier en vinden sportiviteit en respect voor elkaar heel belangrijk. Onsportief gedrag en blessures moeten zoveel mogelijk worden voorkomen. Iedereen die zich onsportief of agressief gedraagt, wordt hierop aangesproken.<li>
-<li>Het is de bedoeling dat iedereen in een veilige en prettige sfeer kan spelen, voor, tijdens, en na de wedstrijd.<li>
-<li>Wie herhaaldelijk ongewenst gedrag vertoont, kan worden geschorst of zelfs uit de vereniging worden gezet.<li>
+        <li>We spelen voor ons plezier en vinden sportiviteit en respect voor elkaar heel belangrijk. Onsportief gedrag en blessures moeten zoveel mogelijk worden voorkomen. Iedereen die zich onsportief of agressief gedraagt, wordt hierop aangesproken.</li>
+<li>Het is de bedoeling dat iedereen in een veilige en prettige sfeer kan spelen, voor, tijdens, en na de wedstrijd.</li>
+<li>Wie herhaaldelijk ongewenst gedrag vertoont, kan worden geschorst of zelfs uit de vereniging worden gezet.</li>
     </ul>
 </Section>
 
