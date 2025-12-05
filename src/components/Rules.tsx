@@ -6,25 +6,29 @@ import RuleSearch from "./RuleSearch";
 const highlight = (text: string, query: string) => {
   if (!query.trim()) return text;
   const regex = new RegExp(`(${query})`, "gi");
-  return text.replace(regex, "<mark class='bg-yellow-500 text-black'>$1</mark>");
+  return text.replace(
+    regex,
+    "<mark class='bg-yellow-500 text-black'>$1</mark>"
+  );
 };
 
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
   <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-5 mb-6 shadow-md">
     <h2 className="text-xl font-bold text-green-500 mb-3 flex items-center gap-2">
       <BookOpenIcon className="w-5 h-5" />
       {title}
     </h2>
-    <div className="text-gray-300 text-sm leading-relaxed space-y-2">{children}</div>
+    <div className="text-gray-300 text-sm leading-relaxed space-y-2">
+      {children}
+    </div>
   </div>
 );
 
 const Line: React.FC<{ text: string; query: string }> = ({ text, query }) => (
   <li dangerouslySetInnerHTML={{ __html: highlight(text, query) }} />
-);
-
-const Para: React.FC<{ text: string; query: string }> = ({ text, query }) => (
-  <p dangerouslySetInnerHTML={{ __html: highlight(text, query) }} />
 );
 
 const Rules: React.FC = () => {
@@ -104,10 +108,7 @@ const Rules: React.FC = () => {
             text="Als de wedstrijd niet in een 5 minuten kader begint pak je de meest logische wisselstand ( bijv. Bij 12min over, wissel je om 15min over. En bij 13min over, wissel je om 20min over)"
             query={query}
           />
-          <Line
-            text="Wissels houden de score bij."
-            query={query}
-          />
+          <Line text="Wissels houden de score bij." query={query} />
           <Line
             text="Bij een wisselende keeper wisselt de keeper mee zoals op het wedstrijdformulier is aangegeven. Bij een vaste keeper wisselt de keeper niet."
             query={query}
@@ -225,19 +226,25 @@ const Rules: React.FC = () => {
             />
             <ul className="list-disc ml-6">
               <Line text="Een tegenstander vasthouden." query={query} />
-              <Line text="De bal opzettelijk tegenhouden met been, voet, hand of arm." query={query} />
+              <Line
+                text="De bal opzettelijk tegenhouden met been, voet, hand of arm."
+                query={query}
+              />
               <Line text="Foutief gebruik van de stick." query={query} />
-              <Line text="Iemand raken met de stick op de benen." query={query} />
+              <Line
+                text="Iemand raken met de stick op de benen."
+                query={query}
+              />
             </ul>
           </li>
           <Line
-            text="Een vrijeslag mag direct op doel geschoten worden. Tegenstanders mogen een muur opstellen,
-      maar deze moet minstens twee sticks afstand hebben tot de bal."
+            text={`Een vrijeslag mag direct op doel geschoten worden. Tegenstanders mogen een muur opstellen,
+      maar deze moet minstens twee sticks afstand hebben tot de bal.`}
             query={query}
           />
           <Line
-            text="Een penalty dient genomen te worden vanaf de lijn van het keepersgebied en er wordt geen muur opgesteld. Alle spelers blijven buiten het
-      keepersgebied tot de penalty genomen is. Het spel gaat direct verder."
+            text={`Een penalty dient genomen te worden vanaf de lijn van het keepersgebied en er wordt geen muur opgesteld. Alle spelers blijven buiten het
+      keepersgebied tot de penalty genomen is. Het spel gaat direct verder.`}
             query={query}
           />
           <Line
@@ -300,7 +307,10 @@ const Rules: React.FC = () => {
               }}
             />
             <ul className="list-disc ml-6">
-              <Line text="De stick mag alleen de bal raken." query={query} />
+              <Line
+                text="De stick mag alleen de bal raken."
+                query={query}
+              />
               <Line
                 text="Totdat de stick is opgehaald, mag hij geen invloed hebben op het spel."
                 query={query}
