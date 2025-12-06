@@ -77,15 +77,20 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
             });
     }, [trophies, player.id]);
 
-    const getTrophyStyle = (type: TrophyType) => {
-        if (type.includes('1ste') || type === 'Clubkampioen' || type === 'Speler van het jaar') return 'text-yellow-400 border-yellow-500/30 bg-yellow-900/10';
-        if (type.includes('2de')) return 'text-gray-300 border-gray-400/30 bg-gray-700/30';
-        if (type.includes('3de')) return 'text-amber-600 border-amber-600/30 bg-amber-900/10';
-        if (type === 'Topscoorder') return 'text-cyan-400 border-cyan-500/30 bg-cyan-900/10';
-        if (type === 'Verdediger') return 'text-fuchsia-400 border-fuchsia-500/30 bg-fuchsia-900/10';
-        return 'text-white border-gray-500/30';
-    };
+    
 
+  const getTrophyStyle = (type: TrophyType) => {
+    if (type.includes('1ste') || type === 'Clubkampioen') {
+        // Zelfde gouden / groene “speciale” look als in de prijzenkast
+        return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600';
+    }
+    if (type.includes('2de')) return 'text-slate-500';
+    if (type.includes('3de')) return 'text-amber-700';
+    if (type === 'Topscoorder') return 'text-yellow-300';
+    if (type === 'Verdediger') return 'text-red-500';
+    if (type === 'Speler van het jaar') return 'text-green-500';
+    return 'text-white';
+};
     // ... (Hulpfunctie getTrophyContent blijft hetzelfde, die heb je al) ...
     // Voor de volledigheid en om errors te voorkomen, hier de korte versie (gebruik jouw eigen images object hier!)
     const getTrophyContent = (type: TrophyType) => {
