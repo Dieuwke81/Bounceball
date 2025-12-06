@@ -72,7 +72,7 @@ const Rules: React.FC = () => {
       <Section title="Algemene Spelregels">
         <ul className="list-disc ml-6">
           <Line
-            text="Een wedstrijd duurt meestal 50 minuten, maar deze tijd kan worden aangepast als dat duidelijk wordt afgesproken. we spelen meestal 2 wedstrijden op een avond"
+            text="Een wedstrijd duurt meestal 50 minuten, maar deze tijd kan worden aangepast als dat duidelijk wordt afgesproken. We spelen meestal 2 wedstrijden op een avond"
             query={query}
           />
           <Line
