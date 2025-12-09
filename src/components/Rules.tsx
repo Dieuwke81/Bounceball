@@ -59,7 +59,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="Het is de bedoeling dat iedereen in een veilige en prettige sfeer kan spelen, voor, tijdens, en na de wedstrijd."
+            text="Het is de bedoeling dat iedereen in een veilige en prettige sfeer kan spelen, voor, tijdens en na de wedstrijd."
             query={query}
           />
           <Line
@@ -72,11 +72,11 @@ const Rules: React.FC = () => {
       <Section title="Algemene Spelregels">
         <ul className="list-disc ml-6">
           <Line
-            text="Een wedstrijd duurt meestal 50 minuten, maar deze tijd kan worden aangepast als dat duidelijk wordt afgesproken. We spelen meestal 2 wedstrijden op een avond"
+            text="Een wedstrijd duurt meestal 50 minuten, maar deze tijd kan worden aangepast als dat duidelijk wordt afgesproken. We spelen meestal 2 wedstrijden op een avond."
             query={query}
           />
           <Line
-            text="Zodra de tijd (op de klok van de sporthal) om is, stopt de wedstrijd direct (geen blessuretijd). Als er nog een penalty genomen moet worden, mag dat nog wel. Dit geldt ook voor een eventuele pauze indien er met 4 in een team gespeeld wordt. Die pauze duurt 5min na 25 min speeltijd."
+            text="Zodra de tijd (op de klok van de sporthal) om is, stopt de wedstrijd direct (geen blessuretijd). Als er nog een penalty genomen moet worden, mag dat nog wel. Dit geldt ook voor een eventuele pauze indien er met 4 in een team gespeeld wordt. Die pauze duurt 5 min na 25 min speeltijd."
             query={query}
           />
           <Line
@@ -101,11 +101,11 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="Er dient elke 5 minuten gewisseld te worden. Zodra het tijd is én de keeper heeft de bal vast wordt er gewisseld."
+            text="Er dient elke 5 minuten gewisseld te worden. Zodra het tijd is én de keeper heeft de bal vast, wordt er gewisseld."
             query={query}
           />
           <Line
-            text="Als de wedstrijd niet in een 5 minuten kader begint pak je de meest logische wisselstand ( bijv. Bij 12min over, wissel je om 15min over. En bij 13min over, wissel je om 20min over)"
+            text="Als de wedstrijd niet in een 5 minutenkader begint, pak je de meest logische wisselstand (bijv. bij 12 min over, wissel je om 15 min over. En bij 13 min over, wissel je om 20 min over)"
             query={query}
           />
           <Line text="Wissels houden de score bij." query={query} />
@@ -173,7 +173,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="Raakt de bal onbedoeld een been, voet, hand of arm? Dan gaat het spel door. Bij opzettelijk gebruik van deze lichaamsdelen volgt een vrijeslag."
+            text="Raakt de bal onbedoeld een been, voet, hand of arm? Dan gaat het spel door. Bij opzettelijk gebruik van deze lichaamsdelen volgt een vrije slag."
             query={query}
           />
         </ul>
@@ -209,10 +209,10 @@ const Rules: React.FC = () => {
         </ul>
       </Section>
 
-      <Section title="Vrijeslag & Penalty">
+      <Section title="Vrije slag & Penalty">
         <ul className="list-disc ml-6">
           <Line
-            text="Een vrijeslag wordt gegeven bij een overtreding buiten het keepersgebied."
+            text="Een vrije slag wordt gegeven bij een overtreding buiten het keepersgebied."
             query={query}
           />
           <li>
@@ -227,7 +227,7 @@ const Rules: React.FC = () => {
             <ul className="list-disc ml-6">
               <Line text="Een tegenstander vasthouden." query={query} />
               <Line
-                text="De bal opzettelijk tegenhouden met been, voet, hand of arm."
+                text="De bal opzettelijk tegenhouden met het been, de voet, de hand of de arm."
                 query={query}
               />
               <Line text="Foutief gebruik van de stick." query={query} />
@@ -238,7 +238,7 @@ const Rules: React.FC = () => {
             </ul>
           </li>
           <Line
-            text={`Een vrijeslag mag direct op doel geschoten worden. Tegenstanders mogen een muur opstellen,
+            text={`Een vrije slag mag direct op doel geschoten worden. Tegenstanders mogen een muur opstellen,
       maar deze moet minstens twee sticks afstand hebben tot de bal.`}
             query={query}
           />
@@ -248,7 +248,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="Een penalty dient genomen te worden door degene die hem verdiend heeft."
+            text="Een penalty wordt genomen door degene die hem verdiend heeft."
             query={query}
           />
         </ul>
@@ -277,7 +277,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="Wisselen van keeper mag alleen als deze de bal vast heeft."
+            text="Wisselen van keeper mag alleen als deze de bal vasthoudt."
             query={query}
           />
           <Line
@@ -285,7 +285,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="De keeper mag de bal maar 1 keer met de handen vastpakken. De bal moet eerst een andere speler hebben geraakt voor hij/zij de bal weer met de handen mag pakken."
+            text="De keeper mag de bal maar ėėn keer met de handen vastpakken. De bal moet eerst een andere speler hebben geraakt voor hij/zij de bal weer met de handen mag pakken."
             query={query}
           />
         </ul>
@@ -301,7 +301,7 @@ const Rules: React.FC = () => {
             <span
               dangerouslySetInnerHTML={{
                 __html: highlight(
-                  "Als je je stick gooit gelden de volgende regels:",
+                  "Als je je stick gooit, gelden de volgende regels:",
                   query
                 ),
               }}
@@ -322,11 +322,11 @@ const Rules: React.FC = () => {
             </ul>
           </li>
           <Line
-            text="Een tegenstander die in balbezit is mag geslagen worden met het tampongedeelte van de stick. Dit mag uitsluitend tegen de rug en schouders. Dit mag alleen dienen voor het hinderen van de tegenstander en nooit voor het pijnigen van deze speler. Zodra de speler de bal niet meer in bezit heeft mag deze ook niet meer geraakt worden met de stick."
+            text="Een tegenstander die in balbezit is mag geslagen worden met het tampongedeelte van de stick. Dit mag uitsluitend tegen de rug en schouders. Dit mag alleen dienen voor het hinderen van de tegenstander en nooit voor het pijnigen van deze speler. Zodra de speler de bal niet meer in bezit heeft, mag deze ook niet meer geraakt worden met de stick."
             query={query}
           />
           <Line
-            text="Je mag met je stick de stick van je tegenstander weg tikken (niet slaan) zodat deze de bal niet meer kan spelen."
+            text="Je mag met je stick de stick van je tegenstander wegtikken (niet slaan) zodat deze de bal niet meer kan spelen."
             query={query}
           />
         </ul>
@@ -360,7 +360,7 @@ const Rules: React.FC = () => {
       <Section title="Aanmelden & Afmelden">
         <ul className="list-disc ml-6">
           <Line
-            text="Vaste leden hebben tot vrijdag 18:00 uur voorrang op aanmelden. De niet vaste leden kunnen zich dan inschrijven als reserve. Na vrijdag 18:00 uur worden de reserves onderaan de lijst toegevoegd."
+            text="Vaste leden hebben tot vrijdag 18:00 uur voorrang op aanmelden. De niet-vaste leden kunnen zich dan inschrijven als reserve. Na vrijdag 18:00 uur worden de reserves onderaan de lijst toegevoegd."
             query={query}
           />
           <Line
