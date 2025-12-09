@@ -84,7 +84,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="De grootte van de teams hangt af van de zaal en het aantal spelers. In een zaal van een derde van een zaalvoetbalveld spelen we 4 tegen 4, inclusief keepers, of in teams van 5 met een wissel"
+            text="De grootte van de teams hangt af van de zaal en het aantal spelers. In een zaal van een derde van een zaalvoetbalveld spelen we 4 tegen 4, inclusief keepers, of in teams van 5 met een wissel."
             query={query}
           />
         </ul>
@@ -105,7 +105,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="Als de wedstrijd niet in een 5 minutenkader begint, pak je de meest logische wisselstand (bijv. bij 12 min over, wissel je om 15 min over. En bij 13 min over, wissel je om 20 min over)"
+            text="Als de wedstrijd niet in een 5-minutenkader begint, pak je de meest logische wisselstand (bijv. bij 12 min over, wissel je om 15 min over. En bij 13 min over, wissel je om 20 min over)"
             query={query}
           />
           <Line text="Wissels houden de score bij." query={query} />
@@ -343,7 +343,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="Het klassement wordt berekend op basis van het gemiddeld aantal punten per wedstrijd. Spelers moeten minimaal 50% van de wedstrijden hebben gespeeld om mee te tellen voor het klassement."
+            text="Het klassement wordt berekend op basis van het gemiddelde aantal punten per wedstrijd. Spelers moeten minimaal 50% van de wedstrijden hebben gespeeld om mee te tellen voor het klassement."
             query={query}
           />
           <Line
