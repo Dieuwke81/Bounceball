@@ -259,58 +259,67 @@ const MatchResultDisplay: React.FC<{ result: MatchResult; teams: Player[][] }> =
   // → component krijgt nu óók de goals van de tegenstander mee,
   //   zodat we daar eigen goals kunnen uithalen.
   const PlayerListWithGoals: React.FC<{
-    players: Player[];
-    teamGoals: { playerId: number; count: number }[];
-    opponentGoals: { playerId: number; count: number }[];
-    scoreColorClass: string;
-  }> = ({ players, teamGoals, opponentGoals, scoreColorClass }) => {
-    const goalsForMap = new Map(teamGoals.map(g => [g.playerId, g.count]));
-    const oppGoalsMap = new Map(opponentGoals.map(g => [g.playerId, g.count]));
+  const PlayerListWithGoals: React.FC<{
+  players: Player[];
+  teamGoals: { playerId: number; count: number }[];
+  opponentGoals: { playerId: number; count: number }[];
+  scoreColorClass: string;
+}> = ({ players, teamGoals, opponentGoals, scoreColorClass }) => {
+  const goalsForMap = new Map(teamGoals.map(g => [g.playerId, g.count]));
+  const oppGoalsMap = new Map(opponentGoals.map(g => [g.playerId, g.count]));
 
-    return (
-      <ul className="space-y-1 mt-3">
-        {players.map(player => {
-          const goalsFor = goalsForMap.get(player.id) || 0;           // normale goals
-          const ownGoals = oppGoalsMap.get(player.id) || 0;           // EG (staan bij tegenpartij)
+  return (
+    <ul className="space-y-1 mt-3">
+      {players.map(player => {
+        const goalsFor = goalsForMap.get(player.id) || 0;   // normale goals
+        const ownGoals = oppGoalsMap.get(player.id) || 0;   // EG (bij tegenpartij)
+        const hasContribution = goalsFor > 0 || ownGoals > 0;
 
-          const hasContribution = goalsFor > 0 || ownGoals > 0;
-
-          return (
-            <li
-              key={player.id}
-              className="flex justify-between items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0"
-            >
+        return (
+          <li
+            key={player.id}
+            className="flex items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0"
+          >
+            {/* NAAM – mag over meerdere regels, maar duwt de score niet weg */}
+            <div className="flex-1 min-w-0 mr-2">
               <span
-                className={`text-sm whitespace-nowrap mr-2 ${
+                className={`block text-sm leading-tight break-words ${
                   hasContribution ? 'text-gray-100 font-medium' : 'text-gray-400'
                 }`}
+                // als je écht max 3 regels wilt forceren:
+                // style={{
+                //   display: '-webkit-box',
+                //   WebkitLineClamp: 3,
+                //   WebkitBoxOrient: 'vertical',
+                //   overflow: 'hidden',
+                // }}
               >
                 {player.name}
               </span>
+            </div>
 
-              <div className="flex items-center gap-1">
-                {/* normale goals */}
-                <span
-                  className={`text-base font-bold min-w-[1.5rem] text-right ${
-                    goalsFor > 0 ? scoreColorClass : 'text-gray-600'
-                  }`}
-                >
-                  {goalsFor}
+            {/* GOALS + EG rechts */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <span
+                className={`text-base font-bold min-w-[1.5rem] text-right ${
+                  goalsFor > 0 ? scoreColorClass : 'text-gray-600'
+                }`}
+              >
+                {goalsFor}
+              </span>
+
+              {ownGoals > 0 && (
+                <span className="text-[11px] font-bold text-red-400 bg-red-900/40 border border-red-500/60 rounded-full px-2 py-0.5">
+                  EG {ownGoals}
                 </span>
-
-                {/* eigen goals – klein rood labeltje, alleen tonen als > 0 */}
-                {ownGoals > 0 && (
-                  <span className="text-[11px] font-bold text-red-400 bg-red-900/40 border border-red-500/60 rounded-full px-2 py-0.5">
-                    EG {ownGoals}
-                  </span>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    );
-  };
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+};
 
   return (
     <div className="bg-gray-800 p-5 rounded-xl border border-gray-600/50 shadow-md flex flex-col">
