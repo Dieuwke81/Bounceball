@@ -105,7 +105,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="Als de wedstrijd niet in een 5-minutenkader begint, pak je de meest logische wisselstand (bijv. bij 12 min over, wissel je om 15 min over. En bij 13 min over, wissel je om 20 min over)"
+            text="Als de wedstrijd niet in een 5-minutenkader begint, pak je de meest logische wisselstand (bijv. bij 12 min over, wissel je om 15 min over. En bij 13 min over, wissel je om 20 min over.)"
             query={query}
           />
           <Line text="Wissels houden de score bij." query={query} />
@@ -322,7 +322,7 @@ const Rules: React.FC = () => {
             </ul>
           </li>
           <Line
-            text="Een tegenstander die in balbezit is mag geslagen worden met het tampongedeelte van de stick. Dit mag uitsluitend tegen de rug en schouders. Dit mag alleen dienen voor het hinderen van de tegenstander en nooit voor het pijnigen van deze speler. Zodra de speler de bal niet meer in bezit heeft, mag deze ook niet meer geraakt worden met de stick."
+            text="Een tegenstander die in balbezit is, mag geslagen worden met het tampongedeelte van de stick. Dit mag uitsluitend tegen de rug en schouders. Dit mag alleen dienen voor het hinderen van de tegenstander en nooit voor het pijnigen van deze speler. Zodra de speler de bal niet meer in bezit heeft, mag deze ook niet meer geraakt worden met de stick."
             query={query}
           />
           <Line
@@ -364,7 +364,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="Een introducee die voor de allereerste keer meedoet mag gewoon opgegeven worden, ook voor vrijdag 18:00. Dit om de drempel laag te houden. LET OP: alleen de eerste keer."
+            text="Een introducee die voor de allereerste keer meedoet, mag gewoon opgegeven worden, ook voor vrijdag 18:00. Dit om de drempel laag te houden. LET OP: alleen de eerste keer."
             query={query}
           />
           <Line
