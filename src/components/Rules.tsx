@@ -285,7 +285,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="De keeper mag de bal maar ėėn keer met de handen vastpakken. De bal moet eerst een andere speler hebben geraakt voor hij/zij de bal weer met de handen mag pakken."
+            text="De keeper mag de bal maar één keer met de handen vastpakken. De bal moet eerst een andere speler hebben geraakt voor hij/zij de bal weer met de handen mag pakken."
             query={query}
           />
         </ul>
