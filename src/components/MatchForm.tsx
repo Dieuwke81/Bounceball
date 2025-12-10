@@ -187,12 +187,12 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
   // Eigen doelpunt (2 regels)
   blueContent = (
     <span className="text-gray-500 italic text-xs whitespace-pre-line">
-      {"Eigen goal team GEEL —\nNaam speler:"}
+      {"Eigen goal GEEL — Naam speler:"}
     </span>
   );
   yellowContent = (
     <span className="text-gray-500 italic text-xs whitespace-pre-line">
-      {"Eigen goal team BLAUW —\nNaam speler:"}
+      {"Eigen goal BLAUW — Naam speler:"}
     </span>
   );
 }
