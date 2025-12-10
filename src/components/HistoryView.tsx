@@ -362,7 +362,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                   }
                   className="cursor-pointer active:scale-95 hover:opacity-90 flex items-center"
                 >
-                  <ArchiveIcon className="h-7 w-auto" />
+                  <ArchiveIcon className="h-9 w-auto" />
                 </button>
 
                 <div
