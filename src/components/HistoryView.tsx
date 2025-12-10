@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import type { GameSession, Player, MatchResult } from '../types';
 import html2canvas from 'html2canvas';
 
-
-
 // --- ICONS ---
 // WhatsApp-icoon (laat je zoals je nu hebt)
 const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -354,14 +352,17 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             >
               <span className="font-bold text-lg text-white">{formatDate(session.date)}</span>
               <div className="flex items-center space-x-3">
-                <div
+                {/* 🔵 Excel-icoon ZONDER blauwe cirkel, iets groter */}
+                <button
+                  type="button"
                   onClick={e =>
                     handleExportCSV(e, [session], `MATCH_${session.date.split('T')[0]}`)
                   }
-                  className="p-2 bg-cyan-600 hover:bg-cyan-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
+                  className="cursor-pointer active:scale-95 hover:opacity-90"
                 >
-                  <ArchiveIcon className="w-4 h-4" />
-                </div>
+                  <ArchiveIcon className="w-7 h-7" />
+                </button>
+
                 <div
                   onClick={e => handleShareImage(e, session.date)}
                   className="p-2 bg-green-600 hover:bg-green-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
