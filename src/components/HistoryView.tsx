@@ -29,19 +29,44 @@ const DownloadIcon = ExcelIcon;
 const ArchiveIcon = ExcelIcon;
 
 const TrashIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className={className}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+    />
   </svg>
 );
 
 const ChevronDownIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className={className}
+  >
     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
   </svg>
 );
 
 const ChevronUpIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className={className}
+  >
     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
   </svg>
 );
@@ -92,11 +117,20 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   const handleExportCSV = (
     e: React.MouseEvent,
     sessionsToExport: GameSession[],
-    filenamePrefix: string
+    filenamePrefix: string,
   ) => {
     e.stopPropagation();
 
-    const headers = ['Datum', 'Ronde', 'Wedstrijd Nr', 'Team Kleur', 'Speler ID', 'Naam', 'Doelpunten', 'Punten'];
+    const headers = [
+      'Datum',
+      'Ronde',
+      'Wedstrijd Nr',
+      'Team Kleur',
+      'Speler ID',
+      'Naam',
+      'Doelpunten',
+      'Punten',
+    ];
     const rows: string[][] = [];
 
     sessionsToExport.forEach(session => {
@@ -123,9 +157,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
           const addTeamRows = (
             teamIndex: number,
-            goalsArray: { playerId: number; count: number }[],
+            goalsArray: any[],
             teamColor: 'Blauw' | 'Geel',
-            points: number
+            points: number,
           ) => {
             const teamPlayers = session.teams[teamIndex] || [];
             teamPlayers.forEach(player => {
@@ -161,7 +195,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       link.setAttribute('href', url);
       link.setAttribute(
         'download',
-        `bounceball_stats_${filenamePrefix}_${new Date().toISOString().split('T')[0]}.csv`
+        `bounceball_stats_${filenamePrefix}_${new Date().toISOString().split('T')[0]}.csv`,
       );
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
@@ -210,8 +244,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
               title: 'Bounceball',
               text: `Uitslagen ${formatDate(sessionDate)}`,
             });
-          } catch (shareError) {
-            console.log(shareError);
+          } catch (e) {
+            console.log(e);
           }
         } else {
           const link = document.createElement('a');
@@ -238,16 +272,11 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     result,
     teams,
   }) => {
-    const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
-    const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
-
     const color1 = getBaseColor(result.team1Index);
     const color2 = getBaseColor(result.team2Index);
 
     let leftTeamIdx = result.team1Index;
     let rightTeamIdx = result.team2Index;
-    let leftScore = score1;
-    let rightScore = score2;
     let leftGoals = result.team1Goals;
     let rightGoals = result.team2Goals;
 
@@ -255,8 +284,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     if (color1 === 'yellow' && color2 === 'blue') {
       leftTeamIdx = result.team2Index;
       rightTeamIdx = result.team1Index;
-      leftScore = score2;
-      rightScore = score1;
       leftGoals = result.team2Goals;
       rightGoals = result.team1Goals;
     }
@@ -267,7 +294,10 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     const team1Players = teams[leftTeamIdx] || [];
     const team2Players = teams[rightTeamIdx] || [];
 
-    // lijst met spelers + goals, plus onderaan een apart blok voor eigen goals
+    // Eindstand: alle goals in de kolom, inclusief eigen goals
+    const leftScore = leftGoals.reduce((sum, g) => sum + g.count, 0);
+    const rightScore = rightGoals.reduce((sum, g) => sum + g.count, 0);
+
     const PlayerListWithGoals: React.FC<{
       players: Player[];
       teamGoals: { playerId: number; count: number }[];
@@ -277,9 +307,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       const goalsForMap = new Map(teamGoals.map(g => [g.playerId, g.count]));
       const oppGoalsMap = new Map(opponentGoals.map(g => [g.playerId, g.count]));
 
-      // alle spelers die een eigen goal maakten (bij de tegenstander)
+      // eigen goals: spelers uit dit team die als scorer in de goals van de tegenpartij staan
       const ownGoalEntries = Array.from(oppGoalsMap.entries()).filter(
-        ([, count]) => count > 0
+        ([playerId, count]) => count > 0 && players.some(p => p.id === playerId),
       );
 
       return (
@@ -318,7 +348,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             })}
           </ul>
 
-          {/* Extra blok voor eigen goals */}
+          {/* Extra blok voor eigen goals (alleen als die er zijn) */}
           {ownGoalEntries.length > 0 && (
             <ul className="space-y-1 mt-3 pt-2 border-t border-red-500/40">
               {ownGoalEntries.map(([playerId, count]) => {
@@ -475,11 +505,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                       </div>
                       <div className="space-y-6">
                         {session.round1Results.map((r, i) => (
-                          <MatchResultDisplay
-                            key={`r1-${i}`}
-                            result={r}
-                            teams={session.teams}
-                          />
+                          <MatchResultDisplay key={`r1-${i}`} result={r} teams={session.teams} />
                         ))}
                       </div>
                     </div>
@@ -493,11 +519,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                         </div>
                         <div className="space-y-6">
                           {session.round2Results.map((r, i) => (
-                            <MatchResultDisplay
-                              key={`r2-${i}`}
-                              result={r}
-                              teams={session.teams}
-                            />
+                            <MatchResultDisplay key={`r2-${i}`} result={r} teams={session.teams} />
                           ))}
                         </div>
                       </div>
