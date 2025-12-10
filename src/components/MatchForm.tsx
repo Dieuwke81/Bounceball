@@ -213,27 +213,28 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                 </tbody>
               </table>
 
-              {/* SCORE BALK ONDER DE TABEL */}
-              <div className="flex w-full items-center">
-                <div className="w-[30%] text-right pr-4 font-bold text-xl uppercase pt-2">
-                  Eindstand:
-                </div>
+              {/* SCORE BALK ONDER DE TABEL – UITGELIJND MET KOLOMMEN */}
+<div className="flex w-full items-center mt-1">
+  {/* Spelerskolom links (20%) */}
+  <div className="w-[22%] text-right pr-2 font-bold text-lg uppercase">
+    Eindstand:
+  </div>
 
-                {/* Lijntje ipv vakje links */}
-                <div className="w-[20%] flex justify-center pt-3">
-                  <div className="border-b-2 border-black w-24" />
-                </div>
+  {/* Doelpuntenkolom links (30%) */}
+  <div className="w-[28%] flex justify-center">
+    <div className="border-b-2 border-black w-28" />
+  </div>
 
-                <div className="w-[30%] flex justify-center items-center pt-2">
-                  <span className="text-4xl font-bold">-</span>
-                </div>
+  {/* Spelerskolom rechts (20%) */}
+  <div className="w-[22%] flex justify-center items-center">
+    <span className="text-3xl font-bold">-</span>
+  </div>
 
-                {/* Lijntje ipv vakje rechts */}
-                <div className="w-[20%] flex justify-center pt-3">
-                  <div className="border-b-2 border-black w-24" />
-                </div>
-              </div>
-            </div>
+  {/* Doelpuntenkolom rechts (30%) */}
+  <div className="w-[28%] flex justify-center">
+    <div className="border-b-2 border-black w-28" />
+  </div>
+</div>
 
             {/* --- WEDSTRIJD 2 --- */}
             <div className="mb-4">
@@ -294,23 +295,28 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
 </tbody>
               </table>
 
-              {/* SCORE BALK ONDER DE TABEL */}
-              <div className="flex w-full items-center">
-                <div className="w-[30%] text-right pr-4 font-bold text-xl uppercase pt-2">
-                  Eindstand:
-                </div>
-                <div className="w-[20%] flex justify-center pt-3">
-                  <div className="border-b-2 border-black w-24" />
-                </div>
-                <div className="w-[30%] flex justify-center items-center pt-2">
-                  <span className="text-4xl font-bold">-</span>
-                </div>
-                <div className="w-[20%] flex justify-center pt-3">
-                  <div className="border-b-2 border-black w-24" />
-                </div>
-              </div>
-            </div>
-          </div>
+              {/* SCORE BALK ONDER DE TABEL – UITGELIJND MET KOLOMMEN */}
+<div className="flex w-full items-center mt-1">
+  {/* Spelerskolom links (20%) */}
+  <div className="w-[22%] text-right pr-2 font-bold text-lg uppercase">
+    Eindstand:
+  </div>
+
+  {/* Doelpuntenkolom links (30%) */}
+  <div className="w-[28%] flex justify-center">
+    <div className="border-b-2 border-black w-28" />
+  </div>
+
+  {/* Spelerskolom rechts (20%) */}
+  <div className="w-[22%] flex justify-center items-center">
+    <span className="text-3xl font-bold">-</span>
+  </div>
+
+  {/* Doelpuntenkolom rechts (30%) */}
+  <div className="w-[28%] flex justify-center">
+    <div className="border-b-2 border-black w-28" />
+  </div>
+</div>
         );
       })}
     </div>,
