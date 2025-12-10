@@ -96,9 +96,9 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
       </style>
 
       {matches.map((match, index) => {
-        // Minimaal 5 naam-rijen, daarna 1 lege, daarna 1 met Gem. Rating
+        // Minimaal 5 naam-rijen, daarna 1 met Gem. Rating en daaronder 1 met Eigen doelpunt
         const baseRows = Math.max(match.blue.length, match.yellow.length, 5);
-        const totalRows = baseRows + 2; // namen + lege + rating
+        const totalRows = baseRows + 2;
         const rows = Array.from({ length: totalRows });
 
         const avgBlue = calculateAverage(match.blue);
@@ -172,30 +172,30 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                         );
                       }
                     } else if (i === baseRows) {
-  // Rij VOOR de Gem. Rating → vaste tekst voor eigen doelpunt
-  blueContent = (
-    <span className="text-gray-500 italic text-xs">
-      Eigen doelpunt team GEEL – Naam speler:
-    </span>
-  );
-  yellowContent = (
-    <span className="text-gray-500 italic text-xs">
-      Eigen doelpunt team BLAUW – Naam speler:
-    </span>
-  );
-} else if (i === baseRows + 1) {
-  // Rij ONDER de lege → Gemiddelde
-  blueContent = (
-    <span className="text-gray-500 italic text-sm">
-      Gem. Rating: {avgBlue}
-    </span>
-  );
-  yellowContent = (
-    <span className="text-gray-500 italic text-sm">
-      Gem. Rating: {avgYellow}
-    </span>
-  );
-}
+                      // EERST: Gemiddelde rating
+                      blueContent = (
+                        <span className="text-gray-500 italic text-sm">
+                          Gem. Rating: {avgBlue}
+                        </span>
+                      );
+                      yellowContent = (
+                        <span className="text-gray-500 italic text-sm">
+                          Gem. Rating: {avgYellow}
+                        </span>
+                      );
+                    } else if (i === baseRows + 1) {
+                      // DAARONDER: Eigen doelpunt (GEEL links, BLAUW rechts)
+                      blueContent = (
+                        <span className="text-gray-500 italic text-xs">
+                          Eigen doelpunt team GEEL – Naam speler:
+                        </span>
+                      );
+                      yellowContent = (
+                        <span className="text-gray-500 italic text-xs">
+                          Eigen doelpunt team BLAUW – Naam speler:
+                        </span>
+                      );
+                    }
 
                     return (
                       <tr key={i} className="h-10">
