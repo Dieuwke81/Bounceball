@@ -267,7 +267,6 @@ const App: React.FC = () => {
   // Aanwezigheidsparser
   // —————————————————
   const handleParseAttendance = (text: string) => {
-  const handleParseAttendance = (text: string) => {
   const normalize = (str: string): string =>
     str
       .toLowerCase()
