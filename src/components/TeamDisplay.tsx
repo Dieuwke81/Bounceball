@@ -189,7 +189,6 @@ const MatchInputCard: React.FC<{
   let yellowIdentifier: 'team1' | 'team2';
   let blueTeamIndex, yellowTeamIndex;
 
-  // SCENARIO: Team 1 is Geel en Team 2 is Blauw -> OMDRAAIEN
   if (color1 === 'yellow' && color2 === 'blue') {
     blueTeam = team2Data;
     blueIdentifier = 'team2';
@@ -198,9 +197,7 @@ const MatchInputCard: React.FC<{
     yellowTeam = team1Data;
     yellowIdentifier = 'team1';
     yellowTeamIndex = match.team1Index;
-  }
-  // STANDAARD: Team 1 is Blauw, Team 2 is Geel (of allebei zelfde kleur, dan fallback)
-  else {
+  } else {
     blueTeam = team1Data;
     blueIdentifier = 'team1';
     blueTeamIndex = match.team1Index;
@@ -210,19 +207,17 @@ const MatchInputCard: React.FC<{
     yellowTeamIndex = match.team2Index;
   }
 
-  // --- FORCEER KLEUREN ---
   const leftColorClass = 'text-cyan-300';
   const rightColorClass = 'text-amber-300';
   const leftBorderClass = 'border-cyan-500/30';
   const rightBorderClass = 'border-amber-500/30';
 
-  // Hulpfunctie score: telt ALLE goals voor een team (incl. eigen goals van tegenstander)
+  // Score per team (alles wat bij dat team opgeslagen is, incl. EG van tegenstander)
   const getTeamScore = (identifier: 'team1' | 'team2') => {
     const goals = goalScorers[`${matchIndex}-${identifier}`] || [];
     return goals.reduce((sum, g) => sum + g.count, 0);
   };
 
-  // Kleine helper om goals voor een specifieke speler + teamidentifier op te halen
   const getPlayerGoalsForTeam = (
     teamIdentifier: 'team1' | 'team2',
     playerId: number
@@ -233,12 +228,10 @@ const MatchInputCard: React.FC<{
 
   const PlayerGoalInput: React.FC<{
     player: Player;
-    teamIdentifier: 'team1' | 'team2'; // eigen team (voor "G")
-    opponentIdentifier: 'team1' | 'team2'; // tegenpartij (voor "EG")
+    teamIdentifier: 'team1' | 'team2';
+    opponentIdentifier: 'team1' | 'team2';
   }> = ({ player, teamIdentifier, opponentIdentifier }) => {
-    // Normale goals voor eigen team
     const goalCount = getPlayerGoalsForTeam(teamIdentifier, player.id);
-    // Eigen goals: worden als doelpunt bij de tegenpartij opgeslagen
     const ownGoalCount = getPlayerGoalsForTeam(opponentIdentifier, player.id);
 
     const handleGoalsChange = (newVal: number) => {
@@ -246,30 +239,29 @@ const MatchInputCard: React.FC<{
     };
 
     const handleOwnGoalsChange = (newVal: number) => {
-      // Let op: hier schrijven we naar de TEGENPARTIJ
       onGoalChange(matchIndex, opponentIdentifier, player.id, newVal);
     };
 
     return (
-      <div className="grid grid-cols-[1fr_2.5rem_2.5rem] gap-2 items-center bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
-        {/* Naam netjes laten afbreken */}
-        <span className="text-gray-200 pr-1 text-sm sm:text-base break-words leading-tight">
+      <div className="flex items-center bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
+        {/* Naam */}
+        <span className="text-gray-200 flex-1 pr-1 text-sm sm:text-base break-words leading-tight">
           {player.name}
         </span>
 
-        {/* G (normale goals) */}
-        <ScoreInput
-          value={goalCount}
-          onChange={handleGoalsChange}
-          className="w-full bg-gray-700 border border-gray-500 rounded-md py-1 px-1 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
-        />
-
-        {/* EG (eigen goals -> bij tegenpartij) */}
-        <ScoreInput
-          value={ownGoalCount}
-          onChange={handleOwnGoalsChange}
-          className="w-full bg-gray-700 border border-red-500/70 rounded-md py-1 px-1 text-white text-center focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-        />
+        {/* Vakjes G / EG */}
+        <div className="flex items-center space-x-2">
+          <ScoreInput
+            value={goalCount}
+            onChange={handleGoalsChange}
+            className="w-9 bg-gray-700 border border-gray-500 rounded-md py-1 px-1 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+          />
+          <ScoreInput
+            value={ownGoalCount}
+            onChange={handleOwnGoalsChange}
+            className="w-9 bg-gray-700 border border-red-500/70 rounded-md py-1 px-1 text-white text-center focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+          />
+        </div>
       </div>
     );
   };
@@ -285,9 +277,7 @@ const MatchInputCard: React.FC<{
         {/* LINKS: ALTIJD BLAUW */}
         <div className={`space-y-3 border-t-4 ${leftBorderClass} pt-2`}>
           <div className="text-center">
-            <h4
-              className={`font-bold text-lg ${leftColorClass} flex flex-col`}
-            >
+            <h4 className={`font-bold text-lg ${leftColorClass} flex flex-col`}>
               <span>Team {blueTeamIndex + 1}</span>
               <span className="text-xs opacity-70">BLAUW</span>
             </h4>
@@ -295,12 +285,14 @@ const MatchInputCard: React.FC<{
               {getTeamScore(blueIdentifier)}
             </p>
           </div>
-          {/* Kolom-kopjes: G & EG */}
-          <div className="grid grid-cols-[1fr_2.5rem_2.5rem] gap-2 items-center text-xs font-bold text-gray-200 uppercase tracking-wider pr-1">
-            <span />
-            <span className="text-center">G</span>
-            <span className="text-center">EG</span>
+
+          {/* Kolomkopjes G / EG */}
+          <div className="flex items-center text-xs font-bold text-gray-200 uppercase tracking-wider pr-1">
+            <span className="flex-1" />
+            <span className="w-9 text-center">G</span>
+            <span className="w-9 text-center">EG</span>
           </div>
+
           <div className="space-y-2 pr-1">
             {blueTeam.map((p) => (
               <PlayerGoalInput
@@ -326,12 +318,14 @@ const MatchInputCard: React.FC<{
               {getTeamScore(yellowIdentifier)}
             </p>
           </div>
-          {/* Kolom-kopjes: G & EG */}
-          <div className="grid grid-cols-[1fr_2.5rem_2.5rem] gap-2 items-center text-xs font-bold text-gray-200 uppercase tracking-wider pr-1">
-            <span />
-            <span className="text-center">G</span>
-            <span className="text-center">EG</span>
+
+          {/* Kolomkopjes G / EG */}
+          <div className="flex items-center text-xs font-bold text-gray-200 uppercase tracking-wider pr-1">
+            <span className="flex-1" />
+            <span className="w-9 text-center">G</span>
+            <span className="w-9 text-center">EG</span>
           </div>
+
           <div className="space-y-2 pr-1">
             {yellowTeam.map((p) => (
               <PlayerGoalInput
@@ -354,45 +348,34 @@ const MatchInputCard: React.FC<{
 const MatchResultDisplayCard: React.FC<{
   matchResult: MatchResult;
 }> = ({ matchResult }) => {
-  const score1 = matchResult.team1Goals.reduce(
-    (sum, g) => sum + g.count,
-    0
-  );
-  const score2 = matchResult.team2Goals.reduce(
-    (sum, g) => sum + g.count,
-    0
-  );
+  const score1 = matchResult.team1Goals.reduce((sum, g) => sum + g.count, 0);
+  const score2 = matchResult.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
   const color1 = getBaseColor(matchResult.team1Index);
   const color2 = getBaseColor(matchResult.team2Index);
 
   let leftText, rightText, leftScore, rightScore;
 
-  // Als Team 1 Geel was en Team 2 Blauw -> Wisselen
   if (color1 === 'yellow' && color2 === 'blue') {
-    leftText = `Team ${matchResult.team2Index + 1}`; // Blauw Team Naam
-    rightText = `Team ${matchResult.team1Index + 1}`; // Geel Team Naam
+    leftText = `Team ${matchResult.team2Index + 1}`;
+    rightText = `Team ${matchResult.team1Index + 1}`;
     leftScore = score2;
     rightScore = score1;
   } else {
-    // Normaal
     leftText = `Team ${matchResult.team1Index + 1}`;
     rightText = `Team ${matchResult.team2Index + 1}`;
     leftScore = score1;
     rightScore = score2;
   }
 
-  // Forceer kleuren
-  const leftColor = 'text-cyan-400/80'; // Blauw
-  const rightColor = 'text-amber-400/80'; // Geel
+  const leftColor = 'text-cyan-400/80';
+  const rightColor = 'text-amber-400/80';
 
   return (
     <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600/30">
       <div className="flex justify-between items-center text-center">
         <div className="w-2/5">
-          <h4
-            className={`font-semibold text-base truncate ${leftColor}`}
-          >
+          <h4 className={`font-semibold text-base truncate ${leftColor}`}>
             {leftText}
           </h4>
         </div>
@@ -402,9 +385,7 @@ const MatchResultDisplayCard: React.FC<{
           </p>
         </div>
         <div className="w-2/5">
-          <h4
-            className={`font-semibold text-base truncate ${rightColor}`}
-          >
+          <h4 className={`font-semibold text-base truncate ${rightColor}`}>
             {rightText}
           </h4>
         </div>
@@ -419,14 +400,9 @@ const TeamCard: React.FC<{
   title: string;
 }> = ({ team, index, title }) => {
   const calculateTeamStats = (team: Player[]) => {
-    const totalRating = team.reduce(
-      (sum, player) => sum + player.rating,
-      0
-    );
+    const totalRating = team.reduce((sum, player) => sum + player.rating, 0);
     const averageRating =
-      team.length > 0
-        ? (totalRating / team.length).toFixed(2)
-        : '0.00';
+      team.length > 0 ? (totalRating / team.length).toFixed(2) : '0.00';
     return { totalRating, averageRating };
   };
   const { totalRating, averageRating } = calculateTeamStats(team);
@@ -439,9 +415,7 @@ const TeamCard: React.FC<{
     <div
       className={`bg-gray-700 rounded-lg flex flex-col border-t-4 ${borderColor}`}
     >
-      <h3
-        className={`text-xl font-bold ${headerColor} mb-2 px-4 pt-3`}
-      >
+      <h3 className={`text-xl font-bold ${headerColor} mb-2 px-4 pt-3`}>
         {title} {index + 1}
       </h3>
       <div className="flex-grow space-y-2 mb-4 px-4">
@@ -504,7 +478,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
   onRegenerateTeams,
   actionInProgress,
 }) => {
-  // --- CONFETTI LOAD ---
+  // CONFETTI LOAD
   useEffect(() => {
     if (!document.getElementById('confetti-script')) {
       const script = document.createElement('script');
@@ -516,7 +490,6 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
     }
   }, []);
 
-  // --- CONFETTI FUNCTIE ---
   const triggerFirework = () => {
     if (window.confetti) {
       const duration = 2 * 1000;
@@ -555,9 +528,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
     }
   };
 
-  if (teams.length === 0) {
-    return null;
-  }
+  if (teams.length === 0) return null;
 
   const isSimpleMatch = gameMode === 'simple';
 
@@ -569,10 +540,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
       const matches: Match[] = [];
       for (let i = 0; i < teams.length; i += 2) {
         if (teams[i + 1]) {
-          matches.push({
-            team1Index: i,
-            team2Index: i + 1,
-          });
+          matches.push({ team1Index: i, team2Index: i + 1 });
         }
       }
       return matches;
@@ -580,7 +548,6 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
     return [];
   }, [teams, gameMode]);
 
-  // --- WHATSAPP LOGICA ---
   const handleShareToWhatsApp = () => {
     const today = new Date().toLocaleDateString('nl-NL', {
       weekday: 'long',
@@ -601,7 +568,6 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
       const team2 = teams[match.team2Index];
       if (!team1 || !team2) return;
 
-      // Kleur bepalen en wisselen indien nodig
       const color1 = getBaseColor(match.team1Index);
       const color2 = getBaseColor(match.team2Index);
 
@@ -665,7 +631,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
         </div>
       </div>
 
-      {/* --- DOUBLE HEADER LOGIC --- */}
+      {/* DOUBLE HEADER */}
       {gameMode === 'doubleHeader' && (
         <>
           {currentRound === 1 && (
@@ -753,9 +719,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
                   <h3 className="text-xl font-bold text-gray-400 mb-4">
                     Resultaat Wedstrijd 1
                   </h3>
-                  <MatchResultDisplayCard
-                    matchResult={round1Results[0]}
-                  />
+                  <MatchResultDisplayCard matchResult={round1Results[0]} />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-4">
                   Uitslag Wedstrijd 2
@@ -778,7 +742,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
                     onSaveDoubleHeader(match2Result);
                     triggerFirework();
                   }}
-                  className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors	duration-200 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
+                  className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
                   disabled={!!actionInProgress}
                 >
                   {actionInProgress === 'savingDouble' ? (
@@ -796,10 +760,9 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
         </>
       )}
 
-      {/* --- SIMPLE MATCH / TOURNAMENT LOGIC --- */}
+      {/* SIMPLE MATCH / TOERNOOI */}
       {(isSimpleMatch || gameMode === 'tournament') && (
         <>
-          {/* Round 1: Show teams */}
           {currentRound === 1 && (
             <div className="mb-6">
               <h3 className="text-xl font-bold text-white mb-4">
@@ -820,7 +783,6 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
 
           {currentRound > 0 && (
             <div className="mt-8 border-t border-gray-600 pt-6">
-              {/* Round 2 setup: R1 results + R2 teams */}
               {currentRound === 2 && round1Results.length > 0 && (
                 <>
                   <div className="mb-8">
@@ -878,7 +840,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
                     onSaveSimpleMatch(round1Matches[0]);
                     triggerFirework();
                   }}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors	duration-200 transform hover:scale-105 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 transform hover:scale-105 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
                   disabled={!!actionInProgress}
                 >
                   {actionInProgress === 'savingSimple' ? (
@@ -895,7 +857,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
               {!isSimpleMatch && currentRound === 1 && (
                 <button
                   onClick={() => onSaveRound1(round1Matches)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors	duration-200 transform hover:scale-105 disabled:bg-blue-800 disabled:cursor-not-allowed"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 transform hover:scale-105 disabled:bg-blue-800 disabled:cursor-not-allowed"
                   disabled={!!actionInProgress}
                 >
                   Sla Ronde 1 op & Start Ronde 2
@@ -909,7 +871,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
                       onSaveFinalResults(round2Pairings);
                       triggerFirework();
                     }}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors	duration-200 transform hover:scale-105 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 transform hover:scale-105 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
                     disabled={!!actionInProgress}
                   >
                     {actionInProgress === 'savingFinal' ? (
@@ -923,7 +885,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
                   </button>
                   <button
                     onClick={onRegenerateTeams}
-                    className={`w-full mt-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors	duration-200 text-sm flex items-center justify-center disabled:bg-amber-800 disabled:cursor-wait`}
+                    className="w-full mt-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-sm flex items-center justify-center disabled:bg-amber-800 disabled:cursor-wait"
                     disabled={!!actionInProgress}
                   >
                     {actionInProgress === 'regeneratingTeams' ? (
@@ -945,7 +907,6 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
         </>
       )}
 
-      {/* DIT IS HET VERBORGEN FORMULIER DAT WORDT GEPRIINT */}
       <MatchForm teams={teams} />
     </div>
   );
