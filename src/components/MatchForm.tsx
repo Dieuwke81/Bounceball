@@ -39,7 +39,6 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
       <style>
         {`
           @media print {
-            /* Logo op achtergrond weg */
             body::before {
               display: none !important;
               background-image: none !important;
@@ -52,9 +51,11 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               padding: 0 !important;
               overflow: hidden !important;
             }
+
             body > *:not(.print-portal) {
               display: none !important;
             }
+
             .print-portal {
               display: block !important;
               position: absolute;
@@ -67,10 +68,12 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               color: black;
               font-family: sans-serif;
             }
+
             @page {
               size: A4;
               margin: 15mm;
             }
+
             .match-page {
               page-break-after: always;
               break-after: page;
@@ -79,9 +82,11 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               flex-direction: column;
               justify-content: flex-start;
             }
+
             .match-page:last-child {
               page-break-after: auto;
             }
+
             * {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
@@ -91,8 +96,10 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
       </style>
 
       {matches.map((match, index) => {
-        const maxRows = Math.max(match.blue.length, match.yellow.length, 6);
-        const rows = Array.from({ length: maxRows });
+        // Minimaal 5 naam-rijen, daarna 1 lege, daarna 1 met Gem. Rating
+        const baseRows = Math.max(match.blue.length, match.yellow.length, 5);
+        const totalRows = baseRows + 2; // namen + lege + rating
+        const rows = Array.from({ length: totalRows });
 
         const avgBlue = calculateAverage(match.blue);
         const avgYellow = calculateAverage(match.yellow);
@@ -147,29 +154,37 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                 </thead>
                 <tbody>
                   {rows.map((_, i) => {
-                    const blueName = match.blue[i]?.name;
-                    let blueContent = (
-                      <span className="font-bold text-base text-black">{blueName}</span>
-                    );
-                    if (!blueName && i === 5) {
+                    let blueContent: React.ReactNode = null;
+                    let yellowContent: React.ReactNode = null;
+
+                    if (i < baseRows) {
+                      const blueName = match.blue[i]?.name;
+                      const yellowName = match.yellow[i]?.name;
+
+                      if (blueName) {
+                        blueContent = (
+                          <span className="font-bold text-base text-black">{blueName}</span>
+                        );
+                      }
+                      if (yellowName) {
+                        yellowContent = (
+                          <span className="font-bold text-base text-black">{yellowName}</span>
+                        );
+                      }
+                    } else if (i === baseRows + 1) {
+                      // Rij onder de lege: Gem. Rating
                       blueContent = (
                         <span className="text-gray-500 italic text-sm">
                           Gem. Rating: {avgBlue}
                         </span>
                       );
-                    }
-
-                    const yellowName = match.yellow[i]?.name;
-                    let yellowContent = (
-                      <span className="font-bold text-base text-black">{yellowName}</span>
-                    );
-                    if (!yellowName && i === 5) {
                       yellowContent = (
                         <span className="text-gray-500 italic text-sm">
                           Gem. Rating: {avgYellow}
                         </span>
                       );
                     }
+                    // i === baseRows → expliciet lege rij
 
                     return (
                       <tr key={i} className="h-10">
@@ -193,16 +208,18 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                   Eindstand:
                 </div>
 
-                <div className="w-[20%] flex justify-center pt-2">
-                  <div className="border-2 border-black w-20 h-12 bg-white"></div>
+                {/* Lijntje ipv vakje links */}
+                <div className="w-[20%] flex justify-center pt-3">
+                  <div className="border-b-2 border-black w-24" />
                 </div>
 
                 <div className="w-[30%] flex justify-center items-center pt-2">
                   <span className="text-4xl font-bold">-</span>
                 </div>
 
-                <div className="w-[20%] flex justify-center pt-2">
-                  <div className="border-2 border-black w-20 h-12 bg-white"></div>
+                {/* Lijntje ipv vakje rechts */}
+                <div className="w-[20%] flex justify-center pt-3">
+                  <div className="border-b-2 border-black w-24" />
                 </div>
               </div>
             </div>
@@ -247,14 +264,14 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                 <div className="w-[30%] text-right pr-4 font-bold text-xl uppercase pt-2">
                   Eindstand:
                 </div>
-                <div className="w-[20%] flex justify-center pt-2">
-                  <div className="border-2 border-black w-20 h-12 bg-white"></div>
+                <div className="w-[20%] flex justify-center pt-3">
+                  <div className="border-b-2 border-black w-24" />
                 </div>
                 <div className="w-[30%] flex justify-center items-center pt-2">
                   <span className="text-4xl font-bold">-</span>
                 </div>
-                <div className="w-[20%] flex justify-center pt-2">
-                  <div className="border-2 border-black w-20 h-12 bg-white"></div>
+                <div className="w-[20%] flex justify-center pt-3">
+                  <div className="border-b-2 border-black w-24" />
                 </div>
               </div>
             </div>
