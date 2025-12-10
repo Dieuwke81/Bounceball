@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import type { GameSession, Player, MatchResult } from '../types';
 import html2canvas from 'html2canvas';
 
-// 🎯 Gebruik hetzelfde WhatsApp-icoon als in je wedstrijdoverzicht
-import WhatsAppIcon from './icons/WhatsAppIcon';
-
 // --- ICONS ---
 const CameraIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -17,14 +14,33 @@ const CameraIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-// Excel-achtig icoon (document met een X)
+// Excel-icoon
 const ExcelIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
     <path d="M14 2H7.5A1.5 1.5 0 0 0 6 3.5v17A1.5 1.5 0 0 0 7.5 22h9A1.5 1.5 0 0 0 18 20.5V8l-4-6Z" opacity="0.7" />
     <path d="M14 2v5.25A.75.75 0 0 0 14.75 8H18L14 2Z" />
     <path
       d="M10.3 10.5a.75.75 0 0 1 .96.28l.74 1.23.74-1.23a.75.75 0 1 1 1.28.76l-1.14 1.88 1.2 1.97a.75.75 0 0 1-1.28.76l-.8-1.32-.8 1.32a.75.75 0 0 1-1.28-.76l1.2-1.97-1.14-1.88a.75.75 0 0 1 .28-1.04Z"
-      className="text-white"
+    />
+  </svg>
+);
+
+// WhatsApp-achtig icoon (rond logo)
+const WhatsAppIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={className}>
+    <defs>
+      <linearGradient id="wa-grad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#25D366" />
+        <stop offset="100%" stopColor="#128C7E" />
+      </linearGradient>
+    </defs>
+    <path
+      fill="url(#wa-grad)"
+      d="M12.04 2.25C6.9 2.25 2.75 6.26 2.75 11.23c0 1.74.47 3.3 1.28 4.66L3 21.25l5.53-1.81c1.32.72 2.82 1.11 4.47 1.11 5.14 0 9.29-4.01 9.29-8.98 0-4.97-4.15-9-9.25-9Z"
+    />
+    <path
+      fill="#fff"
+      d="M12.04 3.75c-4.43 0-7.9 3.33-7.9 7.47 0 1.35.41 2.65 1.19 3.84l.21.33-.72 3.17 3.26-1.07.28.16c1.14.68 2.47 1.06 3.93 1.06 4.28 0 7.75-3.35 7.75-7.48 0-4.14-3.47-7.48-7.75-7.48Zm4.22 10.41c-.2.53-1.11 1.01-1.55 1.08-.39.06-.89.08-1.44-.1-.34-.1-.77-.23-1.32-.45-2.35-.92-3.84-3.28-3.96-3.44-.12-.15-.94-1.23-.94-2.35 0-1.12.59-1.67.8-1.9.21-.23.46-.29.61-.29l.45.01c.14.01.34-.05.53.41.2.47.67 1.65.73 1.75.06.1.09.21.02.34-.07.12-.1.2-.2.3-.1.1-.21.23-.29.31-.09.09-.19.2-.08.4.11.2.49.86 1.06 1.39.73.68 1.34.89 1.53.99.19.1.31.08.42-.05.12-.13.49-.6.62-.8.13-.2.26-.17.44-.1.18.07 1.12.57 1.31.67.18.09.29.14.35.24.06.1.06.55-.13 1.08Z"
     />
   </svg>
 );
