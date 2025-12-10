@@ -113,7 +113,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     });
   };
 
-  // --- 1. EXPORT FUNCTIES (Met Punten + Eigen goals) ---
+  // --- 1. EXPORT FUNCTIES (Met Punten + Eigen goals + beide IDs) ---
   const handleExportCSV = (
     e: React.MouseEvent,
     sessionsToExport: GameSession[],
@@ -126,7 +126,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       'Ronde',
       'Wedstrijd Nr',
       'Team Kleur',
-      'Excel ID',
+      'Speler ID',  // interne ID (kolom A)
+      'Excel ID',   // Excel-ID (kolom G)
       'Naam',
       'Doelpunten',
       'Eigen goals',
@@ -172,19 +173,20 @@ const HistoryView: React.FC<HistoryViewProps> = ({
               const ownGoalData = opponentGoals.find(g => g.playerId === player.id);
               const ownGoals = ownGoalData ? ownGoalData.count : 0;
 
-              // Excel ID gebruiken als die aanwezig is, anders fallback naar interne id
-              const anyPlayer = player as any;
+              // Excel ID uit de players-lijst (sheet kolom G)
+              const excelSource = players.find(p => p.id === player.id) as any;
               const excelId =
-                anyPlayer.excelId !== undefined && anyPlayer.excelId !== null
-                  ? String(anyPlayer.excelId)
-                  : player.id.toString();
+                excelSource && excelSource.excelId !== undefined && excelSource.excelId !== null
+                  ? String(excelSource.excelId)
+                  : '';
 
               rows.push([
                 dateStr,
                 roundName,
                 matchNumber,
                 teamColor,
-                excelId,
+                player.id.toString(),  // interne ID
+                excelId,               // Excel ID
                 player.name,
                 goalsScored.toString(),
                 ownGoals.toString(),
