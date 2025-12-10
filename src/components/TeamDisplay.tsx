@@ -166,96 +166,6 @@ const ScoreInput: React.FC<{
 const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
 
 // ============================================================================
-// WEDSTRIJD CARD (AANGEPAST: ALTIJD BLAUW LINKS, GEEL RECHTS + EG)
-// ============================================================================
-const MatchInputCard: React.FC<{
-  match: Match;
-  matchIndex: number;
-  teams: Player[][];
-  goalScorers: TeamDisplayProps['goalScorers'];
-  onGoalChange: TeamDisplayProps['onGoalChange'];
-}> = ({ match, matchIndex, teams, goalScorers, onGoalChange }) => {
-  // 1. Haal de teams op
-  const team1Data = teams[match.team1Index];
-  const team2Data = teams[match.team2Index];
-
-  // 2. Bepaal de 'natuurlijke' kleur
-  const color1 = getBaseColor(match.team1Index);
-  const color2 = getBaseColor(match.team2Index);
-
-  // 3. Logica: Wie moet er LINKS (Blauw) en wie RECHTS (Geel)?
-  let blueTeam, yellowTeam;
-  let blueIdentifier: 'team1' | 'team2';
-  let yellowIdentifier: 'team1' | 'team2';
-  let blueTeamIndex, yellowTeamIndex;
-
-  if (color1 === 'yellow' && color2 === 'blue') {
-    blueTeam = team2Data;
-    blueIdentifier = 'team2';
-    blueTeamIndex = match.team2Index;
-
-    yellowTeam = team1Data;
-    yellowIdentifier = 'team1';
-    yellowTeamIndex = match.team1Index;
-  } else {
-    blueTeam = team1Data;
-    blueIdentifier = 'team1';
-    blueTeamIndex = match.team1Index;
-
-    yellowTeam = team2Data;
-    yellowIdentifier = 'team2';
-    yellowTeamIndex = match.team2Index;
-  }
-
-  const leftColorClass = 'text-cyan-300';
-  const rightColorClass = 'text-amber-300';
-  const leftBorderClass = 'border-cyan-500/30';
-  const rightBorderClass = 'border-amber-500/30';
-
-  // Score per team (alles wat bij dat team opgeslagen is, incl. EG van tegenstander)
-  const getTeamScore = (identifier: 'team1' | 'team2') => {
-    const goals = goalScorers[`${matchIndex}-${identifier}`] || [];
-    return goals.reduce((sum, g) => sum + g.count, 0);
-  };
-
-  const getPlayerGoalsForTeam = (
-    teamIdentifier: 'team1' | 'team2',
-    playerId: number
-  ) => {
-    const goals = goalScorers[`${matchIndex}-${teamIdentifier}`] || [];
-    return goals.find((g) => g.playerId === playerId)?.count || 0;
-  };
-
-  const PlayerGoalInput: React.FC<{
-    player: Player;
-    teamIdentifier: 'team1' | 'team2';
-    opponentIdentifier: 'team1' | 'team2';
-  }> = ({ player, teamIdentifier, opponentIdentifier }) => {
-    const goalCount = getPlayerGoalsForTeam(teamIdentifier, player.id);
-    const ownGoalCount = getPlayerGoalsForTeam(opponentIdentifier, player.id);
-
-    const handleGoalsChange = (newVal: number) => {
-      onGoalChange(matchIndex, teamIdentifier, player.id, newVal);
-    };
-
-    const handleOwnGoalsChange = (newVal: number) => {
-      onGoalChange(matchIndex, opponentIdentifier, player.id, newVal);
-    };
-
-    <div className="grid grid-cols-[1fr_auto_auto] px-3 mb-1 text-[11px] text-gray-300">
-  <span /> {/* lege kolom boven de naam */}
-  <span className="text-center">G</span>
-  <span className="text-center">EG</span>
-</div>
-    
-    function PlayerRow({ player, goalCount, ownGoalCount, handleGoalsChange, handleOwnGoalsChange }) {
-  return (
-    <div className="grid grid-cols-[1fr_auto_auto] items-center bg-gray-600/50 px-3 py-2 rounded-md hover:bg-gray-600 transition-colors">
-      {/* Naam */}
-      <span className="text-gray-200 text-sm break-words leading-tight mr-2">
-        {player.name}
-      </span>
-// ============================================================================
 // WEDSTRIJD CARD (ALTIJD BLAUW LINKS, GEEL RECHTS + EG)
 // ============================================================================
 const MatchInputCard: React.FC<{
@@ -274,10 +184,12 @@ const MatchInputCard: React.FC<{
   const color2 = getBaseColor(match.team2Index);
 
   // 3. Logica: Wie moet er LINKS (Blauw) en wie RECHTS (Geel)?
-  let blueTeam, yellowTeam;
+  let blueTeam: Player[];
+  let yellowTeam: Player[];
   let blueIdentifier: 'team1' | 'team2';
   let yellowIdentifier: 'team1' | 'team2';
-  let blueTeamIndex, yellowTeamIndex;
+  let blueTeamIndex: number;
+  let yellowTeamIndex: number;
 
   if (color1 === 'yellow' && color2 === 'blue') {
     blueTeam = team2Data;
@@ -434,7 +346,7 @@ const MatchInputCard: React.FC<{
 };
 
 // ============================================================================
-// UITSLAG CARD (AANGEPAST: OOK ALTIJD BLAUW LINKS)
+// UITSLAG CARD (ALTIJD BLAUW LINKS)
 // ============================================================================
 const MatchResultDisplayCard: React.FC<{
   matchResult: MatchResult;
@@ -445,7 +357,10 @@ const MatchResultDisplayCard: React.FC<{
   const color1 = getBaseColor(matchResult.team1Index);
   const color2 = getBaseColor(matchResult.team2Index);
 
-  let leftText, rightText, leftScore, rightScore;
+  let leftText: string;
+  let rightText: string;
+  let leftScore: number;
+  let rightScore: number;
 
   if (color1 === 'yellow' && color2 === 'blue') {
     leftText = `Team ${matchResult.team2Index + 1}`;
@@ -485,15 +400,18 @@ const MatchResultDisplayCard: React.FC<{
   );
 };
 
+// ============================================================================
+// TEAM CARD
+// ============================================================================
 const TeamCard: React.FC<{
   team: Player[];
   index: number;
   title: string;
 }> = ({ team, index, title }) => {
-  const calculateTeamStats = (team: Player[]) => {
-    const totalRating = team.reduce((sum, player) => sum + player.rating, 0);
+  const calculateTeamStats = (t: Player[]) => {
+    const totalRating = t.reduce((sum, player) => sum + player.rating, 0);
     const averageRating =
-      team.length > 0 ? (totalRating / team.length).toFixed(2) : '0.00';
+      t.length > 0 ? (totalRating / t.length).toFixed(2) : '0.00';
     return { totalRating, averageRating };
   };
   const { totalRating, averageRating } = calculateTeamStats(team);
@@ -552,6 +470,9 @@ const TeamCard: React.FC<{
   );
 };
 
+// ============================================================================
+// TEAMDISPLAY
+// ============================================================================
 const TeamDisplay: React.FC<TeamDisplayProps> = ({
   teams,
   teams2,
