@@ -243,37 +243,24 @@ const MatchInputCard: React.FC<{
     };
 
     return (
-  <div className="bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
-    
-    {/* KOP G / EG */}
-    <div className="flex items-center mb-1">
-      <div className="flex-1" />
-      <div className="flex justify-between items-center w-[5.5rem] text-[10px] text-gray-300">
-        <span className="w-10 text-center">G</span>
-        <span className="w-10 text-center">EG</span>
-      </div>
-    </div>
+  <div className="flex items-center bg-gray-600/50 px-3 py-2 rounded-md hover:bg-gray-600 transition-colors">
+    {/* Naam links */}
+    <span className="flex-1 pr-2 text-gray-200 text-sm break-words leading-tight">
+      {player.name}
+    </span>
 
-    {/* RIJ MET NAAM + INPUTS */}
-    <div className="flex items-center">
-      {/* Naam */}
-      <span className="text-gray-200 flex-1 pr-2 text-sm break-words leading-tight">
-        {player.name}
-      </span>
-
-      {/* Inputs */}
-      <div className="flex justify-between items-center w-[5.5rem]">
-        <ScoreInput
-          value={goalCount}
-          onChange={handleGoalsChange}
-          className="w-10 min-w-[2.5rem] max-w-[2.5rem] bg-gray-700 border border-gray-500 rounded-md py-1 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm tabular-nums"
-        />
-        <ScoreInput
-          value={ownGoalCount}
-          onChange={handleOwnGoalsChange}
-          className="w-10 min-w-[2.5rem] max-w-[2.5rem] bg-gray-700 border border-red-500/70 rounded-md py-1 text-white text-center focus:outline-none focus:ring-2 focus:ring-red-500 text-sm tabular-nums"
-        />
-      </div>
+    {/* Vakjes G / EG rechts, strak onder de kop */}
+    <div className="flex justify-between items-center w-[4.75rem]">
+      <ScoreInput
+        value={goalCount}
+        onChange={handleGoalsChange}
+        className="h-7 w-9 bg-gray-700 border border-gray-500 rounded-md text-white text-center text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 tabular-nums"
+      />
+      <ScoreInput
+        value={ownGoalCount}
+        onChange={handleOwnGoalsChange}
+        className="h-7 w-9 bg-gray-700 border border-red-500/70 rounded-md text-white text-center text-sm focus:outline-none focus:ring-2 focus:ring-red-500 tabular-nums"
+      />
     </div>
   </div>
 );
