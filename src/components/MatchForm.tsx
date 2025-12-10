@@ -191,14 +191,14 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                           {blueContent || ''}
                         </td>
                         <td className="border border-black bg-white" />
-                        <td className="border border-black bg-white" />
+                        <td className="border border-black bg-red-500/10"></td>
 
                         {/* GEEL: naam + doelpunten + EG */}
                         <td className="border border-black px-3 align-middle bg-white">
                           {yellowContent || ''}
                         </td>
                         <td className="border border-black bg-white" />
-                        <td className="border border-black bg-white" />
+                        <td className="border border-black bg-red-500/10"></td>
                       </tr>
                     );
                   })}
