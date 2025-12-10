@@ -225,45 +225,56 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   };
 
   // --- 3. UITSLAG WEERGAVE COMPONENT ---
-  const MatchResultDisplay: React.FC<{ result: MatchResult; teams: Player[][] }> = ({ result, teams }) => {
-    const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
-    const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
+  // --- 3. UITSLAG WEERGAVE COMPONENT ---
+const MatchResultDisplay: React.FC<{ result: MatchResult; teams: Player[][] }> = ({ result, teams }) => {
+  const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
+  const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
-    const color1 = getBaseColor(result.team1Index);
-    const color2 = getBaseColor(result.team2Index);
+  const color1 = getBaseColor(result.team1Index);
+  const color2 = getBaseColor(result.team2Index);
 
-    let leftTeamIdx = result.team1Index;
-    let rightTeamIdx = result.team2Index;
-    let leftScore = score1;
-    let rightScore = score2;
-    let leftGoals = result.team1Goals;
-    let rightGoals = result.team2Goals;
+  let leftTeamIdx = result.team1Index;
+  let rightTeamIdx = result.team2Index;
+  let leftScore = score1;
+  let rightScore = score2;
+  let leftGoals = result.team1Goals;
+  let rightGoals = result.team2Goals;
 
-    if (color1 === 'yellow' && color2 === 'blue') {
-      leftTeamIdx = result.team2Index;
-      rightTeamIdx = result.team1Index;
-      leftScore = score2;
-      rightScore = score1;
-      leftGoals = result.team2Goals;
-      rightGoals = result.team1Goals;
-    }
+  // kleur-wissel zoals in TeamDisplay (links altijd blauw, rechts geel)
+  if (color1 === 'yellow' && color2 === 'blue') {
+    leftTeamIdx = result.team2Index;
+    rightTeamIdx = result.team1Index;
+    leftScore = score2;
+    rightScore = score1;
+    leftGoals = result.team2Goals;
+    rightGoals = result.team1Goals;
+  }
 
-    const leftColorClass = 'text-cyan-400';
-    const rightColorClass = 'text-amber-400';
+  const leftColorClass = 'text-cyan-400';
+  const rightColorClass = 'text-amber-400';
 
-    const team1Players = teams[leftTeamIdx] || [];
-    const team2Players = teams[rightTeamIdx] || [];
-    const team1GoalsMap = new Map(leftGoals.map(g => [g.playerId, g.count]));
-    const team2GoalsMap = new Map(rightGoals.map(g => [g.playerId, g.count]));
+  const team1Players = teams[leftTeamIdx] || [];
+  const team2Players = teams[rightTeamIdx] || [];
 
-    const PlayerListWithGoals: React.FC<{
-      players: Player[];
-      goalsMap: Map<number, number>;
-      scoreColorClass: string;
-    }> = ({ players, goalsMap, scoreColorClass }) => (
+  // → component krijgt nu óók de goals van de tegenstander mee,
+  //   zodat we daar eigen goals kunnen uithalen.
+  const PlayerListWithGoals: React.FC<{
+    players: Player[];
+    teamGoals: { playerId: number; count: number }[];
+    opponentGoals: { playerId: number; count: number }[];
+    scoreColorClass: string;
+  }> = ({ players, teamGoals, opponentGoals, scoreColorClass }) => {
+    const goalsForMap = new Map(teamGoals.map(g => [g.playerId, g.count]));
+    const oppGoalsMap = new Map(opponentGoals.map(g => [g.playerId, g.count]));
+
+    return (
       <ul className="space-y-1 mt-3">
         {players.map(player => {
-          const goals = goalsMap.get(player.id) || 0;
+          const goalsFor = goalsForMap.get(player.id) || 0;           // normale goals
+          const ownGoals = oppGoalsMap.get(player.id) || 0;           // EG (staan bij tegenpartij)
+
+          const hasContribution = goalsFor > 0 || ownGoals > 0;
+
           return (
             <li
               key={player.id}
@@ -271,64 +282,78 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             >
               <span
                 className={`text-sm whitespace-nowrap mr-2 ${
-                  goals > 0 ? 'text-gray-100 font-medium' : 'text-gray-400'
+                  hasContribution ? 'text-gray-100 font-medium' : 'text-gray-400'
                 }`}
               >
                 {player.name}
               </span>
-              <span
-                className={`text-base font-bold ${
-                  goals > 0 ? scoreColorClass : 'text-gray-600'
-                }`}
-              >
-                {goals}
-              </span>
+
+              <div className="flex items-center gap-1">
+                {/* normale goals */}
+                <span
+                  className={`text-base font-bold min-w-[1.5rem] text-right ${
+                    goalsFor > 0 ? scoreColorClass : 'text-gray-600'
+                  }`}
+                >
+                  {goalsFor}
+                </span>
+
+                {/* eigen goals – klein rood labeltje, alleen tonen als > 0 */}
+                {ownGoals > 0 && (
+                  <span className="text-[11px] font-bold text-red-400 bg-red-900/40 border border-red-500/60 rounded-full px-2 py-0.5">
+                    EG {ownGoals}
+                  </span>
+                )}
+              </div>
             </li>
           );
         })}
       </ul>
     );
+  };
 
-    return (
-      <div className="bg-gray-800 p-5 rounded-xl border border-gray-600/50 shadow-md flex flex-col">
-        <div className="flex-grow grid grid-cols-2 gap-8">
-          <div className="overflow-hidden">
-            <h4
-              className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${leftColorClass}`}
-            >
-              Team {leftTeamIdx + 1}
-            </h4>
-            <PlayerListWithGoals
-              players={team1Players}
-              goalsMap={team1GoalsMap}
-              scoreColorClass={leftColorClass}
-            />
-          </div>
-          <div className="overflow-hidden">
-            <h4
-              className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${rightColorClass}`}
-            >
-              Team {rightTeamIdx + 1}
-            </h4>
-            <PlayerListWithGoals
-              players={team2Players}
-              goalsMap={team2GoalsMap}
-              scoreColorClass={rightColorClass}
-            />
-          </div>
+  return (
+    <div className="bg-gray-800 p-5 rounded-xl border border-gray-600/50 shadow-md flex flex-col">
+      <div className="flex-grow grid grid-cols-2 gap-8">
+        <div className="overflow-hidden">
+          <h4
+            className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${leftColorClass}`}
+          >
+            Team {leftTeamIdx + 1}
+          </h4>
+          <PlayerListWithGoals
+            players={team1Players}
+            teamGoals={leftGoals}
+            opponentGoals={rightGoals}
+            scoreColorClass={leftColorClass}
+          />
         </div>
-        <div className="mt-6 pt-2 border-t border-gray-600 text-center flex justify-center items-center gap-4">
-          <span className={`text-4xl font-black tracking-widest drop-shadow-md ${leftColorClass}`}>
-            {leftScore}
-          </span>
-          <span className="text-2xl font-bold text-gray-500">-</span>
-          <span className={`text-4xl font-black tracking-widest drop-shadow-md ${rightColorClass}`}>
-            {rightScore}
-          </span>
+        <div className="overflow-hidden">
+          <h4
+            className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${rightColorClass}`}
+          >
+            Team {rightTeamIdx + 1}
+          </h4>
+          <PlayerListWithGoals
+            players={team2Players}
+            teamGoals={rightGoals}
+            opponentGoals={leftGoals}
+            scoreColorClass={rightColorClass}
+          />
         </div>
       </div>
-    );
-  };
+      <div className="mt-6 pt-2 border-t border-gray-600 text-center flex justify-center items-center gap-4">
+        <span className={`text-4xl font-black tracking-widest drop-shadow-md ${leftColorClass}`}>
+          {leftScore}
+        </span>
+        <span className="text-2xl font-bold text-gray-500">-</span>
+        <span className={`text-4xl font-black tracking-widest drop-shadow-md ${rightColorClass}`}>
+          {rightScore}
+        </span>
+      </div>
+    </div>
+  );
+};
 
   return (
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
