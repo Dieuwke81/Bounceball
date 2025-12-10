@@ -289,7 +289,7 @@ const MatchInputCard: React.FC<{
           {/* Kolomkopjes G / EG */}
           <div className="flex items-center text-xs font-bold text-gray-200 uppercase tracking-wider pr-1">
             <span className="flex-1" />
-            <span className="w-9 text-center text-xs">Goals</span>
+            <span className="w-10 text-center">Goals</span>
             <span className="w-9 text-center">EG</span>
           </div>
 
