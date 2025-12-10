@@ -2,11 +2,18 @@ import React, { useState } from 'react';
 import type { GameSession, Player, MatchResult } from '../types';
 import html2canvas from 'html2canvas';
 
+// 🎯 Gebruik hetzelfde WhatsApp-icoon als in je wedstrijdoverzicht
+import WhatsAppIcon from './icons/WhatsAppIcon';
+
 // --- ICONS ---
 const CameraIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
     <path d="M12 9a3.75 3.75 0 1 0 0 7.5A3.75 3.75 0 0 0 12 9Z" />
-    <path fillRule="evenodd" d="M9.348 2.818a1.5 1.5 0 0 0-1.414 1.182l-.45 1.795H4.5a2.25 2.25 0 0 0-2.25 2.25v10.5a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25V7.5a2.25 2.25 0 0 0-2.25-2.25h-2.985l-.45-1.795a1.5 1.5 0 0 0-1.414 1.182l-1.313.131a6.67 6.67 0 0 0-3.376 0l-1.313-.131Z" clipRule="evenodd" />
+    <path
+      fillRule="evenodd"
+      d="M9.348 2.818a1.5 1.5 0 0 0-1.414 1.182l-.45 1.795H4.5a2.25 2.25 0 0 0-2.25 2.25v10.5a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25V7.5a2.25 2.25 0 0 0-2.25-2.25h-2.985l-.45-1.795a1.5 1.5 0 0 0-1.414 1.182l-1.313.131a6.67 6.67 0 0 0-3.376 0l-1.313-.131Z"
+      clipRule="evenodd"
+    />
   </svg>
 );
 
@@ -22,23 +29,23 @@ const ExcelIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-// WhatsApp-achtig icoon (praatwolkje met telefoon)
-const WhatsAppIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M12.04 2.25C6.9 2.25 2.75 6.26 2.75 11.23c0 1.74.47 3.3 1.28 4.66L3 21.25l5.53-1.81c1.32.72 2.82 1.11 4.47 1.11 5.14 0 9.29-4.01 9.29-8.98 0-4.97-4.15-9-9.25-9Zm0 1.5c4.28 0 7.75 3.34 7.75 7.48 0 4.13-3.47 7.48-7.75 7.48-1.46 0-2.79-.38-3.93-1.06l-.28-.16-3.26 1.07.72-3.17-.21-.33a6.89 6.89 0 0 1-1.19-3.84c0-4.14 3.47-7.47 7.9-7.47Z" />
-    <path d="M16.26 14.16c-.19-.1-1.13-.6-1.31-.67-.18-.07-.31-.1-.44.1-.13.2-.5.67-.62.8-.11.13-.23.15-.42.05-.19-.1-.8-.31-1.53-.99-.57-.53-.95-1.19-1.06-1.39-.11-.2-.01-.31.08-.4.08-.08.19-.21.29-.31.1-.1.13-.18.2-.3.07-.13.04-.24-.02-.34-.06-.1-.53-1.28-.73-1.75-.19-.46-.39-.4-.53-.41l-.45-.01c-.15 0-.4.06-.61.29-.21.23-.8.78-.8 1.9 0 1.12.82 2.2.94 2.35.12.16 1.61 2.52 3.96 3.44.55.22.98.35 1.32.45.55.18 1.05.16 1.44.1.44-.07 1.35-.55 1.55-1.08.19-.53.19-.98.13-1.08-.06-.1-.17-.15-.35-.24Z" />
-  </svg>
-);
-
 const ArchiveIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+    />
   </svg>
 );
 
 const TrashIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+    />
   </svg>
 );
 
@@ -58,7 +65,7 @@ interface HistoryViewProps {
   history: GameSession[];
   players: Player[];
   onDeleteSession: (date: string) => void;
-  isAuthenticated?: boolean; // 👈 nieuw
+  isAuthenticated?: boolean;
 }
 
 // Hulpfunctie voor kleuren
@@ -86,14 +93,13 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     setExpandedDate(prevDate => (prevDate === date ? null : date));
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('nl-NL', {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('nl-NL', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
-  };
 
   // --- 1. EXPORT FUNCTIES (Met Punten) ---
   const handleExportCSV = (
@@ -366,7 +372,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
           onClick={e => handleExportCSV(e, history, 'COMPLETE_HISTORY')}
           className="flex items-center space-x-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition-colors shadow-md"
         >
-          {/* Excel-icoon in de grote knop */}
           <ExcelIcon className="w-5 h-5" />
           <span className="hidden sm:inline text-sm font-bold">Alles naar CSV</span>
         </button>
@@ -427,7 +432,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                 <div className="p-6 w-full">
                   <div className="mb-8 text-center">
                     <h3 className="text-4xl font-black text-green-500 tracking-tight">BOUNCEBALL</h3>
-                    <div className="h-1 w-32 bg-green-500 mx-auto my-2 rounded-full"></div>
+                    <div className="h-1 w-32 bg-green-500 mx-auto my-2 rounded-full" />
                     <p className="text-gray-300 font-medium text-lg mt-1 uppercase tracking-wide">
                       {formatDate(session.date)}
                     </p>
@@ -435,36 +440,28 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                   <div className="grid grid-cols-1 gap-8">
                     <div>
                       <div className="flex items-center mb-4">
-                        <div className="h-8 w-1 bg-green-500 rounded-full mr-3"></div>
+                        <div className="h-8 w-1 bg-green-500 rounded-full mr-3" />
                         <h3 className="text-2xl font-bold text-white uppercase tracking-wider">
                           Ronde 1
                         </h3>
                       </div>
                       <div className="space-y-6">
                         {session.round1Results.map((r, i) => (
-                          <MatchResultDisplay
-                            key={`r1-${i}`}
-                            result={r}
-                            teams={session.teams}
-                          />
+                          <MatchResultDisplay key={`r1-${i}`} result={r} teams={session.teams} />
                         ))}
                       </div>
                     </div>
                     {session.round2Results.length > 0 && (
                       <div>
                         <div className="flex items-center mb-4 mt-4">
-                          <div className="h-8 w-1 bg-green-500 rounded-full mr-3"></div>
+                          <div className="h-8 w-1 bg-green-500 rounded-full mr-3" />
                           <h3 className="text-2xl font-bold text-white uppercase tracking-wider">
                             Ronde 2
                           </h3>
                         </div>
                         <div className="space-y-6">
                           {session.round2Results.map((r, i) => (
-                            <MatchResultDisplay
-                              key={`r2-${i}`}
-                              result={r}
-                              teams={session.teams}
-                            />
+                            <MatchResultDisplay key={`r2-${i}`} result={r} teams={session.teams} />
                           ))}
                         </div>
                       </div>
