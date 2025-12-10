@@ -171,20 +171,31 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                           <span className="font-bold text-base text-black">{yellowName}</span>
                         );
                       }
-                    } else if (i === baseRows + 1) {
-                      // Rij onder de lege: Gem. Rating
-                      blueContent = (
-                        <span className="text-gray-500 italic text-sm">
-                          Gem. Rating: {avgBlue}
-                        </span>
-                      );
-                      yellowContent = (
-                        <span className="text-gray-500 italic text-sm">
-                          Gem. Rating: {avgYellow}
-                        </span>
-                      );
-                    }
-                    // i === baseRows → expliciet lege rij
+                    } else if (i === baseRows) {
+  // Rij VOOR de Gem. Rating → vaste tekst voor eigen doelpunt
+  blueContent = (
+    <span className="text-gray-500 italic text-xs">
+      Eigen doelpunt team GEEL – Naam speler:
+    </span>
+  );
+  yellowContent = (
+    <span className="text-gray-500 italic text-xs">
+      Eigen doelpunt team BLAUW – Naam speler:
+    </span>
+  );
+} else if (i === baseRows + 1) {
+  // Rij ONDER de lege → Gemiddelde
+  blueContent = (
+    <span className="text-gray-500 italic text-sm">
+      Gem. Rating: {avgBlue}
+    </span>
+  );
+  yellowContent = (
+    <span className="text-gray-500 italic text-sm">
+      Gem. Rating: {avgYellow}
+    </span>
+  );
+}
 
                     return (
                       <tr key={i} className="h-10">
