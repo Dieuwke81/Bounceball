@@ -18,6 +18,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     scorers: false,
     points: false,
     defense: false,
+    ownGoals: false,
   });
 
   // De schakelaar: standaard verbergen we mensen die te weinig speelden
@@ -61,18 +62,68 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     return map;
   }, [history]);
 
-  const topScorers = useMemo(() => {
-    const stats = new Map<number, number>();
+  // ---------------------------------------------------------------------------
+  // NIEUW: doelen per speler opsplitsen in normale goals en eigen goals
+  // ---------------------------------------------------------------------------
+  const scoringStats = useMemo(() => {
+    const map = new Map<number, { goalsFor: number; ownGoals: number }>();
+
     history.forEach(session => {
-      [...session.round1Results, ...session.round2Results].forEach(match => {
-        [...match.team1Goals, ...match.team2Goals].forEach(goal => {
-          stats.set(goal.playerId, (stats.get(goal.playerId) || 0) + goal.count);
+      const allMatches = [...session.round1Results, ...session.round2Results];
+
+      allMatches.forEach(match => {
+        const team1 = session.teams[match.team1Index];
+        const team2 = session.teams[match.team2Index];
+        if (!team1 || !team2) return;
+
+        const team1Ids = new Set(team1.map(p => p.id));
+        const team2Ids = new Set(team2.map(p => p.id));
+
+        const addGoals = (playerId: number, isOwnGoal: boolean, count: number) => {
+          const existing = map.get(playerId) || { goalsFor: 0, ownGoals: 0 };
+          if (isOwnGoal) {
+            existing.ownGoals += count;
+          } else {
+            existing.goalsFor += count;
+          }
+          map.set(playerId, existing);
+        };
+
+        // Goals voor team 1
+        match.team1Goals.forEach(g => {
+          if (team1Ids.has(g.playerId)) {
+            // normale goal voor team 1 door speler uit team 1
+            addGoals(g.playerId, false, g.count);
+          } else if (team2Ids.has(g.playerId)) {
+            // speler uit team 2 scoort voor team 1 => eigen goal
+            addGoals(g.playerId, true, g.count);
+          }
+        });
+
+        // Goals voor team 2
+        match.team2Goals.forEach(g => {
+          if (team2Ids.has(g.playerId)) {
+            // normale goal voor team 2 door speler uit team 2
+            addGoals(g.playerId, false, g.count);
+          } else if (team1Ids.has(g.playerId)) {
+            // speler uit team 1 scoort voor team 2 => eigen goal
+            addGoals(g.playerId, true, g.count);
+          }
         });
       });
     });
+
+    return map;
+  }, [history]);
+
+  // ---------------------------------------------------------------------------
+  // TOPSCORERS (alleen normale goals, eigen goals tellen NIET mee)
+  // ---------------------------------------------------------------------------
+  const topScorers = useMemo(() => {
     return Array.from(playerMatches.entries())
       .map(([playerId, games]) => {
-        const goals = stats.get(playerId) || 0;
+        const stats = scoringStats.get(playerId) || { goalsFor: 0, ownGoals: 0 };
+        const goals = stats.goalsFor;
         return {
           playerId,
           goals,
@@ -82,7 +133,28 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
         };
       })
       .sort((a, b) => b.avg - a.avg);
-  }, [history, playerGames, minGames, playerMatches]);
+  }, [playerMatches, scoringStats, playerGames, minGames]);
+
+  // ---------------------------------------------------------------------------
+  // NIEUW: eigen-goal ranglijst
+  // ---------------------------------------------------------------------------
+  const ownGoalKings = useMemo(() => {
+    return Array.from(playerMatches.entries())
+      .map(([playerId, games]) => {
+        const stats = scoringStats.get(playerId) || { goalsFor: 0, ownGoals: 0 };
+        const ownGoals = stats.ownGoals;
+        return {
+          playerId,
+          ownGoals,
+          games,
+          avg: games > 0 ? ownGoals / games : 0,
+          meetsThreshold: (playerGames.get(playerId) || 0) >= minGames,
+        };
+      })
+      // alleen spelers met minimaal 1 eigen goal tonen
+      .filter(p => p.ownGoals > 0)
+      .sort((a, b) => b.ownGoals - a.ownGoals || b.avg - a.avg);
+  }, [playerMatches, scoringStats, playerGames, minGames]);
 
   const competitionPoints = useMemo(() => {
     const stats = new Map<number, number>();
@@ -323,7 +395,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   };
   
-    const GoalDifferenceChart: React.FC<{ data: { date: string, avgDiff: number }[] }> = ({ data }) => {
+  const GoalDifferenceChart: React.FC<{ data: { date: string, avgDiff: number }[] }> = ({ data }) => {
     if (data.length < 2) {
       return <p className="text-gray-400 text-center py-8">Niet genoeg data voor een grafiek.</p>;
     }
@@ -447,6 +519,31 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
                 );
             }}
            />
+        </StatCard>
+
+        {/* NIEUW: EIGEN DOELPUNTEN */}
+        <StatCard title="Eigen doelpunten" icon={
+          <ShieldIcon className="w-6 h-6 text-red-400" />
+        }>
+          <StatList
+            data={ownGoalKings}
+            showAllFlag={showAll.ownGoals}
+            toggleShowAll={() => setShowAll(s => ({...s, ownGoals: !s.ownGoals}))}
+            renderRow={(p, i) => {
+              const player = playerMap.get(p.playerId);
+              if (!player) return null;
+              return (
+                <StatRow
+                  key={p.playerId}
+                  rank={i + 1}
+                  player={player}
+                  value={p.ownGoals}
+                  subtext={`${p.ownGoals} EG in ${p.games}w`}
+                  meetsThreshold={p.meetsThreshold}
+                />
+              );
+            }}
+          />
         </StatCard>
 
         {/* BESTE VERDEDIGER - MET PLAATJE */}
