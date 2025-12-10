@@ -6,54 +6,25 @@ import html2canvas from 'html2canvas';
 const CameraIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
     <path d="M12 9a3.75 3.75 0 1 0 0 7.5A3.75 3.75 0 0 0 12 9Z" />
-    <path
-      fillRule="evenodd"
-      d="M9.348 2.818a1.5 1.5 0 0 0-1.414 1.182l-.45 1.795H4.5a2.25 2.25 0 0 0-2.25 2.25v10.5a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25V7.5a2.25 2.25 0 0 0-2.25-2.25h-2.985l-.45-1.795a1.5 1.5 0 0 0-1.414 1.182l-1.313.131a6.67 6.67 0 0 0-3.376 0l-1.313-.131Z"
-      clipRule="evenodd"
-    />
+    <path fillRule="evenodd" d="M9.348 2.818a1.5 1.5 0 0 0-1.414 1.182l-.45 1.795H4.5a2.25 2.25 0 0 0-2.25 2.25v10.5a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25V7.5a2.25 2.25 0 0 0-2.25-2.25h-2.985l-.45-1.795a1.5 1.5 0 0 0-1.414 1.182l-1.313.131a6.67 6.67 0 0 0-3.376 0l-1.313-.131Z" clipRule="evenodd" />
   </svg>
 );
 
-// Excel-icoon
-const ExcelIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M14 2H7.5A1.5 1.5 0 0 0 6 3.5v17A1.5 1.5 0 0 0 7.5 22h9A1.5 1.5 0 0 0 18 20.5V8l-4-6Z" opacity="0.7" />
-    <path d="M14 2v5.25A.75.75 0 0 0 14.75 8H18L14 2Z" />
-    <path
-      d="M10.3 10.5a.75.75 0 0 1 .96.28l.74 1.23.74-1.23a.75.75 0 1 1 1.28.76l-1.14 1.88 1.2 1.97a.75.75 0 0 1-1.28.76l-.8-1.32-.8 1.32a.75.75 0 0 1-1.28-.76l1.2-1.97-1.14-1.88a.75.75 0 0 1 .28-1.04Z"
-    />
-  </svg>
-);
-
-// WhatsApp-icoon (zelfde als bij Wedstrijdoverzicht)
-const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    className={className}
-  >
-    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+const DownloadIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
   </svg>
 );
 
 const ArchiveIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
-    />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
   </svg>
 );
 
 const TrashIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-    />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
   </svg>
 );
 
@@ -73,7 +44,7 @@ interface HistoryViewProps {
   history: GameSession[];
   players: Player[];
   onDeleteSession: (date: string) => void;
-  isAuthenticated?: boolean;
+  isAuthenticated?: boolean; // 👈 nieuw
 }
 
 // Hulpfunctie voor kleuren
@@ -83,7 +54,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   history,
   players,
   onDeleteSession,
-  isAuthenticated = false,
+  isAuthenticated = false, // standaard: niet ingelogd
 }) => {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -101,32 +72,20 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     setExpandedDate(prevDate => (prevDate === date ? null : date));
   };
 
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString('nl-NL', {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('nl-NL', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
+  };
 
   // --- 1. EXPORT FUNCTIES (Met Punten) ---
-  const handleExportCSV = (
-    e: React.MouseEvent,
-    sessionsToExport: GameSession[],
-    filenamePrefix: string
-  ) => {
+  const handleExportCSV = (e: React.MouseEvent, sessionsToExport: GameSession[], filenamePrefix: string) => {
     e.stopPropagation();
 
-    const headers = [
-      'Datum',
-      'Ronde',
-      'Wedstrijd Nr',
-      'Team Kleur',
-      'Speler ID',
-      'Naam',
-      'Doelpunten',
-      'Punten',
-    ];
+    const headers = ['Datum', 'Ronde', 'Wedstrijd Nr', 'Team Kleur', 'Speler ID', 'Naam', 'Doelpunten', 'Punten'];
     const rows: string[][] = [];
 
     sessionsToExport.forEach(session => {
@@ -138,6 +97,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
           const score1 = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
           const score2 = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
+          // Punten bepalen
           let pts1 = 0,
             pts2 = 0;
           if (score1 > score2) {
@@ -151,12 +111,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             pts2 = 1;
           }
 
-          const addTeamRows = (
-            teamIndex: number,
-            goalsArray: any[],
-            teamColor: 'Blauw' | 'Geel',
-            points: number
-          ) => {
+          const addTeamRows = (teamIndex: number, goalsArray: any[], teamColor: 'Blauw' | 'Geel', points: number) => {
             const teamPlayers = session.teams[teamIndex] || [];
             teamPlayers.forEach(player => {
               const playerGoalData = goalsArray.find(g => g.playerId === player.id);
@@ -263,11 +218,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     }
   };
 
-  // --- 3. UITSLAG WEERGAVE COMPONENT ---
-  const MatchResultDisplay: React.FC<{ result: MatchResult; teams: Player[][] }> = ({
-    result,
-    teams,
-  }) => {
+  // --- 3. UITSLAG WEERGAVE COMPONENT (AANGEPAST VOOR KLEUREN) ---
+  const MatchResultDisplay: React.FC<{ result: MatchResult; teams: Player[][] }> = ({ result, teams }) => {
     const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
     const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
@@ -380,7 +332,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
           onClick={e => handleExportCSV(e, history, 'COMPLETE_HISTORY')}
           className="flex items-center space-x-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition-colors shadow-md"
         >
-          <ExcelIcon className="w-5 h-5" />
+          <DownloadIcon className="w-5 h-5" />
           <span className="hidden sm:inline text-sm font-bold">Alles naar CSV</span>
         </button>
       </div>
@@ -394,22 +346,19 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             >
               <span className="font-bold text-lg text-white">{formatDate(session.date)}</span>
               <div className="flex items-center space-x-3">
-                {/* 🔵 Excel-icoon in blauwe knop */}
                 <div
                   onClick={e =>
                     handleExportCSV(e, [session], `MATCH_${session.date.split('T')[0]}`)
                   }
                   className="p-2 bg-cyan-600 hover:bg-cyan-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
                 >
-                  <ExcelIcon className="w-4 h-4" />
+                  <ArchiveIcon className="w-4 h-4" />
                 </div>
-
-                {/* 🟢 WhatsApp-icoon in groene knop */}
                 <div
                   onClick={e => handleShareImage(e, session.date)}
                   className="p-2 bg-green-600 hover:bg-green-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
                 >
-                  <WhatsAppIcon className="w-4 h-4" />
+                  <CameraIcon className="w-4 h-4" />
                 </div>
 
                 {/* 🔐 Delete-knop alleen tonen als ingelogd */}
@@ -440,7 +389,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                 <div className="p-6 w-full">
                   <div className="mb-8 text-center">
                     <h3 className="text-4xl font-black text-green-500 tracking-tight">BOUNCEBALL</h3>
-                    <div className="h-1 w-32 bg-green-500 mx-auto my-2 rounded-full" />
+                    <div className="h-1 w-32 bg-green-500 mx-auto my-2 rounded-full"></div>
                     <p className="text-gray-300 font-medium text-lg mt-1 uppercase tracking-wide">
                       {formatDate(session.date)}
                     </p>
@@ -448,28 +397,36 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                   <div className="grid grid-cols-1 gap-8">
                     <div>
                       <div className="flex items-center mb-4">
-                        <div className="h-8 w-1 bg-green-500 rounded-full mr-3" />
+                        <div className="h-8 w-1 bg-green-500 rounded-full mr-3"></div>
                         <h3 className="text-2xl font-bold text-white uppercase tracking-wider">
                           Ronde 1
                         </h3>
                       </div>
                       <div className="space-y-6">
                         {session.round1Results.map((r, i) => (
-                          <MatchResultDisplay key={`r1-${i}`} result={r} teams={session.teams} />
+                          <MatchResultDisplay
+                            key={`r1-${i}`}
+                            result={r}
+                            teams={session.teams}
+                          />
                         ))}
                       </div>
                     </div>
                     {session.round2Results.length > 0 && (
                       <div>
                         <div className="flex items-center mb-4 mt-4">
-                          <div className="h-8 w-1 bg-green-500 rounded-full mr-3" />
+                          <div className="h-8 w-1 bg-green-500 rounded-full mr-3"></div>
                           <h3 className="text-2xl font-bold text-white uppercase tracking-wider">
                             Ronde 2
                           </h3>
                         </div>
                         <div className="space-y-6">
                           {session.round2Results.map((r, i) => (
-                            <MatchResultDisplay key={`r2-${i}`} result={r} teams={session.teams} />
+                            <MatchResultDisplay
+                              key={`r2-${i}`}
+                              result={r}
+                              teams={session.teams}
+                            />
                           ))}
                         </div>
                       </div>
