@@ -575,7 +575,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
         </StatCard>
 
         {/* 😂 EIGEN DOELPUNTEN */}
-        <StatCard title="Eigen doelpunten" icon={<ShieldIcon className="w-6 h-6 text-red-400" />}>
+        <StatCard title="Eigen doelpunten" icon={<span className="text-3xl">😂</span>}>
           <p className="text-gray-400 text-xs italic mb-2">
             EG telt niet mee bij de topscoorder, maar wel voor eeuwige schaamte.
           </p>
