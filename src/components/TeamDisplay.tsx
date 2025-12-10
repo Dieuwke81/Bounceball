@@ -242,28 +242,30 @@ const MatchInputCard: React.FC<{
       onGoalChange(matchIndex, opponentIdentifier, player.id, newVal);
     };
 
-    return (
-  <div className="flex items-center bg-gray-600/50 px-3 py-2 rounded-md hover:bg-gray-600 transition-colors">
-    {/* Naam links */}
-    <span className="flex-1 pr-2 text-gray-200 text-sm break-words leading-tight">
-      {player.name}
-    </span>
+    function PlayerRow({ player, goalCount, ownGoalCount, handleGoalsChange, handleOwnGoalsChange }) {
+  return (
+    <div className="grid grid-cols-[1fr_auto_auto] items-center bg-gray-600/50 px-3 py-2 rounded-md hover:bg-gray-600 transition-colors">
+      {/* Naam */}
+      <span className="text-gray-200 text-sm break-words leading-tight mr-2">
+        {player.name}
+      </span>
 
-    {/* Vakjes G / EG rechts, strak onder de kop */}
-    <div className="flex justify-between items-center w-[4.75rem]">
+      {/* G */}
       <ScoreInput
         value={goalCount}
         onChange={handleGoalsChange}
         className="h-7 w-9 bg-gray-700 border border-gray-500 rounded-md text-white text-center text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 tabular-nums"
       />
+
+      {/* EG */}
       <ScoreInput
         value={ownGoalCount}
         onChange={handleOwnGoalsChange}
         className="h-7 w-9 bg-gray-700 border border-red-500/70 rounded-md text-white text-center text-sm focus:outline-none focus:ring-2 focus:ring-red-500 tabular-nums"
       />
     </div>
-  </div>
-);
+  );
+}
   };
 
   const blueOpponentIdentifier: 'team1' | 'team2' =
