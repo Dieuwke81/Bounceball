@@ -161,39 +161,15 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                       const blueName = match.blue[i]?.name;
                       const yellowName = match.yellow[i]?.name;
 
-                      // Rij 5 = Eigen doelpunt (KLEIN + LAGE HOOGTE)
-if (!blueName && i === 5) {
-  blueContent = (
-    <span className="text-[10px] leading-tight italic text-gray-400">
-      Eigen doelpunt team BLAUW – Naam speler:
-    </span>
-  );
-}
-
-if (!yellowName && i === 5) {
-  yellowContent = (
-    <span className="text-[10px] leading-tight italic text-gray-400">
-      Eigen doelpunt team GEEL – Naam speler:
-    </span>
-  );
-}
-
-// Rij 6 = Team Gemiddelde (ONDER de eigen doelpunten)
-if (!blueName && i === 6) {
-  blueContent = (
-    <span className="text-gray-500 italic text-sm">
-      Gem. Rating: {avgBlue}
-    </span>
-  );
-}
-
-if (!yellowName && i === 6) {
-  yellowContent = (
-    <span className="text-gray-500 italic text-sm">
-      Gem. Rating: {avgYellow}
-    </span>
-  );
-}
+                      if (blueName) {
+                        blueContent = (
+                          <span className="font-bold text-base text-black">{blueName}</span>
+                        );
+                      }
+                      if (yellowName) {
+                        yellowContent = (
+                          <span className="font-bold text-base text-black">{yellowName}</span>
+                        );
                       }
                     } else if (i === baseRows) {
   // Rij VOOR de Gem. Rating → vaste tekst voor eigen doelpunt
