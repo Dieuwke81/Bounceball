@@ -701,7 +701,7 @@ const App: React.FC = () => {
   // Final results (toernooi) opslaan
   // —————————————————
   const handleSaveFinalResults = async (matches: Match[]) => {
-    if (!requireAdmin()) return; // 🔐 nieuw
+    if (!requireAdmin()) return; // 🔐
 
     setActionInProgress('savingFinal');
     const round2Results: MatchResult[] = matches.map(
@@ -725,7 +725,7 @@ const App: React.FC = () => {
   // Simpele match opslaan (1 wedstrijd)
   // —————————————————
   const handleSaveSimpleMatch = async (match: Match) => {
-    if (!requireAdmin()) return; // 🔐 nieuw
+    if (!requireAdmin()) return; // 🔐
 
     setActionInProgress('savingSimple');
     const results: MatchResult[] = [
@@ -779,7 +779,7 @@ const App: React.FC = () => {
   // Double header opslaan (2 losse sessies)
   // —————————————————
   const handleSaveDoubleHeader = async (match2Result: MatchResult) => {
-    if (!requireAdmin()) return; // 🔐 nieuw
+    if (!requireAdmin()) return; // 🔐
 
     setActionInProgress('savingDouble');
     if (!originalTeams || !teams2) {
@@ -933,7 +933,7 @@ const App: React.FC = () => {
     round1Results: MatchResult[];
     round2Results: MatchResult[];
   }) => {
-    if (!requireAdmin()) return; // 🔐 nieuw
+    if (!requireAdmin()) return; // 🔐
 
     setActionInProgress('savingManual');
     await handleSaveSession(data);
@@ -999,10 +999,9 @@ const App: React.FC = () => {
               </button>
               <button
                 onClick={() => handleGenerateTeams('tournament')}
-                disabled={
-                  actionInProgress === 'generating' ||
-                  attendingPlayers.length < 4
-                }
+                disabled=
+                  {actionInProgress === 'generating' ||
+                  attendingPlayers.length < 4}
                 className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors	duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
               >
                 Toernooi
@@ -1085,18 +1084,19 @@ const App: React.FC = () => {
           <LoginScreen onLogin={handleLogin} />
         );
       case 'history':
-        return isManagementAuthenticated ? (
+        // 👇 Geschiedenis is altijd zichtbaar,
+        // maar HistoryView krijgt te horen of je beheerder bent voor de delete-knop
+        return (
           <HistoryView
             history={activeHistory}
             players={players}
+            isAuthenticated={isManagementAuthenticated}
             onDeleteSession={(date) =>
               alert(
                 'De verwijder-functie is nog niet ingesteld in de backend.'
               )
             }
           />
-        ) : (
-          <LoginScreen onLogin={handleLogin} />
         );
       case 'playerManagement':
         return isManagementAuthenticated ? (
@@ -1291,12 +1291,11 @@ const App: React.FC = () => {
               colorClass="bg-gradient-to-br from-yellow-300 to-yellow-600"
             />
 
-            {/* Groen */}
+            {/* Groen – NIET meer protected */}
             <NavItem
               view="history"
               label="Geschiedenis"
               icon={<ClockIcon className="w-6 h-6" />}
-              isProtected
               colorClass="bg-gradient-to-br from-green-300 to-green-700"
             />
 
