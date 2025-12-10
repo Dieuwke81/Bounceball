@@ -113,7 +113,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     });
   };
 
-  // --- 1. EXPORT FUNCTIES (Met Punten) ---
+  // --- 1. EXPORT FUNCTIES (Met Punten + Eigen goals) ---
   const handleExportCSV = (
     e: React.MouseEvent,
     sessionsToExport: GameSession[],
@@ -129,6 +129,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       'Speler ID',
       'Naam',
       'Doelpunten',
+      'Eigen goals',
       'Punten',
     ];
     const rows: string[][] = [];
@@ -157,14 +158,20 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
           const addTeamRows = (
             teamIndex: number,
-            goalsArray: any[],
+            teamGoals: { playerId: number; count: number }[],
+            opponentGoals: { playerId: number; count: number }[],
             teamColor: 'Blauw' | 'Geel',
             points: number,
           ) => {
             const teamPlayers = session.teams[teamIndex] || [];
             teamPlayers.forEach(player => {
-              const playerGoalData = goalsArray.find(g => g.playerId === player.id);
+              const playerGoalData = teamGoals.find(g => g.playerId === player.id);
               const goalsScored = playerGoalData ? playerGoalData.count : 0;
+
+              // eigen goals: speler komt voor in goals van tegenstander
+              const ownGoalData = opponentGoals.find(g => g.playerId === player.id);
+              const ownGoals = ownGoalData ? ownGoalData.count : 0;
+
               rows.push([
                 dateStr,
                 roundName,
@@ -173,13 +180,26 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                 player.id.toString(),
                 player.name,
                 goalsScored.toString(),
+                ownGoals.toString(),
                 points.toString(),
               ]);
             });
           };
 
-          addTeamRows(match.team1Index, match.team1Goals, 'Blauw', pts1);
-          addTeamRows(match.team2Index, match.team2Goals, 'Geel', pts2);
+          addTeamRows(
+            match.team1Index,
+            match.team1Goals,
+            match.team2Goals,
+            'Blauw',
+            pts1,
+          );
+          addTeamRows(
+            match.team2Index,
+            match.team2Goals,
+            match.team1Goals,
+            'Geel',
+            pts2,
+          );
         });
       };
 
@@ -294,7 +314,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     const team1Players = teams[leftTeamIdx] || [];
     const team2Players = teams[rightTeamIdx] || [];
 
-    // Eindstand: alle goals in de kolom, inclusief eigen goals
+    // Eindstand inclusief eigen goals
     const leftScore = leftGoals.reduce((sum, g) => sum + g.count, 0);
     const rightScore = rightGoals.reduce((sum, g) => sum + g.count, 0);
 
@@ -307,14 +327,12 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       const goalsForMap = new Map(teamGoals.map(g => [g.playerId, g.count]));
       const oppGoalsMap = new Map(opponentGoals.map(g => [g.playerId, g.count]));
 
-      // eigen goals: spelers uit dit team die als scorer in de goals van de tegenpartij staan
       const ownGoalEntries = Array.from(oppGoalsMap.entries()).filter(
         ([playerId, count]) => count > 0 && players.some(p => p.id === playerId),
       );
 
       return (
         <>
-          {/* Normale lijst: naam + doelpunten */}
           <ul className="space-y-1 mt-3">
             {players.map(player => {
               const goalsFor = goalsForMap.get(player.id) || 0;
@@ -348,7 +366,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             })}
           </ul>
 
-          {/* Extra blok voor eigen goals (alleen als die er zijn) */}
           {ownGoalEntries.length > 0 && (
             <ul className="space-y-1 mt-3 pt-2 border-t border-red-500/40">
               {ownGoalEntries.map(([playerId, count]) => {
