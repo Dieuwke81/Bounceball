@@ -259,21 +259,21 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                   </tr>
                 </thead>
                 <tbody>
-  {rows.map((_, i) => {
+  {Array.from({ length: 6 }).map((_, i) => {
     let blueContent: React.ReactNode = null;
     let yellowContent: React.ReactNode = null;
 
-    // Laatste rij = eigen doelpunt (2 regels)
-    if (i === rows.length - 1) {
+    // Laatste rij = eigen doelpunt
+    if (i === 5) {
       blueContent = (
         <span className="text-gray-500 italic text-xs whitespace-pre-line">
-          {"Eigen goal GEEL — Naam speler:"}
+          {"Eigen doelpunt team GEEL —\nNaam speler:"}
         </span>
       );
 
       yellowContent = (
         <span className="text-gray-500 italic text-xs whitespace-pre-line">
-          {"Eigen goal BLAUW — Naam speler:"}
+          {"Eigen doelpunt team BLAUW —\nNaam speler:"}
         </span>
       );
     }
