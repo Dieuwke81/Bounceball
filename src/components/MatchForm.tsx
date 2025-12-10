@@ -138,7 +138,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                     <th className="border border-black w-[21%] py-3 text-center text-xs text-black">
                       Doelpunten
                     </th>
-                    <th className="border border-black w-[4%] py-3 text-center text-xs text-black">
+                    <th className="border border-black w-[4%] py-3 text-center text-[10px] text-black bg-red-500/20">
                       EG
                     </th>
 
@@ -149,7 +149,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                     <th className="border border-black w-[21%] py-3 text-center text-xs text-black">
                       Doelpunten
                     </th>
-                    <th className="border border-black w-[4%] py-3 text-center text-xs text-black">
+                    <th className="border border-black w-[4%] py-3 text-center text-[10px] text-black bg-red-500/20">
                       EG
                     </th>
                   </tr>
@@ -238,7 +238,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                     <th className="border border-black w-[21%] py-3 text-center text-xs text-black">
                       Doelpunten
                     </th>
-                    <th className="border border-black w-[4%] py-3 text-center text-xs text-black">
+                    <th className="border border-black w-[4%] py-3 text-center text-[10px] text-black bg-red-500/20">
                       EG
                     </th>
 
@@ -249,7 +249,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                     <th className="border border-black w-[21%] py-3 text-center text-xs text-black">
                       Doelpunten
                     </th>
-                    <th className="border border-black w-[4%] py-3 text-center text-xs text-black">
+                    <th className="border border-black w-[4%] py-3 text-center text-[10px] text-black bg-red-500/20">
                       EG
                     </th>
                   </tr>
