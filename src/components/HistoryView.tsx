@@ -173,12 +173,20 @@ const HistoryView: React.FC<HistoryViewProps> = ({
               const ownGoalData = opponentGoals.find(g => g.playerId === player.id);
               const ownGoals = ownGoalData ? ownGoalData.count : 0;
 
-              // Excel ID uit de players-lijst (sheet kolom G)
-              const excelSource = players.find(p => p.id === player.id) as any;
-              const excelId =
-                excelSource && excelSource.excelId !== undefined && excelSource.excelId !== null
-                  ? String(excelSource.excelId)
-                  : '';
+              // Excel ID uit players-lijst, met support voor excelId / excelID / excel_id / excel
+              const playerFromList = players.find(p => p.id === player.id) as any;
+              let excelId = '';
+              if (playerFromList) {
+                const raw =
+                  playerFromList.excelId ??
+                  playerFromList.excelID ??
+                  playerFromList.excel_id ??
+                  playerFromList.excel ??
+                  null;
+                if (raw !== null && raw !== undefined) {
+                  excelId = String(raw);
+                }
+              }
 
               rows.push([
                 dateStr,
@@ -186,7 +194,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                 matchNumber,
                 teamColor,
                 player.id.toString(),  // interne ID
-                excelId,               // Excel ID
+                excelId,               // Excel ID (of leeg)
                 player.name,
                 goalsScored.toString(),
                 ownGoals.toString(),
