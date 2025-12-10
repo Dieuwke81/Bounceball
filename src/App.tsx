@@ -1085,17 +1085,19 @@ const App: React.FC = () => {
           <LoginScreen onLogin={handleLogin} />
         );
       case 'history':
-  return (
-    <HistoryView
-      history={activeHistory}
-      players={players}
-      isAuthenticated={isManagementAuthenticated} // 👈 nieuw
-      onDeleteSession={(date) => {
-        if (!requireAdmin()) return; // 🔐 alleen bij verwijderen vragen om wachtwoord
-        alert('De verwijder-functie is nog niet ingesteld in de backend.');
-      }}
-    />
-  );
+        return isManagementAuthenticated ? (
+          <HistoryView
+            history={activeHistory}
+            players={players}
+            onDeleteSession={(date) =>
+              alert(
+                'De verwijder-functie is nog niet ingesteld in de backend.'
+              )
+            }
+          />
+        ) : (
+          <LoginScreen onLogin={handleLogin} />
+        );
       case 'playerManagement':
         return isManagementAuthenticated ? (
           <PlayerManagement
@@ -1282,11 +1284,13 @@ const App: React.FC = () => {
 
             {/* Geel */}
             <NavItem
-  view="history"
-  label="Geschiedenis"
-  icon={<ClockIcon className="w-6 h-6" />}
-  colorClass="bg-gradient-to-br from-green-300 to-green-700"
-/>
+              view="stats"
+              label="Statistieken"
+              icon={<UsersIcon className="w-6 h-6" />}
+              isProtected
+              colorClass="bg-gradient-to-br from-yellow-300 to-yellow-600"
+            />
+
             {/* Groen */}
             <NavItem
               view="history"
