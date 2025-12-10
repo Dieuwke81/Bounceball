@@ -267,13 +267,13 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
     if (i === rows.length - 1) {
       blueContent = (
         <span className="text-gray-500 italic text-xs whitespace-pre-line">
-          {"Eigen doelpunt team GEEL —\nNaam speler:"}
+          {"Eigen goal GEEL — Naam speler:"}
         </span>
       );
 
       yellowContent = (
         <span className="text-gray-500 italic text-xs whitespace-pre-line">
-          {"Eigen doelpunt team BLAUW —\nNaam speler:"}
+          {"Eigen goal BLAUW — Naam speler:"}
         </span>
       );
     }
