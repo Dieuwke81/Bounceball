@@ -255,23 +255,106 @@ const MatchInputCard: React.FC<{
       <span className="text-gray-200 text-sm break-words leading-tight mr-2">
         {player.name}
       </span>
+// ============================================================================
+// WEDSTRIJD CARD (ALTIJD BLAUW LINKS, GEEL RECHTS + EG)
+// ============================================================================
+const MatchInputCard: React.FC<{
+  match: Match;
+  matchIndex: number;
+  teams: Player[][];
+  goalScorers: TeamDisplayProps['goalScorers'];
+  onGoalChange: TeamDisplayProps['onGoalChange'];
+}> = ({ match, matchIndex, teams, goalScorers, onGoalChange }) => {
+  // 1. Haal de teams op
+  const team1Data = teams[match.team1Index];
+  const team2Data = teams[match.team2Index];
 
-      {/* G */}
-      <ScoreInput
-        value={goalCount}
-        onChange={handleGoalsChange}
-        className="h-7 w-9 bg-gray-700 border border-gray-500 rounded-md text-white text-center text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 tabular-nums"
-      />
+  // 2. Bepaal de 'natuurlijke' kleur
+  const color1 = getBaseColor(match.team1Index);
+  const color2 = getBaseColor(match.team2Index);
 
-      {/* EG */}
-      <ScoreInput
-        value={ownGoalCount}
-        onChange={handleOwnGoalsChange}
-        className="h-7 w-9 bg-gray-700 border border-red-500/70 rounded-md text-white text-center text-sm focus:outline-none focus:ring-2 focus:ring-red-500 tabular-nums"
-      />
-    </div>
-  );
-}
+  // 3. Logica: Wie moet er LINKS (Blauw) en wie RECHTS (Geel)?
+  let blueTeam, yellowTeam;
+  let blueIdentifier: 'team1' | 'team2';
+  let yellowIdentifier: 'team1' | 'team2';
+  let blueTeamIndex, yellowTeamIndex;
+
+  if (color1 === 'yellow' && color2 === 'blue') {
+    blueTeam = team2Data;
+    blueIdentifier = 'team2';
+    blueTeamIndex = match.team2Index;
+
+    yellowTeam = team1Data;
+    yellowIdentifier = 'team1';
+    yellowTeamIndex = match.team1Index;
+  } else {
+    blueTeam = team1Data;
+    blueIdentifier = 'team1';
+    blueTeamIndex = match.team1Index;
+
+    yellowTeam = team2Data;
+    yellowIdentifier = 'team2';
+    yellowTeamIndex = match.team2Index;
+  }
+
+  const leftColorClass = 'text-cyan-300';
+  const rightColorClass = 'text-amber-300';
+  const leftBorderClass = 'border-cyan-500/30';
+  const rightBorderClass = 'border-amber-500/30';
+
+  // Score per team (alles wat bij dat team opgeslagen is, incl. EG van tegenstander)
+  const getTeamScore = (identifier: 'team1' | 'team2') => {
+    const goals = goalScorers[`${matchIndex}-${identifier}`] || [];
+    return goals.reduce((sum, g) => sum + g.count, 0);
+  };
+
+  const getPlayerGoalsForTeam = (
+    teamIdentifier: 'team1' | 'team2',
+    playerId: number
+  ) => {
+    const goals = goalScorers[`${matchIndex}-${teamIdentifier}`] || [];
+    return goals.find((g) => g.playerId === playerId)?.count || 0;
+  };
+
+  // Eén component voor een spelers-rij: [ NAAM | G | EG ]
+  const PlayerGoalInput: React.FC<{
+    player: Player;
+    teamIdentifier: 'team1' | 'team2';
+    opponentIdentifier: 'team1' | 'team2';
+  }> = ({ player, teamIdentifier, opponentIdentifier }) => {
+    const goalCount = getPlayerGoalsForTeam(teamIdentifier, player.id);
+    const ownGoalCount = getPlayerGoalsForTeam(opponentIdentifier, player.id);
+
+    const handleGoalsChange = (newVal: number) => {
+      onGoalChange(matchIndex, teamIdentifier, player.id, newVal);
+    };
+
+    const handleOwnGoalsChange = (newVal: number) => {
+      onGoalChange(matchIndex, opponentIdentifier, player.id, newVal);
+    };
+
+    return (
+      <div className="grid grid-cols-[1fr_auto_auto] items-center bg-gray-600/50 px-2 py-2 rounded-md hover:bg-gray-600 transition-colors">
+        {/* Naam */}
+        <span className="mr-2 text-gray-200 text-sm break-words leading-tight">
+          {player.name}
+        </span>
+
+        {/* G */}
+        <ScoreInput
+          value={goalCount}
+          onChange={handleGoalsChange}
+          className="h-7 w-9 bg-gray-700 border border-gray-500 rounded-md text-white text-center text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 tabular-nums"
+        />
+
+        {/* EG */}
+        <ScoreInput
+          value={ownGoalCount}
+          onChange={handleOwnGoalsChange}
+          className="h-7 w-9 bg-gray-700 border border-red-500/70 rounded-md text-white text-center text-sm focus:outline-none focus:ring-2 focus:ring-red-500 tabular-nums"
+        />
+      </div>
+    );
   };
 
   const blueOpponentIdentifier: 'team1' | 'team2' =
@@ -294,11 +377,11 @@ const MatchInputCard: React.FC<{
             </p>
           </div>
 
-          {/* Kolomkopjes G / EG */}
-          <div className="flex items-center text-xs font-bold text-gray-200 uppercase tracking-wider pr-1">
-            <span className="flex-1" />
-            <span className="w-9 text-center">G</span>
-            <span className="w-9 text-center">EG</span>
+          {/* Kolomkopjes G / EG - zelfde grid als de rijen */}
+          <div className="grid grid-cols-[1fr_auto_auto] items-center text-[11px] font-bold text-gray-200 uppercase tracking-wider pr-1">
+            <span />
+            <span className="text-center">G</span>
+            <span className="text-center">EG</span>
           </div>
 
           <div className="space-y-2 pr-1">
@@ -327,11 +410,11 @@ const MatchInputCard: React.FC<{
             </p>
           </div>
 
-          {/* Kolomkopjes G / EG */}
-          <div className="flex items-center text-xs font-bold text-gray-200 uppercase tracking-wider pr-1">
-            <span className="flex-1" />
-            <span className="w-9 text-center">G</span>
-            <span className="w-9 text-center">EG</span>
+          {/* Kolomkopjes G / EG - zelfde grid als de rijen */}
+          <div className="grid grid-cols-[1fr_auto_auto] items-center text-[11px] font-bold text-gray-200 uppercase tracking-wider pr-1">
+            <span />
+            <span className="text-center">G</span>
+            <span className="text-center">EG</span>
           </div>
 
           <div className="space-y-2 pr-1">
