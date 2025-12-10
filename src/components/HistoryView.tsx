@@ -89,7 +89,11 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   };
 
   // --- 1. EXPORT FUNCTIES (Met Punten) ---
-  const handleExportCSV = (e: React.MouseEvent, sessionsToExport: GameSession[], filenamePrefix: string) => {
+  const handleExportCSV = (
+    e: React.MouseEvent,
+    sessionsToExport: GameSession[],
+    filenamePrefix: string
+  ) => {
     e.stopPropagation();
 
     const headers = ['Datum', 'Ronde', 'Wedstrijd Nr', 'Team Kleur', 'Speler ID', 'Naam', 'Doelpunten', 'Punten'];
@@ -117,7 +121,12 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             pts2 = 1;
           }
 
-          const addTeamRows = (teamIndex: number, goalsArray: any[], teamColor: 'Blauw' | 'Geel', points: number) => {
+          const addTeamRows = (
+            teamIndex: number,
+            goalsArray: { playerId: number; count: number }[],
+            teamColor: 'Blauw' | 'Geel',
+            points: number
+          ) => {
             const teamPlayers = session.teams[teamIndex] || [];
             teamPlayers.forEach(player => {
               const playerGoalData = goalsArray.find(g => g.playerId === player.id);
@@ -201,8 +210,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
               title: 'Bounceball',
               text: `Uitslagen ${formatDate(sessionDate)}`,
             });
-          } catch (e) {
-            console.log(e);
+          } catch (shareError) {
+            console.log(shareError);
           }
         } else {
           const link = document.createElement('a');
@@ -225,144 +234,144 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   };
 
   // --- 3. UITSLAG WEERGAVE COMPONENT ---
-  // --- 3. UITSLAG WEERGAVE COMPONENT ---
-const MatchResultDisplay: React.FC<{ result: MatchResult; teams: Player[][] }> = ({ result, teams }) => {
-  const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
-  const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
+  const MatchResultDisplay: React.FC<{ result: MatchResult; teams: Player[][] }> = ({
+    result,
+    teams,
+  }) => {
+    const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
+    const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
-  const color1 = getBaseColor(result.team1Index);
-  const color2 = getBaseColor(result.team2Index);
+    const color1 = getBaseColor(result.team1Index);
+    const color2 = getBaseColor(result.team2Index);
 
-  let leftTeamIdx = result.team1Index;
-  let rightTeamIdx = result.team2Index;
-  let leftScore = score1;
-  let rightScore = score2;
-  let leftGoals = result.team1Goals;
-  let rightGoals = result.team2Goals;
+    let leftTeamIdx = result.team1Index;
+    let rightTeamIdx = result.team2Index;
+    let leftScore = score1;
+    let rightScore = score2;
+    let leftGoals = result.team1Goals;
+    let rightGoals = result.team2Goals;
 
-  // kleur-wissel zoals in TeamDisplay (links altijd blauw, rechts geel)
-  if (color1 === 'yellow' && color2 === 'blue') {
-    leftTeamIdx = result.team2Index;
-    rightTeamIdx = result.team1Index;
-    leftScore = score2;
-    rightScore = score1;
-    leftGoals = result.team2Goals;
-    rightGoals = result.team1Goals;
-  }
+    // kleur-wissel zoals in TeamDisplay (links altijd blauw, rechts geel)
+    if (color1 === 'yellow' && color2 === 'blue') {
+      leftTeamIdx = result.team2Index;
+      rightTeamIdx = result.team1Index;
+      leftScore = score2;
+      rightScore = score1;
+      leftGoals = result.team2Goals;
+      rightGoals = result.team1Goals;
+    }
 
-  const leftColorClass = 'text-cyan-400';
-  const rightColorClass = 'text-amber-400';
+    const leftColorClass = 'text-cyan-400';
+    const rightColorClass = 'text-amber-400';
 
-  const team1Players = teams[leftTeamIdx] || [];
-  const team2Players = teams[rightTeamIdx] || [];
+    const team1Players = teams[leftTeamIdx] || [];
+    const team2Players = teams[rightTeamIdx] || [];
 
-  // → component krijgt nu óók de goals van de tegenstander mee,
-  //   zodat we daar eigen goals kunnen uithalen.
-  const PlayerListWithGoals: React.FC<{
-  const PlayerListWithGoals: React.FC<{
-  players: Player[];
-  teamGoals: { playerId: number; count: number }[];
-  opponentGoals: { playerId: number; count: number }[];
-  scoreColorClass: string;
-}> = ({ players, teamGoals, opponentGoals, scoreColorClass }) => {
-  const goalsForMap = new Map(teamGoals.map(g => [g.playerId, g.count]));
-  const oppGoalsMap = new Map(opponentGoals.map(g => [g.playerId, g.count]));
+    // lijst met spelers + goals + eigen goals
+    const PlayerListWithGoals: React.FC<{
+      players: Player[];
+      teamGoals: { playerId: number; count: number }[];
+      opponentGoals: { playerId: number; count: number }[];
+      scoreColorClass: string;
+    }> = ({ players, teamGoals, opponentGoals, scoreColorClass }) => {
+      const goalsForMap = new Map(teamGoals.map(g => [g.playerId, g.count]));
+      const oppGoalsMap = new Map(opponentGoals.map(g => [g.playerId, g.count]));
 
-  return (
-    <ul className="space-y-1 mt-3">
-      {players.map(player => {
-        const goalsFor = goalsForMap.get(player.id) || 0;   // normale goals
-        const ownGoals = oppGoalsMap.get(player.id) || 0;   // EG (bij tegenpartij)
-        const hasContribution = goalsFor > 0 || ownGoals > 0;
+      return (
+        <ul className="space-y-1 mt-3">
+          {players.map(player => {
+            const goalsFor = goalsForMap.get(player.id) || 0; // normale goals
+            const ownGoals = oppGoalsMap.get(player.id) || 0; // EG (bij tegenpartij)
+            const hasContribution = goalsFor > 0 || ownGoals > 0;
 
-        return (
-          <li
-            key={player.id}
-            className="flex items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0"
-          >
-            {/* NAAM – mag over meerdere regels, maar duwt de score niet weg */}
-            <div className="flex-1 min-w-0 mr-2">
-              <span
-                className={`block text-sm leading-tight break-words ${
-                  hasContribution ? 'text-gray-100 font-medium' : 'text-gray-400'
-                }`}
-                // als je écht max 3 regels wilt forceren:
-                // style={{
-                //   display: '-webkit-box',
-                //   WebkitLineClamp: 3,
-                //   WebkitBoxOrient: 'vertical',
-                //   overflow: 'hidden',
-                // }}
+            return (
+              <li
+                key={player.id}
+                className="flex items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0"
               >
-                {player.name}
-              </span>
-            </div>
+                {/* NAAM – mag over meerdere regels; score blijft rechts */}
+                <div className="flex-1 min-w-0 mr-2">
+                  <span
+                    className={`block text-sm leading-tight break-words ${
+                      hasContribution ? 'text-gray-100 font-medium' : 'text-gray-400'
+                    }`}
+                    // Wil je strikt max 3 regels? Dan kun je dit decommenteren:
+                    // style={{
+                    //   display: '-webkit-box',
+                    //   WebkitLineClamp: 3,
+                    //   WebkitBoxOrient: 'vertical',
+                    //   overflow: 'hidden',
+                    // }}
+                  >
+                    {player.name}
+                  </span>
+                </div>
 
-            {/* GOALS + EG rechts */}
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <span
-                className={`text-base font-bold min-w-[1.5rem] text-right ${
-                  goalsFor > 0 ? scoreColorClass : 'text-gray-600'
-                }`}
-              >
-                {goalsFor}
-              </span>
+                {/* GOALS + EG rechts */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <span
+                    className={`text-base font-bold min-w-[1.5rem] text-right ${
+                      goalsFor > 0 ? scoreColorClass : 'text-gray-600'
+                    }`}
+                  >
+                    {goalsFor}
+                  </span>
 
-              {ownGoals > 0 && (
-                <span className="text-[11px] font-bold text-red-400 bg-red-900/40 border border-red-500/60 rounded-full px-2 py-0.5">
-                  EG {ownGoals}
-                </span>
-              )}
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-  );
-};
+                  {ownGoals > 0 && (
+                    <span className="text-[11px] font-bold text-red-400 bg-red-900/40 border border-red-500/60 rounded-full px-2 py-0.5">
+                      EG {ownGoals}
+                    </span>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      );
+    };
 
-  return (
-    <div className="bg-gray-800 p-5 rounded-xl border border-gray-600/50 shadow-md flex flex-col">
-      <div className="flex-grow grid grid-cols-2 gap-8">
-        <div className="overflow-hidden">
-          <h4
-            className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${leftColorClass}`}
-          >
-            Team {leftTeamIdx + 1}
-          </h4>
-          <PlayerListWithGoals
-            players={team1Players}
-            teamGoals={leftGoals}
-            opponentGoals={rightGoals}
-            scoreColorClass={leftColorClass}
-          />
+    return (
+      <div className="bg-gray-800 p-5 rounded-xl border border-gray-600/50 shadow-md flex flex-col">
+        <div className="flex-grow grid grid-cols-2 gap-8">
+          <div className="overflow-hidden">
+            <h4
+              className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${leftColorClass}`}
+            >
+              Team {leftTeamIdx + 1}
+            </h4>
+            <PlayerListWithGoals
+              players={team1Players}
+              teamGoals={leftGoals}
+              opponentGoals={rightGoals}
+              scoreColorClass={leftColorClass}
+            />
+          </div>
+          <div className="overflow-hidden">
+            <h4
+              className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${rightColorClass}`}
+            >
+              Team {rightTeamIdx + 1}
+            </h4>
+            <PlayerListWithGoals
+              players={team2Players}
+              teamGoals={rightGoals}
+              opponentGoals={leftGoals}
+              scoreColorClass={rightColorClass}
+            />
+          </div>
         </div>
-        <div className="overflow-hidden">
-          <h4
-            className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${rightColorClass}`}
-          >
-            Team {rightTeamIdx + 1}
-          </h4>
-          <PlayerListWithGoals
-            players={team2Players}
-            teamGoals={rightGoals}
-            opponentGoals={leftGoals}
-            scoreColorClass={rightColorClass}
-          />
+        <div className="mt-6 pt-2 border-t border-gray-600 text-center flex justify-center items-center gap-4">
+          <span className={`text-4xl font-black tracking-widest drop-shadow-md ${leftColorClass}`}>
+            {leftScore}
+          </span>
+          <span className="text-2xl font-bold text-gray-500">-</span>
+          <span className={`text-4xl font-black tracking-widest drop-shadow-md ${rightColorClass}`}>
+            {rightScore}
+          </span>
         </div>
       </div>
-      <div className="mt-6 pt-2 border-t border-gray-600 text-center flex justify-center items-center gap-4">
-        <span className={`text-4xl font-black tracking-widest drop-shadow-md ${leftColorClass}`}>
-          {leftScore}
-        </span>
-        <span className="text-2xl font-bold text-gray-500">-</span>
-        <span className={`text-4xl font-black tracking-widest drop-shadow-md ${rightColorClass}`}>
-          {rightScore}
-        </span>
-      </div>
-    </div>
-  );
-};
+    );
+  };
 
   return (
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
