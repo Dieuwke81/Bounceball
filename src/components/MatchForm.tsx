@@ -132,24 +132,24 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                 <thead>
                   <tr>
                     {/* BLAUW */}
-                    <th className="border border-black bg-blue-600 text-white w-[18%] py-3 text-lg uppercase font-bold">
+                    <th className="border border-black bg-blue-600 text-white w-[15%] py-3 text-lg uppercase font-bold">
                       TEAM BLAUW
                     </th>
-                    <th className="border border-black w-[14%] py-3 text-center text-xs text-black">
+                    <th className="border border-black w-[21%] py-3 text-center text-xs text-black">
                       Doelpunten
                     </th>
-                    <th className="border border-black w-[8%] py-3 text-center text-xs text-black">
+                    <th className="border border-black w-[4%] py-3 text-center text-xs text-black">
                       EG
                     </th>
 
                     {/* GEEL */}
-                    <th className="border border-black bg-yellow-300 text-black w-[18%] py-3 text-lg uppercase font-bold">
+                    <th className="border border-black bg-yellow-300 text-black w-[15%] py-3 text-lg uppercase font-bold">
                       TEAM GEEL
                     </th>
-                    <th className="border border-black w-[14%] py-3 text-center text-xs text-black">
+                    <th className="border border-black w-[21%] py-3 text-center text-xs text-black">
                       Doelpunten
                     </th>
-                    <th className="border border-black w-[8%] py-3 text-center text-xs text-black">
+                    <th className="border border-black w-[4%] py-3 text-center text-xs text-black">
                       EG
                     </th>
                   </tr>
