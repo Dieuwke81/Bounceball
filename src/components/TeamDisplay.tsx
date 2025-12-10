@@ -251,25 +251,25 @@ const MatchInputCard: React.FC<{
     };
 
     return (
-      <div className="flex items-center space-x-2 bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
+      <div className="grid grid-cols-[1fr_2.5rem_2.5rem] gap-2 items-center bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
         {/* Naam netjes laten afbreken */}
-        <span className="text-gray-200 flex-1 pr-2 text-sm sm:text-base break-words leading-tight">
+        <span className="text-gray-200 pr-1 text-sm sm:text-base break-words leading-tight">
           {player.name}
         </span>
-        <div className="flex items-center space-x-1">
-          {/* G (normale goals) */}
-          <ScoreInput
-            value={goalCount}
-            onChange={handleGoalsChange}
-            className="w-10 bg-gray-700 border border-gray-500 rounded-md py-1 px-2 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
-          />
-          {/* EG (eigen goals -> bij tegenpartij) */}
-          <ScoreInput
-            value={ownGoalCount}
-            onChange={handleOwnGoalsChange}
-            className="w-10 bg-gray-700 border border-red-500/70 rounded-md py-1 px-2 text-white text-center focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-          />
-        </div>
+
+        {/* G (normale goals) */}
+        <ScoreInput
+          value={goalCount}
+          onChange={handleGoalsChange}
+          className="w-full bg-gray-700 border border-gray-500 rounded-md py-1 px-1 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+        />
+
+        {/* EG (eigen goals -> bij tegenpartij) */}
+        <ScoreInput
+          value={ownGoalCount}
+          onChange={handleOwnGoalsChange}
+          className="w-full bg-gray-700 border border-red-500/70 rounded-md py-1 px-1 text-white text-center focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+        />
       </div>
     );
   };
@@ -296,9 +296,10 @@ const MatchInputCard: React.FC<{
             </p>
           </div>
           {/* Kolom-kopjes: G & EG */}
-          <div className="flex justify-end items-center text-[10px] text-gray-300 pr-1 space-x-2">
-            <span className="w-10 text-center">G</span>
-            <span className="w-10 text-center">EG</span>
+          <div className="grid grid-cols-[1fr_2.5rem_2.5rem] gap-2 items-center text-xs font-bold text-gray-200 uppercase tracking-wider pr-1">
+            <span />
+            <span className="text-center">G</span>
+            <span className="text-center">EG</span>
           </div>
           <div className="space-y-2 pr-1">
             {blueTeam.map((p) => (
@@ -326,9 +327,10 @@ const MatchInputCard: React.FC<{
             </p>
           </div>
           {/* Kolom-kopjes: G & EG */}
-          <div className="flex justify-end items-center text-[10px] text-gray-300 pr-1 space-x-2">
-            <span className="w-10 text-center">G</span>
-            <span className="w-10 text-center">EG</span>
+          <div className="grid grid-cols-[1fr_2.5rem_2.5rem] gap-2 items-center text-xs font-bold text-gray-200 uppercase tracking-wider pr-1">
+            <span />
+            <span className="text-center">G</span>
+            <span className="text-center">EG</span>
           </div>
           <div className="space-y-2 pr-1">
             {yellowTeam.map((p) => (
@@ -776,7 +778,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
                     onSaveDoubleHeader(match2Result);
                     triggerFirework();
                   }}
-                  className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
+                  className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors	duration-200 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
                   disabled={!!actionInProgress}
                 >
                   {actionInProgress === 'savingDouble' ? (
@@ -876,7 +878,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
                     onSaveSimpleMatch(round1Matches[0]);
                     triggerFirework();
                   }}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 transform hover:scale-105 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors	duration-200 transform hover:scale-105 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
                   disabled={!!actionInProgress}
                 >
                   {actionInProgress === 'savingSimple' ? (
@@ -893,7 +895,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
               {!isSimpleMatch && currentRound === 1 && (
                 <button
                   onClick={() => onSaveRound1(round1Matches)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 transform hover:scale-105 disabled:bg-blue-800 disabled:cursor-not-allowed"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors	duration-200 transform hover:scale-105 disabled:bg-blue-800 disabled:cursor-not-allowed"
                   disabled={!!actionInProgress}
                 >
                   Sla Ronde 1 op & Start Ronde 2
@@ -907,7 +909,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
                       onSaveFinalResults(round2Pairings);
                       triggerFirework();
                     }}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 transform hover:scale-105 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors	duration-200 transform hover:scale-105 flex items-center justify-center disabled:bg-green-800 disabled:cursor-wait"
                     disabled={!!actionInProgress}
                   >
                     {actionInProgress === 'savingFinal' ? (
@@ -921,7 +923,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({
                   </button>
                   <button
                     onClick={onRegenerateTeams}
-                    className={`w-full mt-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-sm flex items-center justify-center disabled:bg-amber-800 disabled:cursor-wait`}
+                    className={`w-full mt-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors	duration-200 text-sm flex items-center justify-center disabled:bg-amber-800 disabled:cursor-wait`}
                     disabled={!!actionInProgress}
                   >
                     {actionInProgress === 'regeneratingTeams' ? (
