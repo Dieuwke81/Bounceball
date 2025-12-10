@@ -267,7 +267,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     const team1Players = teams[leftTeamIdx] || [];
     const team2Players = teams[rightTeamIdx] || [];
 
-    // lijst met spelers + goals + eigen goals
+    // lijst met spelers + goals, plus onderaan een apart blok voor eigen goals
     const PlayerListWithGoals: React.FC<{
       players: Player[];
       teamGoals: { playerId: number; count: number }[];
@@ -277,56 +277,74 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       const goalsForMap = new Map(teamGoals.map(g => [g.playerId, g.count]));
       const oppGoalsMap = new Map(opponentGoals.map(g => [g.playerId, g.count]));
 
+      // alle spelers die een eigen goal maakten (bij de tegenstander)
+      const ownGoalEntries = Array.from(oppGoalsMap.entries()).filter(
+        ([, count]) => count > 0
+      );
+
       return (
-        <ul className="space-y-1 mt-3">
-          {players.map(player => {
-            const goalsFor = goalsForMap.get(player.id) || 0; // normale goals
-            const ownGoals = oppGoalsMap.get(player.id) || 0; // EG (bij tegenpartij)
-            const hasContribution = goalsFor > 0 || ownGoals > 0;
+        <>
+          {/* Normale lijst: naam + doelpunten */}
+          <ul className="space-y-1 mt-3">
+            {players.map(player => {
+              const goalsFor = goalsForMap.get(player.id) || 0;
+              const hasContribution = goalsFor > 0;
 
-            return (
-              <li
-                key={player.id}
-                className="flex items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0"
-              >
-                {/* NAAM – mag over meerdere regels; score blijft rechts */}
-                <div className="flex-1 min-w-0 mr-2">
-                  <span
-                    className={`block text-sm leading-tight break-words ${
-                      hasContribution ? 'text-gray-100 font-medium' : 'text-gray-400'
-                    }`}
-                    // Wil je strikt max 3 regels? Dan kun je dit decommenteren:
-                    // style={{
-                    //   display: '-webkit-box',
-                    //   WebkitLineClamp: 3,
-                    //   WebkitBoxOrient: 'vertical',
-                    //   overflow: 'hidden',
-                    // }}
-                  >
-                    {player.name}
-                  </span>
-                </div>
-
-                {/* GOALS + EG rechts */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <span
-                    className={`text-base font-bold min-w-[1.5rem] text-right ${
-                      goalsFor > 0 ? scoreColorClass : 'text-gray-600'
-                    }`}
-                  >
-                    {goalsFor}
-                  </span>
-
-                  {ownGoals > 0 && (
-                    <span className="text-[11px] font-bold text-red-400 bg-red-900/40 border border-red-500/60 rounded-full px-2 py-0.5">
-                      EG {ownGoals}
+              return (
+                <li
+                  key={player.id}
+                  className="flex items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0"
+                >
+                  <div className="flex-1 min-w-0 mr-2">
+                    <span
+                      className={`block text-sm leading-tight break-words ${
+                        hasContribution ? 'text-gray-100 font-medium' : 'text-gray-400'
+                      }`}
+                    >
+                      {player.name}
                     </span>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <span
+                      className={`text-base font-bold min-w-[1.5rem] text-right ${
+                        goalsFor > 0 ? scoreColorClass : 'text-gray-600'
+                      }`}
+                    >
+                      {goalsFor}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Extra blok voor eigen goals */}
+          {ownGoalEntries.length > 0 && (
+            <ul className="space-y-1 mt-3 pt-2 border-t border-red-500/40">
+              {ownGoalEntries.map(([playerId, count]) => {
+                const player = players.find(p => p.id === playerId);
+                if (!player) return null;
+                return (
+                  <li
+                    key={`eg-${playerId}`}
+                    className="flex items-center pr-2 py-0.5 bg-red-900/20 rounded-md"
+                  >
+                    <div className="flex-1 min-w-0 mr-2">
+                      <span className="block text-sm leading-tight break-words text-red-300 font-semibold">
+                        {player.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className="text-xs font-bold text-red-100 bg-red-700 px-2 py-0.5 rounded-full">
+                        EG {count}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
       );
     };
 
