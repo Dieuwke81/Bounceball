@@ -259,7 +259,7 @@ const MatchInputCard: React.FC<{
       <ScoreInput
         value={ownGoalCount}
         onChange={handleOwnGoalsChange}
-        className="w-6 h-6 bg-gray-700 border border-red-500/70 rounded-md p-0.5 text-white text-center focus:outline-none focus:ring-1 focus:ring-red-500 text-[11px]"
+        className="w-5 h-5 bg-gray-700 border border-red-500/70 rounded-md p-0.5 text-white text-center focus:outline-none focus:ring-1 focus:ring-red-500 text-[9px]"
       />
     </div>
   </div>
