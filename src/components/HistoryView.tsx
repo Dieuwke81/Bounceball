@@ -3,7 +3,7 @@ import type { GameSession, Player, MatchResult } from '../types';
 import html2canvas from 'html2canvas';
 
 // --- ICONS ---
-// WhatsApp-icoon (laat je zoals je nu hebt)
+// WhatsApp-icoon
 const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -15,7 +15,7 @@ const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-// ✅ Excel-icoon dat jouw PNG-link gebruikt
+// Excel-icoon (PNG)
 const ExcelIcon: React.FC<{ className?: string }> = ({ className }) => (
   <img
     src="https://i.postimg.cc/rsdSMGLm/microsoft-excel-computer-icons-xls-microsoft-c70a1dabe2e12c80c0a3159b40d70d14.png"
@@ -24,7 +24,7 @@ const ExcelIcon: React.FC<{ className?: string }> = ({ className }) => (
   />
 );
 
-// We hergebruiken dit icoon voor de bestaande namen:
+// Zelfde icoon voor deze “namen”
 const DownloadIcon = ExcelIcon;
 const ArchiveIcon = ExcelIcon;
 
@@ -50,7 +50,7 @@ interface HistoryViewProps {
   history: GameSession[];
   players: Player[];
   onDeleteSession: (date: string) => void;
-  isAuthenticated?: boolean; // 👈 nieuw
+  isAuthenticated?: boolean;
 }
 
 // Hulpfunctie voor kleuren
@@ -60,7 +60,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   history,
   players,
   onDeleteSession,
-  isAuthenticated = false, // standaard: niet ingelogd
+  isAuthenticated = false,
 }) => {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -78,7 +78,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     setExpandedDate(prevDate => (prevDate === date ? null : date));
   };
 
-  // 👉 maand + weekday afgekort, geeft meer ruimte
+  // Afgekorte datum
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('nl-NL', {
       weekday: 'short',
@@ -104,7 +104,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
           const score1 = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
           const score2 = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
-          // Punten bepalen
           let pts1 = 0,
             pts2 = 0;
           if (score1 > score2) {
@@ -225,7 +224,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     }
   };
 
-  // --- 3. UITSLAG WEERGAVE COMPONENT (AANGEPAST VOOR KLEUREN) ---
+  // --- 3. UITSLAG WEERGAVE COMPONENT ---
   const MatchResultDisplay: React.FC<{ result: MatchResult; teams: Player[][] }> = ({ result, teams }) => {
     const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
     const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
@@ -333,9 +332,17 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
   return (
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
-      {/* header zonder groene knop */}
-      <div className="mb-6">
+      {/* HEADER MET KLEIN EXCEL-ICOON VOOR ALLES NAAR CSV */}
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold text-white">Wedstrijdgeschiedenis</h2>
+        <button
+          type="button"
+          onClick={e => handleExportCSV(e, history, 'COMPLETE_HISTORY')}
+          className="flex items-center justify-center active:scale-95 hover:opacity-90"
+          aria-label="Alle wedstrijden naar CSV"
+        >
+          <DownloadIcon className="h-7 w-auto" />
+        </button>
       </div>
 
       <div className="space-y-4">
@@ -347,7 +354,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             >
               <span className="font-bold text-lg text-white">{formatDate(session.date)}</span>
               <div className="flex items-center space-x-3">
-                {/* Excel-icon zonder blauwe cirkel, met juiste verhoudingen */}
+                {/* Excel-icon per wedstrijd */}
                 <button
                   type="button"
                   onClick={e =>
@@ -362,11 +369,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                   onClick={e => handleShareImage(e, session.date)}
                   className="p-2 bg-green-600 hover:bg-green-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
                 >
-                  {/* hier gebruiken we het WhatsApp-icoon */}
                   <WhatsAppIcon className="w-4 h-4" />
                 </div>
 
-                {/* 🔐 Delete-knop alleen tonen als ingelogd */}
                 {isAuthenticated && (
                   <div
                     onClick={e => handleDeleteClick(e, session.date)}
