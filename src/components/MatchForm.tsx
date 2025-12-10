@@ -260,12 +260,12 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                       {/* BLAUW: leeg, alleen schrijfveld */}
                       <td className="border border-black px-3 align-middle bg-white" />
                       <td className="border border-black bg-white" />
-                      <td className="border border-black bg-white" />
+                      <td className="border border-black bg-red-500/10"></td>
 
                       {/* GEEL: leeg, alleen schrijfveld */}
                       <td className="border border-black px-3 align-middle bg-white" />
                       <td className="border border-black bg-white" />
-                      <td className="border border-black bg-white" />
+                      <td className="border border-black bg-red-500/10"></td>
                     </tr>
                   ))}
                 </tbody>
