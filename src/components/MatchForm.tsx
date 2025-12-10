@@ -215,7 +215,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               </table>
 
               {/* SCORE BALK ONDER DE TABEL – UITGELIJND MET KOLOMMEN */}
-              <div className="flex w-full items-center mt-1">
+              <div className="flex w-full items-center mt-4">
                 {/* Spelerskolom links (22%) */}
                 <div className="w-[22%] text-right pr-2 font-bold text-lg uppercase">
                   Eindstand:
@@ -223,7 +223,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
 
                 {/* Doelpuntenkolom links (28%) */}
                 <div className="w-[28%] flex justify-center">
-                  <div className="border-b-2 border-black w-28" />
+                  <div className="border-b-2 border-black w-32 h-4 mt-2" />
                 </div>
 
                 {/* Spelerskolom rechts (22%) */}
@@ -233,7 +233,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
 
                 {/* Doelpuntenkolom rechts (28%) */}
                 <div className="w-[28%] flex justify-center">
-                  <div className="border-b-2 border-black w-28" />
+                  <div className="border-b-2 border-black w-32 h-4 mt-2" />
                 </div>
               </div>
             </div>
@@ -298,18 +298,18 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               </table>
 
               {/* SCORE BALK ONDER DE TABEL – UITGELIJND MET KOLOMMEN */}
-              <div className="flex w-full items-center mt-1">
+              <div className="flex w-full items-center mt-4">
                 <div className="w-[20%] text-right pr-2 font-bold text-lg uppercase">
                   Eindstand:
                 </div>
                 <div className="w-[30%] flex justify-center">
-                  <div className="border-b-2 border-black w-28" />
+                  <div className="border-b-2 border-black w-32 h-4 mt-2" />
                 </div>
                 <div className="w-[20%] flex justify-center items-center">
                   <span className="text-3xl font-bold">-</span>
                 </div>
                 <div className="w-[30%] flex justify-center">
-                  <div className="border-b-2 border-black w-28" />
+                  <div className="border-b-2 border-black w-32 h-4 mt-2" />
                 </div>
               </div>
             </div>
