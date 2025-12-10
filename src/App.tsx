@@ -267,12 +267,15 @@ const App: React.FC = () => {
   // Aanwezigheidsparser
   // —————————————————
   const handleParseAttendance = (text: string) => {
-    const normalize = (str: string): string =>
-      str
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim();
+  const handleParseAttendance = (text: string) => {
+  const normalize = (str: string): string =>
+    str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      // 👇 extra regel: puntje aan het eind weghalen
+      .replace(/\.$/, '');
 
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
