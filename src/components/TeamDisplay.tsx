@@ -245,7 +245,7 @@ const MatchInputCard: React.FC<{
     return (
   <div className="flex items-center bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
     {/* Naam */}
-    <span className="text-gray-200 flex-1 pr-1 text-sm sm:text-base break-words leading-tight">
+    <span className="text-gray-200 flex-1 pr-1 text-xs sm:text-base break-words leading-tight">
       {player.name}
     </span>
 
