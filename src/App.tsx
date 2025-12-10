@@ -701,6 +701,8 @@ const App: React.FC = () => {
   // Final results (toernooi) opslaan
   // —————————————————
   const handleSaveFinalResults = async (matches: Match[]) => {
+    if (!requireAdmin()) return; // 🔐 nieuw
+
     setActionInProgress('savingFinal');
     const round2Results: MatchResult[] = matches.map(
       (match, index): MatchResult => ({
@@ -723,6 +725,8 @@ const App: React.FC = () => {
   // Simpele match opslaan (1 wedstrijd)
   // —————————————————
   const handleSaveSimpleMatch = async (match: Match) => {
+    if (!requireAdmin()) return; // 🔐 nieuw
+
     setActionInProgress('savingSimple');
     const results: MatchResult[] = [
       {
@@ -775,6 +779,8 @@ const App: React.FC = () => {
   // Double header opslaan (2 losse sessies)
   // —————————————————
   const handleSaveDoubleHeader = async (match2Result: MatchResult) => {
+    if (!requireAdmin()) return; // 🔐 nieuw
+
     setActionInProgress('savingDouble');
     if (!originalTeams || !teams2) {
       showNotification('Team data ontbreekt.', 'error');
@@ -899,6 +905,25 @@ const App: React.FC = () => {
     return false;
   };
 
+  // 🔐 Alleen bij opslaan om wachtwoord vragen
+  const requireAdmin = (): boolean => {
+    if (isManagementAuthenticated) return true;
+
+    const password = window.prompt(
+      'Voer het beheerderswachtwoord in om deze wedstrijd op te slaan:'
+    );
+
+    if (!password) return false;
+
+    if (password === ADMIN_PASSWORD) {
+      setIsManagementAuthenticated(true);
+      return true;
+    }
+
+    alert('Onjuist wachtwoord. Wedstrijd is niet opgeslagen.');
+    return false;
+  };
+
   // —————————————————
   // Handmatige invoer opslaan
   // —————————————————
@@ -908,6 +933,8 @@ const App: React.FC = () => {
     round1Results: MatchResult[];
     round2Results: MatchResult[];
   }) => {
+    if (!requireAdmin()) return; // 🔐 nieuw
+
     setActionInProgress('savingManual');
     await handleSaveSession(data);
     setActionInProgress(null);
@@ -976,7 +1003,7 @@ const App: React.FC = () => {
                   actionInProgress === 'generating' ||
                   attendingPlayers.length < 4
                 }
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors	duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
               >
                 Toernooi
               </button>
@@ -986,7 +1013,7 @@ const App: React.FC = () => {
                   actionInProgress === 'generating' ||
                   attendingPlayers.length < 2
                 }
-                className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-lg transition-colors	duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
               >
                 2 Wedstrijden
               </button>
@@ -1237,79 +1264,77 @@ const App: React.FC = () => {
         )}
 
         {/* --- NAVIGATIE: 2 x 4 GRID (RAINBOW COLORS) --- */}
-<div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-8 shadow-xl border border-gray-700/50">
-  <div className="grid grid-cols-4 gap-x-6 gap-y-6 justify-items-center">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-8 shadow-xl border border-gray-700/50">
+          <div className="grid grid-cols-4 gap-x-6 gap-y-6 justify-items-center">
+            {/* Rood */}
+            <NavItem
+              view="main"
+              label="Wedstrijd"
+              icon={<FutbolIcon className="w-6 h-6" />}
+              colorClass="bg-gradient-to-br from-red-400 to-red-700"
+            />
 
-    {/* Rood */}
-    <NavItem
-      view="main"
-      label="Wedstrijd"
-      icon={<FutbolIcon className="w-6 h-6" />}
-      colorClass="bg-gradient-to-br from-red-400 to-red-700"
-    />
+            {/* Oranje */}
+            <NavItem
+              view="rules"
+              label="Regels"
+              icon={<BookOpenIcon className="w-6 h-6" />}
+              colorClass="bg-gradient-to-br from-orange-300 to-orange-700"
+            />
 
-    {/* Oranje */}
-    <NavItem
-      view="rules"
-      label="Regels"
-      icon={<BookOpenIcon className="w-6 h-6" />}
-      colorClass="bg-gradient-to-br from-orange-300 to-orange-700"
-    />
+            {/* Geel */}
+            <NavItem
+              view="stats"
+              label="Statistieken"
+              icon={<UsersIcon className="w-6 h-6" />}
+              isProtected
+              colorClass="bg-gradient-to-br from-yellow-300 to-yellow-600"
+            />
 
-    {/* Geel */}
-    <NavItem
-      view="stats"
-      label="Statistieken"
-      icon={<UsersIcon className="w-6 h-6" />}
-      isProtected
-      colorClass="bg-gradient-to-br from-yellow-300 to-yellow-600"
-    />
+            {/* Groen */}
+            <NavItem
+              view="history"
+              label="Geschiedenis"
+              icon={<ClockIcon className="w-6 h-6" />}
+              isProtected
+              colorClass="bg-gradient-to-br from-green-300 to-green-700"
+            />
 
-    {/* Groen */}
-    <NavItem
-      view="history"
-      label="Geschiedenis"
-      icon={<ClockIcon className="w-6 h-6" />}
-      isProtected
-      colorClass="bg-gradient-to-br from-green-300 to-green-700"
-    />
+            {/* Blauw */}
+            <NavItem
+              view="trophyRoom"
+              label="Prijzen"
+              icon={<TrophyIcon className="w-6 h-6" />}
+              colorClass="bg-gradient-to-br from-blue-300 to-blue-700"
+            />
 
-    {/* Blauw */}
-    <NavItem
-      view="trophyRoom"
-      label="Prijzen"
-      icon={<TrophyIcon className="w-6 h-6" />}
-      colorClass="bg-gradient-to-br from-blue-300 to-blue-700"
-    />
+            {/* Indigo */}
+            <NavItem
+              view="manualEntry"
+              label="Invoer"
+              icon={<EditIcon className="w-6 h-6" />}
+              colorClass="bg-gradient-to-br from-indigo-300 to-indigo-700"
+            />
 
-    {/* Indigo */}
-    <NavItem
-      view="manualEntry"
-      label="Invoer"
-      icon={<EditIcon className="w-6 h-6" />}
-      colorClass="bg-gradient-to-br from-indigo-300 to-indigo-700"
-    />
+            {/* Violet */}
+            <NavItem
+              view="playerManagement"
+              label="Spelers"
+              icon={<EditIcon className="w-6 h-6" />}
+              isProtected
+              colorClass="bg-gradient-to-br from-purple-300 to-purple-700"
+            />
 
-    {/* Violet */}
-    <NavItem
-      view="playerManagement"
-      label="Spelers"
-      icon={<EditIcon className="w-6 h-6" />}
-      isProtected
-      colorClass="bg-gradient-to-br from-purple-300 to-purple-700"
-    />
-
-    {/* Roze */}
-    <NavItem
-      view="competitionManagement"
-      label="Beheer"
-      icon={<ArchiveIcon className="w-6 h-6" />}
-      isProtected
-      colorClass="bg-gradient-to-br from-pink-300 to-pink-700"
-    />
-
-  </div>
-</div>
+            {/* Roze */}
+            <NavItem
+              view="competitionManagement"
+              label="Beheer"
+              icon={<ArchiveIcon className="w-6 h-6" />}
+              isProtected
+              colorClass="bg-gradient-to-br from-pink-300 to-pink-700"
+            />
+          </div>
+        </div>
 
         <main>{renderContent()}</main>
       </div>
