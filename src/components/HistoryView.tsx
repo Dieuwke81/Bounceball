@@ -355,13 +355,14 @@ const HistoryView: React.FC<HistoryViewProps> = ({
               <span className="font-bold text-lg text-white">{formatDate(session.date)}</span>
               <div className="flex items-center space-x-3">
                 <div
-                  onClick={e =>
-                    handleExportCSV(e, [session], `MATCH_${session.date.split('T')[0]}`)
-                  }
-                  className="p-2 bg-cyan-600 hover:bg-cyan-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
-                >
-                  <ArchiveIcon className="w-4 h-4" />
-                </div>
+                  <div
+  onClick={e =>
+    handleExportCSV(e, [session], `MATCH_${session.date.split('T')[0]}`)
+  }
+  className="cursor-pointer transition-transform active:scale-95"
+>
+  <ArchiveIcon className="w-7 h-7" />
+</div>
                 <div
                   onClick={e => handleShareImage(e, session.date)}
                   className="p-2 bg-green-600 hover:bg-green-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
