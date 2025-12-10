@@ -78,11 +78,12 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     setExpandedDate(prevDate => (prevDate === date ? null : date));
   };
 
+  // 👉 maand + weekday afgekort, geeft meer ruimte
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('nl-NL', {
-      weekday: 'long',
+      weekday: 'short',
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
     });
   };
@@ -332,15 +333,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
   return (
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
-      <div className="flex justify-between items-center mb-6">
+      {/* header zonder groene knop */}
+      <div className="mb-6">
         <h2 className="text-3xl font-bold text-white">Wedstrijdgeschiedenis</h2>
-        <button
-          onClick={e => handleExportCSV(e, history, 'COMPLETE_HISTORY')}
-          className="flex items-center space-x-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition-colors shadow-md"
-        >
-          <DownloadIcon className="w-5 h-5" />
-          <span className="hidden sm:inline text-sm font-bold">Alles naar CSV</span>
-        </button>
       </div>
 
       <div className="space-y-4">
@@ -352,15 +347,15 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             >
               <span className="font-bold text-lg text-white">{formatDate(session.date)}</span>
               <div className="flex items-center space-x-3">
-                {/* 🔵 Excel-icoon ZONDER blauwe cirkel, iets groter */}
+                {/* Excel-icon zonder blauwe cirkel, met juiste verhoudingen */}
                 <button
                   type="button"
                   onClick={e =>
                     handleExportCSV(e, [session], `MATCH_${session.date.split('T')[0]}`)
                   }
-                  className="cursor-pointer active:scale-95 hover:opacity-90"
+                  className="cursor-pointer active:scale-95 hover:opacity-90 flex items-center"
                 >
-                  <ArchiveIcon className="w-7 h-7" />
+                  <ArchiveIcon className="h-7 w-auto" />
                 </button>
 
                 <div
