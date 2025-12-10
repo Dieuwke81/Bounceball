@@ -8,7 +8,8 @@ interface MatchFormProps {
 }
 
 const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
-  const matches = [];
+  const matches: { blue: Player[]; yellow: Player[]; matchNumber: number }[] = [];
+
   for (let i = 0; i < teams.length; i += 2) {
     if (teams[i + 1]) {
       matches.push({
@@ -172,7 +173,7 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                         );
                       }
                     } else if (i === baseRows) {
-                      // EERST: Gemiddelde rating
+                      // Gemiddelde rating
                       blueContent = (
                         <span className="text-gray-500 italic text-sm">
                           Gem. Rating: {avgBlue}
@@ -184,18 +185,18 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                         </span>
                       );
                     } else if (i === baseRows + 1) {
-  // Eigen doelpunt (2 regels)
-  blueContent = (
-    <span className="text-gray-500 italic text-xs whitespace-pre-line">
-      {"Eigen goal GEEL - Naam speler:"}
-    </span>
-  );
-  yellowContent = (
-    <span className="text-gray-500 italic text-xs whitespace-pre-line">
-      {"Eigen goal BLAUW - Naam speler:"}
-    </span>
-  );
-}
+                      // Eigen doelpunt (2 regels)
+                      blueContent = (
+                        <span className="text-gray-500 italic text-xs whitespace-pre-line">
+                          {'Eigen goal GEEL - Naam speler:'}
+                        </span>
+                      );
+                      yellowContent = (
+                        <span className="text-gray-500 italic text-xs whitespace-pre-line">
+                          {'Eigen goal BLAUW - Naam speler:'}
+                        </span>
+                      );
+                    }
 
                     return (
                       <tr key={i} className="h-10">
@@ -214,27 +215,28 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               </table>
 
               {/* SCORE BALK ONDER DE TABEL – UITGELIJND MET KOLOMMEN */}
-<div className="flex w-full items-center mt-1">
-  {/* Spelerskolom links (20%) */}
-  <div className="w-[22%] text-right pr-2 font-bold text-lg uppercase">
-    Eindstand:
-  </div>
+              <div className="flex w-full items-center mt-1">
+                {/* Spelerskolom links (22%) */}
+                <div className="w-[22%] text-right pr-2 font-bold text-lg uppercase">
+                  Eindstand:
+                </div>
 
-  {/* Doelpuntenkolom links (30%) */}
-  <div className="w-[28%] flex justify-center">
-    <div className="border-b-2 border-black w-28" />
-  </div>
+                {/* Doelpuntenkolom links (28%) */}
+                <div className="w-[28%] flex justify-center">
+                  <div className="border-b-2 border-black w-28" />
+                </div>
 
-  {/* Spelerskolom rechts (20%) */}
-  <div className="w-[22%] flex justify-center items-center">
-    <span className="text-3xl font-bold">-</span>
-  </div>
+                {/* Spelerskolom rechts (22%) */}
+                <div className="w-[22%] flex justify-center items-center">
+                  <span className="text-3xl font-bold">-</span>
+                </div>
 
-  {/* Doelpuntenkolom rechts (30%) */}
-  <div className="w-[28%] flex justify-center">
-    <div className="border-b-2 border-black w-28" />
-  </div>
-</div>
+                {/* Doelpuntenkolom rechts (28%) */}
+                <div className="w-[28%] flex justify-center">
+                  <div className="border-b-2 border-black w-28" />
+                </div>
+              </div>
+            </div>
 
             {/* --- WEDSTRIJD 2 --- */}
             <div className="mb-4">
@@ -260,63 +262,58 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                   </tr>
                 </thead>
                 <tbody>
-  {Array.from({ length: 6 }).map((_, i) => {
-    let blueContent: React.ReactNode = null;
-    let yellowContent: React.ReactNode = null;
+                  {Array.from({ length: 6 }).map((_, i) => {
+                    let blueContent: React.ReactNode = null;
+                    let yellowContent: React.ReactNode = null;
 
-    // Laatste rij = eigen doelpunt
-    if (i === 5) {
-      blueContent = (
-        <span className="text-gray-500 italic text-xs whitespace-pre-line">
-          {"Eigen goal GEEL - Naam speler:"}
-        </span>
-      );
+                    // Laatste rij = eigen doelpunt
+                    if (i === 5) {
+                      blueContent = (
+                        <span className="text-gray-500 italic text-xs whitespace-pre-line">
+                          {'Eigen goal GEEL - Naam speler:'}
+                        </span>
+                      );
 
-      yellowContent = (
-        <span className="text-gray-500 italic text-xs whitespace-pre-line">
-          {"Eigen goal BLAUW - Naam speler:"}
-        </span>
-      );
-    }
+                      yellowContent = (
+                        <span className="text-gray-500 italic text-xs whitespace-pre-line">
+                          {'Eigen goal BLAUW - Naam speler:'}
+                        </span>
+                      );
+                    }
 
-    return (
-      <tr key={i} className="h-10">
-        <td className="border border-black px-3 align-middle bg-white">
-          {blueContent}
-        </td>
-        <td className="border border-black bg-white"></td>
-        <td className="border border-black px-3 align-middle bg-white">
-          {yellowContent}
-        </td>
-        <td className="border border-black bg-white"></td>
-      </tr>
-    );
-  })}
-</tbody>
+                    return (
+                      <tr key={i} className="h-10">
+                        <td className="border border-black px-3 align-middle bg-white">
+                          {blueContent}
+                        </td>
+                        <td className="border border-black bg-white"></td>
+                        <td className="border border-black px-3 align-middle bg-white">
+                          {yellowContent}
+                        </td>
+                        <td className="border border-black bg-white"></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
               </table>
 
               {/* SCORE BALK ONDER DE TABEL – UITGELIJND MET KOLOMMEN */}
-<div className="flex w-full items-center mt-1">
-  {/* Spelerskolom links (20%) */}
-  <div className="w-[22%] text-right pr-2 font-bold text-lg uppercase">
-    Eindstand:
-  </div>
-
-  {/* Doelpuntenkolom links (30%) */}
-  <div className="w-[28%] flex justify-center">
-    <div className="border-b-2 border-black w-28" />
-  </div>
-
-  {/* Spelerskolom rechts (20%) */}
-  <div className="w-[22%] flex justify-center items-center">
-    <span className="text-3xl font-bold">-</span>
-  </div>
-
-  {/* Doelpuntenkolom rechts (30%) */}
-  <div className="w-[28%] flex justify-center">
-    <div className="border-b-2 border-black w-28" />
-  </div>
-</div>
+              <div className="flex w-full items-center mt-1">
+                <div className="w-[20%] text-right pr-2 font-bold text-lg uppercase">
+                  Eindstand:
+                </div>
+                <div className="w-[30%] flex justify-center">
+                  <div className="border-b-2 border-black w-28" />
+                </div>
+                <div className="w-[20%] flex justify-center items-center">
+                  <span className="text-3xl font-bold">-</span>
+                </div>
+                <div className="w-[30%] flex justify-center">
+                  <div className="border-b-2 border-black w-28" />
+                </div>
+              </div>
+            </div>
+          </div>
         );
       })}
     </div>,
