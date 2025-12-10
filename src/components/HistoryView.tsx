@@ -124,10 +124,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     const headers = [
       'Datum',
       'Ronde',
-      'Wedstrijd Nr',
       'Team Kleur',
-      'Speler ID',  // interne ID (kolom A)
-      'Excel ID',   // Excel-ID (kolom G)
+      'Speler ID', // interne ID (kolom A)
+      'Excel ID',  // Excel-ID (kolom G)
       'Naam',
       'Doelpunten',
       'Eigen goals',
@@ -139,8 +138,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       const dateStr = new Date(session.date).toLocaleDateString('nl-NL');
 
       const processMatches = (results: MatchResult[], roundName: string) => {
-        results.forEach((match, index) => {
-          const matchNumber = (index + 1).toString();
+        results.forEach(match => {
           const score1 = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
           const score2 = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
@@ -191,10 +189,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
               rows.push([
                 dateStr,
                 roundName,
-                matchNumber,
                 teamColor,
-                player.id.toString(),  // interne ID
-                excelId,               // Excel ID (of leeg)
+                player.id.toString(), // interne ID
+                excelId,              // Excel ID (of leeg)
                 player.name,
                 goalsScored.toString(),
                 ownGoals.toString(),
