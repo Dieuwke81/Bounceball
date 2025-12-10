@@ -184,18 +184,18 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                         </span>
                       );
                     } else if (i === baseRows + 1) {
-                      // DAARONDER: Eigen doelpunt (GEEL links, BLAUW rechts)
-                      blueContent = (
-                        <span className="text-gray-500 italic text-xs">
-                          Eigen doelpunt team GEEL – Naam speler:
-                        </span>
-                      );
-                      yellowContent = (
-                        <span className="text-gray-500 italic text-xs">
-                          Eigen doelpunt team BLAUW – Naam speler:
-                        </span>
-                      );
-                    }
+  // Eigen doelpunt (2 regels)
+  blueContent = (
+    <span className="text-gray-500 italic text-xs whitespace-pre-line">
+      {"Eigen doelpunt team GEEL —\nNaam speler:"}
+    </span>
+  );
+  yellowContent = (
+    <span className="text-gray-500 italic text-xs whitespace-pre-line">
+      {"Eigen doelpunt team BLAUW —\nNaam speler:"}
+    </span>
+  );
+}
 
                     return (
                       <tr key={i} className="h-10">
