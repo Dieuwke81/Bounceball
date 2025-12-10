@@ -6,7 +6,7 @@ import MatchForm from './MatchForm';
 // --- STAP 1: Vertel TypeScript dat 'confetti' op het window object bestaat ---
 declare global {
   interface Window {
-    confetti: any; 
+    confetti: any;
   }
 }
 
