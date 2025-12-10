@@ -259,15 +259,39 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((_, i) => (
-                    <tr key={i} className="h-10">
-                      <td className="border border-black px-3 align-middle bg-white"></td>
-                      <td className="border border-black bg-white"></td>
-                      <td className="border border-black px-3 align-middle bg-white"></td>
-                      <td className="border border-black bg-white"></td>
-                    </tr>
-                  ))}
-                </tbody>
+  {rows.map((_, i) => {
+    let blueContent: React.ReactNode = null;
+    let yellowContent: React.ReactNode = null;
+
+    // Laatste rij = eigen doelpunt (2 regels)
+    if (i === rows.length - 1) {
+      blueContent = (
+        <span className="text-gray-500 italic text-xs whitespace-pre-line">
+          {"Eigen doelpunt team GEEL —\nNaam speler:"}
+        </span>
+      );
+
+      yellowContent = (
+        <span className="text-gray-500 italic text-xs whitespace-pre-line">
+          {"Eigen doelpunt team BLAUW —\nNaam speler:"}
+        </span>
+      );
+    }
+
+    return (
+      <tr key={i} className="h-10">
+        <td className="border border-black px-3 align-middle bg-white">
+          {blueContent}
+        </td>
+        <td className="border border-black bg-white"></td>
+        <td className="border border-black px-3 align-middle bg-white">
+          {yellowContent}
+        </td>
+        <td className="border border-black bg-white"></td>
+      </tr>
+    );
+  })}
+</tbody>
               </table>
 
               {/* SCORE BALK ONDER DE TABEL */}
