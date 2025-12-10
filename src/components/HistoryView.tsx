@@ -10,9 +10,23 @@ const CameraIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const DownloadIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+// Excel-achtig icoon (document met een X)
+const ExcelIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M14 2H7.5A1.5 1.5 0 0 0 6 3.5v17A1.5 1.5 0 0 0 7.5 22h9A1.5 1.5 0 0 0 18 20.5V8l-4-6Z" opacity="0.7" />
+    <path d="M14 2v5.25A.75.75 0 0 0 14.75 8H18L14 2Z" />
+    <path
+      d="M10.3 10.5a.75.75 0 0 1 .96.28l.74 1.23.74-1.23a.75.75 0 1 1 1.28.76l-1.14 1.88 1.2 1.97a.75.75 0 0 1-1.28.76l-.8-1.32-.8 1.32a.75.75 0 0 1-1.28-.76l1.2-1.97-1.14-1.88a.75.75 0 0 1 .28-1.04Z"
+      className="text-white"
+    />
+  </svg>
+);
+
+// WhatsApp-achtig icoon (praatwolkje met telefoon)
+const WhatsAppIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M12.04 2.25C6.9 2.25 2.75 6.26 2.75 11.23c0 1.74.47 3.3 1.28 4.66L3 21.25l5.53-1.81c1.32.72 2.82 1.11 4.47 1.11 5.14 0 9.29-4.01 9.29-8.98 0-4.97-4.15-9-9.25-9Zm0 1.5c4.28 0 7.75 3.34 7.75 7.48 0 4.13-3.47 7.48-7.75 7.48-1.46 0-2.79-.38-3.93-1.06l-.28-.16-3.26 1.07.72-3.17-.21-.33a6.89 6.89 0 0 1-1.19-3.84c0-4.14 3.47-7.47 7.9-7.47Z" />
+    <path d="M16.26 14.16c-.19-.1-1.13-.6-1.31-.67-.18-.07-.31-.1-.44.1-.13.2-.5.67-.62.8-.11.13-.23.15-.42.05-.19-.1-.8-.31-1.53-.99-.57-.53-.95-1.19-1.06-1.39-.11-.2-.01-.31.08-.4.08-.08.19-.21.29-.31.1-.1.13-.18.2-.3.07-.13.04-.24-.02-.34-.06-.1-.53-1.28-.73-1.75-.19-.46-.39-.4-.53-.41l-.45-.01c-.15 0-.4.06-.61.29-.21.23-.8.78-.8 1.9 0 1.12.82 2.2.94 2.35.12.16 1.61 2.52 3.96 3.44.55.22.98.35 1.32.45.55.18 1.05.16 1.44.1.44-.07 1.35-.55 1.55-1.08.19-.53.19-.98.13-1.08-.06-.1-.17-.15-.35-.24Z" />
   </svg>
 );
 
@@ -54,7 +68,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   history,
   players,
   onDeleteSession,
-  isAuthenticated = false, // standaard: niet ingelogd
+  isAuthenticated = false,
 }) => {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -82,10 +96,23 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   };
 
   // --- 1. EXPORT FUNCTIES (Met Punten) ---
-  const handleExportCSV = (e: React.MouseEvent, sessionsToExport: GameSession[], filenamePrefix: string) => {
+  const handleExportCSV = (
+    e: React.MouseEvent,
+    sessionsToExport: GameSession[],
+    filenamePrefix: string
+  ) => {
     e.stopPropagation();
 
-    const headers = ['Datum', 'Ronde', 'Wedstrijd Nr', 'Team Kleur', 'Speler ID', 'Naam', 'Doelpunten', 'Punten'];
+    const headers = [
+      'Datum',
+      'Ronde',
+      'Wedstrijd Nr',
+      'Team Kleur',
+      'Speler ID',
+      'Naam',
+      'Doelpunten',
+      'Punten',
+    ];
     const rows: string[][] = [];
 
     sessionsToExport.forEach(session => {
@@ -97,7 +124,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
           const score1 = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
           const score2 = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
-          // Punten bepalen
           let pts1 = 0,
             pts2 = 0;
           if (score1 > score2) {
@@ -111,7 +137,12 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             pts2 = 1;
           }
 
-          const addTeamRows = (teamIndex: number, goalsArray: any[], teamColor: 'Blauw' | 'Geel', points: number) => {
+          const addTeamRows = (
+            teamIndex: number,
+            goalsArray: any[],
+            teamColor: 'Blauw' | 'Geel',
+            points: number
+          ) => {
             const teamPlayers = session.teams[teamIndex] || [];
             teamPlayers.forEach(player => {
               const playerGoalData = goalsArray.find(g => g.playerId === player.id);
@@ -218,8 +249,11 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     }
   };
 
-  // --- 3. UITSLAG WEERGAVE COMPONENT (AANGEPAST VOOR KLEUREN) ---
-  const MatchResultDisplay: React.FC<{ result: MatchResult; teams: Player[][] }> = ({ result, teams }) => {
+  // --- 3. UITSLAG WEERGAVE COMPONENT ---
+  const MatchResultDisplay: React.FC<{ result: MatchResult; teams: Player[][] }> = ({
+    result,
+    teams,
+  }) => {
     const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
     const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
@@ -332,7 +366,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
           onClick={e => handleExportCSV(e, history, 'COMPLETE_HISTORY')}
           className="flex items-center space-x-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition-colors shadow-md"
         >
-          <DownloadIcon className="w-5 h-5" />
+          {/* Excel-icoon in de grote knop */}
+          <ExcelIcon className="w-5 h-5" />
           <span className="hidden sm:inline text-sm font-bold">Alles naar CSV</span>
         </button>
       </div>
@@ -346,19 +381,22 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             >
               <span className="font-bold text-lg text-white">{formatDate(session.date)}</span>
               <div className="flex items-center space-x-3">
+                {/* 🔵 Excel-icoon in blauwe knop */}
                 <div
                   onClick={e =>
                     handleExportCSV(e, [session], `MATCH_${session.date.split('T')[0]}`)
                   }
                   className="p-2 bg-cyan-600 hover:bg-cyan-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
                 >
-                  <ArchiveIcon className="w-4 h-4" />
+                  <ExcelIcon className="w-4 h-4" />
                 </div>
+
+                {/* 🟢 WhatsApp-icoon in groene knop */}
                 <div
                   onClick={e => handleShareImage(e, session.date)}
                   className="p-2 bg-green-600 hover:bg-green-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
                 >
-                  <CameraIcon className="w-4 h-4" />
+                  <WhatsAppIcon className="w-4 h-4" />
                 </div>
 
                 {/* 🔐 Delete-knop alleen tonen als ingelogd */}
