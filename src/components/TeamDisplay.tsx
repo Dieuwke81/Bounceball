@@ -182,7 +182,10 @@ const MatchInputCard: React.FC<{
 
         return (
             <div className="flex items-center justify-between space-x-2 bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
-                <span className="text-gray-200 flex-1 pr-2 truncate">{player.name}</span>
+                {/* 👇 Naam niet meer afkappen, maar laten afbreken */}
+                <span className="text-gray-200 flex-1 pr-2 text-sm sm:text-base break-words leading-tight">
+                  {player.name}
+                </span>
                 <ScoreInput
                     value={goalCount}
                     onChange={(newVal) => onGoalChange(matchIndex, teamIdentifier, player.id, newVal)}
