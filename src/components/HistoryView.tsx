@@ -358,9 +358,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                   onClick={e =>
                     handleExportCSV(e, [session], `MATCH_${session.date.split('T')[0]}`)
                   }
-                  
-                
-                  <ArchiveIcon className="w-7 h-7" />
+                  className="p-2 bg-cyan-600 hover:bg-cyan-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
+                >
+                  <ArchiveIcon className="w-4 h-4" />
                 </div>
                 <div
                   onClick={e => handleShareImage(e, session.date)}
