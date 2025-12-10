@@ -243,27 +243,27 @@ const MatchInputCard: React.FC<{
     };
 
     return (
-      <div className="flex items-center bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
-        {/* Naam */}
-        <span className="text-gray-200 flex-1 pr-1 text-sm sm:text-base break-words leading-tight">
-          {player.name}
-        </span>
+  <div className="flex items-center bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
+    {/* Naam */}
+    <span className="text-gray-200 flex-1 pr-1 text-sm sm:text-base break-words leading-tight">
+      {player.name}
+    </span>
 
-        {/* Vakjes G / EG */}
-        <div className="flex items-center space-x-2">
-          <ScoreInput
-            value={goalCount}
-            onChange={handleGoalsChange}
-            className="w-9 bg-gray-700 border border-gray-500 rounded-md py-1 px-1 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
-          />
-          <ScoreInput
-            value={ownGoalCount}
-            onChange={handleOwnGoalsChange}
-            className="w-7 bg-gray-700 border border-red-500/70 rounded-md py-1 px-1 text-white text-center focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-          />
-        </div>
-      </div>
-    );
+    {/* Vakjes G / EG */}
+    <div className="flex justify-between items-center w-[4.5rem]">
+      <ScoreInput
+        value={goalCount}
+        onChange={handleGoalsChange}
+        className="w-9 bg-gray-700 border border-gray-500 rounded-md py-1 px-1 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+      />
+      <ScoreInput
+        value={ownGoalCount}
+        onChange={handleOwnGoalsChange}
+        className="w-7 bg-gray-700 border border-red-500/70 rounded-md py-1 px-1 text-white text-center focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+      />
+    </div>
+  </div>
+);
   };
 
   const blueOpponentIdentifier: 'team1' | 'team2' =
