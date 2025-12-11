@@ -81,6 +81,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
 
   const getTrophyStyle = (type: TrophyType) => {
     if (type.includes('1ste') || type === 'Clubkampioen') {
+        // Zelfde gouden / groene “speciale” look als in de prijzenkast
         return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600';
     }
     if (type.includes('2de')) return 'text-slate-500';
@@ -90,7 +91,11 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
     if (type === 'Speler van het jaar') return 'text-green-500';
     return 'text-white';
 };
+    // ... (Hulpfunctie getTrophyContent blijft hetzelfde, die heb je al) ...
+    // Voor de volledigheid en om errors te voorkomen, hier de korte versie (gebruik jouw eigen images object hier!)
     const getTrophyContent = (type: TrophyType) => {
+        // ... PLAK HIER JOUW IMAGE LOGICA ...
+        // Als je die niet bij de hand hebt, gebruik dan voor nu even iconen, maar ik ga er vanuit dat je die uit de vorige versie hebt.
          const images: {[key: string]: string} = {
             'Verdediger': 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
             'Topscoorder': 'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
@@ -118,10 +123,9 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
         let wins = 0;
         let losses = 0;
         let draws = 0;
-        let points = 0;
+        let points = 0; // <--- HIER IS DE VARIABELE DIE JE NODIG HEBT
         let gamesPlayed = 0;
         let goalsScored = 0;
-        let ownGoals = 0;            // 👈 NIEUW: eigen goals teller
         
         const teammateFrequency = new Map<number, number>();
         const teammateWins = new Map<number, number>();
@@ -161,22 +165,21 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
                 const playerGoalCount = playerTeamGoalsList.find(g => g.playerId === player.id)?.count || 0;
                 goalsScored += playerGoalCount;
 
-                // 👇 NIEUW: eigen doelpunten (goals van deze speler bij de TEGENPARTIJ)
-                const ownGoalCount = opponentTeamGoalsList.find(g => g.playerId === player.id)?.count || 0;
-                ownGoals += ownGoalCount;
-
                 const playerTeamScore = playerTeamGoalsList.reduce((sum, g) => sum + g.count, 0);
                 const opponentTeamScore = opponentTeamGoalsList.reduce((sum, g) => sum + g.count, 0);
 
+                // --- HIER WORDEN DE PUNTEN BEREKEND ---
                 if (playerTeamScore > opponentTeamScore) {
                     wins++;
-                    points += 3;
+                    points += 3; // Winst = 3 punten
                 } else if (opponentTeamScore > playerTeamScore) {
                     losses++;
+                    // Verlies = 0 punten
                 } else {
                     draws++;
-                    points += 1;
+                    points += 1; // Gelijk = 1 punt
                 }
+                // --------------------------------------
 
                 const teammates = session.teams[playerTeamIndex!].filter(p => p.id !== player.id);
                 const opponents = session.teams[opponentTeamIndex];
@@ -206,20 +209,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
         const worstOpponents = [...opponentLosses.entries()].sort((a, b) => b[1] - a[1]);
         const mostFrequentTeammates = [...teammateFrequency.entries()].sort((a, b) => b[1] - a[1]);
 
-        return { 
-          wins, 
-          losses, 
-          draws, 
-          points, 
-          gamesPlayed, 
-          goalsScored, 
-          ownGoals,          // 👈 meegeven in return
-          bestTeammates, 
-          worstTeammates, 
-          bestOpponents, 
-          worstOpponents, 
-          mostFrequentTeammates 
-        };
+        return { wins, losses, draws, points, gamesPlayed, goalsScored, bestTeammates, worstTeammates, bestOpponents, worstOpponents, mostFrequentTeammates };
     }, [player.id, history]);
 
     const ratingHistory = useMemo(() => {
@@ -279,6 +269,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
         return logs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [player.id, ratingLogs]);
 
+    // Gemiddelde punten berekenen voor display
     const avgPoints = stats.gamesPlayed > 0 ? stats.points / stats.gamesPlayed : 0;
 
     return (
@@ -346,16 +337,16 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
   </div>
 )}
 
-            {/* 👇 hier 5 kaarten i.p.v. 4 zodat EG erbij past */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <StatCard title="Gespeeld" value={stats.gamesPlayed} />
                 <StatCard title="Gewonnen" value={`${Math.round((stats.wins / (stats.gamesPlayed || 1)) * 100)}%`} subtext={`${stats.wins} van ${stats.gamesPlayed}`} />
                 <StatCard title="Goals" value={stats.goalsScored} subtext={`${(stats.goalsScored / (stats.gamesPlayed || 1)).toFixed(2)} gem.`} />
-                {/* NIEUW: eigen doelpunten per speler */}
-                <StatCard title="Eigen goals 😂" value={stats.ownGoals} />
+                
+                {/* HIER ZIE JE HET GEMIDDELDE PUNTEN AANTAL OOK IN DE APP */}
                 <StatCard title="Gem. Punten" value={avgPoints.toFixed(2)} subtext={`Totaal: ${stats.points}`} />
             </div>
 
+            {/* ... (De rest van de grafieken en relaties blijft hetzelfde) ... */}
             <div className="bg-gray-700 p-4 rounded-lg mb-8">
                 <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
                     <ChartBarIcon className="w-5 h-5 text-green-400" />
