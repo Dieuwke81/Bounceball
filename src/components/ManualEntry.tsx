@@ -588,26 +588,38 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
   };
 
   // ========================================================================
-  // SAVE MATCH
-  // ========================================================================
-  const saveTournament = () => {
-    if (isLoading) return;
+// SAVE MATCH
+// ========================================================================
+const saveTournament = () => {
+  if (isLoading) return;
 
-    const resultsR2 = round2Pairings.map((m, i) => ({
-      ...m,
-      team1Goals: goalScorers[`${i}-team1`] || [],
-      team2Goals: goalScorers[`${i}-team2`] || [],
-    }));
+  const resultsR2 = round2Pairings.map((m, i) => ({
+    ...m,
+    team1Goals: goalScorers[`${i}-team1`] || [],
+    team2Goals: goalScorers[`${i}-team2`] || [],
+  }));
 
-    onSave({
-      date: new Date(date).toISOString(),
-      teams: round1Teams || parsedR1.teams,
-      round1Results,
-      round2Results: resultsR2,
-    });
+  onSave({
+    date: new Date(date).toISOString(),
+    teams: round1Teams || parsedR1.teams,
+    round1Results,
+    round2Results: resultsR2,
+  });
 
-    localStorage.removeItem(UNSAVED_MANUAL_KEY);
-  };
+  localStorage.removeItem(UNSAVED_MANUAL_KEY);
+
+  // 👇 Alles terug naar beginstand, zodat je niet op ronde 2 blijft hangen
+  setRound(0);
+  setTeamTextR1(Array(6).fill(''));
+  setTeamTextR2(Array(6).fill(''));
+  setRound1Teams(null);
+  setGoalScorers({});
+  setRound1Results([]);
+  setRound2Pairings([]);
+  setError(null);
+  setNumMatches(1);
+  setManualRound2(false);
+};
 
   // ========================================================================
   // UI RENDER HELPERS
