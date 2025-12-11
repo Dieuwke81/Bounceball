@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import type { GameSession, Player, MatchResult, Goal } from '../types';
+import type { GameSession, Player, MatchResult } from '../types';
 import html2canvas from 'html2canvas';
 
-// --- ICONS ---
+// ================= ICONS =================
+
 const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -14,6 +15,7 @@ const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+// Excel-icoon (PNG)
 const ExcelIcon: React.FC<{ className?: string }> = ({ className }) => (
   <img
     src="https://i.postimg.cc/rsdSMGLm/microsoft-excel-computer-icons-xls-microsoft-c70a1dabe2e12c80c0a3159b40d70d14.png"
@@ -22,6 +24,7 @@ const ExcelIcon: React.FC<{ className?: string }> = ({ className }) => (
   />
 );
 
+// Zelfde icoon voor deze “namen”
 const DownloadIcon = ExcelIcon;
 const ArchiveIcon = ExcelIcon;
 
@@ -49,8 +52,30 @@ interface HistoryViewProps {
   isAuthenticated?: boolean;
 }
 
-// Hulpfunctie voor kleuren (BLAUW / GEEL)
+// even = blauw, oneven = geel
 const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
+
+// robuuste helper om een speler-id uit een Goal object te halen
+const getGoalPlayerId = (g: any): number | undefined => {
+  return (
+    g.playerId ??
+    g.id ??
+    g.player_id ??
+    g.player?.id ??
+    undefined
+  );
+};
+
+const buildGoalsMap = (goals: any[]): Map<string, number> => {
+  const map = new Map<string, number>();
+  goals.forEach((g) => {
+    const pid = getGoalPlayerId(g);
+    if (pid == null) return;
+    const key = String(pid);
+    map.set(key, (map.get(key) || 0) + (g.count || 0));
+  });
+  return map;
+};
 
 const HistoryView: React.FC<HistoryViewProps> = ({
   history,
@@ -64,7 +89,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   if (history.length === 0) {
     return (
       <div className="bg-gray-800 rounded-xl shadow-lg p-8 text-center">
-        <h2 className="text-2xl font-bold text-white mb-2">Geen Geschiedenis</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">
+          Geen Geschiedenis
+        </h2>
         <p className="text-gray-400">
           Sla je eerste toernooi af om hier de geschiedenis te zien.
         </p>
@@ -85,9 +112,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     });
   };
 
-  // =========================
-  // 1. EXPORT NAAR CSV
-  // =========================
+  // ================= EXPORT NAAR CSV =================
+
   const handleExportCSV = (
     e: React.MouseEvent,
     sessionsToExport: GameSession[],
@@ -95,18 +121,17 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   ) => {
     e.stopPropagation();
 
-    // Wedstrijd-kolom eruit, excelID-kolom erbij
+    // Wedstrijd Nr verwijderd, excelID toegevoegd
     const headers = [
       'Datum',
       'Ronde',
-      'Team kleur',
+      'Team Kleur',
       'excelID',
       'Speler ID',
       'Naam',
       'Doelpunten',
       'Punten',
     ];
-
     const rows: string[][] = [];
 
     sessionsToExport.forEach((session) => {
@@ -123,8 +148,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             0
           );
 
-          let pts1 = 0,
-            pts2 = 0;
+          let pts1 = 0;
+          let pts2 = 0;
           if (score1 > score2) {
             pts1 = 3;
             pts2 = 0;
@@ -138,15 +163,18 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
           const addTeamRows = (
             teamIndex: number,
-            goalsArray: Goal[],
+            goalsArray: any[],
             teamColor: 'Blauw' | 'Geel',
             points: number
           ) => {
             const teamPlayers = session.teams[teamIndex] || [];
+
             teamPlayers.forEach((player) => {
-              const playerGoalData = goalsArray.find(
-                (g) => String(g.playerId) === String(player.id)
-              );
+              const playerGoalData = goalsArray.find((g: any) => {
+                const pid = getGoalPlayerId(g);
+                return pid != null && String(pid) === String(player.id);
+              });
+
               const goalsScored = playerGoalData ? playerGoalData.count : 0;
 
               const excelId =
@@ -199,9 +227,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     }
   };
 
-  // =========================
-  // 2. SCREENSHOT / SHARE
-  // =========================
+  // ================= SCREENSHOT / SHARE =================
+
   const handleShareImage = async (
     e: React.MouseEvent,
     sessionDate: string
@@ -211,6 +238,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       setExpandedDate(sessionDate);
       await new Promise((resolve) => setTimeout(resolve, 300));
     }
+
     const elementId = `session-content-${sessionDate}`;
     const element = document.getElementById(elementId);
     if (!element) return;
@@ -236,32 +264,34 @@ const HistoryView: React.FC<HistoryViewProps> = ({
         },
       });
 
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        const file = new File([blob], `Uitslagen-${sessionDate}.png`, {
-          type: 'image/png',
-        });
+      canvas.toBlob(
+        async (blob) => {
+          if (!blob) return;
+          const file = new File([blob], `Uitslagen-${sessionDate}.png`, {
+            type: 'image/png',
+          });
 
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({
-              files: [file],
-              title: 'Bounceball',
-              text: `Uitslagen ${formatDate(sessionDate)}`,
-            });
-          } catch (err) {
-            console.log(err);
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                files: [file],
+                title: 'Bounceball',
+                text: `Uitslagen ${formatDate(sessionDate)}`,
+              });
+            } catch (err) {
+              console.log(err);
+            }
+          } else {
+            const link = document.createElement('a');
+            link.download = `Uitslagen-${sessionDate}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
           }
-        } else {
-          const link = document.createElement('a');
-          link.download = `Uitslagen-${sessionDate}.png`;
-          link.href = canvas.toDataURL();
-          link.click();
-        }
-        setIsGeneratingImage(false);
-      }, 'image/png');
-    } catch (error) {
-      console.error(error);
+          setIsGeneratingImage(false);
+        },
+        'image/png'
+      );
+    } catch (err) {
       setIsGeneratingImage(false);
     }
   };
@@ -277,15 +307,20 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     }
   };
 
-  // =========================
-  // 3. UITSLAGWEERGAVE
-  // =========================
+  // ================= MATCH RESULT WEERGAVE =================
+
   const MatchResultDisplay: React.FC<{
     result: MatchResult;
     teams: Player[][];
   }> = ({ result, teams }) => {
-    const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
-    const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
+    const score1 = result.team1Goals.reduce(
+      (sum, g) => sum + g.count,
+      0
+    );
+    const score2 = result.team2Goals.reduce(
+      (sum, g) => sum + g.count,
+      0
+    );
 
     const color1 = getBaseColor(result.team1Index);
     const color2 = getBaseColor(result.team2Index);
@@ -297,7 +332,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     let leftGoals = result.team1Goals;
     let rightGoals = result.team2Goals;
 
-    // Zorg dat links altijd blauw en rechts altijd geel is
     if (color1 === 'yellow' && color2 === 'blue') {
       leftTeamIdx = result.team2Index;
       rightTeamIdx = result.team1Index;
@@ -313,13 +347,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     const team1Players = teams[leftTeamIdx] || [];
     const team2Players = teams[rightTeamIdx] || [];
 
-    // *** FIX: keys als string zodat '12' en 12 hetzelfde zijn ***
-    const team1GoalsMap = new Map<string, number>(
-      leftGoals.map((g) => [String(g.playerId), g.count])
-    );
-    const team2GoalsMap = new Map<string, number>(
-      rightGoals.map((g) => [String(g.playerId), g.count])
-    );
+    const team1GoalsMap = buildGoalsMap(leftGoals as any[]);
+    const team2GoalsMap = buildGoalsMap(rightGoals as any[]);
 
     const PlayerListWithGoals: React.FC<{
       players: Player[];
@@ -328,22 +357,27 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     }> = ({ players, goalsMap, scoreColorClass }) => (
       <ul className="space-y-1 mt-3">
         {players.map((player) => {
-          const goals = goalsMap.get(String(player.id)) || 0;
+          const goals =
+            goalsMap.get(String(player.id)) || 0;
           return (
             <li
               key={player.id}
               className="flex justify-between items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0"
             >
               <span
-                className={`text-sm mr-2 leading-tight break-words max-w-[70%] ${
-                  goals > 0 ? 'text-gray-100 font-medium' : 'text-gray-400'
-                }`}
+                className={`text-sm mr-2 ${
+                  goals > 0
+                    ? 'text-gray-100 font-medium'
+                    : 'text-gray-400'
+                } max-w-[70%] break-words leading-tight`}
               >
                 {player.name}
               </span>
               <span
                 className={`text-base font-bold ${
-                  goals > 0 ? scoreColorClass : 'text-gray-600'
+                  goals > 0
+                    ? scoreColorClass
+                    : 'text-gray-600'
                 }`}
               >
                 {goals}
@@ -388,7 +422,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
           >
             {leftScore}
           </span>
-          <span className="text-2xl font-bold text-gray-500">-</span>
+          <span className="text-2xl font-bold text-gray-500">
+            -
+          </span>
           <span
             className={`text-4xl font-black tracking-widest drop-shadow-md ${rightColorClass}`}
           >
@@ -399,17 +435,20 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     );
   };
 
-  // =========================
-  // RENDER
-  // =========================
+  // ================= RENDER =================
 
   return (
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
+      {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-white">Wedstrijdgeschiedenis</h2>
+        <h2 className="text-3xl font-bold text-white">
+          Wedstrijdgeschiedenis
+        </h2>
         <button
           type="button"
-          onClick={(e) => handleExportCSV(e, history, 'COMPLETE_HISTORY')}
+          onClick={(e) =>
+            handleExportCSV(e, history, 'COMPLETE_HISTORY')
+          }
           className="flex items-center justify-center active:scale-95 hover:opacity-90"
           aria-label="Alle wedstrijden naar CSV"
         >
@@ -431,6 +470,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                 {formatDate(session.date)}
               </span>
               <div className="flex items-center space-x-3">
+                {/* CSV per wedstrijd */}
                 <button
                   type="button"
                   onClick={(e) =>
@@ -445,16 +485,22 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                   <ArchiveIcon className="h-9 w-auto" />
                 </button>
 
+                {/* WhatsApp / share */}
                 <div
-                  onClick={(e) => handleShareImage(e, session.date)}
+                  onClick={(e) =>
+                    handleShareImage(e, session.date)
+                  }
                   className="p-2 bg-green-600 hover:bg-green-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
                 >
                   <WhatsAppIcon className="w-4 h-4" />
                 </div>
 
+                {/* Verwijderen (alleen ingelogd) */}
                 {isAuthenticated && (
                   <div
-                    onClick={(e) => handleDeleteClick(e, session.date)}
+                    onClick={(e) =>
+                      handleDeleteClick(e, session.date)
+                    }
                     className="p-2 bg-red-600 hover:bg-red-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
                   >
                     <TrashIcon className="w-4 h-4" />
@@ -463,7 +509,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
                 <span
                   className={`transform transition-transform ${
-                    expandedDate === session.date ? 'rotate-180' : ''
+                    expandedDate === session.date
+                      ? 'rotate-180'
+                      : ''
                   }`}
                 >
                   ▼
@@ -488,6 +536,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 gap-8">
+                    {/* Ronde 1 */}
                     <div>
                       <div className="flex items-center mb-4">
                         <div className="h-8 w-1 bg-green-500 rounded-full mr-3" />
@@ -506,6 +555,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                       </div>
                     </div>
 
+                    {/* Ronde 2 */}
                     {session.round2Results.length > 0 && (
                       <div>
                         <div className="flex items-center mb-4 mt-4">
