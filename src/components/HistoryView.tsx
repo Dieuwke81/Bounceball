@@ -15,7 +15,6 @@ const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-// Excel-icoon (PNG)
 const ExcelIcon: React.FC<{ className?: string }> = ({ className }) => (
   <img
     src="https://i.postimg.cc/rsdSMGLm/microsoft-excel-computer-icons-xls-microsoft-c70a1dabe2e12c80c0a3159b40d70d14.png"
@@ -24,7 +23,6 @@ const ExcelIcon: React.FC<{ className?: string }> = ({ className }) => (
   />
 );
 
-// Zelfde icoon voor deze “namen”
 const DownloadIcon = ExcelIcon;
 const ArchiveIcon = ExcelIcon;
 
@@ -57,13 +55,7 @@ const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
 
 // robuuste helper om een speler-id uit een Goal object te halen
 const getGoalPlayerId = (g: any): number | undefined => {
-  return (
-    g.playerId ??
-    g.id ??
-    g.player_id ??
-    g.player?.id ??
-    undefined
-  );
+  return g.playerId ?? g.id ?? g.player_id ?? g.player?.id ?? undefined;
 };
 
 const buildGoalsMap = (goals: any[]): Map<string, number> => {
@@ -121,7 +113,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   ) => {
     e.stopPropagation();
 
-    // Wedstrijd Nr verwijderd, excelID toegevoegd
     const headers = [
       'Datum',
       'Ronde',
@@ -137,16 +128,14 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     sessionsToExport.forEach((session) => {
       const dateStr = new Date(session.date).toLocaleDateString('nl-NL');
 
-      const processMatches = (results: MatchResult[], roundName: string) => {
+      const processMatches = (
+        results: MatchResult[],
+        roundName: string,
+        teamsForRound: Player[][]
+      ) => {
         results.forEach((match) => {
-          const score1 = match.team1Goals.reduce(
-            (sum, g) => sum + g.count,
-            0
-          );
-          const score2 = match.team2Goals.reduce(
-            (sum, g) => sum + g.count,
-            0
-          );
+          const score1 = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
+          const score2 = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
           let pts1 = 0;
           let pts2 = 0;
@@ -167,7 +156,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             teamColor: 'Blauw' | 'Geel',
             points: number
           ) => {
-            const teamPlayers = session.teams[teamIndex] || [];
+            const teamPlayers = teamsForRound[teamIndex] || [];
 
             teamPlayers.forEach((player) => {
               const playerGoalData = goalsArray.find((g: any) => {
@@ -176,11 +165,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
               });
 
               const goalsScored = playerGoalData ? playerGoalData.count : 0;
-
               const excelId =
-                (player as any).excelID ??
-                (player as any).excelId ??
-                '';
+                (player as any).excelID ?? (player as any).excelId ?? '';
 
               rows.push([
                 dateStr,
@@ -200,8 +186,12 @@ const HistoryView: React.FC<HistoryViewProps> = ({
         });
       };
 
-      processMatches(session.round1Results, 'Ronde 1');
-      processMatches(session.round2Results, 'Ronde 2');
+      // Ronde 1 gebruikt altijd session.teams
+      processMatches(session.round1Results, 'Ronde 1', session.teams);
+
+      // Ronde 2: gebruik aparte teams als aanwezig
+      const round2Teams = session.round2Teams ?? session.teams;
+      processMatches(session.round2Results, 'Ronde 2', round2Teams);
     });
 
     const csvContent = [headers.join(';'), ...rows.map((r) => r.join(';'))].join(
@@ -299,9 +289,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   const handleDeleteClick = (e: React.MouseEvent, date: string) => {
     e.stopPropagation();
     if (
-      window.confirm(
-        'Weet je zeker dat je deze wedstrijd wilt verwijderen?'
-      )
+      window.confirm('Weet je zeker dat je deze wedstrijd wilt verwijderen?')
     ) {
       onDeleteSession(date);
     }
@@ -313,14 +301,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     result: MatchResult;
     teams: Player[][];
   }> = ({ result, teams }) => {
-    const score1 = result.team1Goals.reduce(
-      (sum, g) => sum + g.count,
-      0
-    );
-    const score2 = result.team2Goals.reduce(
-      (sum, g) => sum + g.count,
-      0
-    );
+    const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
+    const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
     const color1 = getBaseColor(result.team1Index);
     const color2 = getBaseColor(result.team2Index);
@@ -357,8 +339,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     }> = ({ players, goalsMap, scoreColorClass }) => (
       <ul className="space-y-1 mt-3">
         {players.map((player) => {
-          const goals =
-            goalsMap.get(String(player.id)) || 0;
+          const goals = goalsMap.get(String(player.id)) || 0;
           return (
             <li
               key={player.id}
@@ -366,18 +347,14 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             >
               <span
                 className={`text-sm mr-2 ${
-                  goals > 0
-                    ? 'text-gray-100 font-medium'
-                    : 'text-gray-400'
+                  goals > 0 ? 'text-gray-100 font-medium' : 'text-gray-400'
                 } max-w-[70%] break-words leading-tight`}
               >
                 {player.name}
               </span>
               <span
                 className={`text-base font-bold ${
-                  goals > 0
-                    ? scoreColorClass
-                    : 'text-gray-600'
+                  goals > 0 ? scoreColorClass : 'text-gray-600'
                 }`}
               >
                 {goals}
@@ -422,9 +399,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
           >
             {leftScore}
           </span>
-          <span className="text-2xl font-bold text-gray-500">
-            -
-          </span>
+          <span className="text-2xl font-bold text-gray-500">-</span>
           <span
             className={`text-4xl font-black tracking-widest drop-shadow-md ${rightColorClass}`}
           >
@@ -446,9 +421,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
         </h2>
         <button
           type="button"
-          onClick={(e) =>
-            handleExportCSV(e, history, 'COMPLETE_HISTORY')
-          }
+          onClick={(e) => handleExportCSV(e, history, 'COMPLETE_HISTORY')}
           className="flex items-center justify-center active:scale-95 hover:opacity-90"
           aria-label="Alle wedstrijden naar CSV"
         >
@@ -457,134 +430,132 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       </div>
 
       <div className="space-y-4">
-        {history.map((session) => (
-          <div
-            key={session.date}
-            className="bg-gray-700 rounded-lg overflow-hidden"
-          >
-            <button
-              onClick={() => toggleSession(session.date)}
-              className="w-full text-left p-4 flex justify-between items-center hover:bg-gray-600 transition-colors"
+        {history.map((session) => {
+          const round2Teams = session.round2Teams ?? session.teams;
+
+          return (
+            <div
+              key={session.date}
+              className="bg-gray-700 rounded-lg overflow-hidden"
             >
-              <span className="font-bold text-lg text-white">
-                {formatDate(session.date)}
-              </span>
-              <div className="flex items-center space-x-3">
-                {/* CSV per wedstrijd */}
-                <button
-                  type="button"
-                  onClick={(e) =>
-                    handleExportCSV(
-                      e,
-                      [session],
-                      `MATCH_${session.date.split('T')[0]}`
-                    )
-                  }
-                  className="cursor-pointer active:scale-95 hover:opacity-90 flex items-center"
-                >
-                  <ArchiveIcon className="h-9 w-auto" />
-                </button>
-
-                {/* WhatsApp / share */}
-                <div
-                  onClick={(e) =>
-                    handleShareImage(e, session.date)
-                  }
-                  className="p-2 bg-green-600 hover:bg-green-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
-                >
-                  <WhatsAppIcon className="w-4 h-4" />
-                </div>
-
-                {/* Verwijderen (alleen ingelogd) */}
-                {isAuthenticated && (
-                  <div
-                    onClick={(e) =>
-                      handleDeleteClick(e, session.date)
-                    }
-                    className="p-2 bg-red-600 hover:bg-red-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </div>
-                )}
-
-                <span
-                  className={`transform transition-transform ${
-                    expandedDate === session.date
-                      ? 'rotate-180'
-                      : ''
-                  }`}
-                >
-                  ▼
-                </span>
-              </div>
-            </button>
-
-            {expandedDate === session.date && (
-              <div
-                id={`session-content-${session.date}`}
-                className="bg-gray-900 border-t border-gray-600"
+              <button
+                onClick={() => toggleSession(session.date)}
+                className="w-full text-left p-4 flex justify-between items-center hover:bg-gray-600 transition-colors"
               >
-                <div className="p-6 w-full">
-                  <div className="mb-8 text-center">
-                    <h3 className="text-4xl font-black text-green-500 tracking-tight">
-                      BOUNCEBALL
-                    </h3>
-                    <div className="h-1 w-32 bg-green-500 mx-auto my-2 rounded-full" />
-                    <p className="text-gray-300 font-medium text-lg mt-1 uppercase tracking-wide">
-                      {formatDate(session.date)}
-                    </p>
+                <span className="font-bold text-lg text-white">
+                  {formatDate(session.date)}
+                </span>
+                <div className="flex items-center space-x-3">
+                  {/* CSV per wedstrijd */}
+                  <button
+                    type="button"
+                    onClick={(e) =>
+                      handleExportCSV(
+                        e,
+                        [session],
+                        `MATCH_${session.date.split('T')[0]}`
+                      )
+                    }
+                    className="cursor-pointer active:scale-95 hover:opacity-90 flex items-center"
+                  >
+                    <ArchiveIcon className="h-9 w-auto" />
+                  </button>
+
+                  {/* WhatsApp / share */}
+                  <div
+                    onClick={(e) => handleShareImage(e, session.date)}
+                    className="p-2 bg-green-600 hover:bg-green-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
+                  >
+                    <WhatsAppIcon className="w-4 h-4" />
                   </div>
 
-                  <div className="grid grid-cols-1 gap-8">
-                    {/* Ronde 1 */}
-                    <div>
-                      <div className="flex items-center mb-4">
-                        <div className="h-8 w-1 bg-green-500 rounded-full mr-3" />
-                        <h3 className="text-2xl font-bold text-white uppercase tracking-wider">
-                          Ronde 1
-                        </h3>
-                      </div>
-                      <div className="space-y-6">
-                        {session.round1Results.map((r, i) => (
-                          <MatchResultDisplay
-                            key={`r1-${i}`}
-                            result={r}
-                            teams={session.teams}
-                          />
-                        ))}
-                      </div>
+                  {/* Verwijderen (alleen ingelogd) */}
+                  {isAuthenticated && (
+                    <div
+                      onClick={(e) => handleDeleteClick(e, session.date)}
+                      className="p-2 bg-red-600 hover:bg-red-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </div>
+                  )}
+
+                  <span
+                    className={`transform transition-transform ${
+                      expandedDate === session.date ? 'rotate-180' : ''
+                    }`}
+                  >
+                    ▼
+                  </span>
+                </div>
+              </button>
+
+              {expandedDate === session.date && (
+                <div
+                  id={`session-content-${session.date}`}
+                  className="bg-gray-900 border-t border-gray-600"
+                >
+                  <div className="p-6 w-full">
+                    <div className="mb-8 text-center">
+                      <h3 className="text-4xl font-black text-green-500 tracking-tight">
+                        BOUNCEBALL
+                      </h3>
+                      <div className="h-1 w-32 bg-green-500 mx-auto my-2 rounded-full" />
+                      <p className="text-gray-300 font-medium text-lg mt-1 uppercase tracking-wide">
+                        {formatDate(session.date)}
+                      </p>
                     </div>
 
-                    {/* Ronde 2 */}
-                    {session.round2Results.length > 0 && (
+                    <div className="grid grid-cols-1 gap-8">
+                      {/* Ronde 1 */}
                       <div>
-                        <div className="flex items-center mb-4 mt-4">
+                        <div className="flex items-center mb-4">
                           <div className="h-8 w-1 bg-green-500 rounded-full mr-3" />
                           <h3 className="text-2xl font-bold text-white uppercase tracking-wider">
-                            Ronde 2
+                            Ronde 1
                           </h3>
                         </div>
                         <div className="space-y-6">
-                          {session.round2Results.map((r, i) => (
+                          {session.round1Results.map((r, i) => (
                             <MatchResultDisplay
-                              key={`r2-${i}`}
+                              key={`r1-${i}`}
                               result={r}
                               teams={session.teams}
                             />
                           ))}
                         </div>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="mt-10 pt-4 border-t border-gray-800 text-center text-gray-500 text-sm font-medium">
-                    Gegenereerd door de Bounceball App
+                      {/* Ronde 2 */}
+                      {session.round2Results.length > 0 && (
+                        <div>
+                          <div className="flex items-center mb-4 mt-4">
+                            <div className="h-8 w-1 bg-green-500 rounded-full mr-3" />
+                            <h3 className="text-2xl font-bold text-white uppercase tracking-wider">
+                              Ronde 2
+                            </h3>
+                          </div>
+                          <div className="space-y-6">
+                            {session.round2Results.map((r, i) => (
+                              <MatchResultDisplay
+                                key={`r2-${i}`}
+                                result={r}
+                                teams={round2Teams}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-10 pt-4 border-t border-gray-800 text-center text-gray-500 text-sm font-medium">
+                      Gegenereerd door de Bounceball App
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
