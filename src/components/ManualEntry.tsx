@@ -26,7 +26,6 @@ const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
 // =====================================
 
 const ScoreInput: React.FC<{
-const ScoreInput: React.FC<{
   value: number;
   onChange: (val: number) => void;
   className?: string;
