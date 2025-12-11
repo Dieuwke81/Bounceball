@@ -89,7 +89,7 @@ const generatePairingsWithoutRematches = (
     if (!team1) break;
 
     let foundOpponent = available.find(
-      (t) => r1Opponents.get(team1!.teamIndex) !== t.teamIndex
+      (t) => r1Opponents.get(team1.teamIndex) !== t.teamIndex
     );
 
     if (!foundOpponent) foundOpponent = available.shift();
@@ -97,7 +97,7 @@ const generatePairingsWithoutRematches = (
 
     if (foundOpponent) {
       pairings.push({
-        team1Index: team1!.teamIndex,
+        team1Index: team1.teamIndex,
         team2Index: foundOpponent.teamIndex,
       });
     }
@@ -396,7 +396,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
 
       for (let i = 0; i < numMatches * 2; i++) {
         const raw = texts[i] || '';
-        the names = raw
+        const names = raw
           .split('\n')
           .map((n) => n.trim())
           .filter(Boolean);
