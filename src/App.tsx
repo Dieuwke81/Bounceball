@@ -63,7 +63,7 @@ type View =
 type Notification = { message: string; type: 'success' | 'error' };
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 
-const ADMIN_PASSWORD = 'bounce';
+const ADMIN_PASSWORD = 'kemmer';
 const UNSAVED_GAME_KEY = 'bounceball_unsaved_game';
 
 const calculateRatingDeltas = (
