@@ -89,7 +89,7 @@ const generatePairingsWithoutRematches = (
     if (!team1) break;
 
     let foundOpponent = available.find(
-      (t) => r1Opponents.get(team1.teamIndex) !== t.teamIndex
+      (t) => r1Opponents.get(team1!.teamIndex) !== t.teamIndex
     );
 
     if (!foundOpponent) foundOpponent = available.shift();
@@ -97,7 +97,7 @@ const generatePairingsWithoutRematches = (
 
     if (foundOpponent) {
       pairings.push({
-        team1Index: team1.teamIndex,
+        team1Index: team1!.teamIndex,
         team2Index: foundOpponent.teamIndex,
       });
     }
@@ -300,6 +300,56 @@ const MatchInput = ({
 };
 
 // ============================================================================
+// RESULTAATKAART RONDE 1 – ZELFDE LAYOUT ALS MAINPAGE
+// ============================================================================
+
+const RoundResultCard: React.FC<{ result: MatchResult }> = ({ result }) => {
+  const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
+  const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
+
+  const color1 = getBaseColor(result.team1Index);
+  const color2 = getBaseColor(result.team2Index);
+
+  let leftIndex = result.team1Index;
+  let rightIndex = result.team2Index;
+  let leftScore = score1;
+  let rightScore = score2;
+
+  // als team1 geel en team2 blauw is → omdraaien (blauw links, geel rechts)
+  if (color1 === 'yellow' && color2 === 'blue') {
+    leftIndex = result.team2Index;
+    rightIndex = result.team1Index;
+    leftScore = score2;
+    rightScore = score1;
+  }
+
+  const leftColor = 'text-cyan-400/80';
+  const rightColor = 'text-amber-400/80';
+
+  return (
+    <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600/30">
+      <div className="flex justify-between items-center text-center">
+        <div className="w-2/5">
+          <h4 className={`font-semibold text-base truncate ${leftColor}`}>
+            Team {leftIndex + 1}
+          </h4>
+        </div>
+        <div className="w-1/5">
+          <p className="text-2xl font-bold text-white/90">
+            {leftScore} - {rightScore}
+          </p>
+        </div>
+        <div className="w-2/5">
+          <h4 className={`font-semibold text-base truncate ${rightColor}`}>
+            Team {rightIndex + 1}
+          </h4>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
@@ -346,7 +396,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
 
       for (let i = 0; i < numMatches * 2; i++) {
         const raw = texts[i] || '';
-        const names = raw
+        the names = raw
           .split('\n')
           .map((n) => n.trim())
           .filter(Boolean);
@@ -695,12 +745,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {round1Results.map((res, i) => (
-                <div
-                  key={i}
-                  className="bg-gray-700 p-4 rounded text-white text-sm"
-                >
-                  Team {res.team1Index + 1} vs Team {res.team2Index + 1}
-                </div>
+                <RoundResultCard key={i} result={res} />
               ))}
             </div>
           </div>
