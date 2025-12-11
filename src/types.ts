@@ -27,9 +27,13 @@ export interface MatchResult extends Match {
 
 export interface GameSession {
   date: string;
+  /** Teams zoals gespeeld in ronde 1 */
   teams: Player[][];
   round1Results: MatchResult[];
   round2Results: MatchResult[];
+
+  /** NIEUW: teams zoals gebruikt in ronde 2 (optioneel, voor manual round 2) */
+  round2Teams?: Player[][];
 }
 
 export type ConstraintType = 'together' | 'apart' | 'versus' | 'must_be_5';
@@ -49,7 +53,6 @@ export interface RatingLogEntry {
 // NIEUWE TYPES VOOR DE PRIJZENKAST (TROPHY ROOM)
 // ============================================================================
 
-// De specifieke opties die je wilde voor de prijzen
 export type TrophyType = 
   | 'Clubkampioen' | '2de' | '3de' 
   | 'Topscoorder' | 'Verdediger' | 'Speler van het jaar'
@@ -57,10 +60,9 @@ export type TrophyType =
   | '1ste Introductietoernooi' | '2de Introductietoernooi' | '3de Introductietoernooi'
   | '1ste Wintertoernooi' | '2de Wintertoernooi' | '3de Wintertoernooi';
 
-// Het object hoe we een prijs opslaan in de database
 export interface Trophy {
-  id: string;        // Unieke ID (nodig om hem later te kunnen verwijderen)
-  playerId: number;  // Koppeling aan de speler (via zijn ID)
-  type: TrophyType;  // Het soort prijs (uit het lijstje hierboven)
-  year: string;      // Het jaartal
+  id: string;
+  playerId: number;
+  type: TrophyType;
+  year: string;
 }
