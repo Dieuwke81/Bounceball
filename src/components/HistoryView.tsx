@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import type { GameSession, Player, MatchResult } from '../types';
+import type { GameSession, Player, MatchResult, Goal } from '../types';
 import html2canvas from 'html2canvas';
 
 // --- ICONS ---
-// WhatsApp-icoon
 const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -15,7 +14,6 @@ const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-// Excel-icoon (PNG)
 const ExcelIcon: React.FC<{ className?: string }> = ({ className }) => (
   <img
     src="https://i.postimg.cc/rsdSMGLm/microsoft-excel-computer-icons-xls-microsoft-c70a1dabe2e12c80c0a3159b40d70d14.png"
@@ -24,7 +22,6 @@ const ExcelIcon: React.FC<{ className?: string }> = ({ className }) => (
   />
 );
 
-// Zelfde icoon voor deze “namen”
 const DownloadIcon = ExcelIcon;
 const ArchiveIcon = ExcelIcon;
 
@@ -45,32 +42,6 @@ const TrashIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const ChevronDownIcon = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className={className}
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-  </svg>
-);
-
-const ChevronUpIcon = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className={className}
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-  </svg>
-);
-
 interface HistoryViewProps {
   history: GameSession[];
   players: Player[];
@@ -78,7 +49,7 @@ interface HistoryViewProps {
   isAuthenticated?: boolean;
 }
 
-// Hulpfunctie voor kleuren
+// Hulpfunctie voor kleuren (BLAUW / GEEL)
 const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
 
 const HistoryView: React.FC<HistoryViewProps> = ({
@@ -105,7 +76,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     setExpandedDate((prevDate) => (prevDate === date ? null : date));
   };
 
-  // Afgekorte datum
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('nl-NL', {
       weekday: 'short',
@@ -115,7 +85,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     });
   };
 
-  // --- 1. EXPORT FUNCTIES (Met ExcelID, zonder "Wedstrijd Nr") ---
+  // =========================
+  // 1. EXPORT NAAR CSV
+  // =========================
   const handleExportCSV = (
     e: React.MouseEvent,
     sessionsToExport: GameSession[],
@@ -123,17 +95,18 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   ) => {
     e.stopPropagation();
 
-    // Wedstrijd Nr verwijderd, ExcelID toegevoegd vóór Speler ID
+    // Wedstrijd-kolom eruit, excelID-kolom erbij
     const headers = [
       'Datum',
       'Ronde',
-      'Team Kleur',
-      'ExcelID',
+      'Team kleur',
+      'excelID',
       'Speler ID',
       'Naam',
       'Doelpunten',
       'Punten',
     ];
+
     const rows: string[][] = [];
 
     sessionsToExport.forEach((session) => {
@@ -141,8 +114,14 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
       const processMatches = (results: MatchResult[], roundName: string) => {
         results.forEach((match) => {
-          const score1 = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
-          const score2 = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
+          const score1 = match.team1Goals.reduce(
+            (sum, g) => sum + g.count,
+            0
+          );
+          const score2 = match.team2Goals.reduce(
+            (sum, g) => sum + g.count,
+            0
+          );
 
           let pts1 = 0,
             pts2 = 0;
@@ -159,29 +138,31 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
           const addTeamRows = (
             teamIndex: number,
-            goalsArray: any[],
+            goalsArray: Goal[],
             teamColor: 'Blauw' | 'Geel',
             points: number
           ) => {
             const teamPlayers = session.teams[teamIndex] || [];
             teamPlayers.forEach((player) => {
               const playerGoalData = goalsArray.find(
-                (g: any) => g.playerId === player.id
+                (g) => String(g.playerId) === String(player.id)
               );
               const goalsScored = playerGoalData ? playerGoalData.count : 0;
 
-              // 👇 Hier pakken we de ExcelID uit de Player
-              const excelID = (player as any).excelID ?? '';
+              const excelId =
+                (player as any).excelID ??
+                (player as any).excelId ??
+                '';
 
               rows.push([
-                dateStr, // Datum
-                roundName, // Ronde
-                teamColor, // Team Kleur
-                excelID.toString(), // ExcelID (jouw kolom G)
-                player.id.toString(), // Speler ID
-                player.name, // Naam
-                goalsScored.toString(), // Doelpunten
-                points.toString(), // Punten
+                dateStr,
+                roundName,
+                teamColor,
+                excelId.toString(),
+                player.id.toString(),
+                player.name,
+                goalsScored.toString(),
+                points.toString(),
               ]);
             });
           };
@@ -195,10 +176,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       processMatches(session.round2Results, 'Ronde 2');
     });
 
-    const csvContent = [
-      headers.join(';'),
-      ...rows.map((row) => row.join(';')),
-    ].join('\n');
+    const csvContent = [headers.join(';'), ...rows.map((r) => r.join(';'))].join(
+      '\n'
+    );
     const blob = new Blob(['\uFEFF' + csvContent], {
       type: 'text/csv;charset=utf-8;',
     });
@@ -219,7 +199,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     }
   };
 
-  // --- 2. SCREENSHOT FUNCTIE ---
+  // =========================
+  // 2. SCREENSHOT / SHARE
+  // =========================
   const handleShareImage = async (
     e: React.MouseEvent,
     sessionDate: string
@@ -232,6 +214,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     const elementId = `session-content-${sessionDate}`;
     const element = document.getElementById(elementId);
     if (!element) return;
+
     setIsGeneratingImage(true);
     try {
       const fixedWidth = 700;
@@ -252,33 +235,33 @@ const HistoryView: React.FC<HistoryViewProps> = ({
           }
         },
       });
-      canvas.toBlob(
-        async (blob) => {
-          if (!blob) return;
-          const file = new File([blob], `Uitslagen-${sessionDate}.png`, {
-            type: 'image/png',
-          });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-              await navigator.share({
-                files: [file],
-                title: 'Bounceball',
-                text: `Uitslagen ${formatDate(sessionDate)}`,
-              });
-            } catch (e) {
-              console.log(e);
-            }
-          } else {
-            const link = document.createElement('a');
-            link.download = `Uitslagen-${sessionDate}.png`;
-            link.href = canvas.toDataURL();
-            link.click();
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `Uitslagen-${sessionDate}.png`, {
+          type: 'image/png',
+        });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: 'Bounceball',
+              text: `Uitslagen ${formatDate(sessionDate)}`,
+            });
+          } catch (err) {
+            console.log(err);
           }
-          setIsGeneratingImage(false);
-        },
-        'image/png'
-      );
+        } else {
+          const link = document.createElement('a');
+          link.download = `Uitslagen-${sessionDate}.png`;
+          link.href = canvas.toDataURL();
+          link.click();
+        }
+        setIsGeneratingImage(false);
+      }, 'image/png');
     } catch (error) {
+      console.error(error);
       setIsGeneratingImage(false);
     }
   };
@@ -294,7 +277,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     }
   };
 
-  // --- 3. UITSLAG WEERGAVE COMPONENT ---
+  // =========================
+  // 3. UITSLAGWEERGAVE
+  // =========================
   const MatchResultDisplay: React.FC<{
     result: MatchResult;
     teams: Player[][];
@@ -312,6 +297,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     let leftGoals = result.team1Goals;
     let rightGoals = result.team2Goals;
 
+    // Zorg dat links altijd blauw en rechts altijd geel is
     if (color1 === 'yellow' && color2 === 'blue') {
       leftTeamIdx = result.team2Index;
       rightTeamIdx = result.team1Index;
@@ -326,31 +312,31 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
     const team1Players = teams[leftTeamIdx] || [];
     const team2Players = teams[rightTeamIdx] || [];
-    const team1GoalsMap = new Map(
-      leftGoals.map((g) => [g.playerId, g.count])
+
+    // *** FIX: keys als string zodat '12' en 12 hetzelfde zijn ***
+    const team1GoalsMap = new Map<string, number>(
+      leftGoals.map((g) => [String(g.playerId), g.count])
     );
-    const team2GoalsMap = new Map(
-      rightGoals.map((g) => [g.playerId, g.count])
+    const team2GoalsMap = new Map<string, number>(
+      rightGoals.map((g) => [String(g.playerId), g.count])
     );
 
     const PlayerListWithGoals: React.FC<{
       players: Player[];
-      goalsMap: Map<number, number>;
+      goalsMap: Map<string, number>;
       scoreColorClass: string;
     }> = ({ players, goalsMap, scoreColorClass }) => (
       <ul className="space-y-1 mt-3">
         {players.map((player) => {
-          const goals = goalsMap.get(player.id) || 0;
+          const goals = goalsMap.get(String(player.id)) || 0;
           return (
             <li
               key={player.id}
               className="flex justify-between items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0"
             >
               <span
-                className={`flex-1 text-sm mr-2 break-words leading-tight ${
-                  goals > 0
-                    ? 'text-gray-100 font-medium'
-                    : 'text-gray-400'
+                className={`text-sm mr-2 leading-tight break-words max-w-[70%] ${
+                  goals > 0 ? 'text-gray-100 font-medium' : 'text-gray-400'
                 }`}
               >
                 {player.name}
@@ -413,13 +399,14 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     );
   };
 
+  // =========================
+  // RENDER
+  // =========================
+
   return (
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
-      {/* HEADER MET KLEIN EXCEL-ICOON VOOR ALLES NAAR CSV */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-white">
-          Wedstrijdgeschiedenis
-        </h2>
+        <h2 className="text-3xl font-bold text-white">Wedstrijdgeschiedenis</h2>
         <button
           type="button"
           onClick={(e) => handleExportCSV(e, history, 'COMPLETE_HISTORY')}
@@ -444,7 +431,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                 {formatDate(session.date)}
               </span>
               <div className="flex items-center space-x-3">
-                {/* Excel-icon per wedstrijd */}
                 <button
                   type="button"
                   onClick={(e) =>
@@ -495,15 +481,16 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                     <h3 className="text-4xl font-black text-green-500 tracking-tight">
                       BOUNCEBALL
                     </h3>
-                    <div className="h-1 w-32 bg-green-500 mx-auto my-2 rounded-full"></div>
+                    <div className="h-1 w-32 bg-green-500 mx-auto my-2 rounded-full" />
                     <p className="text-gray-300 font-medium text-lg mt-1 uppercase tracking-wide">
                       {formatDate(session.date)}
                     </p>
                   </div>
+
                   <div className="grid grid-cols-1 gap-8">
                     <div>
                       <div className="flex items-center mb-4">
-                        <div className="h-8 w-1 bg-green-500 rounded-full mr-3"></div>
+                        <div className="h-8 w-1 bg-green-500 rounded-full mr-3" />
                         <h3 className="text-2xl font-bold text-white uppercase tracking-wider">
                           Ronde 1
                         </h3>
@@ -518,10 +505,11 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                         ))}
                       </div>
                     </div>
+
                     {session.round2Results.length > 0 && (
                       <div>
                         <div className="flex items-center mb-4 mt-4">
-                          <div className="h-8 w-1 bg-green-500 rounded-full mr-3"></div>
+                          <div className="h-8 w-1 bg-green-500 rounded-full mr-3" />
                           <h3 className="text-2xl font-bold text-white uppercase tracking-wider">
                             Ronde 2
                           </h3>
@@ -538,6 +526,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                       </div>
                     )}
                   </div>
+
                   <div className="mt-10 pt-4 border-t border-gray-800 text-center text-gray-500 text-sm font-medium">
                     Gegenereerd door de Bounceball App
                   </div>
