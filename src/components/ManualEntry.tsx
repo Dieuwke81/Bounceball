@@ -26,28 +26,48 @@ const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
 // =====================================
 
 const ScoreInput: React.FC<{
+const ScoreInput: React.FC<{
   value: number;
   onChange: (val: number) => void;
   className?: string;
 }> = ({ value, onChange, className }) => {
   const [localValue, setLocalValue] = useState(value.toString());
 
-  useEffect(() => setLocalValue(value.toString()), [value]);
+  useEffect(() => {
+    setLocalValue(value.toString());
+  }, [value]);
+
+  const handleFocus = () => {
+    // Als waarde 0 is → leegmaken zodat je meteen kunt typen
+    if (localValue === "0") {
+      setLocalValue("");
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    if (val === '' || /^\d+$/.test(val)) setLocalValue(val);
+    if (val === "" || /^\d+$/.test(val)) {
+      setLocalValue(val);
+    }
   };
 
   const handleBlur = () => {
+    if (localValue === "") {
+      setLocalValue("0");
+      if (value !== 0) onChange(0);
+      return;
+    }
+
     let num = parseInt(localValue, 10);
     if (isNaN(num)) num = 0;
+
     if (num !== value) onChange(num);
+
     setLocalValue(num.toString());
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       (e.target as HTMLInputElement).blur();
     }
   };
@@ -58,6 +78,7 @@ const ScoreInput: React.FC<{
       inputMode="numeric"
       pattern="[0-9]*"
       value={localValue}
+      onFocus={handleFocus}
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
