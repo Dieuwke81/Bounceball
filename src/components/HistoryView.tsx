@@ -347,7 +347,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
               className="flex justify-between items-center pr-2 py-0.5 border-b border-gray-600/30 last:border-0"
             >
               <span
-                className={`text-sm whitespace-nowrap mr-2 ${
+                className={`flex-1 text-sm mr-2 break-words leading-tight ${
                   goals > 0
                     ? 'text-gray-100 font-medium'
                     : 'text-gray-400'
