@@ -18,7 +18,6 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     scorers: false,
     points: false,
     defense: false,
-    ownGoals: false, // 👈 nieuw
   });
 
   // De schakelaar: standaard verbergen we mensen die te weinig speelden
@@ -62,64 +61,18 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     return map;
   }, [history]);
 
-  // 🔥 NIEUW: onderscheid tussen normale goals en eigen goals
-  const scoringStats = useMemo(() => {
-    // Map: playerId -> { goalsFor, ownGoals }
-    const map = new Map<number, { goalsFor: number; ownGoals: number }>();
-
-    const ensure = (playerId: number) => {
-      if (!map.has(playerId)) {
-        map.set(playerId, { goalsFor: 0, ownGoals: 0 });
-      }
-      return map.get(playerId)!;
-    };
-
+  const topScorers = useMemo(() => {
+    const stats = new Map<number, number>();
     history.forEach(session => {
-      const allMatches = [...session.round1Results, ...session.round2Results];
-
-      allMatches.forEach(match => {
-        const team1 = session.teams[match.team1Index];
-        const team2 = session.teams[match.team2Index];
-        if (!team1 || !team2) return;
-
-        const team1Ids = new Set(team1.map(p => p.id));
-        const team2Ids = new Set(team2.map(p => p.id));
-
-        // Goals voor "team 1"
-        match.team1Goals.forEach(goal => {
-          const stats = ensure(goal.playerId);
-          if (team1Ids.has(goal.playerId)) {
-            // speler zit in team1 -> normale goals
-            stats.goalsFor += goal.count;
-          } else if (team2Ids.has(goal.playerId)) {
-            // speler zit in team2 maar scoort voor team1 -> eigen goal
-            stats.ownGoals += goal.count;
-          }
-        });
-
-        // Goals voor "team 2"
-        match.team2Goals.forEach(goal => {
-          const stats = ensure(goal.playerId);
-          if (team2Ids.has(goal.playerId)) {
-            // speler zit in team2 -> normale goals
-            stats.goalsFor += goal.count;
-          } else if (team1Ids.has(goal.playerId)) {
-            // speler zit in team1 maar scoort voor team2 -> eigen goal
-            stats.ownGoals += goal.count;
-          }
+      [...session.round1Results, ...session.round2Results].forEach(match => {
+        [...match.team1Goals, ...match.team2Goals].forEach(goal => {
+          stats.set(goal.playerId, (stats.get(goal.playerId) || 0) + goal.count);
         });
       });
     });
-
-    return map;
-  }, [history]);
-
-  // 🎯 TOPSCORERS (ALLEEN NORMALE GOALS)
-  const topScorers = useMemo(() => {
     return Array.from(playerMatches.entries())
       .map(([playerId, games]) => {
-        const stat = scoringStats.get(playerId) || { goalsFor: 0, ownGoals: 0 };
-        const goals = stat.goalsFor; // 👈 geen eigen goals!
+        const goals = stats.get(playerId) || 0;
         return {
           playerId,
           goals,
@@ -129,9 +82,8 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
         };
       })
       .sort((a, b) => b.avg - a.avg);
-  }, [playerMatches, scoringStats, playerGames, minGames]);
+  }, [history, playerGames, minGames, playerMatches]);
 
-  // 🏆 COMPETITIEPUNTEN (ongewijzigd)
   const competitionPoints = useMemo(() => {
     const stats = new Map<number, number>();
     history.forEach(session => {
@@ -167,7 +119,6 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       .sort((a, b) => b.avg - a.avg);
   }, [history, playerGames, minGames, playerMatches]);
 
-  // 🧱 BESTE VERDEDIGER (ongewijzigd)
   const bestDefense = useMemo(() => {
     const stats = new Map<number, number>();
     history.forEach(session => {
@@ -200,7 +151,6 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       .sort((a, b) => a.avg - b.avg);
   }, [history, playerGames, minGames, playerMatches]);
   
-  // 📅 MEEST AANWEZIG
   const mostAttended = useMemo(() => {
     if (totalSessions === 0) return [];
     
@@ -213,23 +163,6 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
         }))
         .sort((a, b) => b.count - a.count);
   }, [playerGames, totalSessions, minGames]);
-
-  // 💥 NIEUW: EIGEN DOELPUNTEN-RANGLIJST
-  const ownGoalLeaders = useMemo(() => {
-    return Array.from(playerMatches.entries())
-      .map(([playerId, games]) => {
-        const stat = scoringStats.get(playerId) || { goalsFor: 0, ownGoals: 0 };
-        return {
-          playerId,
-          games,
-          goalsFor: stat.goalsFor,
-          ownGoals: stat.ownGoals,
-          meetsThreshold: true, // 👈 altijd tonen, ook zonder drempel
-        };
-      })
-      .filter(p => p.ownGoals > 0) // alleen mensen met minimaal 1 eigen goal
-      .sort((a, b) => b.ownGoals - a.ownGoals || b.games - a.games);
-  }, [playerMatches, scoringStats]);
 
   const attendanceHistory = useMemo(() => {
     if (!history) return [];
@@ -313,22 +246,25 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     </button>
   );
 
+  // --- DE VEILIGE LIJST WEERGAVE ---
   const StatList: React.FC<{
       data: any[];
       showAllFlag: boolean,
       toggleShowAll: () => void,
       renderRow: (item: any, index: number) => React.ReactNode
   }> = ({ data, showAllFlag, toggleShowAll, renderRow }) => {
+    // 1. Filter ongeldige spelers (die verwijderd zijn maar nog in stats staan)
+    // 2. Pas het filter toe van de schakelaar (wel/niet tonen als < minGames)
     const filteredData = data.filter(item => {
-        if (!playerMap.has(item.playerId)) return false;
-        if (!showIneligible && !item.meetsThreshold) return false;
+        if (!playerMap.has(item.playerId)) return false; // Voorkomt crash!
+        if (!showIneligible && !item.meetsThreshold) return false; // Schakelaar logica
         return true;
     });
 
     const displayedData = showAllFlag ? filteredData : filteredData.slice(0, 10);
     
     if (displayedData.length === 0) {
-        return <p className="text-gray-500 text-sm text-center italic">Nog geen data voor deze lijst.</p>
+        return <p className="text-gray-500 text-sm text-center italic">Geen spelers voldoen aan de criteria.</p>
     }
 
     return (
@@ -387,7 +323,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     );
   };
   
-  const GoalDifferenceChart: React.FC<{ data: { date: string, avgDiff: number }[] }> = ({ data }) => {
+    const GoalDifferenceChart: React.FC<{ data: { date: string, avgDiff: number }[] }> = ({ data }) => {
     if (data.length < 2) {
       return <p className="text-gray-400 text-center py-8">Niet genoeg data voor een grafiek.</p>;
     }
@@ -429,19 +365,11 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
   return (
     <>
       <div className="text-center mb-4">
-          <p className="text-gray-400">
-            Statistieken gebaseerd op <span className="font-bold text-white">{totalSessions}</span> speeldagen.{" "}
-            <span className="italic">
-              Voor de ranglijsten (gem.) moet een speler minimaal{" "}
-              <span className="font-bold text-white">{minGames}</span> keer aanwezig zijn geweest.
-            </span>
-          </p>
-          <p className="text-green-500 text-sm mt-2 italic">
-            Klik op een speler om de individuele statistieken te zien.
-          </p>
+          <p className="text-gray-400">Statistieken gebaseerd op <span className="font-bold text-white">{totalSessions}</span> speeldagen. <span className="italic">Voor de ranglijsten (gem.) moet een speler minimaal <span className="font-bold text-white">{minGames}</span> keer aanwezig zijn geweest.</span></p>
+          <p className="text-green-500 text-sm mt-2 italic">Klik op een speler om de individuele statistieken te zien.</p>
       </div>
 
-      {/* --- SCHAKELAAR VOOR DREMPEL --- */}
+      {/* --- DE SCHAKELAAR --- */}
       <div className="flex justify-center items-center mb-8">
           <label className="flex items-center cursor-pointer p-3 bg-gray-800 rounded-lg shadow-md border border-gray-700 hover:bg-gray-700 transition-colors">
               <div className="relative">
@@ -460,10 +388,9 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
           </label>
       </div>
 
-      {/* --- HOOFD RANGLIJSTEN --- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
-        {/* COMPETITIE */}
+        {/* COMPETITIE - MET PLAATJE */}
         <StatCard title="Competitie" icon={
             <img 
                 src="https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png" 
@@ -476,6 +403,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             showAllFlag={showAll.points}
             toggleShowAll={() => setShowAll(s => ({...s, points: !s.points}))}
             renderRow={(p, i) => {
+                // CRASH PREVENTIE: Check of speler bestaat
                 const player = playerMap.get(p.playerId);
                 if (!player) return null;
                 return (
@@ -492,7 +420,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        {/* TOPSCORER */}
+        {/* TOPSCOORDER - MET PLAATJE */}
         <StatCard title="Topscoorder" icon={
             <img 
                 src="https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png" 
@@ -521,7 +449,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
 
-        {/* BESTE VERDEDIGER */}
+        {/* BESTE VERDEDIGER - MET PLAATJE */}
         <StatCard title="Beste verdediger" icon={
             <img 
                 src="https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png" 
@@ -550,9 +478,9 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
            />
         </StatCard>
         
-        {/* MEEST AANWEZIG */}
         <StatCard title="Meest aanwezig" icon={<UsersIcon className="w-6 h-6 text-green-400" />}>
-          <p className="text-gray-400 text-sm italic mb-3 -mt-1">Er zijn {totalSessions} speelavonden geweest</p>
+        
+<p className="text-gray-400 text-sm italic mb-3 -mt-1">Er zijn {totalSessions} speelavonden geweest</p>
           <StatList
             data={mostAttended}
             showAllFlag={showAll.attendance}
@@ -573,35 +501,8 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
             }}
            />
         </StatCard>
-
-        {/* 😂 EIGEN DOELPUNTEN */}
-        <StatCard title="Eigen doelpunten" icon={<span className="text-3xl">😂</span>}>
-          <p className="text-gray-400 text-xs italic mb-2">
-            EG telt niet mee bij de topscoorder, maar wel voor eeuwige schaamte.
-          </p>
-          <StatList
-            data={ownGoalLeaders}
-            showAllFlag={showAll.ownGoals}
-            toggleShowAll={() => setShowAll(s => ({...s, ownGoals: !s.ownGoals}))}
-            renderRow={(p, i) => {
-              const player = playerMap.get(p.playerId);
-              if (!player) return null;
-              return (
-                <StatRow
-                  key={p.playerId}
-                  rank={i + 1}
-                  player={player}
-                  value={p.ownGoals}
-                  subtext={`${p.goalsFor} d / ${p.games} w`}
-                  meetsThreshold={p.meetsThreshold}
-                />
-              );
-            }}
-          />
-        </StatCard>
       </div>
 
-      {/* GRAFIEKEN */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <StatCard title="Aanwezigheids Trend" icon={<ChartBarIcon className="w-6 h-6 text-cyan-400" />}>
           <AttendanceChart data={attendanceHistory} />
