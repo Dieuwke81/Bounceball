@@ -8,6 +8,7 @@ interface MatchFormProps {
 }
 
 const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
+  // Maak koppels: [blauw, geel] = 1 wedstrijd
   const matches = [];
   for (let i = 0; i < teams.length; i += 2) {
     if (teams[i + 1]) {
@@ -39,7 +40,6 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
       <style>
         {`
           @media print {
-            /* Achtergrondlogo weg */
             body::before {
               display: none !important;
               background-image: none !important;
@@ -52,9 +52,11 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               padding: 0 !important;
               overflow: hidden !important;
             }
+
             body > *:not(.print-portal) {
               display: none !important;
             }
+
             .print-portal {
               display: block !important;
               position: absolute;
@@ -67,10 +69,12 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               color: black;
               font-family: sans-serif;
             }
+
             @page {
               size: A4;
               margin: 15mm;
             }
+
             .match-page {
               page-break-after: always;
               break-after: page;
@@ -79,9 +83,11 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
               flex-direction: column;
               justify-content: flex-start;
             }
+
             .match-page:last-child {
               page-break-after: auto;
             }
+
             * {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
@@ -93,7 +99,6 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
       {matches.map((match, index) => {
         const maxRows = Math.max(match.blue.length, match.yellow.length, 6);
         const rows = Array.from({ length: maxRows });
-
         const avgBlue = calculateAverage(match.blue);
         const avgYellow = calculateAverage(match.yellow);
 
@@ -149,7 +154,9 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                   {rows.map((_, i) => {
                     const blueName = match.blue[i]?.name;
                     let blueContent = (
-                      <span className="font-bold text-base text-black">{blueName}</span>
+                      <span className="font-bold text-base text-black">
+                        {blueName}
+                      </span>
                     );
                     if (!blueName && i === 5) {
                       blueContent = (
@@ -189,12 +196,31 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                 </tbody>
               </table>
 
-              {/* EINDSTAND: links uitgelijnd met namen + invullijntjes */}
-              <div className="mt-2 pl-3 flex items-center text-lg">
-                <span className="font-bold uppercase mr-3">Eindstand:</span>
-                <span className="inline-block border-b-2 border-black w-16 mr-3">&nbsp;</span>
-                <span className="text-2xl font-bold mr-3">-</span>
-                <span className="inline-block border-b-2 border-black w-16">&nbsp;</span>
+              {/* EINDSTAND onder doelpunten-kolommen */}
+              <div className="mt-2 flex items-center text-lg">
+                {/* Onder eerste (naam)kolom */}
+                <div className="w-[20%] pl-3 font-bold uppercase">
+                  Eindstand:
+                </div>
+
+                {/* Lijn onder blauwe doelpuntenkolom */}
+                <div className="w-[30%] flex justify-center">
+                  <span className="inline-block border-b-2 border-black w-20">
+                    &nbsp;
+                  </span>
+                </div>
+
+                {/* Streepje onder gele naamkolom */}
+                <div className="w-[20%] flex justify-center">
+                  <span className="text-2xl font-bold">-</span>
+                </div>
+
+                {/* Lijn onder gele doelpuntenkolom */}
+                <div className="w-[30%] flex justify-center">
+                  <span className="inline-block border-b-2 border-black w-20">
+                    &nbsp;
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -233,12 +259,24 @@ const MatchForm: React.FC<MatchFormProps> = ({ teams, date }) => {
                 </tbody>
               </table>
 
-              {/* EINDSTAND: zelfde layout */}
-              <div className="mt-2 pl-3 flex items-center text-lg">
-                <span className="font-bold uppercase mr-3">Eindstand:</span>
-                <span className="inline-block border-b-2 border-black w-16 mr-3">&nbsp;</span>
-                <span className="text-2xl font-bold mr-3">-</span>
-                <span className="inline-block border-b-2 border-black w-16">&nbsp;</span>
+              {/* EINDSTAND onder doelpunten-kolommen (wedstrijd 2) */}
+              <div className="mt-2 flex items-center text-lg">
+                <div className="w-[20%] pl-3 font-bold uppercase">
+                  Eindstand:
+                </div>
+                <div className="w-[30%] flex justify-center">
+                  <span className="inline-block border-b-2 border-black w-20">
+                    &nbsp;
+                  </span>
+                </div>
+                <div className="w-[20%] flex justify-center">
+                  <span className="text-2xl font-bold">-</span>
+                </div>
+                <div className="w-[30%] flex justify-center">
+                  <span className="inline-block border-b-2 border-black w-20">
+                    &nbsp;
+                  </span>
+                </div>
               </div>
             </div>
           </div>
