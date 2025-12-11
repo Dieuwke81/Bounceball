@@ -1,4 +1,4 @@
-/**  MANUAL ENTRY - MET LOCALSTORAGE + R1 SCORE WEERGAVE  */
+/**  MANUAL ENTRY - 3 MODES RONDE 2 (AUTO / HANDMATIG PAREN / NIEUWE TEAMS) + LOCALSTORAGE  */
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Player, Goal, Match, MatchResult } from '../types';
 import EditIcon from './icons/EditIcon';
@@ -13,6 +13,8 @@ interface ManualEntryProps {
   }) => void;
   isLoading: boolean;
 }
+
+type Round2Mode = 'auto' | 'manual_pairs' | 'new_teams';
 
 const normalize = (str: string) =>
   str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -38,21 +40,21 @@ const ScoreInput: React.FC<{
 
   const handleFocus = () => {
     // Als waarde 0 is → leegmaken zodat je meteen kunt typen
-    if (localValue === "0") {
-      setLocalValue("");
+    if (localValue === '0') {
+      setLocalValue('');
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    if (val === "" || /^\d+$/.test(val)) {
+    if (val === '' || /^\d+$/.test(val)) {
       setLocalValue(val);
     }
   };
 
   const handleBlur = () => {
-    if (localValue === "") {
-      setLocalValue("0");
+    if (localValue === '') {
+      setLocalValue('0');
       if (value !== 0) onChange(0);
       return;
     }
@@ -66,7 +68,7 @@ const ScoreInput: React.FC<{
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       (e.target as HTMLInputElement).blur();
     }
   };
@@ -236,14 +238,14 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
   onSave,
   isLoading,
 }) => {
-  const [round, setRound] = useState(0);
+  const [round, setRound] = useState<number>(0);
   const [teamTextR1, setTeamTextR1] = useState<string[]>(Array(6).fill(''));
   const [teamTextR2, setTeamTextR2] = useState<string[]>(Array(6).fill(''));
   const [round1Teams, setRound1Teams] = useState<Player[][] | null>(null);
 
   const [numMatches, setNumMatches] = useState(1);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [manualRound2, setManualRound2] = useState(false);
+  const [round2Mode, setRound2Mode] = useState<Round2Mode>('auto');
 
   const [goalScorers, setGoalScorers] = useState<{ [k: string]: Goal[] }>({});
   const [round1Results, setRound1Results] = useState<MatchResult[]>([]);
@@ -324,7 +326,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     return null;
   };
 
-  const validateRound2 = () => {
+  const validateRound2Teams = () => {
     const used = new Set<number>();
 
     for (let i = 0; i < numMatches * 2; i++) {
@@ -341,6 +343,33 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
 
     if (parsedR2.unmatched.some((list) => list.length))
       return 'Niet alle spelernamen voor ronde 2 zijn herkend.';
+
+    return null;
+  };
+
+  const validateRound2Pairings = () => {
+    const used = new Set<number>();
+
+    for (let i = 0; i < numMatches; i++) {
+      const p = round2Pairings[i];
+      if (!p) return 'Niet alle wedstrijden voor ronde 2 zijn ingevuld.';
+
+      const { team1Index, team2Index } = p;
+      if (
+        team1Index === undefined ||
+        team2Index === undefined ||
+        team1Index === team2Index
+      ) {
+        return 'Elke wedstrijd in ronde 2 moet twee verschillende teams hebben.';
+      }
+
+      if (used.has(team1Index) || used.has(team2Index)) {
+        return 'Een team mag maar in één wedstrijd van ronde 2 spelen.';
+      }
+
+      used.add(team1Index);
+      used.add(team2Index);
+    }
 
     return null;
   };
@@ -376,12 +405,12 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
 
   // ===== RONDE 1 → 2 =====
   const nextRound = () => {
-    const r1Matches = Array.from({ length: numMatches }, (_, i) => ({
+    const r1Matches: Match[] = Array.from({ length: numMatches }, (_, i) => ({
       team1Index: i * 2,
       team2Index: i * 2 + 1,
     }));
 
-    const results = r1Matches.map((m, i) => ({
+    const results: MatchResult[] = r1Matches.map((m, i) => ({
       ...m,
       team1Goals: goalScorers[`${i}-team1`] || [],
       team2Goals: goalScorers[`${i}-team2`] || [],
@@ -389,12 +418,23 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
 
     setRound1Results(results);
 
-    if (manualRound2) {
+    // 3 modi voor ronde 2
+    if (round2Mode === 'new_teams') {
+      // Volledig nieuwe teams typen
       setGoalScorers({});
-      setRound(1.8 as any);
+      setRound(1.8);
       return;
     }
 
+    if (round2Mode === 'manual_pairs') {
+      // Zelf teams koppelen, samenstellingen blijven gelijk
+      setRound2Pairings(r1Matches); // start met zelfde koppeling als ronde 1
+      setGoalScorers({});
+      setRound(1.9);
+      return;
+    }
+
+    // ==== AUTO MODE ====
     const stats = Array.from({ length: numMatches * 2 }, (_, t) => ({
       teamIndex: t,
       points: 0,
@@ -437,9 +477,9 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     setRound(2);
   };
 
-  // ===== START R2 (MANUAL) =====
-  const startRound2 = () => {
-    const err = validateRound2();
+  // ===== START R2 (NIEUWE TEAMS) =====
+  const startRound2WithNewTeams = () => {
+    const err = validateRound2Teams();
     if (err) return setError(err);
 
     const pairings = Array.from({ length: numMatches }, (_, i) => ({
@@ -448,6 +488,13 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     }));
 
     setRound2Pairings(pairings);
+    setRound(2);
+  };
+
+  // ===== START R2 (HANDMATIG GEKOZEN PAREN) =====
+  const startRound2FromPairings = () => {
+    const err = validateRound2Pairings();
+    if (err) return setError(err);
     setRound(2);
   };
 
@@ -461,14 +508,14 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     setRound1Results([]);
     setRound2Pairings([]);
     setNumMatches(1);
-    setManualRound2(false);
+    setRound2Mode('auto');
     setDate(new Date().toISOString().split('T')[0]);
   };
 
   const saveTournament = () => {
     if (isLoading) return;
 
-    const resultsR2 = round2Pairings.map((m, i) => ({
+    const resultsR2: MatchResult[] = round2Pairings.map((m, i) => ({
       ...m,
       team1Goals: goalScorers[`${i}-team1`] || [],
       team2Goals: goalScorers[`${i}-team2`] || [],
@@ -492,7 +539,6 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
   // LOCALSTORAGE: CONCEPT OPSLAAN / LADEN
   // =====================================
 
-  // Bij laden: vraag of we concept willen herstellen
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = localStorage.getItem(UNSAVED_MANUAL_KEY);
@@ -512,7 +558,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
       setDate(parsed.date || new Date().toISOString().split('T')[0]);
       setRound(parsed.round ?? 0);
       setNumMatches(parsed.numMatches ?? 1);
-      setManualRound2(!!parsed.manualRound2);
+      setRound2Mode(parsed.round2Mode || 'auto');
       setTeamTextR1(parsed.teamTextR1 || Array(6).fill(''));
       setTeamTextR2(parsed.teamTextR2 || Array(6).fill(''));
       setRound1Teams(parsed.round1Teams || null);
@@ -525,14 +571,13 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     }
   }, []);
 
-  // Bij elke wijziging: concept wegschrijven
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const draft = {
       date,
       round,
       numMatches,
-      manualRound2,
+      round2Mode,
       teamTextR1,
       teamTextR2,
       round1Teams,
@@ -549,7 +594,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     date,
     round,
     numMatches,
-    manualRound2,
+    round2Mode,
     teamTextR1,
     teamTextR2,
     round1Teams,
@@ -587,31 +632,51 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
               />
             </div>
 
-            <div className="flex items-center md:justify-end space-x-2">
-              <button
-                onClick={() => setNumMatches((n) => Math.max(1, n - 1))}
-                className="bg-gray-600 px-3 py-2 rounded text-white"
-              >
-                - Wedstrijd
-              </button>
+            <div className="flex flex-col space-y-2 md:items-end">
+              <div className="flex space-x-2 justify-end">
+                <button
+                  onClick={() => setNumMatches((n) => Math.max(1, n - 1))}
+                  className="bg-gray-600 px-3 py-2 rounded text-white"
+                >
+                  - Wedstrijd
+                </button>
 
-              <button
-                onClick={() => setNumMatches((n) => Math.min(3, n + 1))}
-                className="bg-gray-600 px-3 py-2 rounded text-white"
-              >
-                + Wedstrijd
-              </button>
+                <button
+                  onClick={() => setNumMatches((n) => Math.min(3, n + 1))}
+                  className="bg-gray-600 px-3 py-2 rounded text-white"
+                >
+                  + Wedstrijd
+                </button>
+              </div>
             </div>
 
-            <div className="md:col-span-2 flex items-center">
-              <input
-                type="checkbox"
-                checked={manualRound2}
-                onChange={(e) => setManualRound2(e.target.checked)}
-              />
-              <span className="text-gray-300 ml-2">
-                Volledig nieuwe teams voor ronde 2
-              </span>
+            {/* Ronde 2 modus keuze */}
+            <div className="md:col-span-2 bg-gray-900/70 rounded p-3 space-y-2 text-sm text-gray-200">
+              <p className="font-semibold mb-1">Ronde 2 opties:</p>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  checked={round2Mode === 'auto'}
+                  onChange={() => setRound2Mode('auto')}
+                />
+                <span>Teams blijven hetzelfde, app kiest tegenstander</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  checked={round2Mode === 'manual_pairs'}
+                  onChange={() => setRound2Mode('manual_pairs')}
+                />
+                <span>Teams blijven hetzelfde, ik kies welke teams tegen elkaar spelen</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  checked={round2Mode === 'new_teams'}
+                  onChange={() => setRound2Mode('new_teams')}
+                />
+                <span>Volledig nieuwe teams voor ronde 2</span>
+              </label>
             </div>
           </div>
         )}
@@ -665,7 +730,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
         </div>
 
         <button
-          onClick={isR1 ? startTournament : startRound2}
+          onClick={isR1 ? startTournament : startRound2WithNewTeams}
           className="mt-8 w-full bg-green-600 text-white font-bold py-3 rounded"
         >
           {isR1 ? 'Start Toernooi' : 'Start Ronde 2'}
@@ -674,9 +739,97 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     );
   };
 
+  // Stap tussen Ronde 1 en 2 als modus = handmatige koppeling
+  const renderPairingsSetup = () => {
+    const teams = round1Teams || parsedR1.teams;
+    const totalTeams = teams.length;
+
+    return (
+      <>
+        <h3 className="text-white text-2xl font-bold mb-4">
+          Kies wedstrijden voor Ronde 2
+        </h3>
+        <p className="text-gray-300 text-sm mb-4">
+          De teams blijven hetzelfde als in ronde 1. Kies hieronder welke teams tegen
+          elkaar spelen in ronde 2. Elk team mag maar in één wedstrijd voorkomen.
+        </p>
+
+        <div className="space-y-4">
+          {Array.from({ length: numMatches }).map((_, i) => {
+            const pairing = round2Pairings[i] || {
+              team1Index: i * 2,
+              team2Index: i * 2 + 1,
+            };
+
+            const handleChange = (
+              side: 'team1Index' | 'team2Index',
+              value: number
+            ) => {
+              setRound2Pairings((prev) => {
+                const arr = [...prev];
+                const existing = arr[i] || { team1Index: 0, team2Index: 1 };
+                arr[i] = { ...existing, [side]: value };
+                return arr;
+              });
+            };
+
+            return (
+              <div
+                key={i}
+                className="bg-gray-900 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+              >
+                <span className="text-gray-200 font-semibold">
+                  Wedstrijd {i + 1}
+                </span>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1"
+                    value={pairing.team1Index}
+                    onChange={(e) =>
+                      handleChange('team1Index', Number(e.target.value))
+                    }
+                  >
+                    {Array.from({ length: totalTeams }).map((_, t) => (
+                      <option key={t} value={t}>
+                        Team {t + 1}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-gray-300 font-bold">vs</span>
+                  <select
+                    className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1"
+                    value={pairing.team2Index}
+                    onChange={(e) =>
+                      handleChange('team2Index', Number(e.target.value))
+                    }
+                  >
+                    {Array.from({ length: totalTeams }).map((_, t) => (
+                      <option key={t} value={t}>
+                        Team {t + 1}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={startRound2FromPairings}
+          className="mt-8 w-full bg-green-600 text-white font-bold py-3 rounded"
+        >
+          Start Ronde 2
+        </button>
+      </>
+    );
+  };
+
   const renderRound = (r: 1 | 2) => {
     const final = r === 2;
-    const teams = final && manualRound2 ? parsedR2.teams : round1Teams || [];
+    const teams = final && round2Mode === 'new_teams'
+      ? parsedR2.teams
+      : round1Teams || [];
 
     const matches = final
       ? round2Pairings
@@ -803,6 +956,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
       {round === 0 && renderSetup(1)}
       {round === 1 && renderRound(1)}
       {round === 1.8 && renderSetup(2)}
+      {round === 1.9 && renderPairingsSetup()}
       {round === 2 && renderRound(2)}
     </div>
   );
