@@ -10,6 +10,8 @@ interface ManualEntryProps {
     teams: Player[][];
     round1Results: MatchResult[];
     round2Results: MatchResult[];
+    /** NIEUW: aparte teams voor ronde 2 als er volledig nieuwe teams zijn gemaakt */
+    round2Teams?: Player[][];
   }) => void;
   isLoading: boolean;
 }
@@ -521,11 +523,17 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
       team2Goals: goalScorers[`${i}-team2`] || [],
     }));
 
+    // Belangrijk: als er volledig nieuwe teams voor ronde 2 zijn,
+    // geef die dan mee zodat de geschiedenis weet welke spelers erbij horen.
+    const round2Teams =
+      round2Mode === 'new_teams' ? parsedR2.teams : undefined;
+
     onSave({
       date: new Date(date).toISOString(),
       teams: round1Teams || parsedR1.teams,
       round1Results,
       round2Results: resultsR2,
+      round2Teams,
     });
 
     if (typeof window !== 'undefined') {
@@ -667,7 +675,10 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
                   checked={round2Mode === 'manual_pairs'}
                   onChange={() => setRound2Mode('manual_pairs')}
                 />
-                <span>Teams blijven hetzelfde, ik kies welke teams tegen elkaar spelen</span>
+                <span>
+                  Teams blijven hetzelfde, ik kies welke teams tegen elkaar
+                  spelen
+                </span>
               </label>
               <label className="flex items-center space-x-2">
                 <input
@@ -827,9 +838,10 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
 
   const renderRound = (r: 1 | 2) => {
     const final = r === 2;
-    const teams = final && round2Mode === 'new_teams'
-      ? parsedR2.teams
-      : round1Teams || [];
+    const teams =
+      final && round2Mode === 'new_teams'
+        ? parsedR2.teams
+        : round1Teams || [];
 
     const matches = final
       ? round2Pairings
