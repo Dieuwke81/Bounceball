@@ -1,4 +1,4 @@
-/**  MANUAL ENTRY - MET SCORE WEERGAVE RONDE 1 + RESET NA OPSLAAN  */
+/**  MANUAL ENTRY - MET LOCALSTORAGE + R1 SCORE WEERGAVE  */
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Player, Goal, Match, MatchResult } from '../types';
 import EditIcon from './icons/EditIcon';
@@ -18,9 +18,12 @@ const normalize = (str: string) =>
   str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const UNSAVED_MANUAL_KEY = 'bounceball_unsaved_manual_entry';
 
-// ============================================================================
+// even = blauw, oneven = geel (voor R1-scoreweergave)
+const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
+
+// =====================================
 // SCORE INPUT
-// ============================================================================
+// =====================================
 
 const ScoreInput: React.FC<{
   value: number;
@@ -43,6 +46,12 @@ const ScoreInput: React.FC<{
     setLocalValue(num.toString());
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
   return (
     <input
       type="text"
@@ -51,14 +60,16 @@ const ScoreInput: React.FC<{
       value={localValue}
       onChange={handleChange}
       onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
       className={className}
+      placeholder="0"
     />
   );
 };
 
-// ============================================================================
+// =====================================
 // HELPERS
-// ============================================================================
+// =====================================
 
 const generatePairingsWithoutRematches = (
   sortedTeams: { teamIndex: number }[],
@@ -78,7 +89,7 @@ const generatePairingsWithoutRematches = (
     if (!team1) break;
 
     let foundOpponent = available.find(
-      (t) => r1Opponents.get(team1!.teamIndex) !== t.teamIndex
+      (t) => r1Opponents.get(team1.teamIndex) !== t.teamIndex
     );
 
     if (!foundOpponent) foundOpponent = available.shift();
@@ -104,9 +115,9 @@ const UnmatchedChip = ({ name }: { name: string }) => (
   <div className="bg-red-800/50 text-red-200 px-2 py-1 rounded">{name}</div>
 );
 
-// ============================================================================
-// MATCH INPUT
-// ============================================================================
+// =====================================
+// MATCH INPUT (RONDE UITSLAGEN)
+// =====================================
 
 const MatchInput = ({
   match,
@@ -196,29 +207,9 @@ const MatchInput = ({
   );
 };
 
-// Kleine helper voor weergave Resultaten Ronde 1 (met score)
-const Round1ResultRow: React.FC<{ result: MatchResult }> = ({ result }) => {
-  const score1 = result.team1Goals.reduce((s, g) => s + g.count, 0);
-  const score2 = result.team2Goals.reduce((s, g) => s + g.count, 0);
-
-  return (
-    <div className="bg-gray-700 rounded-lg px-4 py-3 flex items-center justify-between shadow-sm">
-      <span className="text-cyan-300 font-semibold">
-        Team {result.team1Index + 1}
-      </span>
-      <span className="text-2xl font-bold text-white">
-        {score1} <span className="text-gray-400">-</span> {score2}
-      </span>
-      <span className="text-amber-300 font-semibold">
-        Team {result.team2Index + 1}
-      </span>
-    </div>
-  );
-};
-
-// ============================================================================
+// =====================================
 // MAIN COMPONENT
-// ============================================================================
+// =====================================
 
 const ManualEntry: React.FC<ManualEntryProps> = ({
   allPlayers,
@@ -239,9 +230,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
   const [round2Pairings, setRound2Pairings] = useState<Match[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // ========================================================================
-  // PLAYER NORMALIZING MAP
-  // ========================================================================
+  // ===== PLAYER MAP =====
   const playerMap = useMemo(() => {
     const map = new Map<string, Player>();
     allPlayers.forEach((p) => {
@@ -253,9 +242,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     return map;
   }, [allPlayers]);
 
-  // ========================================================================
-  // PARSE TEAM INPUT TEXT
-  // ========================================================================
+  // ===== PARSEN VAN TEAMS =====
   const parseTeamText = useCallback(
     (texts: string[]) => {
       const teams: Player[][] = [];
@@ -295,9 +282,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     [teamTextR2, parseTeamText]
   );
 
-  // ========================================================================
-  // ROUND 1 VALIDATION FIX
-  // ========================================================================
+  // ===== VALIDATIE R1 / R2 =====
   const validateRound1 = () => {
     const used = new Set<number>();
 
@@ -340,9 +325,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     return null;
   };
 
-  // ========================================================================
-  // START ROUND 1
-  // ========================================================================
+  // ===== START RONDE 1 =====
   const startTournament = () => {
     const err = validateRound1();
     if (err) return setError(err);
@@ -351,11 +334,9 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     setRound(1);
   };
 
-  // ========================================================================
-  // GOAL CHANGE
-  // ========================================================================
+  // ===== GOALS =====
   const handleGoalChange = useCallback(
-    (m, side, id, count) => {
+    (m: number, side: 'team1' | 'team2', id: number, count: number) => {
       setGoalScorers((prev) => {
         const key = `${m}-${side}`;
         const arr = [...(prev[key] || [])];
@@ -373,9 +354,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     []
   );
 
-  // ========================================================================
-  // ROUND 1 → ROUND 2
-  // ========================================================================
+  // ===== RONDE 1 → 2 =====
   const nextRound = () => {
     const r1Matches = Array.from({ length: numMatches }, (_, i) => ({
       team1Index: i * 2,
@@ -396,7 +375,6 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
       return;
     }
 
-    // AUTO PAIRING
     const stats = Array.from({ length: numMatches * 2 }, (_, t) => ({
       teamIndex: t,
       points: 0,
@@ -439,9 +417,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     setRound(2);
   };
 
-  // ========================================================================
-  // START ROUND 2 (MANUAL)
-  // ========================================================================
+  // ===== START R2 (MANUAL) =====
   const startRound2 = () => {
     const err = validateRound2();
     if (err) return setError(err);
@@ -452,13 +428,23 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     }));
 
     setRound2Pairings(pairings);
-
     setRound(2);
   };
 
-  // ========================================================================
-  // SAVE MATCH
-  // ========================================================================
+  // ===== OPSLAAN & FORM RESET =====
+  const resetFormToInitial = () => {
+    setRound(0);
+    setTeamTextR1(Array(6).fill(''));
+    setTeamTextR2(Array(6).fill(''));
+    setRound1Teams(null);
+    setGoalScorers({});
+    setRound1Results([]);
+    setRound2Pairings([]);
+    setNumMatches(1);
+    setManualRound2(false);
+    setDate(new Date().toISOString().split('T')[0]);
+  };
+
   const saveTournament = () => {
     if (isLoading) return;
 
@@ -475,25 +461,86 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
       round2Results: resultsR2,
     });
 
-    localStorage.removeItem(UNSAVED_MANUAL_KEY);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(UNSAVED_MANUAL_KEY);
+    }
 
-    // 🔄 Alles resetten naar leeg formulier
-    setRound(0);
-    setTeamTextR1(Array(6).fill(''));
-    setTeamTextR2(Array(6).fill(''));
-    setRound1Teams(null);
-    setNumMatches(1);
-    setManualRound2(false);
-    setGoalScorers({});
-    setRound1Results([]);
-    setRound2Pairings([]);
-    setError(null);
-    setDate(new Date().toISOString().split('T')[0]);
+    resetFormToInitial();
   };
 
-  // ========================================================================
-  // UI RENDER HELPERS
-  // ========================================================================
+  // =====================================
+  // LOCALSTORAGE: CONCEPT OPSLAAN / LADEN
+  // =====================================
+
+  // Bij laden: vraag of we concept willen herstellen
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem(UNSAVED_MANUAL_KEY);
+    if (!stored) return;
+
+    try {
+      const parsed = JSON.parse(stored);
+      const confirmRestore = window.confirm(
+        'Er is een opgeslagen handmatige invoer gevonden.\n\nWil je hiermee verder gaan?\n\nKlik op "Annuleren" om de opgeslagen invoer te verwijderen.'
+      );
+
+      if (!confirmRestore) {
+        localStorage.removeItem(UNSAVED_MANUAL_KEY);
+        return;
+      }
+
+      setDate(parsed.date || new Date().toISOString().split('T')[0]);
+      setRound(parsed.round ?? 0);
+      setNumMatches(parsed.numMatches ?? 1);
+      setManualRound2(!!parsed.manualRound2);
+      setTeamTextR1(parsed.teamTextR1 || Array(6).fill(''));
+      setTeamTextR2(parsed.teamTextR2 || Array(6).fill(''));
+      setRound1Teams(parsed.round1Teams || null);
+      setGoalScorers(parsed.goalScorers || {});
+      setRound1Results(parsed.round1Results || []);
+      setRound2Pairings(parsed.round2Pairings || []);
+    } catch (err) {
+      console.error('Fout bij laden van concept handmatige invoer', err);
+      localStorage.removeItem(UNSAVED_MANUAL_KEY);
+    }
+  }, []);
+
+  // Bij elke wijziging: concept wegschrijven
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const draft = {
+      date,
+      round,
+      numMatches,
+      manualRound2,
+      teamTextR1,
+      teamTextR2,
+      round1Teams,
+      goalScorers,
+      round1Results,
+      round2Pairings,
+    };
+    try {
+      localStorage.setItem(UNSAVED_MANUAL_KEY, JSON.stringify(draft));
+    } catch (err) {
+      console.error('Fout bij opslaan concept handmatige invoer', err);
+    }
+  }, [
+    date,
+    round,
+    numMatches,
+    manualRound2,
+    teamTextR1,
+    teamTextR2,
+    round1Teams,
+    goalScorers,
+    round1Results,
+    round2Pairings,
+  ]);
+
+  // =====================================
+  // UI HELPERS
+  // =====================================
 
   const renderSetup = (roundNr: 1 | 2) => {
     const isR1 = roundNr === 1;
@@ -626,9 +673,48 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
               Resultaten Ronde 1
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {round1Results.map((res, i) => (
-                <Round1ResultRow key={i} result={res} />
-              ))}
+              {round1Results.map((res, i) => {
+                const score1 = res.team1Goals.reduce(
+                  (s, g) => s + g.count,
+                  0
+                );
+                const score2 = res.team2Goals.reduce(
+                  (s, g) => s + g.count,
+                  0
+                );
+
+                const color1 = getBaseColor(res.team1Index);
+                const color2 = getBaseColor(res.team2Index);
+
+                let leftIdx = res.team1Index;
+                let rightIdx = res.team2Index;
+                let leftScore = score1;
+                let rightScore = score2;
+
+                if (color1 === 'yellow' && color2 === 'blue') {
+                  leftIdx = res.team2Index;
+                  rightIdx = res.team1Index;
+                  leftScore = score2;
+                  rightScore = score1;
+                }
+
+                return (
+                  <div
+                    key={i}
+                    className="bg-gray-700 rounded-lg px-4 py-3 flex items-center justify-between"
+                  >
+                    <span className="text-cyan-300 font-semibold">
+                      Team {leftIdx + 1}
+                    </span>
+                    <span className="text-2xl font-bold text-white">
+                      {leftScore} - {rightScore}
+                    </span>
+                    <span className="text-amber-300 font-semibold">
+                      Team {rightIdx + 1}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -655,7 +741,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
             onClick={nextRound}
             className="w-full bg-blue-600 text-white py-3 rounded mt-6"
           >
-            Sla Ronde 1 op & Ga Naar Ronde 2
+            Sla Ronde 1 op &amp; Ga Naar Ronde 2
           </button>
         )}
 
@@ -664,16 +750,16 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
             onClick={saveTournament}
             className="w-full bg-green-600 text-white py-3 rounded mt-6"
           >
-            Toernooi Afronden & Opslaan
+            Toernooi Afronden &amp; Opslaan
           </button>
         )}
       </>
     );
   };
 
-  // ========================================================================
+  // =====================================
   // MAIN RENDER
-  // ========================================================================
+  // =====================================
 
   return (
     <div className="bg-gray-800 rounded-xl shadow-lg p-6 text-white">
@@ -688,10 +774,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
         <div className="bg-red-800/50 text-red-200 p-3 rounded mb-6">
           <strong>Fout: </strong>
           {error}
-          <button
-            className="float-right"
-            onClick={() => setError(null)}
-          >
+          <button className="float-right" onClick={() => setError(null)}>
             ×
           </button>
         </div>
