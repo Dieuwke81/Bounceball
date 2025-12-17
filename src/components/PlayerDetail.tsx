@@ -1,12 +1,22 @@
+
 import React, { useMemo, useState } from 'react';
-import type { Player, GameSession, RatingLogEntry, Trophy, TrophyType } from '../types';
+import type {
+  Player,
+  GameSession,
+  RatingLogEntry,
+  Trophy,
+  TrophyType,
+  MatchResult,
+} from '../types';
+
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
 import ShieldIcon from './icons/ShieldIcon';
 import TrophyIcon from './icons/TrophyIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
-import RatingChart from './RatingChart';
 import UsersIcon from './icons/UsersIcon';
 import PrinterIcon from './icons/PrinterIcon';
+
+import RatingChart from './RatingChart';
 import PlayerPrintView from './PlayerPrintView';
 
 interface PlayerDetailProps {
@@ -14,16 +24,20 @@ interface PlayerDetailProps {
   history: GameSession[];
   players: Player[];
   ratingLogs: RatingLogEntry[];
-  trophies: Trophy[]; 
+  trophies: Trophy[];
   onBack: () => void;
 }
 
-const StatCard: React.FC<{title: string, value: string | number, subtext?: string}> = ({title, value, subtext}) => (
-    <div className="bg-gray-700 p-4 rounded-lg text-center">
-        <p className="text-sm text-gray-400">{title}</p>
-        <p className="text-3xl font-bold text-white">{value}</p>
-        {subtext && <p className="text-xs text-gray-500">{subtext}</p>}
-    </div>
+const StatCard: React.FC<{
+  title: string;
+  value: string | number;
+  subtext?: string;
+}> = ({ title, value, subtext }) => (
+  <div className="bg-gray-700 p-4 rounded-lg text-center">
+    <p className="text-sm text-gray-400">{title}</p>
+    <p className="text-3xl font-bold text-white">{value}</p>
+    {subtext && <p className="text-xs text-gray-500">{subtext}</p>}
+  </div>
 );
 
 const RelationshipList: React.FC<{
@@ -43,9 +57,14 @@ const RelationshipList: React.FC<{
           const relatedPlayer = playerMap.get(id);
           if (!relatedPlayer) return null;
           return (
-            <li key={id} className="flex justify-between items-center text-sm text-gray-300">
+            <li
+              key={id}
+              className="flex justify-between items-center text-sm text-gray-300"
+            >
               <span className="truncate">{relatedPlayer.name}</span>
-              <span className="font-mono bg-gray-600 text-xs px-2 py-0.5 rounded-full">{count}x</span>
+              <span className="font-mono bg-gray-600 text-xs px-2 py-0.5 rounded-full">
+                {count}x
+              </span>
             </li>
           );
         })}
@@ -56,33 +75,53 @@ const RelationshipList: React.FC<{
   </div>
 );
 
+// Helper: veilige datum parse
+const toMs = (d: string) => {
+  const ms = new Date(d).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+};
 
-const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, ratingLogs, trophies, onBack }) => {
-    const [isPrinting, setIsPrinting] = useState(false);
-    const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
+// Helper: scores uit MatchResult
+const matchScore = (m: MatchResult) => {
+  const s1 = m.team1Goals.reduce((sum, g) => sum + (g?.count || 0), 0);
+  const s2 = m.team2Goals.reduce((sum, g) => sum + (g?.count || 0), 0);
+  return { s1, s2 };
+};
 
-    const playerTrophies = useMemo(() => {
-        if (!trophies) return [];
-        return trophies
-            .filter(t => t.playerId === player.id)
-            .sort((a, b) => {
-                const yearA = Number(a.year.match(/\d{4}/)?.[0]) || 0;
-                const yearB = Number(b.year.match(/\d{4}/)?.[0]) || 0;
-                if (yearA !== yearB) return yearB - yearA;
-                const isWinterA = a.year.toLowerCase().includes('winter');
-                const isWinterB = b.year.toLowerCase().includes('winter');
-                if (isWinterA && !isWinterB) return -1;
-                if (!isWinterA && isWinterB) return 1;
-                return b.year.localeCompare(a.year);
-            });
-    }, [trophies, player.id]);
+const PlayerDetail: React.FC<PlayerDetailProps> = ({
+  player,
+  history,
+  players,
+  ratingLogs,
+  trophies,
+  onBack,
+}) => {
+  const [isPrinting, setIsPrinting] = useState(false);
 
-    
+  const playerMap = useMemo(
+    () => new Map(players.map((p) => [p.id, p])),
+    [players]
+  );
+
+  const playerTrophies = useMemo(() => {
+    if (!trophies) return [];
+    return trophies
+      .filter((t) => t.playerId === player.id)
+      .sort((a, b) => {
+        const yearA = Number(a.year.match(/\d{4}/)?.[0]) || 0;
+        const yearB = Number(b.year.match(/\d{4}/)?.[0]) || 0;
+        if (yearA !== yearB) return yearB - yearA;
+        const isWinterA = a.year.toLowerCase().includes('winter');
+        const isWinterB = b.year.toLowerCase().includes('winter');
+        if (isWinterA && !isWinterB) return -1;
+        if (!isWinterA && isWinterB) return 1;
+        return b.year.localeCompare(a.year);
+      });
+  }, [trophies, player.id]);
 
   const getTrophyStyle = (type: TrophyType) => {
     if (type.includes('1ste') || type === 'Clubkampioen') {
-        // Zelfde gouden / groene “speciale” look als in de prijzenkast
-        return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600';
+      return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600';
     }
     if (type.includes('2de')) return 'text-slate-500';
     if (type.includes('3de')) return 'text-amber-700';
@@ -90,295 +129,384 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, history, players, r
     if (type === 'Verdediger') return 'text-red-500';
     if (type === 'Speler van het jaar') return 'text-green-500';
     return 'text-white';
-};
-    // ... (Hulpfunctie getTrophyContent blijft hetzelfde, die heb je al) ...
-    // Voor de volledigheid en om errors te voorkomen, hier de korte versie (gebruik jouw eigen images object hier!)
-    const getTrophyContent = (type: TrophyType) => {
-        // ... PLAK HIER JOUW IMAGE LOGICA ...
-        // Als je die niet bij de hand hebt, gebruik dan voor nu even iconen, maar ik ga er vanuit dat je die uit de vorige versie hebt.
-         const images: {[key: string]: string} = {
-            'Verdediger': 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
-            'Topscoorder': 'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
-            'Clubkampioen': 'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
-            '2de': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
-            '3de': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
-            'Speler van het jaar': 'https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png',
-            '1ste Introductietoernooi': 'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
-            '2de Introductietoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
-            '3de Introductietoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
-            '1ste NK': 'https://i.postimg.cc/GhXMP4q5/20251203-184928-0000.png',
-            '2de NK': 'https://i.postimg.cc/wM0kkrcm/20251203-185040-0000.png',
-            '3de NK': 'https://i.postimg.cc/MpcYydnC/20251203-185158-0000.png',
-            '1ste Wintertoernooi': 'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
-            '2de Wintertoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
-            '3de Wintertoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png'
-        };
-        const imageUrl = images[type];
-        if (imageUrl) return <img src={imageUrl} alt={type} className="w-8 h-8 object-contain" />;
-        if (type === 'Verdediger') return <ShieldIcon className="w-6 h-6" />;
-        return <TrophyIcon className="w-6 h-6" />;
+  };
+
+  const getTrophyContent = (type: TrophyType) => {
+    const images: { [key: string]: string } = {
+      Verdediger:
+        'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
+      Topscoorder:
+        'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
+      Clubkampioen:
+        'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
+      '2de':
+        'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+      '3de':
+        'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+      'Speler van het jaar':
+        'https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png',
+      '1ste Introductietoernooi':
+        'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
+      '2de Introductietoernooi':
+        'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+      '3de Introductietoernooi':
+        'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+      '1ste NK': 'https://i.postimg.cc/GhXMP4q5/20251203-184928-0000.png',
+      '2de NK': 'https://i.postimg.cc/wM0kkrcm/20251203-185040-0000.png',
+      '3de NK': 'https://i.postimg.cc/MpcYydnC/20251203-185158-0000.png',
+      '1ste Wintertoernooi':
+        'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
+      '2de Wintertoernooi':
+        'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+      '3de Wintertoernooi':
+        'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
     };
 
-    const stats = useMemo(() => {
-        let wins = 0;
-        let losses = 0;
-        let draws = 0;
-        let points = 0; // <--- HIER IS DE VARIABELE DIE JE NODIG HEBT
-        let gamesPlayed = 0;
-        let goalsScored = 0;
-        
-        const teammateFrequency = new Map<number, number>();
-        const teammateWins = new Map<number, number>();
-        const teammateLosses = new Map<number, number>();
-        const opponentWins = new Map<number, number>();
-        const opponentLosses = new Map<number, number>();
+    const imageUrl = images[type];
+    if (imageUrl)
+      return <img src={imageUrl} alt={type} className="w-8 h-8 object-contain" />;
+    if (type === 'Verdediger') return <ShieldIcon className="w-6 h-6" />;
+    return <TrophyIcon className="w-6 h-6" />;
+  };
 
-        history.forEach(session => {
-            let playerTeamIndex: number | null = null;
-            session.teams.forEach((team, index) => {
-                if (team.some(p => p.id === player.id)) {
-                    playerTeamIndex = index;
-                }
-            });
+  /**
+   * ✅ BELANGRIJKSTE FIX:
+   * - Ronde 1 gebruikt altijd session.teams
+   * - Ronde 2 kan nieuwe teams hebben: session.round2Teams ?? session.teams
+   * Daardoor klopten bij manual “nieuwe teams” je stats/grafieken/relaties niet.
+   */
+  const stats = useMemo(() => {
+    let wins = 0;
+    let losses = 0;
+    let draws = 0;
+    let points = 0;
+    let gamesPlayed = 0;
+    let goalsScored = 0;
 
-            if (playerTeamIndex === null) return;
+    const teammateFrequency = new Map<number, number>();
+    const teammateWins = new Map<number, number>();
+    const teammateLosses = new Map<number, number>();
+    const opponentWins = new Map<number, number>();
+    const opponentLosses = new Map<number, number>();
 
-            [...session.round1Results, ...session.round2Results].forEach(match => {
-                let opponentTeamIndex: number | null = null;
-                let isParticipating = false;
-                
-                if (match.team1Index === playerTeamIndex) {
-                    opponentTeamIndex = match.team2Index;
-                    isParticipating = true;
-                } else if (match.team2Index === playerTeamIndex) {
-                    opponentTeamIndex = match.team1Index;
-                    isParticipating = true;
-                }
+    const processMatch = (
+      sessionTeams: Player[][],
+      match: MatchResult,
+      roundLabel: 'r1' | 'r2'
+    ) => {
+      // zoek teamIndex van speler BINNEN de teams van deze ronde
+      const playerTeamIndex = sessionTeams.findIndex((team) =>
+        team.some((p) => p.id === player.id)
+      );
+      if (playerTeamIndex < 0) return;
 
-                if (!isParticipating || opponentTeamIndex === null || !session.teams[opponentTeamIndex]) return;
-                
-                gamesPlayed++;
+      const { s1, s2 } = matchScore(match);
 
-                const playerTeamGoalsList = (playerTeamIndex === match.team1Index ? match.team1Goals : match.team2Goals);
-                const opponentTeamGoalsList = (opponentTeamIndex === match.team1Index ? match.team1Goals : match.team2Goals);
-                
-                const playerGoalCount = playerTeamGoalsList.find(g => g.playerId === player.id)?.count || 0;
-                goalsScored += playerGoalCount;
+      const isTeam1 = match.team1Index === playerTeamIndex;
+      const isTeam2 = match.team2Index === playerTeamIndex;
+      if (!isTeam1 && !isTeam2) return;
 
-                const playerTeamScore = playerTeamGoalsList.reduce((sum, g) => sum + g.count, 0);
-                const opponentTeamScore = opponentTeamGoalsList.reduce((sum, g) => sum + g.count, 0);
+      const opponentTeamIndex = isTeam1 ? match.team2Index : match.team1Index;
+      if (!sessionTeams[opponentTeamIndex]) return;
 
-                // --- HIER WORDEN DE PUNTEN BEREKEND ---
-                if (playerTeamScore > opponentTeamScore) {
-                    wins++;
-                    points += 3; // Winst = 3 punten
-                } else if (opponentTeamScore > playerTeamScore) {
-                    losses++;
-                    // Verlies = 0 punten
-                } else {
-                    draws++;
-                    points += 1; // Gelijk = 1 punt
-                }
-                // --------------------------------------
+      gamesPlayed++;
 
-                const teammates = session.teams[playerTeamIndex!].filter(p => p.id !== player.id);
-                const opponents = session.teams[opponentTeamIndex];
+      const playerTeamGoalsList = isTeam1 ? match.team1Goals : match.team2Goals;
+      const opponentTeamGoalsList = isTeam1 ? match.team2Goals : match.team1Goals;
 
-                teammates.forEach(tm => {
-                    teammateFrequency.set(tm.id, (teammateFrequency.get(tm.id) || 0) + 1);
-                    if (playerTeamScore > opponentTeamScore) {
-                        teammateWins.set(tm.id, (teammateWins.get(tm.id) || 0) + 1);
-                    } else if (opponentTeamScore > playerTeamScore) {
-                        teammateLosses.set(tm.id, (teammateLosses.get(tm.id) || 0) + 1);
-                    }
-                });
+      const playerGoalCount =
+        playerTeamGoalsList.find((g) => g.playerId === player.id)?.count || 0;
+      goalsScored += playerGoalCount;
 
-                opponents.forEach(op => {
-                    if (playerTeamScore > opponentTeamScore) {
-                        opponentWins.set(op.id, (opponentWins.get(op.id) || 0) + 1);
-                    } else if (opponentTeamScore > playerTeamScore) {
-                        opponentLosses.set(op.id, (opponentLosses.get(op.id) || 0) + 1);
-                    }
-                });
-            });
-        });
+      const playerTeamScore = playerTeamGoalsList.reduce(
+        (sum, g) => sum + (g?.count || 0),
+        0
+      );
+      const opponentTeamScore = opponentTeamGoalsList.reduce(
+        (sum, g) => sum + (g?.count || 0),
+        0
+      );
 
-        const bestTeammates = [...teammateWins.entries()].sort((a, b) => b[1] - a[1]);
-        const worstTeammates = [...teammateLosses.entries()].sort((a, b) => b[1] - a[1]);
-        const bestOpponents = [...opponentWins.entries()].sort((a, b) => b[1] - a[1]);
-        const worstOpponents = [...opponentLosses.entries()].sort((a, b) => b[1] - a[1]);
-        const mostFrequentTeammates = [...teammateFrequency.entries()].sort((a, b) => b[1] - a[1]);
+      if (playerTeamScore > opponentTeamScore) {
+        wins++;
+        points += 3;
+      } else if (opponentTeamScore > playerTeamScore) {
+        losses++;
+      } else {
+        draws++;
+        points += 1;
+      }
 
-        return { wins, losses, draws, points, gamesPlayed, goalsScored, bestTeammates, worstTeammates, bestOpponents, worstOpponents, mostFrequentTeammates };
-    }, [player.id, history]);
+      const teammates = sessionTeams[playerTeamIndex].filter(
+        (p) => p.id !== player.id
+      );
+      const opponents = sessionTeams[opponentTeamIndex];
 
-    const ratingHistory = useMemo(() => {
-        const historyPoints: { date: string; rating: number }[] = [];
-        let currentRating = player.rating;
-        historyPoints.push({ date: new Date().toISOString(), rating: currentRating });
+      teammates.forEach((tm) => {
+        teammateFrequency.set(tm.id, (teammateFrequency.get(tm.id) || 0) + 1);
+        if (playerTeamScore > opponentTeamScore) {
+          teammateWins.set(tm.id, (teammateWins.get(tm.id) || 0) + 1);
+        } else if (opponentTeamScore > playerTeamScore) {
+          teammateLosses.set(tm.id, (teammateLosses.get(tm.id) || 0) + 1);
+        }
+      });
 
-        history.forEach(session => {
-            let playerTeamIndex: number | null = null;
-            let sessionDelta = 0;
+      opponents.forEach((op) => {
+        if (playerTeamScore > opponentTeamScore) {
+          opponentWins.set(op.id, (opponentWins.get(op.id) || 0) + 1);
+        } else if (opponentTeamScore > playerTeamScore) {
+          opponentLosses.set(op.id, (opponentLosses.get(op.id) || 0) + 1);
+        }
+      });
+    };
 
-            const playerInSession = session.teams.flat().some(p => p.id === player.id);
-            if (!playerInSession) return;
+    history.forEach((session) => {
+      const teamsR1 = session.teams || [];
+      const teamsR2 = session.round2Teams ?? session.teams ?? [];
 
-            session.teams.forEach((team, index) => {
-                if (team.some(p => p.id === player.id)) {
-                    playerTeamIndex = index;
-                }
-            });
+      // Ronde 1 matches met teamsR1
+      (session.round1Results || []).forEach((m) => processMatch(teamsR1, m, 'r1'));
 
-            if (playerTeamIndex === null) return;
-            
-            [...session.round1Results, ...session.round2Results].forEach(match => {
-                let isParticipating = false;
-                let playerTeamScore = 0;
-                let opponentTeamScore = 0;
+      // Ronde 2 matches met teamsR2 (als handmatig nieuwe teams → round2Teams)
+      (session.round2Results || []).forEach((m) => processMatch(teamsR2, m, 'r2'));
+    });
 
-                if (match.team1Index === playerTeamIndex) {
-                    isParticipating = true;
-                    playerTeamScore = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
-                    opponentTeamScore = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
-                } else if (match.team2Index === playerTeamIndex) {
-                    isParticipating = true;
-                    playerTeamScore = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
-                    opponentTeamScore = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
-                }
-
-                if (isParticipating) {
-                    if (playerTeamScore > opponentTeamScore) sessionDelta += 0.1;
-                    else if (opponentTeamScore > playerTeamScore) sessionDelta -= 0.1;
-                }
-            });
-            
-            const ratingBeforeSession = currentRating - sessionDelta;
-            historyPoints.push({ date: session.date, rating: ratingBeforeSession });
-            currentRating = ratingBeforeSession;
-        });
-        
-        return historyPoints.reverse();
-    }, [player.id, player.rating, history]);
-
-    const allTimeRatingHistory = useMemo(() => {
-        const logs = ratingLogs
-            .filter(log => log.playerId === player.id)
-            .map(log => ({ date: log.date, rating: log.rating }));
-        
-        return logs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [player.id, ratingLogs]);
-
-    // Gemiddelde punten berekenen voor display
-    const avgPoints = stats.gamesPlayed > 0 ? stats.points / stats.gamesPlayed : 0;
-
-    return (
-        <div className="bg-gray-800 rounded-xl shadow-lg p-6">
-            {isPrinting && (
-                <PlayerPrintView 
-                    player={player} 
-                    stats={stats} 
-                    trophies={playerTrophies} 
-                    players={players} 
-                    seasonHistory={ratingHistory}
-                    allTimeHistory={allTimeRatingHistory}
-                    onClose={() => setIsPrinting(false)} 
-                />
-            )}
-
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                    <button onClick={onBack} className="p-2 mr-4 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-colors">
-                        <ArrowLeftIcon className="w-6 h-6" />
-                    </button>
-                    {player.photoBase64 && (
-                        <img 
-                            src={player.photoBase64} 
-                            alt={player.name}
-                            className="w-16 h-16 rounded-full object-cover mr-4 border-2 border-cyan-400"
-                        />
-                    )}
-                    <div>
-                        <h2 className="text-3xl font-bold text-white">{player.name}</h2>
-                        <div className="flex items-center mt-1">
-                            <span className="text-lg font-semibold bg-cyan-500 text-white py-1 px-3 rounded-full">{player.rating.toFixed(1)}</span>
-                            {player.isKeeper && <span className="ml-2 text-xs font-semibold bg-amber-500 text-white py-0.5 px-2 rounded-full">K</span>}
-                            {player.isFixedMember && <span className="ml-2 text-xs font-semibold bg-green-500 text-white py-0.5 px-2 rounded-full">Lid</span>}
-                        </div>
-                    </div>
-                </div>
-                <button onClick={() => setIsPrinting(true)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors" title="Spelersprofiel Printen">
-                    <PrinterIcon className="w-6 h-6" />
-                </button>
-            </div>
-
-            {playerTrophies.length > 0 && (
-  <div className="mb-8 p-4 bg-gradient-to-r from-gray-700 to-gray-800 rounded-xl border border-gray-600/50">
-    <h3 className="text-lg font-bold text-white mb-3 flex items-center">
-      <div className="w-5 h-5 mr-2 text-yellow-400" />
-      Prijzenkast 🏆
-    </h3>
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {playerTrophies.map(trophy => (
-        <div
-          key={trophy.id}
-          className={`flex items-center p-3 rounded-lg border ${getTrophyStyle(trophy.type)}`}
-        >
-          <div className="mr-3">
-            {getTrophyContent(trophy.type)}
-          </div>
-          <div>
-            <div className="font-bold text-sm">{trophy.type}</div>
-            <div className="text-xs opacity-80">{trophy.year}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <StatCard title="Gespeeld" value={stats.gamesPlayed} />
-                <StatCard title="Gewonnen" value={`${Math.round((stats.wins / (stats.gamesPlayed || 1)) * 100)}%`} subtext={`${stats.wins} van ${stats.gamesPlayed}`} />
-                <StatCard title="Goals" value={stats.goalsScored} subtext={`${(stats.goalsScored / (stats.gamesPlayed || 1)).toFixed(2)} gem.`} />
-                
-                {/* HIER ZIE JE HET GEMIDDELDE PUNTEN AANTAL OOK IN DE APP */}
-                <StatCard title="Gem. Punten" value={avgPoints.toFixed(2)} subtext={`Totaal: ${stats.points}`} />
-            </div>
-
-            {/* ... (De rest van de grafieken en relaties blijft hetzelfde) ... */}
-            <div className="bg-gray-700 p-4 rounded-lg mb-8">
-                <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
-                    <ChartBarIcon className="w-5 h-5 text-green-400" />
-                    <span className="ml-2">All-time Rating Verloop</span>
-                </h4>
-                {allTimeRatingHistory.length > 1 ? (
-                    <RatingChart data={allTimeRatingHistory} />
-                ) : (
-                    <p className="text-gray-500 text-sm text-center py-4">Nog niet genoeg data over meerdere seizoenen.</p>
-                )}
-            </div>
-            
-            <div className="bg-gray-700 p-4 rounded-lg mb-8">
-                <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
-                    <ChartBarIcon className="w-5 h-5 text-cyan-400" />
-                    <span className="ml-2">Seizoen Rating Verloop</span>
-                </h4>
-                <RatingChart data={ratingHistory} />
-            </div>
-
-            <div className="bg-gray-700 p-4 rounded-lg mb-6">
-                <RelationshipList title="Vaakste Medespeler (Top 5)" data={stats.mostFrequentTeammates} playerMap={playerMap} icon={<UsersIcon className="w-5 h-5 text-cyan-400" />} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <RelationshipList title="Beste Medespelers" data={stats.bestTeammates} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
-                <RelationshipList title="Lastige Medespelers" data={stats.worstTeammates} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
-                <RelationshipList title="Makkelijke Tegenstanders" data={stats.bestOpponents} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
-                <RelationshipList title="Moeilijke Tegenstanders" data={stats.worstOpponents} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
-            </div>
-        </div>
+    const bestTeammates = [...teammateWins.entries()].sort((a, b) => b[1] - a[1]);
+    const worstTeammates = [...teammateLosses.entries()].sort((a, b) => b[1] - a[1]);
+    const bestOpponents = [...opponentWins.entries()].sort((a, b) => b[1] - a[1]);
+    const worstOpponents = [...opponentLosses.entries()].sort((a, b) => b[1] - a[1]);
+    const mostFrequentTeammates = [...teammateFrequency.entries()].sort(
+      (a, b) => b[1] - a[1]
     );
+
+    return {
+      wins,
+      losses,
+      draws,
+      points,
+      gamesPlayed,
+      goalsScored,
+      bestTeammates,
+      worstTeammates,
+      bestOpponents,
+      worstOpponents,
+      mostFrequentTeammates,
+    };
+  }, [player.id, history]);
+
+  /**
+   * Seizoen-grafiek:
+   * - Gebruik ratingLogs als je ze hebt (betrouwbaarder dan “terugrekenen”)
+   * - Filter die logs op de datarange van de huidige `history` (jouw “seizoen/archief” context)
+   */
+  const seasonDateRange = useMemo(() => {
+    const dates = history.map((s) => toMs(s.date)).filter((x) => x > 0);
+    if (dates.length === 0) return null;
+    const min = Math.min(...dates);
+    const max = Math.max(...dates);
+    return { min, max };
+  }, [history]);
+
+  const allTimeRatingHistory = useMemo(() => {
+    const logs = (ratingLogs || [])
+      .filter((log) => log.playerId === player.id)
+      .map((log) => ({ date: log.date, rating: log.rating }))
+      .sort((a, b) => toMs(a.date) - toMs(b.date));
+    return logs;
+  }, [player.id, ratingLogs]);
+
+  const seasonRatingHistory = useMemo(() => {
+    // Als er geen range is: val terug op alles wat we hebben
+    if (!seasonDateRange) return allTimeRatingHistory;
+
+    const { min, max } = seasonDateRange;
+
+    // Houd wat marge zodat “zelfde dag” / timezone niet raar doet
+    const pad = 36 * 60 * 60 * 1000; // 36 uur
+
+    const filtered = allTimeRatingHistory.filter((p) => {
+      const ms = toMs(p.date);
+      return ms >= min - pad && ms <= max + pad;
+    });
+
+    // Als filter leeg valt (bv. logs zijn anders opgeslagen), val terug op allTime
+    return filtered.length > 0 ? filtered : allTimeRatingHistory;
+  }, [allTimeRatingHistory, seasonDateRange]);
+
+  // Gemiddelde punten
+  const avgPoints = stats.gamesPlayed > 0 ? stats.points / stats.gamesPlayed : 0;
+
+  return (
+    <div className="bg-gray-800 rounded-xl shadow-lg p-6">
+      {isPrinting && (
+        <PlayerPrintView
+          player={player}
+          stats={stats}
+          trophies={playerTrophies}
+          players={players}
+          seasonHistory={seasonRatingHistory}
+          allTimeHistory={allTimeRatingHistory}
+          onClose={() => setIsPrinting(false)}
+        />
+      )}
+
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <button
+            onClick={onBack}
+            className="p-2 mr-4 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-colors"
+          >
+            <ArrowLeftIcon className="w-6 h-6" />
+          </button>
+
+          {player.photoBase64 && (
+            <img
+              src={player.photoBase64}
+              alt={player.name}
+              className="w-16 h-16 rounded-full object-cover mr-4 border-2 border-cyan-400"
+            />
+          )}
+
+          <div>
+            <h2 className="text-3xl font-bold text-white">{player.name}</h2>
+            <div className="flex items-center mt-1">
+              <span className="text-lg font-semibold bg-cyan-500 text-white py-1 px-3 rounded-full">
+                {player.rating.toFixed(1)}
+              </span>
+              {player.isKeeper && (
+                <span className="ml-2 text-xs font-semibold bg-amber-500 text-white py-0.5 px-2 rounded-full">
+                  K
+                </span>
+              )}
+              {player.isFixedMember && (
+                <span className="ml-2 text-xs font-semibold bg-green-500 text-white py-0.5 px-2 rounded-full">
+                  Lid
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setIsPrinting(true)}
+          className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 hover:text-white transition-colors"
+          title="Spelersprofiel Printen"
+        >
+          <PrinterIcon className="w-6 h-6" />
+        </button>
+      </div>
+
+      {playerTrophies.length > 0 && (
+        <div className="mb-8 p-4 bg-gradient-to-r from-gray-700 to-gray-800 rounded-xl border border-gray-600/50">
+          <h3 className="text-lg font-bold text-white mb-3 flex items-center">
+            <div className="w-5 h-5 mr-2 text-yellow-400" />
+            Prijzenkast 🏆
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {playerTrophies.map((trophy) => (
+              <div
+                key={trophy.id}
+                className={`flex items-center p-3 rounded-lg border ${getTrophyStyle(
+                  trophy.type
+                )}`}
+              >
+                <div className="mr-3">{getTrophyContent(trophy.type)}</div>
+                <div>
+                  <div className="font-bold text-sm">{trophy.type}</div>
+                  <div className="text-xs opacity-80">{trophy.year}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <StatCard title="Gespeeld" value={stats.gamesPlayed} />
+        <StatCard
+          title="Gewonnen"
+          value={`${Math.round((stats.wins / (stats.gamesPlayed || 1)) * 100)}%`}
+          subtext={`${stats.wins} van ${stats.gamesPlayed}`}
+        />
+        <StatCard
+          title="Goals"
+          value={stats.goalsScored}
+          subtext={`${(stats.goalsScored / (stats.gamesPlayed || 1)).toFixed(2)} gem.`}
+        />
+        <StatCard
+          title="Gem. Punten"
+          value={avgPoints.toFixed(2)}
+          subtext={`Totaal: ${stats.points}`}
+        />
+      </div>
+
+      {/* ALL-TIME */}
+      <div className="bg-gray-700 p-4 rounded-lg mb-8">
+        <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
+          <ChartBarIcon className="w-5 h-5 text-green-400" />
+          <span className="ml-2">All-time Rating Verloop</span>
+        </h4>
+        {allTimeRatingHistory.length > 1 ? (
+          <RatingChart data={allTimeRatingHistory} />
+        ) : (
+          <p className="text-gray-500 text-sm text-center py-4">
+            Nog niet genoeg all-time data (rating logs).
+          </p>
+        )}
+      </div>
+
+      {/* SEIZOEN */}
+      <div className="bg-gray-700 p-4 rounded-lg mb-8">
+        <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
+          <ChartBarIcon className="w-5 h-5 text-cyan-400" />
+          <span className="ml-2">Seizoen Rating Verloop</span>
+        </h4>
+        {seasonRatingHistory.length > 1 ? (
+          <RatingChart data={seasonRatingHistory} />
+        ) : (
+          <p className="text-gray-500 text-sm text-center py-4">
+            Nog niet genoeg seizoensdata.
+          </p>
+        )}
+      </div>
+
+      <div className="bg-gray-700 p-4 rounded-lg mb-6">
+        <RelationshipList
+          title="Vaakste Medespeler (Top 5)"
+          data={stats.mostFrequentTeammates}
+          playerMap={playerMap}
+          icon={<UsersIcon className="w-5 h-5 text-cyan-400" />}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <RelationshipList
+          title="Beste Medespelers"
+          data={stats.bestTeammates}
+          playerMap={playerMap}
+          icon={<TrophyIcon className="w-5 h-5 text-green-400" />}
+        />
+        <RelationshipList
+          title="Lastige Medespelers"
+          data={stats.worstTeammates}
+          playerMap={playerMap}
+          icon={<ShieldIcon className="w-5 h-5 text-red-400" />}
+        />
+        <RelationshipList
+          title="Makkelijke Tegenstanders"
+          data={stats.bestOpponents}
+          playerMap={playerMap}
+          icon={<TrophyIcon className="w-5 h-5 text-green-400" />}
+        />
+        <RelationshipList
+          title="Moeilijke Tegenstanders"
+          data={stats.worstOpponents}
+          playerMap={playerMap}
+          icon={<ShieldIcon className="w-5 h-5 text-red-400" />}
+        />
+      </div>
+    </div>
+  );
 };
 
 export default PlayerDetail;
