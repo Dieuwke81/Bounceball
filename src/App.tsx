@@ -1,3 +1,5 @@
+
+// App.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import type {
   Player,
@@ -66,37 +68,49 @@ type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 const ADMIN_PASSWORD = 'kemmer';
 const UNSAVED_GAME_KEY = 'bounceball_unsaved_game';
 
+/**
+ * ✅ FIX: ratings per ronde berekenen met juiste teams:
+ * - ronde 1 -> session.teams
+ * - ronde 2 -> session.round2Teams (als aanwezig) anders session.teams
+ */
 const calculateRatingDeltas = (
-  results: MatchResult[],
-  currentTeams: Player[][]
+  session: Pick<
+    GameSession,
+    'teams' | 'round1Results' | 'round2Results' | 'round2Teams'
+  >
 ): { [key: number]: number } => {
   const ratingChanges: { [key: number]: number } = {};
   const ratingDelta = 0.1;
 
-  results.forEach((match) => {
-    const team1 = currentTeams[match.team1Index];
-    const team2 = currentTeams[match.team2Index];
-    if (!team1 || !team2) return;
+  const applyResults = (results: MatchResult[], teamsForRound: Player[][]) => {
+    results.forEach((match) => {
+      const team1 = teamsForRound[match.team1Index];
+      const team2 = teamsForRound[match.team2Index];
+      if (!team1 || !team2) return;
 
-    const team1Score = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
-    const team2Score = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
+      const team1Score = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
+      const team2Score = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
 
-    if (team1Score > team2Score) {
-      team1.forEach(
-        (p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) + ratingDelta)
-      );
-      team2.forEach(
-        (p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) - ratingDelta)
-      );
-    } else if (team2Score > team1Score) {
-      team1.forEach(
-        (p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) - ratingDelta)
-      );
-      team2.forEach(
-        (p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) + ratingDelta)
-      );
-    }
-  });
+      if (team1Score > team2Score) {
+        team1.forEach(
+          (p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) + ratingDelta)
+        );
+        team2.forEach(
+          (p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) - ratingDelta)
+        );
+      } else if (team2Score > team1Score) {
+        team1.forEach(
+          (p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) - ratingDelta)
+        );
+        team2.forEach(
+          (p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) + ratingDelta)
+        );
+      }
+    });
+  };
+
+  applyResults(session.round1Results, session.teams);
+  applyResults(session.round2Results, session.round2Teams ?? session.teams);
 
   return ratingChanges;
 };
@@ -115,9 +129,7 @@ const App: React.FC = () => {
   const [currentRound, setCurrentRound] = useState(0);
   const [round1Results, setRound1Results] = useState<MatchResult[]>([]);
   const [round2Pairings, setRound2Pairings] = useState<Match[]>([]);
-  const [goalScorers, setGoalScorers] = useState<{ [key: string]: Goal[] }>(
-    {}
-  );
+  const [goalScorers, setGoalScorers] = useState<{ [key: string]: Goal[] }>({});
   const [gameMode, setGameMode] = useState<GameMode>(null);
   const [constraints, setConstraints] = useState<Constraint[]>([]);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
@@ -126,8 +138,9 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<View>('main');
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
-  const [viewingArchive, setViewingArchive] =
-    useState<GameSession[] | null>(null);
+  const [viewingArchive, setViewingArchive] = useState<GameSession[] | null>(
+    null
+  );
   const [isManagementAuthenticated, setIsManagementAuthenticated] =
     useState(false);
   const [competitionName, setCompetitionName] = useState<string | null>(null);
@@ -254,11 +267,8 @@ const App: React.FC = () => {
   const handlePlayerToggle = (playerId: number) => {
     setAttendingPlayerIds((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(playerId)) {
-        newSet.delete(playerId);
-      } else {
-        newSet.add(playerId);
-      }
+      if (newSet.has(playerId)) newSet.delete(playerId);
+      else newSet.add(playerId);
       return newSet;
     });
   };
@@ -267,14 +277,13 @@ const App: React.FC = () => {
   // Aanwezigheidsparser
   // —————————————————
   const handleParseAttendance = (text: string) => {
-  const normalize = (str: string): string =>
-    str
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim()
-      // 👇 extra regel: puntje aan het eind weghalen
-      .replace(/\.$/, '');
+    const normalize = (str: string): string =>
+      str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .replace(/\.$/, '');
 
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
@@ -401,10 +410,7 @@ const App: React.FC = () => {
       }
       showNotification(message, type);
     } else if (potentialNames.size > 0) {
-      showNotification(
-        'Alle spelers uit de lijst waren al aangemeld.',
-        'success'
-      );
+      showNotification('Alle spelers uit de lijst waren al aangemeld.', 'success');
     }
   };
 
@@ -425,9 +431,7 @@ const App: React.FC = () => {
     localStorage.removeItem(UNSAVED_GAME_KEY);
   };
 
-  const attendingPlayers = players.filter((p) =>
-    attendingPlayerIds.has(p.id)
-  );
+  const attendingPlayers = players.filter((p) => attendingPlayerIds.has(p.id));
 
   // —————————————————
   // Teams genereren
@@ -435,22 +439,19 @@ const App: React.FC = () => {
   const handleGenerateTeams = async (mode: GameMode) => {
     resetGameState();
     setGameMode(mode);
+
     const playerCount = attendingPlayers.length;
     let numberOfTeams;
 
-    if (mode === 'simple' || mode === 'doubleHeader') {
-      numberOfTeams = 2;
-    } else {
+    if (mode === 'simple' || mode === 'doubleHeader') numberOfTeams = 2;
+    else {
       if (playerCount >= 24) numberOfTeams = 6;
       else if (playerCount >= 16) numberOfTeams = 4;
       else numberOfTeams = 2;
     }
 
     if (attendingPlayers.length < numberOfTeams) {
-      showNotification(
-        `Niet genoeg spelers voor ${numberOfTeams} teams.`,
-        'error'
-      );
+      showNotification(`Niet genoeg spelers voor ${numberOfTeams} teams.`, 'error');
       return;
     }
 
@@ -484,42 +485,32 @@ const App: React.FC = () => {
     const key = `${matchIndex}-${teamIdentifier}`;
     setGoalScorers((prev) => {
       const newGoals = [...(prev[key] || [])];
-      const existingGoalIndex = newGoals.findIndex(
-        (g) => g.playerId === playerId
-      );
+      const existingGoalIndex = newGoals.findIndex((g) => g.playerId === playerId);
 
       if (count > 0) {
         if (existingGoalIndex > -1) {
-          newGoals[existingGoalIndex] = {
-            ...newGoals[existingGoalIndex],
-            count,
-          };
+          newGoals[existingGoalIndex] = { ...newGoals[existingGoalIndex], count };
         } else {
           newGoals.push({ playerId, count });
         }
       } else {
-        if (existingGoalIndex > -1) {
-          newGoals.splice(existingGoalIndex, 1);
-        }
+        if (existingGoalIndex > -1) newGoals.splice(existingGoalIndex, 1);
       }
       return { ...prev, [key]: newGoals };
     });
   };
 
   // —————————————————
-  // Sessie opslaan (generiek)
+  // ✅ Sessie opslaan (generiek) — NU MET round2Teams
   // —————————————————
-  const handleSaveSession = async (sessionData: {
-    date: string;
-    teams: Player[][];
-    round1Results: MatchResult[];
-    round2Results: MatchResult[];
-  }) => {
-    const allResults = [
-      ...sessionData.round1Results,
-      ...sessionData.round2Results,
-    ];
-    const ratingChanges = calculateRatingDeltas(allResults, sessionData.teams);
+  const handleSaveSession = async (sessionData: GameSession) => {
+    const ratingChanges = calculateRatingDeltas({
+      teams: sessionData.teams,
+      round1Results: sessionData.round1Results,
+      round2Results: sessionData.round2Results,
+      round2Teams: sessionData.round2Teams,
+    });
+
     const updatedRatings = players
       .filter((p) => ratingChanges[p.id] !== undefined)
       .map((p) => ({
@@ -532,14 +523,18 @@ const App: React.FC = () => {
 
     try {
       await saveGameSession(sessionData, updatedRatings);
+
       showNotification('Sessie en ratings succesvol opgeslagen!', 'success');
+
       setPlayers((prevPlayers) =>
         prevPlayers.map((p) => {
           const update = updatedRatings.find((u) => u.id === p.id);
           return update ? { ...p, rating: update.rating } : p;
         })
       );
+
       setHistory((prevHistory) => [sessionData, ...prevHistory]);
+
       resetGameState();
       setAttendingPlayerIds(new Set());
     } catch (e: any) {
@@ -551,13 +546,11 @@ const App: React.FC = () => {
   // Ronde 1 opslaan & ronde 2 pairings bepalen
   // —————————————————
   const handleSaveRound1 = (matches: Match[]) => {
-    const results: MatchResult[] = matches.map(
-      (match, index): MatchResult => ({
-        ...match,
-        team1Goals: goalScorers[`${index}-team1`] || [],
-        team2Goals: goalScorers[`${index}-team2`] || [],
-      })
-    );
+    const results: MatchResult[] = matches.map((match, index): MatchResult => ({
+      ...match,
+      team1Goals: goalScorers[`${index}-team1`] || [],
+      team2Goals: goalScorers[`${index}-team2`] || [],
+    }));
 
     setRound1Results(results);
 
@@ -568,23 +561,13 @@ const App: React.FC = () => {
       goalsFor: number;
     }[] = [];
     teams.forEach((_, index) => {
-      teamPoints.push({
-        teamIndex: index,
-        points: 0,
-        goalDifference: 0,
-        goalsFor: 0,
-      });
+      teamPoints.push({ teamIndex: index, points: 0, goalDifference: 0, goalsFor: 0 });
     });
 
     results.forEach((result) => {
-      const team1Score = result.team1Goals.reduce(
-        (sum, g) => sum + g.count,
-        0
-      );
-      const team2Score = result.team2Goals.reduce(
-        (sum, g) => sum + g.count,
-        0
-      );
+      const team1Score = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
+      const team2Score = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
+
       const team1 = teamPoints.find((t) => t.teamIndex === result.team1Index)!;
       const team2 = teamPoints.find((t) => t.teamIndex === result.team2Index)!;
 
@@ -593,11 +576,9 @@ const App: React.FC = () => {
       team2.goalDifference += team2Score - team1Score;
       team2.goalsFor += team2Score;
 
-      if (team1Score > team2Score) {
-        team1.points += 3;
-      } else if (team2Score > team1Score) {
-        team2.points += 3;
-      } else {
+      if (team1Score > team2Score) team1.points += 3;
+      else if (team2Score > team1Score) team2.points += 3;
+      else {
         team1.points += 1;
         team2.points += 1;
       }
@@ -645,10 +626,7 @@ const App: React.FC = () => {
 
       if (teamB) {
         availableTeams.splice(teamBIndex, 1);
-        newPairings.push({
-          team1Index: teamA.teamIndex,
-          team2Index: teamB.teamIndex,
-        });
+        newPairings.push({ team1Index: teamA.teamIndex, team2Index: teamB.teamIndex });
       }
     }
 
@@ -667,9 +645,8 @@ const App: React.FC = () => {
     try {
       const remainingPlayers = attendingPlayers;
       if (remainingPlayers.length < 4)
-        throw new Error(
-          'Niet genoeg spelers over om nieuwe teams te maken (minimaal 4).'
-        );
+        throw new Error('Niet genoeg spelers over om nieuwe teams te maken (minimaal 4).');
+
       const numTeams = originalTeams.length;
       if (remainingPlayers.length < numTeams)
         throw new Error(
@@ -684,9 +661,7 @@ const App: React.FC = () => {
 
       const newPairings: Match[] = [];
       for (let i = 0; i < regeneratedTeams.length; i += 2) {
-        if (regeneratedTeams[i + 1]) {
-          newPairings.push({ team1Index: i, team2Index: i + 1 });
-        }
+        if (regeneratedTeams[i + 1]) newPairings.push({ team1Index: i, team2Index: i + 1 });
       }
 
       setTeams(regeneratedTeams);
@@ -706,13 +681,11 @@ const App: React.FC = () => {
     if (!requireAdmin()) return; // 🔐
 
     setActionInProgress('savingFinal');
-    const round2Results: MatchResult[] = matches.map(
-      (match, index): MatchResult => ({
-        ...match,
-        team1Goals: goalScorers[`${index}-team1`] || [],
-        team2Goals: goalScorers[`${index}-team2`] || [],
-      })
-    );
+    const round2Results: MatchResult[] = matches.map((match, index): MatchResult => ({
+      ...match,
+      team1Goals: goalScorers[`${index}-team1`] || [],
+      team2Goals: goalScorers[`${index}-team2`] || [],
+    }));
 
     await handleSaveSession({
       date: new Date().toISOString(),
@@ -720,6 +693,7 @@ const App: React.FC = () => {
       round1Results: round1Results,
       round2Results: round2Results,
     });
+
     setActionInProgress(null);
   };
 
@@ -737,30 +711,25 @@ const App: React.FC = () => {
         team2Goals: goalScorers['0-team2'] || [],
       },
     ];
+
     await handleSaveSession({
       date: new Date().toISOString(),
       teams: teams,
       round1Results: results,
       round2Results: [],
     });
+
     setActionInProgress(null);
   };
 
   // —————————————————
   // Double header: tweede wedstrijd starten
   // —————————————————
-  const handleStartSecondDoubleHeaderMatch = async (
-    match1Result: MatchResult
-  ) => {
+  const handleStartSecondDoubleHeaderMatch = async (match1Result: MatchResult) => {
     setActionInProgress('generating');
     try {
       const allPlayers = teams.flat();
-      const regeneratedTeams = await generateTeams(
-        allPlayers,
-        2,
-        constraints,
-        teams
-      );
+      const regeneratedTeams = await generateTeams(allPlayers, 2, constraints, teams);
 
       if (!regeneratedTeams || regeneratedTeams.length === 0) {
         throw new Error('Kon geen unieke teamindeling genereren.');
@@ -789,6 +758,7 @@ const App: React.FC = () => {
       setActionInProgress(null);
       return;
     }
+
     await handleSaveSession({
       date: new Date().toISOString(),
       teams: originalTeams,
@@ -804,6 +774,7 @@ const App: React.FC = () => {
       round1Results: [match2Result],
       round2Results: [],
     });
+
     setActionInProgress(null);
   };
 
@@ -837,13 +808,8 @@ const App: React.FC = () => {
   const handleUpdatePlayer = async (updatedPlayer: Player) => {
     try {
       await updatePlayer(updatedPlayer);
-      setPlayers((prev) =>
-        prev.map((p) => (p.id === updatedPlayer.id ? updatedPlayer : p))
-      );
-      showNotification(
-        `${updatedPlayer.name} succesvol bijgewerkt!`,
-        'success'
-      );
+      setPlayers((prev) => prev.map((p) => (p.id === updatedPlayer.id ? updatedPlayer : p)));
+      showNotification(`${updatedPlayer.name} succesvol bijgewerkt!`, 'success');
     } catch (e: any) {
       showNotification(`Fout bij bijwerken: ${e.message}`, 'error');
     }
@@ -927,14 +893,9 @@ const App: React.FC = () => {
   };
 
   // —————————————————
-  // Handmatige invoer opslaan
+  // ✅ Handmatige invoer opslaan — NU MET round2Teams
   // —————————————————
-  const handleSaveManualEntry = async (data: {
-    date: string;
-    teams: Player[][];
-    round1Results: MatchResult[];
-    round2Results: MatchResult[];
-  }) => {
+  const handleSaveManualEntry = async (data: GameSession) => {
     if (!requireAdmin()) return; // 🔐
 
     setActionInProgress('savingManual');
@@ -977,9 +938,7 @@ const App: React.FC = () => {
         </div>
         <div className="lg:col-span-2">
           <div className="bg-gray-800 rounded-xl shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-white mb-4">
-              Start Wedstrijd
-            </h2>
+            <h2 className="text-2xl font-bold text-white mb-4">Start Wedstrijd</h2>
             <div className="flex items-center mb-4">
               <UsersIcon className="w-5 h-5 text-gray-400 mr-2" />
               <span className="text-lg font-semibold text-white">
@@ -992,33 +951,32 @@ const App: React.FC = () => {
               <button
                 onClick={() => handleGenerateTeams('simple')}
                 disabled={
-                  actionInProgress === 'generating' ||
-                  attendingPlayers.length < 2
+                  actionInProgress === 'generating' || attendingPlayers.length < 2
                 }
                 className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
               >
                 1 Wedstrijd
               </button>
+
               <button
                 onClick={() => handleGenerateTeams('tournament')}
-                disabled=
-                  {actionInProgress === 'generating' ||
-                  attendingPlayers.length < 4}
+                disabled={actionInProgress === 'generating' || attendingPlayers.length < 4}
                 className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors	duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
               >
                 Toernooi
               </button>
+
               <button
                 onClick={() => handleGenerateTeams('doubleHeader')}
                 disabled={
-                  actionInProgress === 'generating' ||
-                  attendingPlayers.length < 2
+                  actionInProgress === 'generating' || attendingPlayers.length < 2
                 }
                 className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-lg transition-colors	duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
               >
                 2 Wedstrijden
               </button>
             </div>
+
             <p className="text-xs text-gray-500 mt-3 text-center">
               Klik voor 1x50min op 1 wedstrijd. Voor 8-10 spelers klik op 2
               wedstrijden. Voor 16-30 spelers klik op toernooi.
@@ -1086,17 +1044,13 @@ const App: React.FC = () => {
           <LoginScreen onLogin={handleLogin} />
         );
       case 'history':
-        // 👇 Geschiedenis is altijd zichtbaar,
-        // maar HistoryView krijgt te horen of je beheerder bent voor de delete-knop
         return (
           <HistoryView
             history={activeHistory}
             players={players}
             isAuthenticated={isManagementAuthenticated}
             onDeleteSession={(date) =>
-              alert(
-                'De verwijder-functie is nog niet ingesteld in de backend.'
-              )
+              alert('De verwijder-functie is nog niet ingesteld in de backend.')
             }
           />
         );
@@ -1146,10 +1100,7 @@ const App: React.FC = () => {
               );
             }}
             onRefresh={() => {
-              showNotification(
-                'Gegevens worden opnieuw geladen...',
-                'success'
-              );
+              showNotification('Gegevens worden opnieuw geladen...', 'success');
               fetchData();
               setCurrentView('main');
             }}
@@ -1219,9 +1170,7 @@ const App: React.FC = () => {
             alt="Laden..."
             className="w-32 h-auto mx-auto mb-6 animate-bounce"
           />
-          <p className="text-xl font-semibold animate-pulse">
-            Gegevens laden...
-          </p>
+          <p className="text-xl font-semibold animate-pulse">Gegevens laden...</p>
         </div>
       </div>
     );
@@ -1268,7 +1217,6 @@ const App: React.FC = () => {
         {/* --- NAVIGATIE: 2 x 4 GRID (RAINBOW COLORS) --- */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-8 shadow-xl border border-gray-700/50">
           <div className="grid grid-cols-4 gap-x-6 gap-y-6 justify-items-center">
-            {/* Rood */}
             <NavItem
               view="main"
               label="Wedstrijd"
@@ -1276,7 +1224,6 @@ const App: React.FC = () => {
               colorClass="bg-gradient-to-br from-red-400 to-red-700"
             />
 
-            {/* Oranje */}
             <NavItem
               view="rules"
               label="Regels"
@@ -1284,7 +1231,6 @@ const App: React.FC = () => {
               colorClass="bg-gradient-to-br from-orange-300 to-orange-700"
             />
 
-            {/* Geel */}
             <NavItem
               view="stats"
               label="Statistieken"
@@ -1293,7 +1239,6 @@ const App: React.FC = () => {
               colorClass="bg-gradient-to-br from-yellow-300 to-yellow-600"
             />
 
-            {/* Groen – NIET meer protected */}
             <NavItem
               view="history"
               label="Geschiedenis"
@@ -1301,7 +1246,6 @@ const App: React.FC = () => {
               colorClass="bg-gradient-to-br from-green-300 to-green-700"
             />
 
-            {/* Blauw */}
             <NavItem
               view="trophyRoom"
               label="Prijzen"
@@ -1309,7 +1253,6 @@ const App: React.FC = () => {
               colorClass="bg-gradient-to-br from-blue-300 to-blue-700"
             />
 
-            {/* Indigo */}
             <NavItem
               view="manualEntry"
               label="Invoer"
@@ -1317,7 +1260,6 @@ const App: React.FC = () => {
               colorClass="bg-gradient-to-br from-indigo-300 to-indigo-700"
             />
 
-            {/* Violet */}
             <NavItem
               view="playerManagement"
               label="Spelers"
@@ -1326,7 +1268,6 @@ const App: React.FC = () => {
               colorClass="bg-gradient-to-br from-purple-300 to-purple-700"
             />
 
-            {/* Roze */}
             <NavItem
               view="competitionManagement"
               label="Beheer"
