@@ -133,33 +133,6 @@ const UnmatchedChip = ({ name }: { name: string }) => (
   <div className="bg-red-800/50 text-red-200 px-2 py-1 rounded">{name}</div>
 );
 
-const TeamRosterCard: React.FC<{
-  title: string;
-  players: Player[];
-  accentClass: string;
-}> = ({ title, players, accentClass }) => (
-  <div className="bg-gray-800/70 border border-gray-700 rounded-lg p-3">
-    <div className="flex items-center justify-between mb-2">
-      <span className={`font-bold text-sm ${accentClass}`}>{title}</span>
-      <span className="text-[11px] text-gray-400">{players.length} spelers</span>
-    </div>
-    {players.length === 0 ? (
-      <p className="text-xs text-gray-500">Geen spelers</p>
-    ) : (
-      <ul className="space-y-1 max-h-40 overflow-y-auto pr-1">
-        {players.map((p) => (
-          <li
-            key={p.id}
-            className="text-xs text-gray-200 border-b border-gray-700/50 pb-1 last:border-0 last:pb-0"
-          >
-            {p.name}
-          </li>
-        ))}
-      </ul>
-    )}
-  </div>
-);
-
 // =====================================
 // MATCH INPUT (RONDE UITSLAGEN)
 // =====================================
@@ -275,8 +248,8 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
   const [round2Pairings, setRound2Pairings] = useState<Match[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ voorkomt dat autosave meteen weer een (lege) draft schrijft na restore/cancel
-  const blockAutosaveRef = useRef<boolean>(true);
+  // voorkomt dat direct na restore meteen weer een lege/halflege draft wordt weggeschreven
+  const blockAutosaveRef = useRef(false);
 
   // ===== PLAYER MAP =====
   const playerMap = useMemo(() => {
@@ -321,46 +294,50 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     [numMatches, playerMap]
   );
 
-  const parsedR1 = useMemo(
-    () => parseTeamText(teamTextR1),
-    [teamTextR1, parseTeamText]
-  );
-  const parsedR2 = useMemo(
-    () => parseTeamText(teamTextR2),
-    [teamTextR2, parseTeamText]
-  );
+  const parsedR1 = useMemo(() => parseTeamText(teamTextR1), [teamTextR1, parseTeamText]);
+  const parsedR2 = useMemo(() => parseTeamText(teamTextR2), [teamTextR2, parseTeamText]);
 
-  // ✅ “dirty” check: alleen draft opslaan als er écht iets is ingevuld
-  const isDraftDirty = useMemo(() => {
+  // ===== labels voor dropdown (Team + volledige namenlijst) =====
+  const getTeamOptionLabel = useCallback((teams: Player[][], idx: number) => {
+    const roster = (teams[idx] || []).map((p) => p.name).join(', ');
+    // Volledige lijst gevraagd → geen truncatie
+    return `Team ${idx + 1}${roster ? ` — ${roster}` : ''}`;
+  }, []);
+
+  // ===== check of draft “echt” iets bevat =====
+  const draftHasMeaningfulContent = useCallback((d: any) => {
+    const t1: string[] = Array.isArray(d?.teamTextR1) ? d.teamTextR1 : [];
+    const t2: string[] = Array.isArray(d?.teamTextR2) ? d.teamTextR2 : [];
     const nonEmptyTeamText =
-      teamTextR1.some((t) => t.trim().length > 0) ||
-      teamTextR2.some((t) => t.trim().length > 0);
+      t1.some((t) => String(t).trim().length > 0) ||
+      t2.some((t) => String(t).trim().length > 0);
 
-    const anyGoals = Object.values(goalScorers).some(
-      (arr) => (arr || []).reduce((s, g) => s + (g.count || 0), 0) > 0
-    );
+    const anyGoals =
+      d?.goalScorers &&
+      typeof d.goalScorers === 'object' &&
+      Object.values(d.goalScorers).some((arr: any) =>
+        Array.isArray(arr) && arr.some((g) => (g?.count || 0) > 0)
+      );
+
+    const roundVal = Number(d?.round ?? 0);
+    const numMatchesVal = Number(d?.numMatches ?? 1);
+    const round2ModeVal = d?.round2Mode || 'auto';
+
+    const hasTeams = Array.isArray(d?.round1Teams) && d.round1Teams.length > 0;
+    const hasR1Results = Array.isArray(d?.round1Results) && d.round1Results.length > 0;
+    const hasR2Pairings = Array.isArray(d?.round2Pairings) && d.round2Pairings.length > 0;
 
     return (
       nonEmptyTeamText ||
-      round !== 0 ||
-      numMatches !== 1 ||
-      round2Mode !== 'auto' ||
-      !!round1Teams ||
-      round1Results.length > 0 ||
-      round2Pairings.length > 0 ||
-      anyGoals
+      anyGoals ||
+      roundVal !== 0 ||
+      numMatchesVal !== 1 ||
+      round2ModeVal !== 'auto' ||
+      hasTeams ||
+      hasR1Results ||
+      hasR2Pairings
     );
-  }, [
-    teamTextR1,
-    teamTextR2,
-    goalScorers,
-    round,
-    numMatches,
-    round2Mode,
-    round1Teams,
-    round1Results,
-    round2Pairings,
-  ]);
+  }, []);
 
   // ===== VALIDATIE R1 / R2 =====
   const validateRound1 = () => {
@@ -369,8 +346,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     for (let i = 0; i < numMatches * 2; i++) {
       const team = parsedR1.teams[i];
 
-      if (team.length === 0)
-        return 'Alle teams moeten minimaal één speler hebben.';
+      if (team.length === 0) return 'Alle teams moeten minimaal één speler hebben.';
 
       for (const p of team) {
         if (used.has(p.id)) return `Speler ${p.name} staat in meerdere teams.`;
@@ -489,6 +465,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
       return;
     }
 
+    // ==== AUTO MODE ====
     const stats = Array.from({ length: numMatches * 2 }, (_, t) => ({
       teamIndex: t,
       points: 0,
@@ -568,12 +545,6 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     if (typeof window !== 'undefined') {
       localStorage.removeItem(UNSAVED_MANUAL_KEY);
     }
-
-    // ✅ na reset niet meteen weer opslaan
-    blockAutosaveRef.current = true;
-    setTimeout(() => {
-      blockAutosaveRef.current = false;
-    }, 0);
   };
 
   const saveTournament = () => {
@@ -595,6 +566,10 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
       round2Teams,
     });
 
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(UNSAVED_MANUAL_KEY);
+    }
+
     resetFormToInitial();
   };
 
@@ -605,7 +580,6 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // tijdens eerste mount blokkeren, en pas daarna openzetten
     blockAutosaveRef.current = true;
 
     const stored = localStorage.getItem(UNSAVED_MANUAL_KEY);
@@ -616,6 +590,14 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
 
     try {
       const parsed = JSON.parse(stored);
+
+      // ✅ als draft eigenlijk leeg is → weggooien, géén popup
+      if (!draftHasMeaningfulContent(parsed)) {
+        localStorage.removeItem(UNSAVED_MANUAL_KEY);
+        blockAutosaveRef.current = false;
+        return;
+      }
+
       const confirmRestore = window.confirm(
         'Er is een opgeslagen handmatige invoer gevonden.\n\nWil je hiermee verder gaan?\n\nKlik op "Annuleren" om de opgeslagen invoer te verwijderen.'
       );
@@ -637,7 +619,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
       setRound1Results(parsed.round1Results || []);
       setRound2Pairings(parsed.round2Pairings || []);
 
-      // na restore weer toestaan (volgende tick)
+      // na de state updates pas autosave weer aanzetten
       setTimeout(() => {
         blockAutosaveRef.current = false;
       }, 0);
@@ -646,17 +628,12 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
       localStorage.removeItem(UNSAVED_MANUAL_KEY);
       blockAutosaveRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (blockAutosaveRef.current) return;
-
-    // ✅ Alleen opslaan als er echt iets is ingevuld
-    if (!isDraftDirty) {
-      localStorage.removeItem(UNSAVED_MANUAL_KEY);
-      return;
-    }
 
     const draft = {
       date,
@@ -672,6 +649,11 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     };
 
     try {
+      // ✅ Als er niks betekenisvols is, niet opslaan en key verwijderen
+      if (!draftHasMeaningfulContent(draft)) {
+        localStorage.removeItem(UNSAVED_MANUAL_KEY);
+        return;
+      }
       localStorage.setItem(UNSAVED_MANUAL_KEY, JSON.stringify(draft));
     } catch (err) {
       console.error('Fout bij opslaan concept handmatige invoer', err);
@@ -687,7 +669,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     goalScorers,
     round1Results,
     round2Pairings,
-    isDraftDirty,
+    draftHasMeaningfulContent,
   ]);
 
   // =====================================
@@ -735,6 +717,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
               </div>
             </div>
 
+            {/* Ronde 2 modus keuze */}
             <div className="md:col-span-2 bg-gray-900/70 rounded p-3 space-y-2 text-sm text-gray-200">
               <p className="font-semibold mb-1">Ronde 2 opties:</p>
               <label className="flex items-center space-x-2">
@@ -765,12 +748,10 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
           </div>
         )}
 
+        {/* TEAM INPUT */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {Array.from({ length: numMatches }).map((_, m) => (
-            <div
-              key={m}
-              className="grid grid-cols-2 gap-4 bg-gray-900 p-4 rounded"
-            >
+            <div key={m} className="grid grid-cols-2 gap-4 bg-gray-900 p-4 rounded">
               {[0, 1].map((side) => {
                 const idx = m * 2 + side;
 
@@ -822,21 +803,17 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     );
   };
 
+  // Stap tussen Ronde 1 en 2 als modus = handmatige koppeling
   const renderPairingsSetup = () => {
     const teams = round1Teams || parsedR1.teams;
     const totalTeams = teams.length;
 
-    const getTeamPlayersSafe = (teamIndex: number) => teams[teamIndex] || [];
-
     return (
       <>
-        <h3 className="text-white text-2xl font-bold mb-4">
-          Kies wedstrijden voor Ronde 2
-        </h3>
+        <h3 className="text-white text-2xl font-bold mb-4">Kies wedstrijden voor Ronde 2</h3>
         <p className="text-gray-300 text-sm mb-4">
-          De teams blijven hetzelfde als in ronde 1. Kies hieronder welke teams
-          tegen elkaar spelen in ronde 2. Elk team mag maar in één wedstrijd
-          voorkomen.
+          De teams blijven hetzelfde als in ronde 1. Kies hieronder welke teams tegen elkaar spelen in ronde 2.
+          Elk team mag maar in één wedstrijd voorkomen.
         </p>
 
         <div className="space-y-4">
@@ -846,10 +823,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
               team2Index: i * 2 + 1,
             };
 
-            const handleChange = (
-              side: 'team1Index' | 'team2Index',
-              value: number
-            ) => {
+            const handleChange = (side: 'team1Index' | 'team2Index', value: number) => {
               setRound2Pairings((prev) => {
                 const arr = [...prev];
                 const existing = arr[i] || { team1Index: 0, team2Index: 1 };
@@ -858,60 +832,39 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
               });
             };
 
-            const leftPlayers = getTeamPlayersSafe(pairing.team1Index);
-            const rightPlayers = getTeamPlayersSafe(pairing.team2Index);
-
             return (
-              <div key={i} className="bg-gray-900 rounded-lg p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <span className="text-gray-200 font-semibold">
-                    Wedstrijd {i + 1}
-                  </span>
+              <div
+                key={i}
+                className="bg-gray-900 rounded-lg p-4 flex flex-col gap-3"
+              >
+                <span className="text-gray-200 font-semibold">Wedstrijd {i + 1}</span>
 
-                  <div className="flex items-center gap-2">
-                    <select
-                      className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1"
-                      value={pairing.team1Index}
-                      onChange={(e) =>
-                        handleChange('team1Index', Number(e.target.value))
-                      }
-                    >
-                      {Array.from({ length: totalTeams }).map((_, t) => (
-                        <option key={t} value={t}>
-                          Team {t + 1}
-                        </option>
-                      ))}
-                    </select>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <select
+                    className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-2 w-full"
+                    value={pairing.team1Index}
+                    onChange={(e) => handleChange('team1Index', Number(e.target.value))}
+                  >
+                    {Array.from({ length: totalTeams }).map((_, t) => (
+                      <option key={t} value={t}>
+                        {getTeamOptionLabel(teams, t)}
+                      </option>
+                    ))}
+                  </select>
 
-                    <span className="text-gray-300 font-bold">vs</span>
+                  <span className="text-gray-300 font-bold text-center px-2">vs</span>
 
-                    <select
-                      className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1"
-                      value={pairing.team2Index}
-                      onChange={(e) =>
-                        handleChange('team2Index', Number(e.target.value))
-                      }
-                    >
-                      {Array.from({ length: totalTeams }).map((_, t) => (
-                        <option key={t} value={t}>
-                          Team {t + 1}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <TeamRosterCard
-                    title={`Team ${pairing.team1Index + 1}`}
-                    players={leftPlayers}
-                    accentClass="text-cyan-300"
-                  />
-                  <TeamRosterCard
-                    title={`Team ${pairing.team2Index + 1}`}
-                    players={rightPlayers}
-                    accentClass="text-amber-300"
-                  />
+                  <select
+                    className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-2 w-full"
+                    value={pairing.team2Index}
+                    onChange={(e) => handleChange('team2Index', Number(e.target.value))}
+                  >
+                    {Array.from({ length: totalTeams }).map((_, t) => (
+                      <option key={t} value={t}>
+                        {getTeamOptionLabel(teams, t)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             );
@@ -930,8 +883,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
 
   const renderRound = (r: 1 | 2) => {
     const final = r === 2;
-    const teams =
-      final && round2Mode === 'new_teams' ? parsedR2.teams : round1Teams || [];
+    const teams = final && round2Mode === 'new_teams' ? parsedR2.teams : round1Teams || [];
 
     const matches = final
       ? round2Pairings
@@ -944,9 +896,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
       <>
         {final && (
           <div>
-            <h3 className="text-gray-400 text-xl font-bold mb-4">
-              Resultaten Ronde 1
-            </h3>
+            <h3 className="text-gray-400 text-xl font-bold mb-4">Resultaten Ronde 1</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {round1Results.map((res, i) => {
                 const score1 = res.team1Goals.reduce((s, g) => s + g.count, 0);
@@ -972,15 +922,11 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
                     key={i}
                     className="bg-gray-700 rounded-lg px-4 py-3 flex items-center justify-between"
                   >
-                    <span className="text-cyan-300 font-semibold">
-                      Team {leftIdx + 1}
-                    </span>
+                    <span className="text-cyan-300 font-semibold">Team {leftIdx + 1}</span>
                     <span className="text-2xl font-bold text-white">
                       {leftScore} - {rightScore}
                     </span>
-                    <span className="text-amber-300 font-semibold">
-                      Team {rightIdx + 1}
-                    </span>
+                    <span className="text-amber-300 font-semibold">Team {rightIdx + 1}</span>
                   </div>
                 );
               })}
@@ -988,9 +934,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
           </div>
         )}
 
-        <h3 className="text-white text-xl font-bold mt-8 mb-4">
-          Uitslagen Ronde {r}
-        </h3>
+        <h3 className="text-white text-xl font-bold mt-8 mb-4">Uitslagen Ronde {r}</h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {matches.map((m, i) => (
@@ -1034,9 +978,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     <div className="bg-gray-800 rounded-xl shadow-lg p-6 text-white">
       <div className="flex items-center mb-6">
         <EditIcon className="w-8 h-8 text-green-500" />
-        <h2 className="ml-3 text-3xl font-bold text-white">
-          Handmatige Invoer
-        </h2>
+        <h2 className="ml-3 text-3xl font-bold text-white">Handmatige Invoer</h2>
       </div>
 
       {error && (
