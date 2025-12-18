@@ -1013,4 +1013,3 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
 };
 
 export default ManualEntry;
-```0
