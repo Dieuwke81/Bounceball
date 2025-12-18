@@ -1,3 +1,4 @@
+
 /**  MANUAL ENTRY - 3 MODES RONDE 2 (AUTO / HANDMATIG PAREN / NIEUWE TEAMS) + LOCALSTORAGE  */
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Player, Goal, Match, MatchResult } from '../types';
@@ -137,6 +138,34 @@ const PlayerChip = ({ player }: { player: Player }) => (
 
 const UnmatchedChip = ({ name }: { name: string }) => (
   <div className="bg-red-800/50 text-red-200 px-2 py-1 rounded">{name}</div>
+);
+
+// Kleine helper voor teamlijstje in pairing view
+const TeamRosterCard: React.FC<{
+  title: string;
+  players: Player[];
+  accentClass: string; // text / border accent
+}> = ({ title, players, accentClass }) => (
+  <div className={`bg-gray-800/70 border border-gray-700 rounded-lg p-3`}>
+    <div className="flex items-center justify-between mb-2">
+      <span className={`font-bold text-sm ${accentClass}`}>{title}</span>
+      <span className="text-[11px] text-gray-400">{players.length} spelers</span>
+    </div>
+    {players.length === 0 ? (
+      <p className="text-xs text-gray-500">Geen spelers</p>
+    ) : (
+      <ul className="space-y-1 max-h-40 overflow-y-auto pr-1">
+        {players.map((p) => (
+          <li
+            key={p.id}
+            className="text-xs text-gray-200 border-b border-gray-700/50 pb-1 last:border-0 last:pb-0"
+          >
+            {p.name}
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
 );
 
 // =====================================
@@ -525,8 +554,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
 
     // Belangrijk: als er volledig nieuwe teams voor ronde 2 zijn,
     // geef die dan mee zodat de geschiedenis weet welke spelers erbij horen.
-    const round2Teams =
-      round2Mode === 'new_teams' ? parsedR2.teams : undefined;
+    const round2Teams = round2Mode === 'new_teams' ? parsedR2.teams : undefined;
 
     onSave({
       date: new Date(date).toISOString(),
@@ -623,9 +651,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     return (
       <>
         <h3 className="text-white text-2xl font-bold mb-6">
-          {isR1
-            ? 'Stel Teams voor Ronde 1 Samen'
-            : 'Stel Teams voor Ronde 2 Samen'}
+          {isR1 ? 'Stel Teams voor Ronde 1 Samen' : 'Stel Teams voor Ronde 2 Samen'}
         </h3>
 
         {isR1 && (
@@ -675,10 +701,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
                   checked={round2Mode === 'manual_pairs'}
                   onChange={() => setRound2Mode('manual_pairs')}
                 />
-                <span>
-                  Teams blijven hetzelfde, ik kies welke teams tegen elkaar
-                  spelen
-                </span>
+                <span>Teams blijven hetzelfde, ik kies welke teams tegen elkaar spelen</span>
               </label>
               <label className="flex items-center space-x-2">
                 <input
@@ -751,9 +774,12 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
   };
 
   // Stap tussen Ronde 1 en 2 als modus = handmatige koppeling
+  // ✅ AANGEPAST: toont nu volledige spelerslijsten van de gekozen teams (ipv alleen Team X)
   const renderPairingsSetup = () => {
     const teams = round1Teams || parsedR1.teams;
     const totalTeams = teams.length;
+
+    const getTeamPlayersSafe = (teamIndex: number) => teams[teamIndex] || [];
 
     return (
       <>
@@ -761,8 +787,9 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
           Kies wedstrijden voor Ronde 2
         </h3>
         <p className="text-gray-300 text-sm mb-4">
-          De teams blijven hetzelfde als in ronde 1. Kies hieronder welke teams tegen
-          elkaar spelen in ronde 2. Elk team mag maar in één wedstrijd voorkomen.
+          De teams blijven hetzelfde als in ronde 1. Kies hieronder welke teams
+          tegen elkaar spelen in ronde 2. Elk team mag maar in één wedstrijd
+          voorkomen.
         </p>
 
         <div className="space-y-4">
@@ -784,42 +811,61 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
               });
             };
 
+            const leftPlayers = getTeamPlayersSafe(pairing.team1Index);
+            const rightPlayers = getTeamPlayersSafe(pairing.team2Index);
+
             return (
-              <div
-                key={i}
-                className="bg-gray-900 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-              >
-                <span className="text-gray-200 font-semibold">
-                  Wedstrijd {i + 1}
-                </span>
-                <div className="flex items-center gap-2">
-                  <select
-                    className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1"
-                    value={pairing.team1Index}
-                    onChange={(e) =>
-                      handleChange('team1Index', Number(e.target.value))
-                    }
-                  >
-                    {Array.from({ length: totalTeams }).map((_, t) => (
-                      <option key={t} value={t}>
-                        Team {t + 1}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-gray-300 font-bold">vs</span>
-                  <select
-                    className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1"
-                    value={pairing.team2Index}
-                    onChange={(e) =>
-                      handleChange('team2Index', Number(e.target.value))
-                    }
-                  >
-                    {Array.from({ length: totalTeams }).map((_, t) => (
-                      <option key={t} value={t}>
-                        Team {t + 1}
-                      </option>
-                    ))}
-                  </select>
+              <div key={i} className="bg-gray-900 rounded-lg p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <span className="text-gray-200 font-semibold">
+                    Wedstrijd {i + 1}
+                  </span>
+
+                  <div className="flex items-center gap-2">
+                    <select
+                      className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1"
+                      value={pairing.team1Index}
+                      onChange={(e) =>
+                        handleChange('team1Index', Number(e.target.value))
+                      }
+                    >
+                      {Array.from({ length: totalTeams }).map((_, t) => (
+                        <option key={t} value={t}>
+                          Team {t + 1}
+                        </option>
+                      ))}
+                    </select>
+
+                    <span className="text-gray-300 font-bold">vs</span>
+
+                    <select
+                      className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1"
+                      value={pairing.team2Index}
+                      onChange={(e) =>
+                        handleChange('team2Index', Number(e.target.value))
+                      }
+                    >
+                      {Array.from({ length: totalTeams }).map((_, t) => (
+                        <option key={t} value={t}>
+                          Team {t + 1}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* ✅ Volledige namenlijst van beide teams */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <TeamRosterCard
+                    title={`Team ${pairing.team1Index + 1}`}
+                    players={leftPlayers}
+                    accentClass="text-cyan-300"
+                  />
+                  <TeamRosterCard
+                    title={`Team ${pairing.team2Index + 1}`}
+                    players={rightPlayers}
+                    accentClass="text-amber-300"
+                  />
                 </div>
               </div>
             );
@@ -839,9 +885,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
   const renderRound = (r: 1 | 2) => {
     const final = r === 2;
     const teams =
-      final && round2Mode === 'new_teams'
-        ? parsedR2.teams
-        : round1Teams || [];
+      final && round2Mode === 'new_teams' ? parsedR2.teams : round1Teams || [];
 
     const matches = final
       ? round2Pairings
@@ -859,14 +903,8 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {round1Results.map((res, i) => {
-                const score1 = res.team1Goals.reduce(
-                  (s, g) => s + g.count,
-                  0
-                );
-                const score2 = res.team2Goals.reduce(
-                  (s, g) => s + g.count,
-                  0
-                );
+                const score1 = res.team1Goals.reduce((s, g) => s + g.count, 0);
+                const score2 = res.team2Goals.reduce((s, g) => s + g.count, 0);
 
                 const color1 = getBaseColor(res.team1Index);
                 const color2 = getBaseColor(res.team2Index);
@@ -975,3 +1013,4 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
 };
 
 export default ManualEntry;
+```0
