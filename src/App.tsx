@@ -1260,9 +1260,9 @@ const App: React.FC = () => {
             {/* ✅ tweede toggle (anoniem) */}
             <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
               <div className="text-sm">
-                <div className="font-semibold text-gray-100">Top 6 (op punten) zoveel mogelijk spreiden</div>
+                <div className="font-semibold text-gray-100">Top 6 zoveel mogelijk spreiden</div>
                 <div className="text-xs text-gray-400">
-                  Zonder namen; balans blijft belangrijker.
+                  Balans blijft belangrijker.
                 </div>
               </div>
               <input
