@@ -423,11 +423,11 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard title="Gespeeld" value={stats.gamesPlayed} />
-        <StatCard
-          title="Gewonnen"
-          value={`${Math.round((stats.wins / (stats.gamesPlayed || 1)) * 100)}%`}
-          subtext={`${stats.wins} van ${stats.gamesPlayed}`}
-        />
+       <StatCard
+  title="Resultaten"
+  value={`${stats.wins}W • ${stats.draws}G • ${stats.losses}V`}
+  subtext={`van ${stats.gamesPlayed}`}
+/>
         <StatCard
           title="Goals"
           value={stats.goalsScored}
