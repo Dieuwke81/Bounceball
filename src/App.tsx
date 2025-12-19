@@ -1246,7 +1246,7 @@ const App: React.FC = () => {
               <div className="text-sm">
                 <div className="font-semibold text-gray-100">Haal vaak-samen spelers uit elkaar</div>
                 <div className="text-xs text-gray-400">
-                  Balans blijft leidend (alleen “soft” optimalisatie).
+                  Balans blijft belangrijker.
                 </div>
               </div>
               <input
