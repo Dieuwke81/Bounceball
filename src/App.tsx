@@ -1,6 +1,6 @@
 
 // App.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type {
   Player,
   Match,
@@ -68,6 +68,145 @@ type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 const ADMIN_PASSWORD = 'kemmer';
 const UNSAVED_GAME_KEY = 'bounceball_unsaved_game';
 
+// ✅ nieuw: toggle bewaren
+const AVOID_PAIRS_KEY = 'bounceball_avoid_frequent_pairs';
+
+// ======================================================
+// Helpers: “vaak samen gespeeld” (ALLEEN SEIZOEN)
+// ======================================================
+const makePairKey = (a: number, b: number) => {
+  const x = Math.min(a, b);
+  const y = Math.max(a, b);
+  return `${x}-${y}`;
+};
+
+const computeSeasonPairCounts = (seasonHistory: GameSession[]) => {
+  const counts = new Map<string, number>();
+
+  const addTeamPairs = (team: Player[]) => {
+    for (let i = 0; i < team.length; i++) {
+      for (let j = i + 1; j < team.length; j++) {
+        const key = makePairKey(team[i].id, team[j].id);
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+  };
+
+  seasonHistory.forEach((session) => {
+    // ronde 1 teams
+    session.teams?.forEach(addTeamPairs);
+
+    // ronde 2 teams (als er aparte teams zijn, anders zelfde teams nogmaals tellen is ok)
+    const r2Teams = session.round2Teams ?? session.teams;
+    r2Teams?.forEach(addTeamPairs);
+  });
+
+  return counts;
+};
+
+const teamAverage = (team: Player[]) =>
+  team.length === 0 ? 0 : team.reduce((s, p) => s + p.rating, 0) / team.length;
+
+const compositionSpread = (teams: Player[][]) => {
+  if (teams.length < 2) return 0;
+  const avgs = teams.map(teamAverage);
+  return Math.max(...avgs) - Math.min(...avgs);
+};
+
+const keeperDistributionOk = (teams: Player[][]) => {
+  const keeperCounts = teams.map((t) => t.filter((p) => p.isKeeper).length);
+  const maxK = Math.max(...keeperCounts);
+  const minK = Math.min(...keeperCounts);
+  return maxK - minK <= 1;
+};
+
+const teamPairPenalty = (teams: Player[][], pairCounts: Map<string, number>) => {
+  let penalty = 0;
+  for (const team of teams) {
+    for (let i = 0; i < team.length; i++) {
+      for (let j = i + 1; j < team.length; j++) {
+        const key = makePairKey(team[i].id, team[j].id);
+        const c = pairCounts.get(key) || 0;
+        // zwaarder straffen bij “heel vaak samen”
+        penalty += c * c;
+      }
+    }
+  }
+  return penalty;
+};
+
+/**
+ * ✅ “Optie 2” in App.tsx:
+ * - Eerst balans (spread) behouden
+ * - Daarna, binnen een kleine spread-tolerantie, duo’s die vaak samen zijn uit elkaar halen
+ */
+const improveTeamsBySeparatingPairs = (
+  baseTeams: Player[][],
+  pairCounts: Map<string, number>,
+  options?: {
+    maxIterations?: number;
+    spreadTolerance?: number; // hoeveel slechter dan “beste spread” mag nog net
+  }
+) => {
+  const maxIterations = options?.maxIterations ?? 25000;
+  const spreadTolerance = options?.spreadTolerance ?? 0.02;
+
+  const cloneTeams = (teams: Player[][]) => teams.map((t) => [...t]);
+
+  const baseSpread = compositionSpread(baseTeams);
+  const allowedSpread = baseSpread + spreadTolerance;
+
+  let bestTeams = cloneTeams(baseTeams);
+  let bestPenalty = teamPairPenalty(bestTeams, pairCounts);
+
+  // kleine optimalisatie: als er geen (relevante) pairCounts zijn, skip
+  if (bestPenalty === 0) return bestTeams;
+
+  // Random-ish search: swaps tussen teams
+  for (let it = 0; it < maxIterations; it++) {
+    const teams = cloneTeams(bestTeams);
+
+    // kies 2 verschillende teams
+    const a = Math.floor(Math.random() * teams.length);
+    let b = Math.floor(Math.random() * teams.length);
+    if (teams.length > 1) {
+      while (b === a) b = Math.floor(Math.random() * teams.length);
+    }
+
+    if (!teams[a].length || !teams[b].length) continue;
+
+    // kies speler in team a en team b
+    const ia = Math.floor(Math.random() * teams[a].length);
+    const ib = Math.floor(Math.random() * teams[b].length);
+
+    const pa = teams[a][ia];
+    const pb = teams[b][ib];
+
+    // swap
+    teams[a][ia] = pb;
+    teams[b][ib] = pa;
+
+    // keeper distributie behouden (zelfde rule als generator)
+    if (!keeperDistributionOk(teams)) continue;
+
+    // spread check (balans blijft belangrijker)
+    const sp = compositionSpread(teams);
+    if (sp > allowedSpread) continue;
+
+    // penalty check: alleen accepteren als beter
+    const pen = teamPairPenalty(teams, pairCounts);
+    if (pen < bestPenalty) {
+      bestPenalty = pen;
+      bestTeams = teams;
+
+      // early exit als het al “erg goed” is
+      if (bestPenalty === 0) break;
+    }
+  }
+
+  return bestTeams;
+};
+
 /**
  * ✅ FIX: ratings per ronde berekenen met juiste teams:
  * - ronde 1 -> session.teams
@@ -93,17 +232,21 @@ const calculateRatingDeltas = (
 
       if (team1Score > team2Score) {
         team1.forEach(
-          (p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) + ratingDelta)
+          (p) =>
+            (ratingChanges[p.id] = (ratingChanges[p.id] || 0) + ratingDelta)
         );
         team2.forEach(
-          (p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) - ratingDelta)
+          (p) =>
+            (ratingChanges[p.id] = (ratingChanges[p.id] || 0) - ratingDelta)
         );
       } else if (team2Score > team1Score) {
         team1.forEach(
-          (p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) - ratingDelta)
+          (p) =>
+            (ratingChanges[p.id] = (ratingChanges[p.id] || 0) - ratingDelta)
         );
         team2.forEach(
-          (p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) + ratingDelta)
+          (p) =>
+            (ratingChanges[p.id] = (ratingChanges[p.id] || 0) + ratingDelta)
         );
       }
     });
@@ -144,6 +287,25 @@ const App: React.FC = () => {
   const [isManagementAuthenticated, setIsManagementAuthenticated] =
     useState(false);
   const [competitionName, setCompetitionName] = useState<string | null>(null);
+
+  // ✅ nieuw: toggle state
+  const [avoidFrequentPairs, setAvoidFrequentPairs] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem(AVOID_PAIRS_KEY);
+      if (v === null) return true; // default AAN
+      return v === 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(AVOID_PAIRS_KEY, String(avoidFrequentPairs));
+    } catch {
+      // ignore
+    }
+  }, [avoidFrequentPairs]);
 
   // —————————————————
   // LocalStorage: on-change opslaan
@@ -410,7 +572,10 @@ const App: React.FC = () => {
       }
       showNotification(message, type);
     } else if (potentialNames.size > 0) {
-      showNotification('Alle spelers uit de lijst waren al aangemeld.', 'success');
+      showNotification(
+        'Alle spelers uit de lijst waren al aangemeld.',
+        'success'
+      );
     }
   };
 
@@ -432,6 +597,44 @@ const App: React.FC = () => {
   };
 
   const attendingPlayers = players.filter((p) => attendingPlayerIds.has(p.id));
+
+  // ✅ seizoen = actieve history (live of archief). Jij zei: alleen seizoen.
+  const activeHistory = viewingArchive || history;
+
+  // ✅ pairCounts voor seizoen (memo)
+  const seasonPairCounts = useMemo(() => {
+    return computeSeasonPairCounts(activeHistory || []);
+  }, [activeHistory]);
+
+  // ✅ toon “vaak samen gespeeld” alleen voor aanwezige spelers
+  const topAttendingPairs = useMemo(() => {
+    if (!attendingPlayers.length) return [];
+    const attendingSet = new Set(attendingPlayers.map((p) => p.id));
+    const idToName = new Map(players.map((p) => [p.id, p.name]));
+
+    const result: { aId: number; bId: number; count: number; label: string }[] =
+      [];
+
+    for (const [key, count] of seasonPairCounts.entries()) {
+      if (count <= 0) continue;
+      const [aStr, bStr] = key.split('-');
+      const a = Number(aStr);
+      const b = Number(bStr);
+      if (!attendingSet.has(a) || !attendingSet.has(b)) continue;
+
+      const aName = idToName.get(a) || `#${a}`;
+      const bName = idToName.get(b) || `#${b}`;
+      result.push({
+        aId: a,
+        bId: b,
+        count,
+        label: `${aName} + ${bName}`,
+      });
+    }
+
+    result.sort((x, y) => y.count - x.count);
+    return result.slice(0, 8);
+  }, [attendingPlayers, seasonPairCounts, players]);
 
   // —————————————————
   // Teams genereren
@@ -457,14 +660,32 @@ const App: React.FC = () => {
 
     setActionInProgress('generating');
     try {
+      // 1) eerst de “beste balans” van jouw generator
       const generated = await generateTeams(
         attendingPlayers,
         numberOfTeams,
         constraints
       );
-      setTeams(generated);
-      setOriginalTeams(JSON.parse(JSON.stringify(generated)));
+
+      // 2) daarna (optioneel) binnen kleine spread marge duo’s uit elkaar trekken
+      const finalTeams = avoidFrequentPairs
+        ? improveTeamsBySeparatingPairs(generated, seasonPairCounts, {
+            // bewust klein: balans blijft prioriteit
+            spreadTolerance: 0.02,
+            maxIterations: 25000,
+          })
+        : generated;
+
+      setTeams(finalTeams);
+      setOriginalTeams(JSON.parse(JSON.stringify(finalTeams)));
       setCurrentRound(1);
+
+      if (avoidFrequentPairs) {
+        showNotification(
+          'Teams gemaakt (balans eerst) + vaste duo’s zoveel mogelijk gespreid ✅',
+          'success'
+        );
+      }
     } catch (e: any) {
       showNotification(e.message, 'error');
       resetGameState();
@@ -659,12 +880,19 @@ const App: React.FC = () => {
         constraints
       );
 
+      const finalTeams = avoidFrequentPairs
+        ? improveTeamsBySeparatingPairs(regeneratedTeams, seasonPairCounts, {
+            spreadTolerance: 0.02,
+            maxIterations: 25000,
+          })
+        : regeneratedTeams;
+
       const newPairings: Match[] = [];
-      for (let i = 0; i < regeneratedTeams.length; i += 2) {
-        if (regeneratedTeams[i + 1]) newPairings.push({ team1Index: i, team2Index: i + 1 });
+      for (let i = 0; i < finalTeams.length; i += 2) {
+        if (finalTeams[i + 1]) newPairings.push({ team1Index: i, team2Index: i + 1 });
       }
 
-      setTeams(regeneratedTeams);
+      setTeams(finalTeams);
       setRound2Pairings(newPairings);
       setGoalScorers({});
     } catch (e: any) {
@@ -735,7 +963,14 @@ const App: React.FC = () => {
         throw new Error('Kon geen unieke teamindeling genereren.');
       }
 
-      setTeams2(regeneratedTeams);
+      const finalTeams = avoidFrequentPairs
+        ? improveTeamsBySeparatingPairs(regeneratedTeams, seasonPairCounts, {
+            spreadTolerance: 0.02,
+            maxIterations: 25000,
+          })
+        : regeneratedTeams;
+
+      setTeams2(finalTeams);
       setRound1Results([match1Result]);
       setGoalScorers({});
       setCurrentRound(2);
@@ -936,15 +1171,70 @@ const App: React.FC = () => {
             onRemoveConstraint={handleRemoveConstraint}
           />
         </div>
+
         <div className="lg:col-span-2">
           <div className="bg-gray-800 rounded-xl shadow-lg p-6">
             <h2 className="text-2xl font-bold text-white mb-4">Start Wedstrijd</h2>
+
             <div className="flex items-center mb-4">
               <UsersIcon className="w-5 h-5 text-gray-400 mr-2" />
               <span className="text-lg font-semibold text-white">
                 {attendingPlayers.length}
               </span>
               <span className="text-gray-400 ml-1">spelers aanwezig</span>
+            </div>
+
+            {/* ✅ TOGGLE: vaste duo’s spreiden */}
+            <div className="mb-4 bg-gray-900/60 border border-gray-700 rounded-lg p-3">
+              <label className="flex items-center justify-between gap-4 cursor-pointer">
+                <div>
+                  <p className="font-semibold text-white">
+                    Spreid spelers die vaak samen speelden
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Balans blijft belangrijker: alleen bij (bijna) gelijke teamgemiddelden.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setAvoidFrequentPairs((v) => !v)}
+                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition ${
+                    avoidFrequentPairs ? 'bg-green-600' : 'bg-gray-600'
+                  }`}
+                  aria-pressed={avoidFrequentPairs}
+                >
+                  <span
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white transition ${
+                      avoidFrequentPairs ? 'translate-x-7' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </label>
+
+              {/* ✅ zichtbaar maken: top duo’s (alleen seizoen, alleen aanwezigen) */}
+              {topAttendingPairs.length > 0 ? (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-gray-300 mb-2">
+                    Vaak samen gespeeld (aanwezigen):
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {topAttendingPairs.map((p) => (
+                      <span
+                        key={`${p.aId}-${p.bId}`}
+                        className="text-xs bg-gray-700 text-gray-200 px-2 py-1 rounded-full border border-gray-600"
+                        title="Aantal keer samen in hetzelfde team dit seizoen"
+                      >
+                        {p.label} <span className="text-gray-400">({p.count}x)</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-gray-500">
+                  Nog te weinig seizoen-data om vaste duo’s te herkennen.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1022,7 +1312,6 @@ const App: React.FC = () => {
   );
 
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId);
-  const activeHistory = viewingArchive || history;
 
   // —————————————————
   // Content router
