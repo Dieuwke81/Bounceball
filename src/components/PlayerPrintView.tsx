@@ -668,7 +668,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
           <div className="stat-box">
             <div className="stat-title">Resultaten</div>
-            <div className="stat-value" style={{ fontSize: 15 }}>
+            <div className="stat-value" style={{ fontSize: 16 }}>
               {stats.wins}-gewonnen • {stats.draws}-gelijk • {stats.losses}-verloren
             </div>
           </div>
