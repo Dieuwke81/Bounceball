@@ -1460,28 +1460,30 @@ setSeasonStartDate(seasonStartDate || '');
           />
         );
       case 'competitionManagement':
-        return isManagementAuthenticated ? (
-          <CompetitionManagement
-            currentHistory={history}
-            onViewArchive={(archive) => {
-              setViewingArchive(archive);
-              setCurrentView('stats');
-              showNotification(
-                `Archief geladen. Statistieken worden nu weergegeven voor dit archief. Ga naar 'Wedstrijd' om terug te keren.`,
-                'success'
-              );
-            }}
-            onRefresh={() => {
-              showNotification('Gegevens worden opnieuw geladen...', 'success');
-              fetchData();
-              setCurrentView('main');
-            }}
-            currentCompetitionName={competitionName}
-            onSetCompetitionName={handleSetCompetitionName}
-          />
-        ) : (
-          <LoginScreen onLogin={handleLogin} />
+  return isManagementAuthenticated ? (
+    <CompetitionManagement
+      currentHistory={history}
+      players={players}                 // ✅ TOEGEVOEGD
+      seasonStartDate={seasonStartDate} // ✅ TOEGEVOEGD
+      onViewArchive={(archive) => {
+        setViewingArchive(archive);
+        setCurrentView('stats');
+        showNotification(
+          `Archief geladen. Statistieken worden nu weergegeven voor dit archief. Ga naar 'Wedstrijd' om terug te keren.`,
+          'success'
         );
+      }}
+      onRefresh={() => {
+        showNotification('Gegevens worden opnieuw geladen...', 'success');
+        fetchData();
+        setCurrentView('main');
+      }}
+      currentCompetitionName={competitionName}
+      onSetCompetitionName={handleSetCompetitionName}
+    />
+  ) : (
+    <LoginScreen onLogin={handleLogin} />
+  );
       case 'trophyRoom':
         return (
           <TrophyRoom
