@@ -426,6 +426,7 @@ const App: React.FC = () => {
   const [viewingArchive, setViewingArchive] = useState<GameSession[] | null>(null);
   const [isManagementAuthenticated, setIsManagementAuthenticated] = useState(false);
   const [competitionName, setCompetitionName] = useState<string | null>(null);
+  const [seasonStartDate, setSeasonStartDate] = useState<string>('');
 
   // ✅ NEW: toggles
   const [separateFrequentTeammates, setSeparateFrequentTeammates] = useState<boolean>(false);
@@ -514,12 +515,15 @@ const App: React.FC = () => {
     setError(null);
     try {
       const {
-        players,
-        history,
-        competitionName: name,
-        ratingLogs: logs,
-        trophies: fetchedTrophies,
-      } = await getInitialData();
+  players,
+  history,
+  competitionName: name,
+  ratingLogs: logs,
+  trophies: fetchedTrophies,
+  seasonStartDate,
+} = await getInitialData();
+setSeasonStartDate(seasonStartDate || '');
+
 
       setPlayers(players);
       setHistory(history);
@@ -1434,14 +1438,16 @@ const App: React.FC = () => {
         );
       case 'playerDetail':
         return selectedPlayer ? (
-          <PlayerDetail
-            player={selectedPlayer}
-            history={activeHistory}
-            players={players}
-            ratingLogs={ratingLogs}
-            trophies={trophies}
-            onBack={() => setCurrentView('stats')}
-          />
+         <PlayerDetail
+  player={selectedPlayer}
+  history={activeHistory}
+  players={players}
+  ratingLogs={ratingLogs}
+  trophies={trophies}
+  seasonStartDate={seasonStartDate}
+  onBack={() => setCurrentView('stats')}
+/>
+
         ) : (
           <p>Speler niet gevonden.</p>
         );
