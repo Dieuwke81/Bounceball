@@ -25,8 +25,10 @@ interface PlayerDetailProps {
   players: Player[];
   ratingLogs: RatingLogEntry[];
   trophies: Trophy[];
+  seasonStartDate?: string; // ✅ nieuw
   onBack: () => void;
 }
+
 
 const StatCard: React.FC<{
   title: string;
@@ -75,6 +77,64 @@ const RelationshipList: React.FC<{
   </div>
 );
 
+const toMs = (d: string) => {
+  const ms = new Date(d).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+};
+
+const buildAllTimeFromLogs = (playerId: number, ratingLogs: RatingLogEntry[]) => {
+  return (ratingLogs || [])
+    .filter((l) => l.playerId === playerId)
+    .map((l) => ({ date: String(l.date), rating: Number(l.rating) }))
+    .filter((x) => Number.isFinite(toMs(x.date)) && Number.isFinite(x.rating))
+    .sort((a, b) => toMs(a.date) - toMs(b.date));
+};
+
+/**
+ * Season series:
+ * - filter logs >= seasonStartDate
+ * - add a "start point" on seasonStartDate based on last log BEFORE start
+ *   (or fallback to player.startRating / player.rating)
+ */
+const buildSeasonFromLogs = (params: {
+  player: Player;
+  ratingLogs: RatingLogEntry[];
+  seasonStartDate: string;
+}) => {
+  const { player, ratingLogs, seasonStartDate } = params;
+  const startMs = toMs(seasonStartDate);
+  if (!startMs) return [];
+
+  const all = buildAllTimeFromLogs(player.id, ratingLogs);
+
+  // last log BEFORE season start
+  const before = [...all].filter((p) => toMs(p.date) < startMs);
+  const lastBefore = before.length ? before[before.length - 1].rating : undefined;
+
+  const startRatingValue =
+    lastBefore ?? player.startRating ?? player.rating ?? 1;
+
+  // logs FROM season start
+  const season = all.filter((p) => toMs(p.date) >= startMs);
+
+  const out = [
+    { date: seasonStartDate, rating: Number(Number(startRatingValue).toFixed(2)) },
+    ...season,
+  ];
+
+  // voorkom dubbele punt als er al exact op dezelfde datum een log staat
+  const deduped: { date: string; rating: number }[] = [];
+  const seen = new Set<number>();
+  for (const p of out) {
+    const ms = toMs(p.date);
+    if (!ms || seen.has(ms)) continue;
+    seen.add(ms);
+    deduped.push(p);
+  }
+
+  return deduped.sort((a, b) => toMs(a.date) - toMs(b.date));
+};
+
 // Helper: veilige datum parse
 const toMs = (d: string) => {
   const ms = new Date(d).getTime();
@@ -94,8 +154,10 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
   players,
   ratingLogs,
   trophies,
+  seasonStartDate,
   onBack,
 }) => {
+
   const [isPrinting, setIsPrinting] = useState(false);
 
   const playerMap = useMemo(
@@ -307,31 +369,24 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     return { min, max };
   }, [history]);
 
-  const allTimeRatingHistory = useMemo(() => {
-    const logs = (ratingLogs || [])
-      .filter((log) => log.playerId === player.id)
-      .map((log) => ({ date: log.date, rating: log.rating }))
-      .sort((a, b) => toMs(a.date) - toMs(b.date));
-    return logs;
-  }, [player.id, ratingLogs]);
+const allTimeRatingHistory = useMemo(() => {
+  return buildAllTimeFromLogs(player.id, ratingLogs);
+}, [player.id, ratingLogs]);
 
-  const seasonRatingHistory = useMemo(() => {
-    // Als er geen range is: val terug op alles wat we hebben
-    if (!seasonDateRange) return allTimeRatingHistory;
+const seasonRatingHistory = useMemo(() => {
+  if (!seasonStartDate || !String(seasonStartDate).trim()) {
+    // als er geen seizoenstart is ingesteld: toon gewoon dezelfde als all-time
+    return allTimeRatingHistory;
+  }
+  const s = buildSeasonFromLogs({
+    player,
+    ratingLogs,
+    seasonStartDate,
+  });
 
-    const { min, max } = seasonDateRange;
-
-    // Houd wat marge zodat “zelfde dag” / timezone niet raar doet
-    const pad = 36 * 60 * 60 * 1000; // 36 uur
-
-    const filtered = allTimeRatingHistory.filter((p) => {
-      const ms = toMs(p.date);
-      return ms >= min - pad && ms <= max + pad;
-    });
-
-    // Als filter leeg valt (bv. logs zijn anders opgeslagen), val terug op allTime
-    return filtered.length > 0 ? filtered : allTimeRatingHistory;
-  }, [allTimeRatingHistory, seasonDateRange]);
+  // fallback
+  return s.length > 0 ? s : allTimeRatingHistory;
+}, [player, ratingLogs, seasonStartDate, allTimeRatingHistory]);
 
   // Gemiddelde punten
   const avgPoints = stats.gamesPlayed > 0 ? stats.points / stats.gamesPlayed : 0;
