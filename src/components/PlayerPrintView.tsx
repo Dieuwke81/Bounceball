@@ -18,7 +18,8 @@ const hasAnyResults = (s: GameSession) =>
   (Array.isArray(s.round1Results) && s.round1Results.length > 0) ||
   (Array.isArray(s.round2Results) && s.round2Results.length > 0);
 
-const sumGoals = (goals: any[]) => (goals || []).reduce((sum, g) => sum + (Number(g?.count) || 0), 0);
+const sumGoals = (goals: any[]) =>
+  (goals || []).reduce((sum, g) => sum + (Number(g?.count) || 0), 0);
 
 const inTeams = (playerId: number, teams?: Player[][]) =>
   (teams || []).some((team) => team.some((p) => p.id === playerId));
@@ -31,11 +32,75 @@ const ordinalNl = (n: number) => {
 type StandingRow = { pts: number; gf: number; gd: number };
 type DefenseRow = { conceded: number; matches: number };
 
+type SeasonMeta = {
+  totalNights: number;
+  minNights: number; // zelfde idee als Statistics: round(total/2)
+  nightsByPlayer: Map<number, number>;
+  eligibleIds: Set<number>; // spelers die de drempel halen
+};
+
+/**
+ * ✅ Seizoen-avonden tellen (met resultaten) + aanwezigheid per speler.
+ * - telt per sessie (avond) max 1x, ook als iemand in R1 én R2 voorkomt.
+ * - telt ook spelers uit round2Teams mee.
+ * - filtert op "huidige spelers" (allowedIds), zodat verwijderde spelers niet meetellen.
+ */
+const computeSeasonMeta = (params: {
+  history: GameSession[];
+  seasonStartMs: number;
+  allowedIds: Set<number>;
+}): SeasonMeta => {
+  const { history, seasonStartMs, allowedIds } = params;
+
+  const nightsByPlayer = new Map<number, number>();
+
+  const seasonSessions = (history || []).filter((s) => {
+    const ms = toMs(String(s.date || ''));
+    if (!ms) return false;
+    if (seasonStartMs && ms < seasonStartMs) return false;
+    return hasAnyResults(s);
+  });
+
+  seasonSessions.forEach((s) => {
+    const attending = new Set<number>();
+
+    const r1 = s.teams || [];
+    r1.flat().forEach((p) => {
+      if (allowedIds.has(p.id)) attending.add(p.id);
+    });
+
+    const r2 = ((s as any).round2Teams ?? s.teams ?? []) as Player[][];
+    r2.flat().forEach((p) => {
+      if (allowedIds.has(p.id)) attending.add(p.id);
+    });
+
+    attending.forEach((id) => {
+      nightsByPlayer.set(id, (nightsByPlayer.get(id) || 0) + 1);
+    });
+  });
+
+  const totalNights = seasonSessions.length;
+  const minNights = Math.max(1, Math.round(totalNights / 2));
+
+  const eligibleIds = new Set<number>();
+  nightsByPlayer.forEach((count, id) => {
+    if (count >= minNights) eligibleIds.add(id);
+  });
+
+  return { totalNights, minNights, nightsByPlayer, eligibleIds };
+};
+
+/**
+ * ✅ Seizoen aggregaties voor competitie / topscorer / verdediger
+ * - gebruikt round2Teams voor ronde 2 als aanwezig
+ * - filtert ALTIJD op allowedIds (dus geen verwijderde spelers)
+ */
 const computeSeasonAggregates = (params: {
   history: GameSession[];
   seasonStartMs: number;
+  allowedIds: Set<number>;
 }) => {
-  const { history, seasonStartMs } = params;
+  const { history, seasonStartMs, allowedIds } = params;
 
   const standings = new Map<number, StandingRow>();
   const goalsForPlayer = new Map<number, number>();
@@ -56,23 +121,22 @@ const computeSeasonAggregates = (params: {
       const pid = Number(g?.playerId);
       const c = Number(g?.count) || 0;
       if (!Number.isFinite(pid) || pid <= 0 || c <= 0) return;
+      if (!allowedIds.has(pid)) return; // ✅ filter op huidige spelers
       goalsForPlayer.set(pid, (goalsForPlayer.get(pid) || 0) + c);
     });
   };
 
   const applyMatch = (teamsForRound: Player[][] | undefined, match: MatchResult) => {
-    const t1 = teamsForRound?.[match.team1Index] || [];
-    const t2 = teamsForRound?.[match.team2Index] || [];
+    const t1 = (teamsForRound?.[match.team1Index] || []).filter((p) => allowedIds.has(p.id));
+    const t2 = (teamsForRound?.[match.team2Index] || []).filter((p) => allowedIds.has(p.id));
     if (!t1.length || !t2.length) return;
 
     const s1 = sumGoals(match.team1Goals || []);
     const s2 = sumGoals(match.team2Goals || []);
 
-    // topscorer: goals per speler
     addPlayerGoals(match.team1Goals || []);
     addPlayerGoals(match.team2Goals || []);
 
-    // standings: GF/GD voor alle spelers in team
     t1.forEach((p) => {
       const row = ensureStanding(p.id);
       row.gf += s1;
@@ -84,7 +148,6 @@ const computeSeasonAggregates = (params: {
       row.gd += s2 - s1;
     });
 
-    // points
     if (s1 > s2) {
       t1.forEach((p) => (ensureStanding(p.id).pts += 3));
     } else if (s2 > s1) {
@@ -94,15 +157,15 @@ const computeSeasonAggregates = (params: {
       t2.forEach((p) => (ensureStanding(p.id).pts += 1));
     }
 
-    // verdediger-metric: goals tegen per wedstrijd (alleen voor spelers die meedoen)
+    // verdediger: tegengoals per match
     t1.forEach((p) => {
       const d = ensureDefense(p.id);
-      d.conceded += s2; // team1 kreeg s2 tegen
+      d.conceded += s2;
       d.matches += 1;
     });
     t2.forEach((p) => {
       const d = ensureDefense(p.id);
-      d.conceded += s1; // team2 kreeg s1 tegen
+      d.conceded += s1;
       d.matches += 1;
     });
   };
@@ -114,7 +177,7 @@ const computeSeasonAggregates = (params: {
     if (!hasAnyResults(session)) return;
 
     const teamsR1 = session.teams || [];
-    const teamsR2 = (session as any).round2Teams ?? session.teams ?? [];
+    const teamsR2 = ((session as any).round2Teams ?? session.teams ?? []) as Player[][];
 
     (session.round1Results || []).forEach((m) => applyMatch(teamsR1, m));
     (session.round2Results || []).forEach((m) => applyMatch(teamsR2, m));
@@ -123,37 +186,47 @@ const computeSeasonAggregates = (params: {
   return { standings, goalsForPlayer, defense };
 };
 
-const rankStanding = (standings: Map<number, StandingRow>, playerId: number) => {
-  const rows = [...standings.entries()].map(([id, r]) => ({ id, ...r }));
+const rankStanding = (standings: Map<number, StandingRow>, playerId: number, eligibleIds: Set<number>) => {
+  const rows = [...standings.entries()]
+    .filter(([id]) => eligibleIds.has(id))
+    .map(([id, r]) => ({ id, ...r }));
+
   rows.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.id - b.id);
+
   const idx = rows.findIndex((r) => r.id === playerId);
   return idx >= 0 ? idx + 1 : 0;
 };
 
-const rankTopScorer = (goalsForPlayer: Map<number, number>, playerId: number) => {
-  const rows = [...goalsForPlayer.entries()].map(([id, goals]) => ({ id, goals }));
+const rankTopScorer = (goalsForPlayer: Map<number, number>, playerId: number, eligibleIds: Set<number>) => {
+  const rows = [...goalsForPlayer.entries()]
+    .filter(([id]) => eligibleIds.has(id))
+    .map(([id, goals]) => ({ id, goals }));
+
   rows.sort((a, b) => b.goals - a.goals || a.id - b.id);
+
   const idx = rows.findIndex((r) => r.id === playerId);
   const myGoals = goalsForPlayer.get(playerId) || 0;
   return { rank: idx >= 0 ? idx + 1 : 0, myGoals };
 };
 
-const rankDefender = (defense: Map<number, DefenseRow>, playerId: number) => {
-  const rows = [...defense.entries()].map(([id, d]) => ({
-    id,
-    concededPerMatch: d.matches > 0 ? d.conceded / d.matches : Infinity,
-    matches: d.matches,
-  }));
+const rankDefender = (defense: Map<number, DefenseRow>, playerId: number, eligibleIds: Set<number>) => {
+  const rows = [...defense.entries()]
+    .filter(([id]) => eligibleIds.has(id))
+    .map(([id, d]) => ({
+      id,
+      concededPerMatch: d.matches > 0 ? d.conceded / d.matches : Infinity,
+      matches: d.matches,
+    }))
+    .filter((r) => r.matches > 0);
 
-  // alleen spelers met minimaal 1 match
-  const filtered = rows.filter((r) => r.matches > 0);
+  rows.sort(
+    (a, b) =>
+      a.concededPerMatch - b.concededPerMatch || b.matches - a.matches || a.id - b.id
+  );
 
-  filtered.sort((a, b) => a.concededPerMatch - b.concededPerMatch || b.matches - a.matches || a.id - b.id);
-
-  const idx = filtered.findIndex((r) => r.id === playerId);
+  const idx = rows.findIndex((r) => r.id === playerId);
   const mine = defense.get(playerId);
-  const myAvg =
-    mine && mine.matches > 0 ? mine.conceded / mine.matches : Infinity;
+  const myAvg = mine && mine.matches > 0 ? mine.conceded / mine.matches : Infinity;
 
   return { rank: idx >= 0 ? idx + 1 : 0, concededPerMatch: myAvg };
 };
@@ -178,9 +251,12 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
   const minY = minRating - range * 0.1;
   const maxY = maxRating + range * 0.1;
 
-  const getX = (index: number) => (index / (data.length - 1)) * (width - padding * 2) + padding;
+  const getX = (index: number) =>
+    (index / (data.length - 1)) * (width - padding * 2) + padding;
   const getY = (rating: number) =>
-    height - padding - ((rating - minY) / (maxY - minY)) * (height - padding * 2);
+    height -
+    padding -
+    ((rating - minY) / (maxY - minY)) * (height - padding * 2);
 
   const points = data.map((d, i) => `${getX(i)},${getY(d.rating)}`).join(' ');
 
@@ -291,15 +367,23 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
     return <TrophyIcon className="w-8 h-8 text-black" />;
   };
 
-  const RelationshipSection: React.FC<{ title: string; data: [number, number][] }> = ({ title, data }) => (
+  const RelationshipSection: React.FC<{ title: string; data: [number, number][] }> = ({
+    title,
+    data,
+  }) => (
     <div className="break-inside-avoid mb-4">
-      <h4 className="font-bold uppercase text-xs mb-2 text-gray-600 border-b border-gray-300 pb-1">{title}</h4>
+      <h4 className="font-bold uppercase text-xs mb-2 text-gray-600 border-b border-gray-300 pb-1">
+        {title}
+      </h4>
       <ul className="text-xs">
         {data.length > 0 ? (
           data.slice(0, 5).map(([id, count]) => {
             const p = playerMap.get(id);
             return (
-              <li key={id} className="flex justify-between py-1 border-b border-gray-100 last:border-0">
+              <li
+                key={id}
+                className="flex justify-between py-1 border-b border-gray-100 last:border-0"
+              >
                 <span className="font-medium">{p ? p.name : `Speler ${id}`}</span>
                 <span className="font-bold text-gray-500">{count}x</span>
               </li>
@@ -317,45 +401,42 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
   // ✅ seizoen start op eerste punt van seasonHistory
   const seasonStartMs = useMemo(() => toMs(seasonHistory?.[0]?.date || ''), [seasonHistory]);
 
-  // ✅ Aanwezigheid = avonden (sessies met resultaten) in seizoen
+  // ✅ allowedIds = alleen huidige spelers (voorkomt rank 37 met verwijderde spelers)
+  const allowedIds = useMemo(() => new Set(players.map((p) => p.id)), [players]);
+
+  // ✅ season meta (avonden + drempel)
+  const seasonMeta = useMemo(
+    () =>
+      computeSeasonMeta({
+        history: history || [],
+        seasonStartMs,
+        allowedIds,
+      }),
+    [history, seasonStartMs, allowedIds]
+  );
+
+  // ✅ Aanwezigheid van deze speler (seizoen, alleen avonden met resultaten)
   const seasonAttendance = useMemo(() => {
-    const h = history || [];
+    const attendedNights = seasonMeta.nightsByPlayer.get(player.id) || 0;
+    return { attendedNights, totalNights: seasonMeta.totalNights };
+  }, [seasonMeta, player.id]);
 
-    const totalNights = h.filter((s) => {
-      const ms = toMs(String(s.date || ''));
-      if (!ms) return false;
-      if (seasonStartMs && ms < seasonStartMs) return false;
-      return hasAnyResults(s);
-    }).length;
-
-    const attendedNights = h.filter((s) => {
-      const ms = toMs(String(s.date || ''));
-      if (!ms) return false;
-      if (seasonStartMs && ms < seasonStartMs) return false;
-      if (!hasAnyResults(s)) return false;
-
-      const r2Teams = (s as any).round2Teams as Player[][] | undefined;
-      return inTeams(player.id, s.teams) || inTeams(player.id, r2Teams);
-    }).length;
-
-    return { attendedNights, totalNights };
-  }, [history, player.id, seasonStartMs]);
-
+  // jouw regel: alleen tonen als deze speler >=50% avonden
   const eligible50 =
     seasonAttendance.totalNights > 0 &&
     seasonAttendance.attendedNights / seasonAttendance.totalNights >= 0.5;
 
-  // ✅ positie + topscorer + verdediger (seizoen)
+  // ✅ positie + topscorer + verdediger (seizoen, EN alleen over eligibleIds)
   const seasonRanks = useMemo(() => {
     const { standings, goalsForPlayer, defense } = computeSeasonAggregates({
       history: history || [],
       seasonStartMs,
+      allowedIds,
     });
 
-    const position = rankStanding(standings, player.id);
-
-    const ts = rankTopScorer(goalsForPlayer, player.id);
-    const def = rankDefender(defense, player.id);
+    const position = rankStanding(standings, player.id, seasonMeta.eligibleIds);
+    const ts = rankTopScorer(goalsForPlayer, player.id, seasonMeta.eligibleIds);
+    const def = rankDefender(defense, player.id, seasonMeta.eligibleIds);
 
     return {
       position,
@@ -363,8 +444,9 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
       topscorerGoals: ts.myGoals,
       defenderRank: def.rank,
       defenderAvgAgainst: def.concededPerMatch,
+      minNights: seasonMeta.minNights,
     };
-  }, [history, player.id, seasonStartMs]);
+  }, [history, player.id, seasonStartMs, allowedIds, seasonMeta.eligibleIds, seasonMeta.minNights]);
 
   return createPortal(
     <div className="print-portal hidden">
@@ -454,13 +536,14 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         )}
 
-        {/* ✅ RIJ 1: Aanwezig + Positie + Topscoorder + Verdediger */}
+        {/* RIJ 1 */}
         <div className="print-grid">
           <div className="stat-box">
             <div className="stat-title">Aanwezig (avonden)</div>
             <div className="stat-value">
               {seasonAttendance.attendedNights}/{seasonAttendance.totalNights}
             </div>
+            <div className="stat-sub">drempel: {seasonRanks.minNights} avonden</div>
           </div>
 
           <div className="stat-box">
@@ -492,7 +575,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         </div>
 
-        {/* ✅ RIJ 2: Gespeeld + Resultaten + Goals + Gem punten */}
+        {/* RIJ 2 */}
         <div className="print-grid">
           <div className="stat-box">
             <div className="stat-title">Gespeeld</div>
