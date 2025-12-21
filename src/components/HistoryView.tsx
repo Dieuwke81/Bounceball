@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useMemo, useState } from 'react';
 import type { GameSession, Player, MatchResult } from '../types';
 import html2canvas from 'html2canvas';
 
@@ -55,18 +56,94 @@ const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
 
 // robuuste helper om een speler-id uit een Goal object te halen
 const getGoalPlayerId = (g: any): number | undefined => {
-  return g.playerId ?? g.id ?? g.player_id ?? g.player?.id ?? undefined;
+  return g?.playerId ?? g?.id ?? g?.player_id ?? g?.player?.id ?? undefined;
 };
 
 const buildGoalsMap = (goals: any[]): Map<string, number> => {
   const map = new Map<string, number>();
-  goals.forEach((g) => {
+  (goals || []).forEach((g) => {
     const pid = getGoalPlayerId(g);
     if (pid == null) return;
     const key = String(pid);
-    map.set(key, (map.get(key) || 0) + (g.count || 0));
+    map.set(key, (map.get(key) || 0) + (Number(g?.count) || 0));
   });
   return map;
+};
+
+/**
+ * ✅ Parser die ook double-encoded JSON aan kan.
+ * - array/object: return direct
+ * - string: probeert tot 3x te JSON.parse-en, en strip wrapping quotes
+ */
+const safeParseMaybeJson = <T,>(v: any, fallback: T): T => {
+  if (v == null) return fallback;
+  if (Array.isArray(v)) return v as T;
+  if (typeof v === 'object') return v as T;
+  if (typeof v !== 'string') return fallback;
+
+  let cur: any = v;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (typeof cur !== 'string') break;
+
+    let s = cur.trim();
+    if (!s) return fallback;
+
+    // strip wrapping quotes
+    if (
+      (s.startsWith('"') && s.endsWith('"') && s.length >= 2) ||
+      (s.startsWith("'") && s.endsWith("'") && s.length >= 2)
+    ) {
+      cur = s.slice(1, -1);
+      continue;
+    }
+
+    // parse json if it looks like json
+    if (s.startsWith('{') || s.startsWith('[')) {
+      try {
+        cur = JSON.parse(s);
+        continue;
+      } catch {
+        return fallback;
+      }
+    }
+
+    // attempt to find json substring
+    const idxObj = s.indexOf('{');
+    const idxArr = s.indexOf('[');
+    const idx =
+      idxArr === -1 ? idxObj : idxObj === -1 ? idxArr : Math.min(idxArr, idxObj);
+
+    if (idx > 0) {
+      const candidate = s.slice(idx).trim();
+      if (candidate.startsWith('{') || candidate.startsWith('[')) {
+        cur = candidate;
+        continue;
+      }
+    }
+
+    return fallback;
+  }
+
+  return (Array.isArray(cur) || typeof cur === 'object') ? (cur as T) : fallback;
+};
+
+/**
+ * ✅ Zorgt dat R2 de juiste teams gebruikt:
+ * - als session.round2Teams bestaat én echt een array is → gebruik die
+ * - anders val terug op session.teams (ook robuust geparsed)
+ */
+const resolveTeamsForRound2 = (session: GameSession): Player[][] => {
+  const r2 = safeParseMaybeJson<Player[][]>((session as any).round2Teams, []);
+  if (Array.isArray(r2) && r2.length > 0) return r2;
+
+  const r1 = safeParseMaybeJson<Player[][]>((session as any).teams, []);
+  return Array.isArray(r1) ? r1 : [];
+};
+
+const resolveTeamsForRound1 = (session: GameSession): Player[][] => {
+  const r1 = safeParseMaybeJson<Player[][]>((session as any).teams, []);
+  return Array.isArray(r1) ? r1 : [];
 };
 
 const HistoryView: React.FC<HistoryViewProps> = ({
@@ -78,12 +155,19 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
-  if (history.length === 0) {
+  // (optioneel) map voor snelle lookup; niet verplicht, maar handig als je later wil uitbreiden
+  const playersById = useMemo(() => {
+    const m = new Map<number, Player>();
+    (players || []).forEach((p) => {
+      if (p?.id != null) m.set(Number(p.id), p);
+    });
+    return m;
+  }, [players]);
+
+  if (!history || history.length === 0) {
     return (
       <div className="bg-gray-800 rounded-xl shadow-lg p-8 text-center">
-        <h2 className="text-2xl font-bold text-white mb-2">
-          Geen Geschiedenis
-        </h2>
+        <h2 className="text-2xl font-bold text-white mb-2">Geen Geschiedenis</h2>
         <p className="text-gray-400">
           Sla je eerste toernooi af om hier de geschiedenis te zien.
         </p>
@@ -92,7 +176,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   }
 
   const toggleSession = (date: string) => {
-    setExpandedDate((prevDate) => (prevDate === date ? null : date));
+    setExpandedDate((prev) => (prev === date ? null : date));
   };
 
   const formatDate = (dateString: string) => {
@@ -133,9 +217,15 @@ const HistoryView: React.FC<HistoryViewProps> = ({
         roundName: string,
         teamsForRound: Player[][]
       ) => {
-        results.forEach((match) => {
-          const score1 = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
-          const score2 = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
+        (results || []).forEach((match) => {
+          const score1 = (match.team1Goals || []).reduce(
+            (sum, g) => sum + (Number(g?.count) || 0),
+            0
+          );
+          const score2 = (match.team2Goals || []).reduce(
+            (sum, g) => sum + (Number(g?.count) || 0),
+            0
+          );
 
           let pts1 = 0;
           let pts2 = 0;
@@ -156,27 +246,28 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             teamColor: 'Blauw' | 'Geel',
             points: number
           ) => {
-            const teamPlayers = teamsForRound[teamIndex] || [];
+            const teamPlayers = teamsForRound?.[teamIndex] || [];
 
             teamPlayers.forEach((player) => {
-              const playerGoalData = goalsArray.find((g: any) => {
+              const playerGoalData = (goalsArray || []).find((g: any) => {
                 const pid = getGoalPlayerId(g);
                 return pid != null && String(pid) === String(player.id);
               });
 
-              const goalsScored = playerGoalData ? playerGoalData.count : 0;
-              const excelId =
-                (player as any).excelID ?? (player as any).excelId ?? '';
+              const goalsScored = playerGoalData ? Number(playerGoalData.count) || 0 : 0;
+
+              // ✅ excelID is NIET de bron. Alleen voor export.
+              const excelId = (player as any).excelID ?? (player as any).excelId ?? '';
 
               rows.push([
                 dateStr,
                 roundName,
                 teamColor,
-                excelId.toString(),
-                player.id.toString(),
-                player.name,
-                goalsScored.toString(),
-                points.toString(),
+                String(excelId ?? ''),
+                String(player.id),
+                String(player.name),
+                String(goalsScored),
+                String(points),
               ]);
             });
           };
@@ -186,29 +277,25 @@ const HistoryView: React.FC<HistoryViewProps> = ({
         });
       };
 
-      // Ronde 1 gebruikt altijd session.teams
-      processMatches(session.round1Results, 'Ronde 1', session.teams);
+      const teamsR1 = resolveTeamsForRound1(session);
+      const teamsR2 = resolveTeamsForRound2(session);
 
-      // Ronde 2: gebruik aparte teams als aanwezig
-      const round2Teams = session.round2Teams ?? session.teams;
-      processMatches(session.round2Results, 'Ronde 2', round2Teams);
+      processMatches(session.round1Results, 'Ronde 1', teamsR1);
+      processMatches(session.round2Results, 'Ronde 2', teamsR2);
     });
 
-    const csvContent = [headers.join(';'), ...rows.map((r) => r.join(';'))].join(
-      '\n'
-    );
+    const csvContent = [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], {
       type: 'text/csv;charset=utf-8;',
     });
+
     const link = document.createElement('a');
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
       link.setAttribute(
         'download',
-        `bounceball_stats_${filenamePrefix}_${
-          new Date().toISOString().split('T')[0]
-        }.csv`
+        `bounceball_stats_${filenamePrefix}_${new Date().toISOString().split('T')[0]}.csv`
       );
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
@@ -219,11 +306,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
   // ================= SCREENSHOT / SHARE =================
 
-  const handleShareImage = async (
-    e: React.MouseEvent,
-    sessionDate: string
-  ) => {
+  const handleShareImage = async (e: React.MouseEvent, sessionDate: string) => {
     e.stopPropagation();
+
     if (expandedDate !== sessionDate) {
       setExpandedDate(sessionDate);
       await new Promise((resolve) => setTimeout(resolve, 300));
@@ -257,6 +342,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       canvas.toBlob(
         async (blob) => {
           if (!blob) return;
+
           const file = new File([blob], `Uitslagen-${sessionDate}.png`, {
             type: 'image/png',
           });
@@ -288,9 +374,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
   const handleDeleteClick = (e: React.MouseEvent, date: string) => {
     e.stopPropagation();
-    if (
-      window.confirm('Weet je zeker dat je deze wedstrijd wilt verwijderen?')
-    ) {
+    if (window.confirm('Weet je zeker dat je deze wedstrijd wilt verwijderen?')) {
       onDeleteSession(date);
     }
   };
@@ -301,8 +385,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     result: MatchResult;
     teams: Player[][];
   }> = ({ result, teams }) => {
-    const score1 = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
-    const score2 = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
+    const score1 = (result.team1Goals || []).reduce((sum, g) => sum + (Number(g?.count) || 0), 0);
+    const score2 = (result.team2Goals || []).reduce((sum, g) => sum + (Number(g?.count) || 0), 0);
 
     const color1 = getBaseColor(result.team1Index);
     const color2 = getBaseColor(result.team2Index);
@@ -311,23 +395,24 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     let rightTeamIdx = result.team2Index;
     let leftScore = score1;
     let rightScore = score2;
-    let leftGoals = result.team1Goals;
-    let rightGoals = result.team2Goals;
+    let leftGoals = result.team1Goals || [];
+    let rightGoals = result.team2Goals || [];
 
+    // zorg dat blauw links en geel rechts getoond wordt (consistent)
     if (color1 === 'yellow' && color2 === 'blue') {
       leftTeamIdx = result.team2Index;
       rightTeamIdx = result.team1Index;
       leftScore = score2;
       rightScore = score1;
-      leftGoals = result.team2Goals;
-      rightGoals = result.team1Goals;
+      leftGoals = result.team2Goals || [];
+      rightGoals = result.team1Goals || [];
     }
 
     const leftColorClass = 'text-cyan-400';
     const rightColorClass = 'text-amber-400';
 
-    const team1Players = teams[leftTeamIdx] || [];
-    const team2Players = teams[rightTeamIdx] || [];
+    const team1Players = teams?.[leftTeamIdx] || [];
+    const team2Players = teams?.[rightTeamIdx] || [];
 
     const team1GoalsMap = buildGoalsMap(leftGoals as any[]);
     const team2GoalsMap = buildGoalsMap(rightGoals as any[]);
@@ -380,6 +465,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
               scoreColorClass={leftColorClass}
             />
           </div>
+
           <div className="overflow-hidden">
             <h4
               className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${rightColorClass}`}
@@ -393,16 +479,13 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             />
           </div>
         </div>
+
         <div className="mt-6 pt-2 border-t border-gray-600 text-center flex justify-center items-center gap-4">
-          <span
-            className={`text-4xl font-black tracking-widest drop-shadow-md ${leftColorClass}`}
-          >
+          <span className={`text-4xl font-black tracking-widest drop-shadow-md ${leftColorClass}`}>
             {leftScore}
           </span>
           <span className="text-2xl font-bold text-gray-500">-</span>
-          <span
-            className={`text-4xl font-black tracking-widest drop-shadow-md ${rightColorClass}`}
-          >
+          <span className={`text-4xl font-black tracking-widest drop-shadow-md ${rightColorClass}`}>
             {rightScore}
           </span>
         </div>
@@ -416,9 +499,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
       {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-white">
-          Wedstrijdgeschiedenis
-        </h2>
+        <h2 className="text-3xl font-bold text-white">Wedstrijdgeschiedenis</h2>
+
         <button
           type="button"
           onClick={(e) => handleExportCSV(e, history, 'COMPLETE_HISTORY')}
@@ -431,32 +513,26 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
       <div className="space-y-4">
         {history.map((session) => {
-          const round2Teams = session.round2Teams ?? session.teams;
+          const teamsR1 = resolveTeamsForRound1(session);
+          const teamsR2 = resolveTeamsForRound2(session);
 
           return (
-            <div
-              key={session.date}
-              className="bg-gray-700 rounded-lg overflow-hidden"
-            >
+            <div key={session.date} className="bg-gray-700 rounded-lg overflow-hidden">
               <button
                 onClick={() => toggleSession(session.date)}
                 className="w-full text-left p-4 flex justify-between items-center hover:bg-gray-600 transition-colors"
               >
-                <span className="font-bold text-lg text-white">
-                  {formatDate(session.date)}
-                </span>
+                <span className="font-bold text-lg text-white">{formatDate(session.date)}</span>
+
                 <div className="flex items-center space-x-3">
                   {/* CSV per wedstrijd */}
                   <button
                     type="button"
                     onClick={(e) =>
-                      handleExportCSV(
-                        e,
-                        [session],
-                        `MATCH_${session.date.split('T')[0]}`
-                      )
+                      handleExportCSV(e, [session], `MATCH_${session.date.split('T')[0]}`)
                     }
                     className="cursor-pointer active:scale-95 hover:opacity-90 flex items-center"
+                    aria-label="Deze wedstrijd naar CSV"
                   >
                     <ArchiveIcon className="h-9 w-auto" />
                   </button>
@@ -465,6 +541,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                   <div
                     onClick={(e) => handleShareImage(e, session.date)}
                     className="p-2 bg-green-600 hover:bg-green-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
+                    aria-label="Delen"
                   >
                     <WhatsAppIcon className="w-4 h-4" />
                   </div>
@@ -474,6 +551,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                     <div
                       onClick={(e) => handleDeleteClick(e, session.date)}
                       className="p-2 bg-red-600 hover:bg-red-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
+                      aria-label="Verwijderen"
                     >
                       <TrashIcon className="w-4 h-4" />
                     </div>
@@ -514,19 +592,20 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                             Ronde 1
                           </h3>
                         </div>
+
                         <div className="space-y-6">
-                          {session.round1Results.map((r, i) => (
+                          {(session.round1Results || []).map((r, i) => (
                             <MatchResultDisplay
                               key={`r1-${i}`}
                               result={r}
-                              teams={session.teams}
+                              teams={teamsR1}
                             />
                           ))}
                         </div>
                       </div>
 
                       {/* Ronde 2 */}
-                      {session.round2Results.length > 0 && (
+                      {(session.round2Results || []).length > 0 && (
                         <div>
                           <div className="flex items-center mb-4 mt-4">
                             <div className="h-8 w-1 bg-green-500 rounded-full mr-3" />
@@ -534,12 +613,13 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                               Ronde 2
                             </h3>
                           </div>
+
                           <div className="space-y-6">
-                            {session.round2Results.map((r, i) => (
+                            {(session.round2Results || []).map((r, i) => (
                               <MatchResultDisplay
                                 key={`r2-${i}`}
                                 result={r}
-                                teams={round2Teams}
+                                teams={teamsR2}
                               />
                             ))}
                           </div>
