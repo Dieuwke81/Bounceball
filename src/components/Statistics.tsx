@@ -774,4 +774,3 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 };
 
 export default Statistics;
-```0
