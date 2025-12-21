@@ -11,8 +11,8 @@ interface PlayerPrintViewProps {
   trophies: Trophy[];
   players: Player[];
   history: GameSession[]; // ✅ nodig voor "Aanwezig X/Y (avonden)"
-  seasonHistory: { date: string; rating: number }[]; // ✅ alleen seizoen gebruiken voor de print
-  allTimeHistory: { date: string; rating: number }[]; // (mag blijven in props, maar we printen 'm niet)
+  seasonHistory: { date: string; rating: number }[];
+  allTimeHistory: { date: string; rating: number }[]; // ✅ weer printen
   onClose: () => void;
 }
 
@@ -142,16 +142,13 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
   players,
   history,
   seasonHistory,
-  // allTimeHistory, // ❌ niet meer printen (alleen seizoen)
+  allTimeHistory,
   onClose,
 }) => {
   const playerMap = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
 
   useEffect(() => {
-    const printTimer = setTimeout(() => {
-      window.print();
-    }, 500);
-
+    const printTimer = setTimeout(() => window.print(), 500);
     const closeTimer = setTimeout(() => onClose(), 1500);
 
     window.onafterprint = () => {
@@ -215,14 +212,13 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
   const avgPoints = stats.gamesPlayed > 0 ? (Number(stats.points) || 0) / stats.gamesPlayed : 0;
 
   /**
-   * ✅ Aanwezigheid moet "AVONDEN" zijn:
+   * ✅ Aanwezigheid = AVONDEN (niet wedstrijden):
    * - 1 GameSession = 1 avond
    * - tel alleen sessies waar echt gespeeld is (round1Results/round2Results gevuld)
    * - alleen SEIZOEN: vanaf de eerste datum in seasonHistory (startpunt)
    */
   const seasonAttendance = useMemo(() => {
     const h = history || [];
-
     const seasonStartMs = toMs(seasonHistory?.[0]?.date || '');
 
     const hasAnyResults = (s: GameSession) =>
@@ -259,6 +255,10 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             body::before { display: none !important; }
             html, body { background: white !important; height: 100%; margin: 0; padding: 0; }
             body > *:not(.print-portal) { display: none !important; }
+
+            /* browsers tonen soms url/paginatitel: dit helpt, maar is niet 100% te forceren */
+            @page { size: A4; margin: 10mm; }
+
             .print-portal {
               display: block !important;
               position: absolute;
@@ -270,7 +270,11 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               font-family: sans-serif;
               z-index: 9999;
             }
-            @page { size: A4; margin: 10mm; }
+
+            /* eventueel url’s van links niet tonen */
+            a[href]:after { content: "" !important; }
+            a:after { content: "" !important; }
+
             .stat-box { border: 2px solid #e5e7eb; padding: 10px; border-radius: 8px; text-align: center; }
             .print-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
             .relationships-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
@@ -359,9 +363,10 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         </div>
 
-        {/* ✅ GRAFIEK: alleen seizoen */}
+        {/* ✅ GRAFIEKEN: seizoen + all-time */}
         <div className="mb-8">
           <PrintChart data={seasonHistory} title="Verloop Huidig Seizoen" />
+          <PrintChart data={allTimeHistory} title="All-Time Verloop" />
         </div>
 
         {/* RELATIES */}
