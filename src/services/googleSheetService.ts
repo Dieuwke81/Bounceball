@@ -104,18 +104,62 @@ const parseRatingLogs = (logs: any[]): RatingLogEntry[] => {
  * ✅ NEW: normaliseer history zodat round2Teams (en varianten) goed binnenkomen.
  * - history kan soms een JSON-string zijn
  * - round2Teams kan terugkomen als round2teams / round2_teams / Round2Teams / etc.
+ *
+ * ✅ FIX: ook dubbel-gequote JSON-strings (bijv "\"[ ... ]\"") worden nu correct geparsed.
  */
 const normalizeHistory = (rawHistory: any): GameSession[] => {
+  /**
+   * Probeert JSON te parsen, maar ook:
+   * - strip wrapping quotes ("...") of ('...') als het daarna JSON lijkt
+   * - probeert een paar keer (voor double-encoded situaties)
+   */
   const tryParseJson = (v: any) => {
-    if (typeof v !== 'string') return v;
-    const s = v.trim();
-    if (!s) return v;
-    if (!(s.startsWith('{') || s.startsWith('['))) return v;
-    try {
-      return JSON.parse(s);
-    } catch {
-      return v;
+    let cur = v;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (typeof cur !== 'string') return cur;
+
+      let s = cur.trim();
+      if (!s) return cur;
+
+      // 1) Als het lijkt op JSON: parse direct
+      if (s.startsWith('{') || s.startsWith('[')) {
+        try {
+          cur = JSON.parse(s);
+          continue; // misschien nog een keer nodig bij nested strings
+        } catch {
+          return cur;
+        }
+      }
+
+      // 2) Als het wrapping quotes heeft: strip en probeer opnieuw
+      const hasDoubleWrap = s.startsWith('"') && s.endsWith('"') && s.length >= 2;
+      const hasSingleWrap = s.startsWith("'") && s.endsWith("'") && s.length >= 2;
+
+      if (hasDoubleWrap || hasSingleWrap) {
+        s = s.slice(1, -1).trim();
+        cur = s;
+        continue;
+      }
+
+      // 3) Soms komen er nog escapings in mee (\"[ ... ]\")
+      //    Als het ergens een '{' of '[' bevat, proberen we dat stuk te pakken.
+      const idxObj = s.indexOf('{');
+      const idxArr = s.indexOf('[');
+      const idx = idxArr === -1 ? idxObj : idxObj === -1 ? idxArr : Math.min(idxArr, idxObj);
+
+      if (idx > 0) {
+        const candidate = s.slice(idx).trim();
+        if (candidate.startsWith('{') || candidate.startsWith('[')) {
+          cur = candidate;
+          continue;
+        }
+      }
+
+      return cur;
     }
+
+    return cur;
   };
 
   const h = tryParseJson(rawHistory);
@@ -141,14 +185,14 @@ const normalizeHistory = (rawHistory: any): GameSession[] => {
         obj.Ronde2Teams ??
         undefined;
 
-      const round2Teams = r2t !== undefined ? tryParseJson(r2t) : undefined;
+      const round2TeamsParsed = r2t !== undefined ? tryParseJson(r2t) : undefined;
 
       const session: GameSession = {
         date: String(date),
         teams: Array.isArray(teams) ? teams : [],
         round1Results: Array.isArray(round1Results) ? round1Results : [],
         round2Results: Array.isArray(round2Results) ? round2Results : [],
-        ...(round2Teams && Array.isArray(round2Teams) ? { round2Teams } : {}),
+        ...(Array.isArray(round2TeamsParsed) ? { round2Teams: round2TeamsParsed } : {}),
       };
 
       return session;
@@ -204,7 +248,7 @@ export const getInitialData = async (): Promise<{
 
     return {
       players: validPlayers,
-      // ✅ hier zit de fix: history normaliseren (incl. round2Teams)
+      // ✅ history normaliseren (incl. double-encoded round2Teams)
       history: normalizeHistory(data.history),
       competitionName: typeof data.competitionName === 'string' ? data.competitionName : '',
       ratingLogs: parseRatingLogs(data.ratingLogs),
