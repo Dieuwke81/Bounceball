@@ -18,32 +18,28 @@ const hasAnyResults = (s: GameSession) =>
   (Array.isArray(s.round1Results) && s.round1Results.length > 0) ||
   (Array.isArray(s.round2Results) && s.round2Results.length > 0);
 
-const sumGoals = (goals: any[]) =>
-  (goals || []).reduce((sum, g) => sum + (Number(g?.count) || 0), 0);
-
-const inTeams = (playerId: number, teams?: Player[][]) =>
-  (teams || []).some((team) => team.some((p) => p.id === playerId));
+const sumGoals = (goals: any[]) => (goals || []).reduce((sum, g) => sum + (Number(g?.count) || 0), 0);
 
 const ordinalNl = (n: number) => {
   if (!Number.isFinite(n) || n <= 0) return '—';
   return `${n}e`;
 };
 
-type StandingRow = { pts: number; gf: number; gd: number };
+type StandingRow = { pts: number; gf: number; gd: number; matches: number };
 type DefenseRow = { conceded: number; matches: number };
 
 type SeasonMeta = {
   totalNights: number;
-  minNights: number; // zelfde idee als Statistics: round(total/2)
+  minNights: number; // round(total/2)
   nightsByPlayer: Map<number, number>;
-  eligibleIds: Set<number>; // spelers die de drempel halen
+  eligibleIds: Set<number>;
 };
 
 /**
  * ✅ Seizoen-avonden tellen (met resultaten) + aanwezigheid per speler.
  * - telt per sessie (avond) max 1x, ook als iemand in R1 én R2 voorkomt.
  * - telt ook spelers uit round2Teams mee.
- * - filtert op "huidige spelers" (allowedIds), zodat verwijderde spelers niet meetellen.
+ * - filtert op huidige spelers (allowedIds)
  */
 const computeSeasonMeta = (params: {
   history: GameSession[];
@@ -91,9 +87,15 @@ const computeSeasonMeta = (params: {
 };
 
 /**
- * ✅ Seizoen aggregaties voor competitie / topscorer / verdediger
- * - gebruikt round2Teams voor ronde 2 als aanwezig
- * - filtert ALTIJD op allowedIds (dus geen verwijderde spelers)
+ * ✅ Seizoen aggregaties:
+ * - competitie: punten / wedstrijden (avg)
+ * - topscorer: goals / wedstrijden (avg)
+ * - verdediger: tegengoals / wedstrijden (avg, lager is beter)
+ *
+ * BELANGRIJK:
+ * - R1 gebruikt session.teams
+ * - R2 gebruikt session.round2Teams (fallback: session.teams)
+ * - filter op allowedIds (huidige spelers) zodat ranks niet opschuiven door verwijderde spelers
  */
 const computeSeasonAggregates = (params: {
   history: GameSession[];
@@ -107,7 +109,7 @@ const computeSeasonAggregates = (params: {
   const defense = new Map<number, DefenseRow>();
 
   const ensureStanding = (id: number) => {
-    if (!standings.has(id)) standings.set(id, { pts: 0, gf: 0, gd: 0 });
+    if (!standings.has(id)) standings.set(id, { pts: 0, gf: 0, gd: 0, matches: 0 });
     return standings.get(id)!;
   };
 
@@ -121,7 +123,7 @@ const computeSeasonAggregates = (params: {
       const pid = Number(g?.playerId);
       const c = Number(g?.count) || 0;
       if (!Number.isFinite(pid) || pid <= 0 || c <= 0) return;
-      if (!allowedIds.has(pid)) return; // ✅ filter op huidige spelers
+      if (!allowedIds.has(pid)) return;
       goalsForPlayer.set(pid, (goalsForPlayer.get(pid) || 0) + c);
     });
   };
@@ -134,20 +136,25 @@ const computeSeasonAggregates = (params: {
     const s1 = sumGoals(match.team1Goals || []);
     const s2 = sumGoals(match.team2Goals || []);
 
+    // goals per speler (topscorer)
     addPlayerGoals(match.team1Goals || []);
     addPlayerGoals(match.team2Goals || []);
 
+    // GF/GD (alleen voor tie-break / info)
     t1.forEach((p) => {
       const row = ensureStanding(p.id);
       row.gf += s1;
       row.gd += s1 - s2;
+      row.matches += 1;
     });
     t2.forEach((p) => {
       const row = ensureStanding(p.id);
       row.gf += s2;
       row.gd += s2 - s1;
+      row.matches += 1;
     });
 
+    // punten
     if (s1 > s2) {
       t1.forEach((p) => (ensureStanding(p.id).pts += 3));
     } else if (s2 > s1) {
@@ -157,7 +164,7 @@ const computeSeasonAggregates = (params: {
       t2.forEach((p) => (ensureStanding(p.id).pts += 1));
     }
 
-    // verdediger: tegengoals per match
+    // verdediger: tegengoals per match (lager = beter)
     t1.forEach((p) => {
       const d = ensureDefense(p.id);
       d.conceded += s2;
@@ -186,29 +193,67 @@ const computeSeasonAggregates = (params: {
   return { standings, goalsForPlayer, defense };
 };
 
-const rankStanding = (standings: Map<number, StandingRow>, playerId: number, eligibleIds: Set<number>) => {
+/**
+ * ✅ Competitie rank:
+ * - hoofdregel: punten / wedstrijden (avg)  -> desc
+ * - tie-break: doelsaldo (gd) -> desc (alleen als avg gelijk)
+ * - tie-break: goals voor (gf) -> desc
+ */
+const rankStanding = (
+  standings: Map<number, StandingRow>,
+  playerId: number,
+  eligibleIds: Set<number>
+) => {
   const rows = [...standings.entries()]
     .filter(([id]) => eligibleIds.has(id))
-    .map(([id, r]) => ({ id, ...r }));
+    .map(([id, r]) => ({
+      id,
+      pts: r.pts,
+      gf: r.gf,
+      gd: r.gd,
+      matches: r.matches,
+      avg: r.matches > 0 ? r.pts / r.matches : 0,
+    }));
 
-  rows.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.id - b.id);
+  rows.sort((a, b) => b.avg - a.avg || b.gd - a.gd || b.gf - a.gf || a.id - b.id);
 
   const idx = rows.findIndex((r) => r.id === playerId);
   return idx >= 0 ? idx + 1 : 0;
 };
 
-const rankTopScorer = (goalsForPlayer: Map<number, number>, playerId: number, eligibleIds: Set<number>) => {
-  const rows = [...goalsForPlayer.entries()]
-    .filter(([id]) => eligibleIds.has(id))
-    .map(([id, goals]) => ({ id, goals }));
+/**
+ * ✅ Topscorer rank:
+ * - goals / wedstrijden (avg) -> desc
+ * - tie-break: total goals -> desc
+ */
+const rankTopScorer = (
+  goalsForPlayer: Map<number, number>,
+  standings: Map<number, StandingRow>,
+  playerId: number,
+  eligibleIds: Set<number>
+) => {
+  const rows = [...eligibleIds].map((id) => {
+    const goals = goalsForPlayer.get(id) || 0;
+    const matches = standings.get(id)?.matches || 0;
+    const avg = matches > 0 ? goals / matches : 0;
+    return { id, goals, matches, avg };
+  });
 
-  rows.sort((a, b) => b.goals - a.goals || a.id - b.id);
+  rows.sort((a, b) => b.avg - a.avg || b.goals - a.goals || a.id - b.id);
 
   const idx = rows.findIndex((r) => r.id === playerId);
-  const myGoals = goalsForPlayer.get(playerId) || 0;
-  return { rank: idx >= 0 ? idx + 1 : 0, myGoals };
+  const mine = rows.find((r) => r.id === playerId);
+  return {
+    rank: idx >= 0 ? idx + 1 : 0,
+    myGoals: goalsForPlayer.get(playerId) || 0,
+    myAvg: mine ? mine.avg : 0,
+  };
 };
 
+/**
+ * ✅ Verdediger rank:
+ * - tegengoals / wedstrijden -> asc (lager beter)
+ */
 const rankDefender = (defense: Map<number, DefenseRow>, playerId: number, eligibleIds: Set<number>) => {
   const rows = [...defense.entries()]
     .filter(([id]) => eligibleIds.has(id))
@@ -219,10 +264,7 @@ const rankDefender = (defense: Map<number, DefenseRow>, playerId: number, eligib
     }))
     .filter((r) => r.matches > 0);
 
-  rows.sort(
-    (a, b) =>
-      a.concededPerMatch - b.concededPerMatch || b.matches - a.matches || a.id - b.id
-  );
+  rows.sort((a, b) => a.concededPerMatch - b.concededPerMatch || b.matches - a.matches || a.id - b.id);
 
   const idx = rows.findIndex((r) => r.id === playerId);
   const mine = defense.get(playerId);
@@ -251,12 +293,9 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
   const minY = minRating - range * 0.1;
   const maxY = maxRating + range * 0.1;
 
-  const getX = (index: number) =>
-    (index / (data.length - 1)) * (width - padding * 2) + padding;
+  const getX = (index: number) => (index / (data.length - 1)) * (width - padding * 2) + padding;
   const getY = (rating: number) =>
-    height -
-    padding -
-    ((rating - minY) / (maxY - minY)) * (height - padding * 2);
+    height - padding - ((rating - minY) / (maxY - minY)) * (height - padding * 2);
 
   const points = data.map((d, i) => `${getX(i)},${getY(d.rating)}`).join(' ');
 
@@ -275,25 +314,52 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
 
         <polyline fill="none" stroke="#000" strokeWidth="2.5" points={points} strokeLinejoin="round" />
 
-        <text x={padding - 5} y={getY(maxRating)} className="text-[12px] fill-gray-600 font-bold" textAnchor="end" dominantBaseline="middle">
+        <text
+          x={padding - 5}
+          y={getY(maxRating)}
+          className="text-[12px] fill-gray-600 font-bold"
+          textAnchor="end"
+          dominantBaseline="middle"
+        >
           {maxRating.toFixed(1)}
         </text>
-        <text x={padding - 5} y={getY(minRating)} className="text-[12px] fill-gray-600 font-bold" textAnchor="end" dominantBaseline="middle">
+        <text
+          x={padding - 5}
+          y={getY(minRating)}
+          className="text-[12px] fill-gray-600 font-bold"
+          textAnchor="end"
+          dominantBaseline="middle"
+        >
           {minRating.toFixed(1)}
         </text>
 
         <text x={getX(0)} y={height - 15} className="text-[12px] fill-gray-600" textAnchor="start">
           {formatDate(data[0].date)}
         </text>
-        <text x={getX(Math.floor(data.length / 2))} y={height - 15} className="text-[12px] fill-gray-600" textAnchor="middle">
+        <text
+          x={getX(Math.floor(data.length / 2))}
+          y={height - 15}
+          className="text-[12px] fill-gray-600"
+          textAnchor="middle"
+        >
           {formatDate(data[Math.floor(data.length / 2)].date)}
         </text>
-        <text x={getX(data.length - 1)} y={height - 15} className="text-[12px] fill-gray-600" textAnchor="end">
+        <text
+          x={getX(data.length - 1)}
+          y={height - 15}
+          className="text-[12px] fill-gray-600"
+          textAnchor="end"
+        >
           {formatDate(data[data.length - 1].date)}
         </text>
 
         <circle cx={getX(data.length - 1)} cy={getY(data[data.length - 1].rating)} r="4" fill="black" />
-        <text x={getX(data.length - 1)} y={getY(data[data.length - 1].rating) - 10} className="text-[12px] fill-black font-bold" textAnchor="end">
+        <text
+          x={getX(data.length - 1)}
+          y={getY(data[data.length - 1].rating) - 10}
+          className="text-[12px] fill-black font-bold"
+          textAnchor="end"
+        >
           {data[data.length - 1].rating.toFixed(2)}
         </text>
       </svg>
@@ -401,7 +467,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
   // ✅ seizoen start op eerste punt van seasonHistory
   const seasonStartMs = useMemo(() => toMs(seasonHistory?.[0]?.date || ''), [seasonHistory]);
 
-  // ✅ allowedIds = alleen huidige spelers (voorkomt rank 37 met verwijderde spelers)
+  // ✅ allowedIds = alleen huidige spelers
   const allowedIds = useMemo(() => new Set(players.map((p) => p.id)), [players]);
 
   // ✅ season meta (avonden + drempel)
@@ -415,7 +481,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
     [history, seasonStartMs, allowedIds]
   );
 
-  // ✅ Aanwezigheid van deze speler (seizoen, alleen avonden met resultaten)
+  // ✅ Aanwezigheid van deze speler (seizoen)
   const seasonAttendance = useMemo(() => {
     const attendedNights = seasonMeta.nightsByPlayer.get(player.id) || 0;
     return { attendedNights, totalNights: seasonMeta.totalNights };
@@ -426,7 +492,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
     seasonAttendance.totalNights > 0 &&
     seasonAttendance.attendedNights / seasonAttendance.totalNights >= 0.5;
 
-  // ✅ positie + topscorer + verdediger (seizoen, EN alleen over eligibleIds)
+  // ✅ positie + topscorer + verdediger (seizoen, consistent met Statistics)
   const seasonRanks = useMemo(() => {
     const { standings, goalsForPlayer, defense } = computeSeasonAggregates({
       history: history || [],
@@ -435,13 +501,17 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
     });
 
     const position = rankStanding(standings, player.id, seasonMeta.eligibleIds);
-    const ts = rankTopScorer(goalsForPlayer, player.id, seasonMeta.eligibleIds);
+
+    // topscorer avg = goals / matches (matches uit standings.matches)
+    const ts = rankTopScorer(goalsForPlayer, standings, player.id, seasonMeta.eligibleIds);
+
     const def = rankDefender(defense, player.id, seasonMeta.eligibleIds);
 
     return {
       position,
       topscorerRank: ts.rank,
       topscorerGoals: ts.myGoals,
+      topscorerAvg: ts.myAvg,
       defenderRank: def.rank,
       defenderAvgAgainst: def.concededPerMatch,
       minNights: seasonMeta.minNights,
@@ -471,6 +541,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               z-index: 9999;
             }
 
+            /* ✅ verberg url’s linksonder */
             a[href]:after { content: "" !important; }
             a:after { content: "" !important; }
 
@@ -504,9 +575,15 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             <div>
               <h1 className="text-4xl font-black uppercase tracking-wide">{player.name}</h1>
               <div className="flex gap-2 mt-2 text-sm font-bold uppercase text-gray-600">
-                {player.isKeeper && <span className="border border-black px-2 py-1 rounded">Keeper</span>}
-                {player.isFixedMember && <span className="border border-black px-2 py-1 rounded">Lid</span>}
-                <span className="border border-black px-2 py-1 rounded">Rating: {player.rating.toFixed(2)}</span>
+                {player.isKeeper && (
+                  <span className="border border-black px-2 py-1 rounded">Keeper</span>
+                )}
+                {player.isFixedMember && (
+                  <span className="border border-black px-2 py-1 rounded">Lid</span>
+                )}
+                <span className="border border-black px-2 py-1 rounded">
+                  Rating: {player.rating.toFixed(2)}
+                </span>
               </div>
             </div>
           </div>
@@ -521,10 +598,15 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
         {/* PRIJZENKAST BOVEN */}
         {trophies.length > 0 && (
           <div className="mb-6 break-inside-avoid">
-            <h3 className="text-lg font-bold border-b border-gray-300 pb-1 mb-3 uppercase">Prijzenkast</h3>
+            <h3 className="text-lg font-bold border-b border-gray-300 pb-1 mb-3 uppercase">
+              Prijzenkast
+            </h3>
             <div className="grid grid-cols-2 gap-3">
               {trophies.map((t) => (
-                <div key={t.id} className="flex items-center border border-gray-200 p-2 rounded bg-gray-50">
+                <div
+                  key={t.id}
+                  className="flex items-center border border-gray-200 p-2 rounded bg-gray-50"
+                >
                   <div className="mr-3 text-gray-800">{getTrophyContent(t.type)}</div>
                   <div>
                     <div className="font-bold text-sm">{t.type}</div>
@@ -558,7 +640,9 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               {eligible50 ? `${ordinalNl(seasonRanks.topscorerRank)}` : '—'}
             </div>
             <div className="stat-sub">
-              {eligible50 ? `${seasonRanks.topscorerGoals} goals` : 'min 50% avonden'}
+              {eligible50
+                ? `${seasonRanks.topscorerGoals} goals (${seasonRanks.topscorerAvg.toFixed(2)}/w)`
+                : 'min 50% avonden'}
             </div>
           </div>
 
@@ -569,7 +653,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             </div>
             <div className="stat-sub">
               {eligible50 && Number.isFinite(seasonRanks.defenderAvgAgainst)
-                ? `${seasonRanks.defenderAvgAgainst.toFixed(2)} tegen / match`
+                ? `${seasonRanks.defenderAvgAgainst.toFixed(2)} tegen / w`
                 : 'min 50% avonden'}
             </div>
           </div>
