@@ -2,23 +2,29 @@
 import { getScriptUrl } from './configService';
 import type { GameSession, NewPlayer, Player, RatingLogEntry, Trophy } from '../types';
 
-// Centralized error handling and JSON parsing for Apps Script calls
+// ==============================
+// Response helpers
+// ==============================
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
     const errorText = await response.text();
+
+    // Typical "HTML instead of JSON" cases (auth / permissions)
     if (
       errorText &&
       (errorText.includes('<!DOCTYPE html>') ||
-        errorText.includes('<title>Google Drive</title>'))
+        errorText.includes('<title>Google Drive</title>') ||
+        errorText.includes('Service invoked too many times'))
     ) {
       throw new Error(
-        `Fout ${response.status}: Authenticatieprobleem met het Apps Script. Controleer of het script correct is 'gedeployed' met toegang voor 'Iedereen'.`
+        `Fout ${response.status}: Apps Script gaf HTML terug i.p.v. JSON. Controleer deployment (Web app) + toegang op "Iedereen".`
       );
     }
+
     try {
       const errorJson = JSON.parse(errorText);
       throw new Error(errorJson.message || `Serverfout ${response.status}: Geen details.`);
-    } catch (e) {
+    } catch {
       throw new Error(`Serverfout ${response.status}: ${errorText || 'Geen details.'}`);
     }
   }
@@ -28,10 +34,10 @@ const handleResponse = async (response: Response) => {
 
   try {
     return JSON.parse(text);
-  } catch (e) {
+  } catch {
     if (text.includes('<!DOCTYPE html>')) {
       throw new Error(
-        'De server stuurde een HTML-pagina terug in plaats van data. Dit wijst meestal op een inlog- of permissieprobleem bij Google.'
+        'De server stuurde een HTML-pagina terug in plaats van data (meestal permissie/deployment probleem).'
       );
     }
     return text;
@@ -40,28 +46,80 @@ const handleResponse = async (response: Response) => {
 
 const postToAction = async (action: string, data: object): Promise<any> => {
   const scriptUrl = getScriptUrl();
+
   try {
     const response = await fetch(scriptUrl, {
       method: 'POST',
       mode: 'cors',
       body: JSON.stringify({ action, data }),
       headers: {
+        // Apps Script is vaak het stabielst met text/plain
         'Content-Type': 'text/plain;charset=UTF-8',
       },
     });
+
     return handleResponse(response);
   } catch (error) {
     console.error(`[postToAction Error] Action: "${action}"`, error);
     if (error instanceof TypeError) {
       throw new Error(
-        `Netwerkfout bij actie "${action}". Mogelijke oorzaken: 1) De ingevoerde SCRIPT_URL is incorrect. 2) Google Apps Script is niet correct 'gedeployed' (CORS-fout). 3) Geen internetverbinding.`
+        `Netwerkfout bij actie "${action}". Mogelijke oorzaken: 1) SCRIPT_URL fout. 2) Web App niet correct gedeployed (CORS). 3) Geen internet.`
       );
     }
     throw error;
   }
 };
 
-// ROBUUSTE PARSER: Werkt voor zowel 'rating' als 'Rating', 'SpelerID' als 'playerId', en '.' als ','
+// ==============================
+// Robust parsing helpers
+// ==============================
+const tryParseJson = (v: any) => {
+  let cur = v;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (typeof cur !== 'string') return cur;
+
+    let s = cur.trim();
+    if (!s) return cur;
+
+    // looks like JSON
+    if (s.startsWith('{') || s.startsWith('[')) {
+      try {
+        cur = JSON.parse(s);
+        continue; // may still be nested-string JSON
+      } catch {
+        return cur;
+      }
+    }
+
+    // strip wrapping quotes
+    const wrapDouble = s.startsWith('"') && s.endsWith('"') && s.length >= 2;
+    const wrapSingle = s.startsWith("'") && s.endsWith("'") && s.length >= 2;
+    if (wrapDouble || wrapSingle) {
+      cur = s.slice(1, -1).trim();
+      continue;
+    }
+
+    // find first { or [
+    const idxObj = s.indexOf('{');
+    const idxArr = s.indexOf('[');
+    const idx =
+      idxArr === -1 ? idxObj : idxObj === -1 ? idxArr : Math.min(idxArr, idxObj);
+
+    if (idx > 0) {
+      const candidate = s.slice(idx).trim();
+      if (candidate.startsWith('{') || candidate.startsWith('[')) {
+        cur = candidate;
+        continue;
+      }
+    }
+
+    return cur;
+  }
+
+  return cur;
+};
+
 const parseRatingLogs = (logs: any[]): RatingLogEntry[] => {
   if (!Array.isArray(logs)) return [];
 
@@ -87,81 +145,73 @@ const parseRatingLogs = (logs: any[]): RatingLogEntry[] => {
       }
 
       const ratingStr = String(rawRating).replace(',', '.');
-      const dateStr = String(rawDate);
-
       return {
-        date: dateStr,
+        date: String(rawDate),
         playerId: Number(rawPlayerId),
         rating: Number(ratingStr),
       };
     })
-    .filter((log): log is RatingLogEntry => {
-      return log !== null && !isNaN(log.playerId) && !isNaN(log.rating) && log.playerId !== 0;
-    });
+    .filter((x): x is RatingLogEntry => !!x && !isNaN(x.playerId) && !isNaN(x.rating));
 };
 
-/**
- * ✅ NEW: normaliseer history zodat round2Teams (en varianten) goed binnenkomen.
- * - history kan soms een JSON-string zijn
- * - round2Teams kan terugkomen als round2teams / round2_teams / Round2Teams / etc.
- *
- * ✅ FIX: ook dubbel-gequote JSON-strings (bijv "\"[ ... ]\"") worden nu correct geparsed.
- */
+// ==============================
+// ✅ ID IS SOURCE OF TRUTH
+// History normalize + rehydrate
+// ==============================
+type RawTeamMember = number | { id?: any; playerId?: any; name?: any } | any;
+
+const extractId = (m: RawTeamMember): number | null => {
+  if (m == null) return null;
+  if (typeof m === 'number') return Number.isFinite(m) ? m : null;
+  if (typeof m === 'string') {
+    const n = Number(m);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (typeof m === 'object') {
+    const id = (m as any).id ?? (m as any).playerId ?? (m as any).player_id;
+    const n = Number(id);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+};
+
+const toIdTeams = (teamsAny: any): number[][] => {
+  const t = tryParseJson(teamsAny);
+
+  if (!Array.isArray(t)) return [];
+
+  // Expect: array of teams, each team array contains Player objects or ids
+  return t
+    .map((team: any) => {
+      const arr = tryParseJson(team);
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map((m: any) => extractId(m))
+        .filter((id: number | null): id is number => id !== null);
+    })
+    .filter((team: number[]) => Array.isArray(team));
+};
+
+const rehydrateTeams = (idTeams: number[][], playerById: Map<number, Player>): Player[][] => {
+  return idTeams.map((teamIds) =>
+    teamIds
+      .map((id) => {
+        const p = playerById.get(id);
+        if (p) return p;
+
+        // fallback: player deleted but still in history
+        return {
+          id,
+          name: `#${id} (verwijderd)`,
+          rating: 1,
+          isKeeper: false,
+          isFixedMember: false,
+        } satisfies Player;
+      })
+  );
+};
+
 const normalizeHistory = (rawHistory: any): GameSession[] => {
-  /**
-   * Probeert JSON te parsen, maar ook:
-   * - strip wrapping quotes ("...") of ('...') als het daarna JSON lijkt
-   * - probeert een paar keer (voor double-encoded situaties)
-   */
-  const tryParseJson = (v: any) => {
-    let cur = v;
-
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (typeof cur !== 'string') return cur;
-
-      let s = cur.trim();
-      if (!s) return cur;
-
-      // 1) Als het lijkt op JSON: parse direct
-      if (s.startsWith('{') || s.startsWith('[')) {
-        try {
-          cur = JSON.parse(s);
-          continue; // misschien nog een keer nodig bij nested strings
-        } catch {
-          return cur;
-        }
-      }
-
-      // 2) Als het wrapping quotes heeft: strip en probeer opnieuw
-      const hasDoubleWrap = s.startsWith('"') && s.endsWith('"') && s.length >= 2;
-      const hasSingleWrap = s.startsWith("'") && s.endsWith("'") && s.length >= 2;
-
-      if (hasDoubleWrap || hasSingleWrap) {
-        s = s.slice(1, -1).trim();
-        cur = s;
-        continue;
-      }
-
-      // 3) Soms komen er nog escapings in mee (\"[ ... ]\")
-      //    Als het ergens een '{' of '[' bevat, proberen we dat stuk te pakken.
-      const idxObj = s.indexOf('{');
-      const idxArr = s.indexOf('[');
-      const idx = idxArr === -1 ? idxObj : idxObj === -1 ? idxArr : Math.min(idxArr, idxObj);
-
-      if (idx > 0) {
-        const candidate = s.slice(idx).trim();
-        if (candidate.startsWith('{') || candidate.startsWith('[')) {
-          cur = candidate;
-          continue;
-        }
-      }
-
-      return cur;
-    }
-
-    return cur;
-  };
-
   const h = tryParseJson(rawHistory);
   if (!Array.isArray(h)) return [];
 
@@ -175,7 +225,7 @@ const normalizeHistory = (rawHistory: any): GameSession[] => {
       const round1Results = tryParseJson(obj.round1Results ?? obj.round1results ?? obj.Ronde1 ?? []);
       const round2Results = tryParseJson(obj.round2Results ?? obj.round2results ?? obj.Ronde2 ?? []);
 
-      // alle varianten die we in het wild zien:
+      // round2Teams variants
       const r2t =
         obj.round2Teams ??
         obj.round2teams ??
@@ -185,23 +235,44 @@ const normalizeHistory = (rawHistory: any): GameSession[] => {
         obj.Ronde2Teams ??
         undefined;
 
-      const round2TeamsParsed = r2t !== undefined ? tryParseJson(r2t) : undefined;
+      const round2Teams = r2t !== undefined ? tryParseJson(r2t) : undefined;
 
       const session: GameSession = {
         date: String(date),
-        teams: Array.isArray(teams) ? teams : [],
+        teams: Array.isArray(teams) ? (teams as any) : [],
         round1Results: Array.isArray(round1Results) ? round1Results : [],
         round2Results: Array.isArray(round2Results) ? round2Results : [],
-        ...(Array.isArray(round2TeamsParsed) ? { round2Teams: round2TeamsParsed } : {}),
+        ...(round2Teams !== undefined ? { round2Teams: Array.isArray(round2Teams) ? (round2Teams as any) : undefined } : {}),
       };
 
       return session;
     })
-    .filter((s: GameSession | null): s is GameSession => !!s && typeof s.date === 'string' && !!s.date);
+    .filter((s: GameSession | null): s is GameSession => !!s && !!s.date);
 };
 
-// Main function to fetch all initial data
-// AANGEPAST: Retourneert nu ook 'trophies'
+const rehydrateHistoryById = (history: GameSession[], players: Player[]): GameSession[] => {
+  const playerById = new Map(players.map((p) => [p.id, p]));
+
+  return history.map((s) => {
+    // Convert whatever came back into ID-teams, then rehydrate by ID
+    const r1IdTeams = toIdTeams(s.teams);
+    const r1Teams = rehydrateTeams(r1IdTeams, playerById);
+
+    const hasR2 = s.round2Teams !== undefined && s.round2Teams !== null;
+    const r2IdTeams = hasR2 ? toIdTeams(s.round2Teams) : [];
+    const r2Teams = hasR2 ? rehydrateTeams(r2IdTeams, playerById) : undefined;
+
+    return {
+      ...s,
+      teams: r1Teams,
+      ...(r2Teams && r2Teams.length > 0 ? { round2Teams: r2Teams } : {}),
+    };
+  });
+};
+
+// ==============================
+// Public API
+// ==============================
 export const getInitialData = async (): Promise<{
   players: Player[];
   history: GameSession[];
@@ -216,48 +287,53 @@ export const getInitialData = async (): Promise<{
     );
   }
 
-  try {
-    const url = new URL(scriptUrl);
-    url.searchParams.append('action', 'getInitialData');
-    url.searchParams.append('t', new Date().getTime().toString()); // Cache busting
+  const url = new URL(scriptUrl);
+  url.searchParams.append('action', 'getInitialData');
+  url.searchParams.append('t', String(Date.now())); // cache busting
 
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      mode: 'cors',
-      cache: 'no-cache',
-    });
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    mode: 'cors',
+    cache: 'no-cache',
+  });
 
-    const data = await handleResponse(response);
+  const data = await handleResponse(response);
 
-    if (typeof data !== 'object' || data === null) {
-      throw new Error(`Onverwacht antwoord van de server. De server stuurde geen geldige data.`);
-    }
-
-    if (data.status === 'error') {
-      throw new Error(data.message);
-    }
-
-    if (!Array.isArray(data.players)) {
-      throw new Error(`Verbinding geslaagd, maar de server stuurde geen spelerslijst terug.`);
-    }
-
-    const validPlayers = data.players.filter(
-      (p: Player | null): p is Player =>
-        p !== null && p.id != null && typeof p.name === 'string' && p.name.trim() !== ''
-    );
-
-    return {
-      players: validPlayers,
-      // ✅ history normaliseren (incl. double-encoded round2Teams)
-      history: normalizeHistory(data.history),
-      competitionName: typeof data.competitionName === 'string' ? data.competitionName : '',
-      ratingLogs: parseRatingLogs(data.ratingLogs),
-      trophies: Array.isArray(data.trophies) ? data.trophies : [],
-    };
-  } catch (error: any) {
-    console.error('Failed to fetch initial data:', error);
-    throw new Error(`Kon de gegevens niet laden. Details: ${error.message}`);
+  if (typeof data !== 'object' || data === null) {
+    throw new Error('Onverwacht antwoord van de server (geen object).');
   }
+  if ((data as any).status === 'error') {
+    throw new Error((data as any).message || 'Onbekende serverfout.');
+  }
+
+  if (!Array.isArray((data as any).players)) {
+    throw new Error('Verbinding geslaagd, maar er kwam geen spelerslijst terug.');
+  }
+
+  // Players: ID is source-of-truth
+  const validPlayers: Player[] = (data as any).players
+    .filter((p: any) => p && p.id != null && String(p.name || '').trim() !== '')
+    .map((p: any) => ({
+      id: Number(p.id),
+      name: String(p.name),
+      rating: Number(p.rating ?? 1),
+      isKeeper: p.isKeeper === true,
+      isFixedMember: p.isFixedMember === true,
+      photoBase64: p.photoBase64 ? String(p.photoBase64) : '',
+      // ⚠️ excelId is OPTIONAL and NOT used for anything except CSV export in the UI
+      excelId: p.excelId ?? p.excelID ?? undefined,
+    }));
+
+  const normalizedHistory = normalizeHistory((data as any).history);
+  const rehydratedHistory = rehydrateHistoryById(normalizedHistory, validPlayers);
+
+  return {
+    players: validPlayers,
+    history: rehydratedHistory,
+    competitionName: typeof (data as any).competitionName === 'string' ? (data as any).competitionName : '',
+    ratingLogs: parseRatingLogs((data as any).ratingLogs),
+    trophies: Array.isArray((data as any).trophies) ? (data as any).trophies : [],
+  };
 };
 
 export const runDiagnostics = async (): Promise<any> => {
@@ -266,35 +342,27 @@ export const runDiagnostics = async (): Promise<any> => {
     throw new Error('De geconfigureerde SCRIPT_URL is ongeldig.');
   }
 
-  try {
-    const url = new URL(scriptUrl);
-    url.searchParams.append('action', 'runDiagnostics');
-    url.searchParams.append('t', new Date().getTime().toString());
+  const url = new URL(scriptUrl);
+  url.searchParams.append('action', 'runDiagnostics');
+  url.searchParams.append('t', String(Date.now()));
 
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      mode: 'cors',
-      cache: 'no-cache',
-    });
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    mode: 'cors',
+    cache: 'no-cache',
+  });
 
-    const result = await handleResponse(response);
-    if (result.status === 'error') {
-      throw new Error(result.message);
-    }
-    return result;
-  } catch (error: any) {
-    console.error('Diagnostische test mislukt:', error);
-    throw error;
-  }
+  const result = await handleResponse(response);
+  if (result?.status === 'error') throw new Error(result.message || 'Diagnostiek fout.');
+  return result;
 };
 
-// Functie om de game session en rating updates op te slaan
+// ✅ session carries round2Teams when present. Nothing else needed.
 export const saveGameSession = (session: GameSession, updatedRatings: { id: number; rating: number }[]) => {
-  // ✅ niks extra nodig hier: round2Teams zit al in session en gaat mee
   return postToAction('saveSession', { session, updatedRatings });
 };
 
-// --- Player Management ---
+// --- Player management ---
 export const addPlayer = (player: NewPlayer): Promise<{ newId: number }> => {
   return postToAction('addPlayer', { ...player, photoBase64: player.photoBase64 || '' });
 };
@@ -307,12 +375,12 @@ export const deletePlayer = (id: number) => {
   return postToAction('deletePlayer', { id });
 };
 
-// --- Competition Management ---
+// --- Competition name ---
 export const setCompetitionName = (name: string) => {
   return postToAction('setCompetitionName', { name });
 };
 
-// --- Trophy Management (NIEUW) ---
+// --- Trophy management ---
 export const addTrophy = (trophy: Omit<Trophy, 'id'>) => {
   return postToAction('addTrophy', trophy);
 };
