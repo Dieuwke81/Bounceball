@@ -9,6 +9,7 @@ const handleResponse = async (response: Response) => {
   if (!response.ok) {
     const errorText = await response.text();
 
+    // Typical "HTML instead of JSON" cases (auth / permissions)
     if (
       errorText &&
       (errorText.includes('<!DOCTYPE html>') ||
@@ -52,6 +53,7 @@ const postToAction = async (action: string, data: object): Promise<any> => {
       mode: 'cors',
       body: JSON.stringify({ action, data }),
       headers: {
+        // Apps Script is vaak het stabielst met text/plain
         'Content-Type': 'text/plain;charset=UTF-8',
       },
     });
@@ -80,15 +82,17 @@ const tryParseJson = (v: any) => {
     let s = cur.trim();
     if (!s) return cur;
 
+    // looks like JSON
     if (s.startsWith('{') || s.startsWith('[')) {
       try {
         cur = JSON.parse(s);
-        continue;
+        continue; // may still be nested-string JSON
       } catch {
         return cur;
       }
     }
 
+    // strip wrapping quotes
     const wrapDouble = s.startsWith('"') && s.endsWith('"') && s.length >= 2;
     const wrapSingle = s.startsWith("'") && s.endsWith("'") && s.length >= 2;
     if (wrapDouble || wrapSingle) {
@@ -96,9 +100,11 @@ const tryParseJson = (v: any) => {
       continue;
     }
 
+    // find first { or [
     const idxObj = s.indexOf('{');
     const idxArr = s.indexOf('[');
-    const idx = idxArr === -1 ? idxObj : idxObj === -1 ? idxArr : Math.min(idxArr, idxObj);
+    const idx =
+      idxArr === -1 ? idxObj : idxObj === -1 ? idxArr : Math.min(idxArr, idxObj);
 
     if (idx > 0) {
       const candidate = s.slice(idx).trim();
@@ -131,9 +137,12 @@ const parseRatingLogs = (logs: any[]): RatingLogEntry[] => {
               ? log.playerid
               : undefined;
 
-      const rawDate = log.date !== undefined ? log.date : log.Datum !== undefined ? log.Datum : undefined;
+      const rawDate =
+        log.date !== undefined ? log.date : log.Datum !== undefined ? log.Datum : undefined;
 
-      if (rawRating === undefined || rawPlayerId === undefined || rawDate === undefined) return null;
+      if (rawRating === undefined || rawPlayerId === undefined || rawDate === undefined) {
+        return null;
+      }
 
       const ratingStr = String(rawRating).replace(',', '.');
       return {
@@ -168,13 +177,16 @@ const extractId = (m: RawTeamMember): number | null => {
 
 const toIdTeams = (teamsAny: any): number[][] => {
   const t = tryParseJson(teamsAny);
+
   if (!Array.isArray(t)) return [];
 
   return t
     .map((team: any) => {
       const arr = tryParseJson(team);
       if (!Array.isArray(arr)) return [];
-      return arr.map((m: any) => extractId(m)).filter((id: number | null): id is number => id !== null);
+      return arr
+        .map((m: any) => extractId(m))
+        .filter((id: number | null): id is number => id !== null);
     })
     .filter((team: number[]) => Array.isArray(team));
 };
@@ -264,7 +276,7 @@ export const getInitialData = async (): Promise<{
   competitionName: string;
   ratingLogs: RatingLogEntry[];
   trophies: Trophy[];
-  seasonStartDate: string;
+  seasonStartDate?: string; // ✅ NIEUW
 }> => {
   const scriptUrl = getScriptUrl();
   if (!scriptUrl || !scriptUrl.includes('/exec')) {
@@ -285,25 +297,36 @@ export const getInitialData = async (): Promise<{
 
   const data = await handleResponse(response);
 
-  if (typeof data !== 'object' || data === null) throw new Error('Onverwacht antwoord van de server (geen object).');
-  if ((data as any).status === 'error') throw new Error((data as any).message || 'Onbekende serverfout.');
-  if (!Array.isArray((data as any).players)) throw new Error('Verbinding geslaagd, maar er kwam geen spelerslijst terug.');
+  if (typeof data !== 'object' || data === null) {
+    throw new Error('Onverwacht antwoord van de server (geen object).');
+  }
+  if ((data as any).status === 'error') {
+    throw new Error((data as any).message || 'Onbekende serverfout.');
+  }
+
+  if (!Array.isArray((data as any).players)) {
+    throw new Error('Verbinding geslaagd, maar er kwam geen spelerslijst terug.');
+  }
 
   const validPlayers: Player[] = (data as any).players
     .filter((p: any) => p && p.id != null && String(p.name || '').trim() !== '')
-    .map((p: any) => ({
-      id: Number(p.id),
-      name: String(p.name),
-      rating: Number(p.rating ?? 1),
-      startRating:
-        p.startRating === undefined || p.startRating === null || p.startRating === ''
-          ? undefined
-          : Number(String(p.startRating).replace(',', '.')),
-      isKeeper: p.isKeeper === true,
-      isFixedMember: p.isFixedMember === true,
-      photoBase64: p.photoBase64 ? String(p.photoBase64) : '',
-      excelId: p.excelId ?? p.excelID ?? undefined,
-    }));
+    .map((p: any) => {
+      const sr =
+        p.startRating !== undefined && p.startRating !== null && String(p.startRating).trim() !== ''
+          ? Number(String(p.startRating).replace(',', '.'))
+          : undefined;
+
+      return {
+        id: Number(p.id),
+        name: String(p.name),
+        rating: Number(p.rating ?? 1),
+        startRating: Number.isFinite(sr) ? sr : undefined, // ✅ NEW
+        isKeeper: p.isKeeper === true,
+        isFixedMember: p.isFixedMember === true,
+        photoBase64: p.photoBase64 ? String(p.photoBase64) : '',
+        excelId: p.excelId ?? p.excelID ?? undefined,
+      };
+    });
 
   const normalizedHistory = normalizeHistory((data as any).history);
   const rehydratedHistory = rehydrateHistoryById(normalizedHistory, validPlayers);
@@ -314,13 +337,16 @@ export const getInitialData = async (): Promise<{
     competitionName: typeof (data as any).competitionName === 'string' ? (data as any).competitionName : '',
     ratingLogs: parseRatingLogs((data as any).ratingLogs),
     trophies: Array.isArray((data as any).trophies) ? (data as any).trophies : [],
-    seasonStartDate: typeof (data as any).seasonStartDate === 'string' ? (data as any).seasonStartDate : '',
+    seasonStartDate:
+      typeof (data as any).seasonStartDate === 'string' ? (data as any).seasonStartDate : undefined,
   };
 };
 
 export const runDiagnostics = async (): Promise<any> => {
   const scriptUrl = getScriptUrl();
-  if (!scriptUrl || !scriptUrl.includes('/exec')) throw new Error('De geconfigureerde SCRIPT_URL is ongeldig.');
+  if (!scriptUrl || !scriptUrl.includes('/exec')) {
+    throw new Error('De geconfigureerde SCRIPT_URL is ongeldig.');
+  }
 
   const url = new URL(scriptUrl);
   url.searchParams.append('action', 'runDiagnostics');
@@ -337,7 +363,7 @@ export const runDiagnostics = async (): Promise<any> => {
   return result;
 };
 
-// ✅ session carries round2Teams when present.
+// ✅ session carries round2Teams when present
 export const saveGameSession = (session: GameSession, updatedRatings: { id: number; rating: number }[]) => {
   return postToAction('saveSession', { session, updatedRatings });
 };
@@ -360,12 +386,15 @@ export const setCompetitionName = (name: string) => {
   return postToAction('setCompetitionName', { name });
 };
 
-// ✅ Season settings
+// ✅ NIEUW: seizoen startdatum
 export const setSeasonStartDate = (seasonStartDate: string) => {
   return postToAction('setSeasonStartDate', { seasonStartDate });
 };
 
-export const bulkUpdateStartRatings = (startRatings: { id: number; startRating: number | '' }[]) => {
+// ✅ NIEUW: bulk startRatings opslaan
+export const bulkUpdateStartRatings = (
+  startRatings: { id: number; startRating: number | string }[]
+) => {
   return postToAction('bulkUpdateStartRatings', { startRatings });
 };
 
