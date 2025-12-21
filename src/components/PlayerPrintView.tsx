@@ -1,20 +1,9 @@
 
 import React, { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { Player, Trophy, TrophyType, GameSession } from '../types';
+import type { Player, Trophy, TrophyType, GameSession, MatchResult } from '../types';
 import ShieldIcon from './icons/ShieldIcon';
 import TrophyIcon from './icons/TrophyIcon';
-
-interface PlayerPrintViewProps {
-  player: Player;
-  stats: any;
-  trophies: Trophy[];
-  players: Player[];
-  history: GameSession[]; // ✅ nodig voor "Aanwezig X/Y (avonden)"
-  seasonHistory: { date: string; rating: number }[];
-  allTimeHistory: { date: string; rating: number }[]; // ✅ weer printen
-  onClose: () => void;
-}
 
 /* ============================================================================
  * Helpers
@@ -25,7 +14,154 @@ const toMs = (d: string) => {
   return Number.isFinite(ms) ? ms : 0;
 };
 
-// --- VERBETERDE GRAFIEK VOOR PRINT ---
+const hasAnyResults = (s: GameSession) =>
+  (Array.isArray(s.round1Results) && s.round1Results.length > 0) ||
+  (Array.isArray(s.round2Results) && s.round2Results.length > 0);
+
+const sumGoals = (goals: any[]) => (goals || []).reduce((sum, g) => sum + (Number(g?.count) || 0), 0);
+
+const inTeams = (playerId: number, teams?: Player[][]) =>
+  (teams || []).some((team) => team.some((p) => p.id === playerId));
+
+const ordinalNl = (n: number) => {
+  if (!Number.isFinite(n) || n <= 0) return '—';
+  return `${n}e`;
+};
+
+type StandingRow = { pts: number; gf: number; gd: number };
+type DefenseRow = { conceded: number; matches: number };
+
+const computeSeasonAggregates = (params: {
+  history: GameSession[];
+  seasonStartMs: number;
+}) => {
+  const { history, seasonStartMs } = params;
+
+  const standings = new Map<number, StandingRow>();
+  const goalsForPlayer = new Map<number, number>();
+  const defense = new Map<number, DefenseRow>();
+
+  const ensureStanding = (id: number) => {
+    if (!standings.has(id)) standings.set(id, { pts: 0, gf: 0, gd: 0 });
+    return standings.get(id)!;
+  };
+
+  const ensureDefense = (id: number) => {
+    if (!defense.has(id)) defense.set(id, { conceded: 0, matches: 0 });
+    return defense.get(id)!;
+  };
+
+  const addPlayerGoals = (goalsArr: any[]) => {
+    (goalsArr || []).forEach((g) => {
+      const pid = Number(g?.playerId);
+      const c = Number(g?.count) || 0;
+      if (!Number.isFinite(pid) || pid <= 0 || c <= 0) return;
+      goalsForPlayer.set(pid, (goalsForPlayer.get(pid) || 0) + c);
+    });
+  };
+
+  const applyMatch = (teamsForRound: Player[][] | undefined, match: MatchResult) => {
+    const t1 = teamsForRound?.[match.team1Index] || [];
+    const t2 = teamsForRound?.[match.team2Index] || [];
+    if (!t1.length || !t2.length) return;
+
+    const s1 = sumGoals(match.team1Goals || []);
+    const s2 = sumGoals(match.team2Goals || []);
+
+    // topscorer: goals per speler
+    addPlayerGoals(match.team1Goals || []);
+    addPlayerGoals(match.team2Goals || []);
+
+    // standings: GF/GD voor alle spelers in team
+    t1.forEach((p) => {
+      const row = ensureStanding(p.id);
+      row.gf += s1;
+      row.gd += s1 - s2;
+    });
+    t2.forEach((p) => {
+      const row = ensureStanding(p.id);
+      row.gf += s2;
+      row.gd += s2 - s1;
+    });
+
+    // points
+    if (s1 > s2) {
+      t1.forEach((p) => (ensureStanding(p.id).pts += 3));
+    } else if (s2 > s1) {
+      t2.forEach((p) => (ensureStanding(p.id).pts += 3));
+    } else {
+      t1.forEach((p) => (ensureStanding(p.id).pts += 1));
+      t2.forEach((p) => (ensureStanding(p.id).pts += 1));
+    }
+
+    // verdediger-metric: goals tegen per wedstrijd (alleen voor spelers die meedoen)
+    t1.forEach((p) => {
+      const d = ensureDefense(p.id);
+      d.conceded += s2; // team1 kreeg s2 tegen
+      d.matches += 1;
+    });
+    t2.forEach((p) => {
+      const d = ensureDefense(p.id);
+      d.conceded += s1; // team2 kreeg s1 tegen
+      d.matches += 1;
+    });
+  };
+
+  (history || []).forEach((session) => {
+    const ms = toMs(String(session.date || ''));
+    if (!ms) return;
+    if (seasonStartMs && ms < seasonStartMs) return;
+    if (!hasAnyResults(session)) return;
+
+    const teamsR1 = session.teams || [];
+    const teamsR2 = (session as any).round2Teams ?? session.teams ?? [];
+
+    (session.round1Results || []).forEach((m) => applyMatch(teamsR1, m));
+    (session.round2Results || []).forEach((m) => applyMatch(teamsR2, m));
+  });
+
+  return { standings, goalsForPlayer, defense };
+};
+
+const rankStanding = (standings: Map<number, StandingRow>, playerId: number) => {
+  const rows = [...standings.entries()].map(([id, r]) => ({ id, ...r }));
+  rows.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.id - b.id);
+  const idx = rows.findIndex((r) => r.id === playerId);
+  return idx >= 0 ? idx + 1 : 0;
+};
+
+const rankTopScorer = (goalsForPlayer: Map<number, number>, playerId: number) => {
+  const rows = [...goalsForPlayer.entries()].map(([id, goals]) => ({ id, goals }));
+  rows.sort((a, b) => b.goals - a.goals || a.id - b.id);
+  const idx = rows.findIndex((r) => r.id === playerId);
+  const myGoals = goalsForPlayer.get(playerId) || 0;
+  return { rank: idx >= 0 ? idx + 1 : 0, myGoals };
+};
+
+const rankDefender = (defense: Map<number, DefenseRow>, playerId: number) => {
+  const rows = [...defense.entries()].map(([id, d]) => ({
+    id,
+    concededPerMatch: d.matches > 0 ? d.conceded / d.matches : Infinity,
+    matches: d.matches,
+  }));
+
+  // alleen spelers met minimaal 1 match
+  const filtered = rows.filter((r) => r.matches > 0);
+
+  filtered.sort((a, b) => a.concededPerMatch - b.concededPerMatch || b.matches - a.matches || a.id - b.id);
+
+  const idx = filtered.findIndex((r) => r.id === playerId);
+  const mine = defense.get(playerId);
+  const myAvg =
+    mine && mine.matches > 0 ? mine.conceded / mine.matches : Infinity;
+
+  return { rank: idx >= 0 ? idx + 1 : 0, concededPerMatch: myAvg };
+};
+
+/* ============================================================================
+ * PrintChart
+ * ========================================================================== */
+
 const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: string }> = ({
   data,
   title,
@@ -57,83 +193,52 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
     <div className="border border-gray-300 rounded p-4 bg-white mb-4 break-inside-avoid">
       <h5 className="text-sm font-bold uppercase text-black mb-2 text-center">{title}</h5>
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
-        {/* Grid */}
         <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#eee" strokeWidth="1" />
-        <line
-          x1={padding}
-          y1={height / 2}
-          x2={width - padding}
-          y2={height / 2}
-          stroke="#eee"
-          strokeWidth="1"
-        />
-        <line
-          x1={padding}
-          y1={height - padding}
-          x2={width - padding}
-          y2={height - padding}
-          stroke="#eee"
-          strokeWidth="1"
-        />
+        <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#eee" strokeWidth="1" />
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#eee" strokeWidth="1" />
 
-        {/* Lijn */}
         <polyline fill="none" stroke="#000" strokeWidth="2.5" points={points} strokeLinejoin="round" />
 
-        {/* Y labels */}
-        <text
-          x={padding - 5}
-          y={getY(maxRating)}
-          className="text-[12px] fill-gray-600 font-bold"
-          textAnchor="end"
-          dominantBaseline="middle"
-        >
+        <text x={padding - 5} y={getY(maxRating)} className="text-[12px] fill-gray-600 font-bold" textAnchor="end" dominantBaseline="middle">
           {maxRating.toFixed(1)}
         </text>
-        <text
-          x={padding - 5}
-          y={getY(minRating)}
-          className="text-[12px] fill-gray-600 font-bold"
-          textAnchor="end"
-          dominantBaseline="middle"
-        >
+        <text x={padding - 5} y={getY(minRating)} className="text-[12px] fill-gray-600 font-bold" textAnchor="end" dominantBaseline="middle">
           {minRating.toFixed(1)}
         </text>
 
-        {/* X labels */}
         <text x={getX(0)} y={height - 15} className="text-[12px] fill-gray-600" textAnchor="start">
           {formatDate(data[0].date)}
         </text>
-        <text
-          x={getX(Math.floor(data.length / 2))}
-          y={height - 15}
-          className="text-[12px] fill-gray-600"
-          textAnchor="middle"
-        >
+        <text x={getX(Math.floor(data.length / 2))} y={height - 15} className="text-[12px] fill-gray-600" textAnchor="middle">
           {formatDate(data[Math.floor(data.length / 2)].date)}
         </text>
-        <text
-          x={getX(data.length - 1)}
-          y={height - 15}
-          className="text-[12px] fill-gray-600"
-          textAnchor="end"
-        >
+        <text x={getX(data.length - 1)} y={height - 15} className="text-[12px] fill-gray-600" textAnchor="end">
           {formatDate(data[data.length - 1].date)}
         </text>
 
-        {/* Laatste punt */}
         <circle cx={getX(data.length - 1)} cy={getY(data[data.length - 1].rating)} r="4" fill="black" />
-        <text
-          x={getX(data.length - 1)}
-          y={getY(data[data.length - 1].rating) - 10}
-          className="text-[12px] fill-black font-bold"
-          textAnchor="end"
-        >
+        <text x={getX(data.length - 1)} y={getY(data[data.length - 1].rating) - 10} className="text-[12px] fill-black font-bold" textAnchor="end">
           {data[data.length - 1].rating.toFixed(2)}
         </text>
       </svg>
     </div>
   );
 };
+
+/* ============================================================================
+ * Component
+ * ========================================================================== */
+
+interface PlayerPrintViewProps {
+  player: Player;
+  stats: any;
+  trophies: Trophy[];
+  players: Player[];
+  history: GameSession[];
+  seasonHistory: { date: string; rating: number }[];
+  allTimeHistory: { date: string; rating: number }[];
+  onClose: () => void;
+}
 
 const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
   player,
@@ -164,8 +269,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
   const getTrophyContent = (type: TrophyType) => {
     const images: { [key: string]: string } = {
-      Verdediger:
-        'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
+      Verdediger: 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
       Topscoorder: 'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
       Clubkampioen: 'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
       '2de': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
@@ -181,7 +285,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
       '2de Wintertoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
       '3de Wintertoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
     };
-
     const url = images[type];
     if (url) return <img src={url} alt={type} className="w-10 h-10 object-contain" />;
     if (type === 'Verdediger') return <ShieldIcon className="w-8 h-8 text-black" />;
@@ -211,41 +314,57 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
   const avgPoints = stats.gamesPlayed > 0 ? (Number(stats.points) || 0) / stats.gamesPlayed : 0;
 
-  /**
-   * ✅ Aanwezigheid = AVONDEN (niet wedstrijden):
-   * - 1 GameSession = 1 avond
-   * - tel alleen sessies waar echt gespeeld is (round1Results/round2Results gevuld)
-   * - alleen SEIZOEN: vanaf de eerste datum in seasonHistory (startpunt)
-   */
+  // ✅ seizoen start op eerste punt van seasonHistory
+  const seasonStartMs = useMemo(() => toMs(seasonHistory?.[0]?.date || ''), [seasonHistory]);
+
+  // ✅ Aanwezigheid = avonden (sessies met resultaten) in seizoen
   const seasonAttendance = useMemo(() => {
     const h = history || [];
-    const seasonStartMs = toMs(seasonHistory?.[0]?.date || '');
 
-    const hasAnyResults = (s: GameSession) =>
-      (Array.isArray(s.round1Results) && s.round1Results.length > 0) ||
-      (Array.isArray(s.round2Results) && s.round2Results.length > 0);
-
-    const inTeams = (teams: Player[][] | undefined) =>
-      (teams || []).some((team) => team.some((p) => p.id === player.id));
-
-    const inSeason = (s: GameSession) => {
-      const ms = toMs(String((s as any).date || ''));
+    const totalNights = h.filter((s) => {
+      const ms = toMs(String(s.date || ''));
       if (!ms) return false;
       if (seasonStartMs && ms < seasonStartMs) return false;
-      return true;
-    };
-
-    const totalNights = h.filter((s) => inSeason(s) && hasAnyResults(s)).length;
+      return hasAnyResults(s);
+    }).length;
 
     const attendedNights = h.filter((s) => {
-      if (!inSeason(s) || !hasAnyResults(s)) return false;
-      return inTeams(s.teams) || inTeams((s as any).round2Teams);
+      const ms = toMs(String(s.date || ''));
+      if (!ms) return false;
+      if (seasonStartMs && ms < seasonStartMs) return false;
+      if (!hasAnyResults(s)) return false;
+
+      const r2Teams = (s as any).round2Teams as Player[][] | undefined;
+      return inTeams(player.id, s.teams) || inTeams(player.id, r2Teams);
     }).length;
 
     return { attendedNights, totalNights };
-  }, [history, player.id, seasonHistory]);
+  }, [history, player.id, seasonStartMs]);
 
-  const attendanceText = `${seasonAttendance.attendedNights}/${seasonAttendance.totalNights}`;
+  const eligible50 =
+    seasonAttendance.totalNights > 0 &&
+    seasonAttendance.attendedNights / seasonAttendance.totalNights >= 0.5;
+
+  // ✅ positie + topscorer + verdediger (seizoen)
+  const seasonRanks = useMemo(() => {
+    const { standings, goalsForPlayer, defense } = computeSeasonAggregates({
+      history: history || [],
+      seasonStartMs,
+    });
+
+    const position = rankStanding(standings, player.id);
+
+    const ts = rankTopScorer(goalsForPlayer, player.id);
+    const def = rankDefender(defense, player.id);
+
+    return {
+      position,
+      topscorerRank: ts.rank,
+      topscorerGoals: ts.myGoals,
+      defenderRank: def.rank,
+      defenderAvgAgainst: def.concededPerMatch,
+    };
+  }, [history, player.id, seasonStartMs]);
 
   return createPortal(
     <div className="print-portal hidden">
@@ -256,7 +375,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             html, body { background: white !important; height: 100%; margin: 0; padding: 0; }
             body > *:not(.print-portal) { display: none !important; }
 
-            /* browsers tonen soms url/paginatitel: dit helpt, maar is niet 100% te forceren */
             @page { size: A4; margin: 10mm; }
 
             .print-portal {
@@ -271,13 +389,16 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               z-index: 9999;
             }
 
-            /* eventueel url’s van links niet tonen */
             a[href]:after { content: "" !important; }
             a:after { content: "" !important; }
 
             .stat-box { border: 2px solid #e5e7eb; padding: 10px; border-radius: 8px; text-align: center; }
-            .print-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+            .print-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
             .relationships-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+
+            .stat-title { font-size: 10px; text-transform: uppercase; color: #6b7280; font-weight: 800; }
+            .stat-value { font-size: 22px; font-weight: 900; }
+            .stat-sub { font-size: 10px; color: #9ca3af; margin-top: 2px; }
           }
         `}
       </style>
@@ -315,7 +436,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           />
         </div>
 
-        {/* ✅ PRIJZENKAST NAAR BOVEN */}
+        {/* PRIJZENKAST BOVEN */}
         {trophies.length > 0 && (
           <div className="mb-6 break-inside-avoid">
             <h3 className="text-lg font-bold border-b border-gray-300 pb-1 mb-3 uppercase">Prijzenkast</h3>
@@ -333,37 +454,70 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         )}
 
-        {/* ✅ STATS GRID: 5 vakjes, "Aanwezig = avonden" */}
+        {/* ✅ RIJ 1: Aanwezig + Positie + Topscoorder + Verdediger */}
         <div className="print-grid">
           <div className="stat-box">
-            <div className="text-[10px] uppercase text-gray-500 font-bold">Gespeeld</div>
-            <div className="text-2xl font-black">{stats.gamesPlayed}</div>
+            <div className="stat-title">Aanwezig (avonden)</div>
+            <div className="stat-value">
+              {seasonAttendance.attendedNights}/{seasonAttendance.totalNights}
+            </div>
           </div>
 
           <div className="stat-box">
-            <div className="text-[10px] uppercase text-gray-500 font-bold">Resultaten</div>
-            <div className="text-xl font-black">
+            <div className="stat-title">Positie</div>
+            <div className="stat-value">{eligible50 ? ordinalNl(seasonRanks.position) : '—'}</div>
+            {!eligible50 && <div className="stat-sub">min 50% avonden</div>}
+          </div>
+
+          <div className="stat-box">
+            <div className="stat-title">Topscoorder</div>
+            <div className="stat-value">
+              {eligible50 ? `${ordinalNl(seasonRanks.topscorerRank)}` : '—'}
+            </div>
+            <div className="stat-sub">
+              {eligible50 ? `${seasonRanks.topscorerGoals} goals` : 'min 50% avonden'}
+            </div>
+          </div>
+
+          <div className="stat-box">
+            <div className="stat-title">Verdediger</div>
+            <div className="stat-value">
+              {eligible50 ? `${ordinalNl(seasonRanks.defenderRank)}` : '—'}
+            </div>
+            <div className="stat-sub">
+              {eligible50 && Number.isFinite(seasonRanks.defenderAvgAgainst)
+                ? `${seasonRanks.defenderAvgAgainst.toFixed(2)} tegen / match`
+                : 'min 50% avonden'}
+            </div>
+          </div>
+        </div>
+
+        {/* ✅ RIJ 2: Gespeeld + Resultaten + Goals + Gem punten */}
+        <div className="print-grid">
+          <div className="stat-box">
+            <div className="stat-title">Gespeeld</div>
+            <div className="stat-value">{stats.gamesPlayed}</div>
+          </div>
+
+          <div className="stat-box">
+            <div className="stat-title">Resultaten</div>
+            <div className="stat-value" style={{ fontSize: 18 }}>
               {stats.wins}W • {stats.draws}G • {stats.losses}V
             </div>
           </div>
 
           <div className="stat-box">
-            <div className="text-[10px] uppercase text-gray-500 font-bold">Goals</div>
-            <div className="text-2xl font-black">{stats.goalsScored}</div>
+            <div className="stat-title">Goals</div>
+            <div className="stat-value">{stats.goalsScored}</div>
           </div>
 
           <div className="stat-box">
-            <div className="text-[10px] uppercase text-gray-500 font-bold">Gem. Punten</div>
-            <div className="text-2xl font-black">{avgPoints.toFixed(2)}</div>
-          </div>
-
-          <div className="stat-box">
-            <div className="text-[10px] uppercase text-gray-500 font-bold">Aanwezig (avonden)</div>
-            <div className="text-2xl font-black">{attendanceText}</div>
+            <div className="stat-title">Gem. Punten</div>
+            <div className="stat-value">{avgPoints.toFixed(2)}</div>
           </div>
         </div>
 
-        {/* ✅ GRAFIEKEN: seizoen + all-time */}
+        {/* GRAFIEKEN: seizoen + all-time */}
         <div className="mb-8">
           <PrintChart data={seasonHistory} title="Verloop Huidig Seizoen" />
           <PrintChart data={allTimeHistory} title="All-Time Verloop" />
@@ -383,7 +537,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         </div>
 
-        {/* FOOTER (zonder URL) */}
+        {/* FOOTER */}
         <div className="text-center text-[10px] text-gray-400 mt-auto pt-4 border-t border-gray-200">
           Gegenereerd door de Bounceball App - {new Date().toLocaleDateString('nl-NL')}
         </div>
