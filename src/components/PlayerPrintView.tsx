@@ -333,7 +333,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
         {/* FOOTER (zonder URL) */}
         <div className="text-center text-[10px] text-gray-400 mt-auto pt-4 border-t border-gray-200">
-          Gegenereerd door Bounceball App - {new Date().toLocaleDateString('nl-NL')}
+          Gegenereerd door de Bounceball App - {new Date().toLocaleDateString('nl-NL')}
         </div>
       </div>
     </div>,
