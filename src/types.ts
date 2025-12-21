@@ -63,7 +63,6 @@ export interface RatingLogEntry {
 // ============================================================================
 // TROPHY ROOM
 // ============================================================================
-
 export type TrophyType =
   | 'Clubkampioen' | '2de' | '3de'
   | 'Topscoorder' | 'Verdediger' | 'Speler van het jaar'
