@@ -621,17 +621,17 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
         {/* RIJ 1 */}
         <div className="print-grid">
           <div className="stat-box">
-            <div className="stat-title">Aanwezig (avonden)</div>
+            <div className="stat-title">Speelavonden aanwezig</div>
             <div className="stat-value">
               {seasonAttendance.attendedNights}/{seasonAttendance.totalNights}
             </div>
-            <div className="stat-sub">drempel: {seasonRanks.minNights} avonden</div>
+            <div className="stat-sub">Minimaal: {seasonRanks.minNights} avonden</div>
           </div>
 
           <div className="stat-box">
-            <div className="stat-title">Positie</div>
+            <div className="stat-title">Competitie</div>
             <div className="stat-value">{eligible50 ? ordinalNl(seasonRanks.position) : '—'}</div>
-            {!eligible50 && <div className="stat-sub">min 50% avonden</div>}
+            {!eligible50 && <div className="stat-sub">min 50% aanwezig</div>}
           </div>
 
           <div className="stat-box">
@@ -642,7 +642,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             <div className="stat-sub">
               {eligible50
                 ? `${seasonRanks.topscorerGoals} goals (${seasonRanks.topscorerAvg.toFixed(2)}/w)`
-                : 'min 50% avonden'}
+                : 'min 50% aanwezig'}
             </div>
           </div>
 
@@ -654,7 +654,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             <div className="stat-sub">
               {eligible50 && Number.isFinite(seasonRanks.defenderAvgAgainst)
                 ? `${seasonRanks.defenderAvgAgainst.toFixed(2)} tegen / w`
-                : 'min 50% avonden'}
+                : 'min 50% aanwezig'}
             </div>
           </div>
         </div>
@@ -662,14 +662,14 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
         {/* RIJ 2 */}
         <div className="print-grid">
           <div className="stat-box">
-            <div className="stat-title">Gespeeld</div>
+            <div className="stat-title">Gespeelde wedstrijden</div>
             <div className="stat-value">{stats.gamesPlayed}</div>
           </div>
 
           <div className="stat-box">
             <div className="stat-title">Resultaten</div>
             <div className="stat-value" style={{ fontSize: 18 }}>
-              {stats.wins}W • {stats.draws}G • {stats.losses}V
+              {stats.wins}gewonnen • {stats.draws}gelijk • {stats.losses}verloren
             </div>
           </div>
 
@@ -696,9 +696,9 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             Statistieken vs Spelers (Top 5)
           </h3>
           <div className="relationships-grid">
-            <RelationshipSection title="Vaakste Medespeler" data={stats.mostFrequentTeammates} />
-            <RelationshipSection title="Beste Medespeler (Winst)" data={stats.bestTeammates} />
-            <RelationshipSection title="Slechtste Medespeler (Verlies)" data={stats.worstTeammates} />
+            <RelationshipSection title="Vaak samen" data={stats.mostFrequentTeammates} />
+            <RelationshipSection title="Beste Medespeler" data={stats.bestTeammates} />
+            <RelationshipSection title="Slechtste Medespeler" data={stats.worstTeammates} />
             <RelationshipSection title="Makkelijkste Tegenstander" data={stats.bestOpponents} />
             <RelationshipSection title="Lastigste Tegenstander" data={stats.worstOpponents} />
           </div>
@@ -706,7 +706,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
         {/* FOOTER */}
         <div className="text-center text-[10px] text-gray-400 mt-auto pt-4 border-t border-gray-200">
-          Gegenereerd door de Bounceball App - {new Date().toLocaleDateString('nl-NL')}
+          Gegenereerd door de Bounceball App  {new Date().toLocaleDateString('nl-NL')}
         </div>
       </div>
     </div>,
