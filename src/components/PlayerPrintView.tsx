@@ -1,18 +1,18 @@
 
 import React, { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { Player, Trophy, TrophyType, GameSession, MatchResult } from '../types';
+import type { Player, Trophy, TrophyType, GameSession } from '../types';
 import ShieldIcon from './icons/ShieldIcon';
 import TrophyIcon from './icons/TrophyIcon';
 
 interface PlayerPrintViewProps {
   player: Player;
-  stats: any; // bevat wins/draws/losses/gamesPlayed/points/etc (seizoen)
+  stats: any;
   trophies: Trophy[];
   players: Player[];
-  history: GameSession[]; // ✅ nodig voor "Aanwezig X/Y" (seizoen)
-  seasonHistory: { date: string; rating: number }[]; // ✅ eerste punt = seasonStartDate
-  allTimeHistory: { date: string; rating: number }[];
+  history: GameSession[]; // ✅ nodig voor "Aanwezig X/Y (avonden)"
+  seasonHistory: { date: string; rating: number }[]; // ✅ alleen seizoen gebruiken voor de print
+  allTimeHistory: { date: string; rating: number }[]; // (mag blijven in props, maar we printen 'm niet)
   onClose: () => void;
 }
 
@@ -25,16 +25,7 @@ const toMs = (d: string) => {
   return Number.isFinite(ms) ? ms : 0;
 };
 
-const countGoals = (goals: any[]) => (goals || []).reduce((sum, g) => sum + (g?.count || 0), 0);
-
-// Tel een match alleen mee als er daadwerkelijk goals-array bestaat (veiligheid)
-const isValidMatch = (m: MatchResult) =>
-  !!m && Array.isArray(m.team1Goals) && Array.isArray(m.team2Goals);
-
-/* ============================================================================
- * Print chart
- * ========================================================================== */
-
+// --- VERBETERDE GRAFIEK VOOR PRINT ---
 const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: string }> = ({
   data,
   title,
@@ -68,8 +59,22 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
         {/* Grid */}
         <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#eee" strokeWidth="1" />
-        <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#eee" strokeWidth="1" />
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#eee" strokeWidth="1" />
+        <line
+          x1={padding}
+          y1={height / 2}
+          x2={width - padding}
+          y2={height / 2}
+          stroke="#eee"
+          strokeWidth="1"
+        />
+        <line
+          x1={padding}
+          y1={height - padding}
+          x2={width - padding}
+          y2={height - padding}
+          stroke="#eee"
+          strokeWidth="1"
+        />
 
         {/* Lijn */}
         <polyline fill="none" stroke="#000" strokeWidth="2.5" points={points} strokeLinejoin="round" />
@@ -130,10 +135,6 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
   );
 };
 
-/* ============================================================================
- * Component
- * ========================================================================== */
-
 const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
   player,
   stats,
@@ -141,7 +142,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
   players,
   history,
   seasonHistory,
-  allTimeHistory,
+  // allTimeHistory, // ❌ niet meer printen (alleen seizoen)
   onClose,
 }) => {
   const playerMap = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
@@ -150,6 +151,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
     const printTimer = setTimeout(() => {
       window.print();
     }, 500);
+
     const closeTimer = setTimeout(() => onClose(), 1500);
 
     window.onafterprint = () => {
@@ -165,7 +167,8 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
   const getTrophyContent = (type: TrophyType) => {
     const images: { [key: string]: string } = {
-      Verdediger: 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
+      Verdediger:
+        'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
       Topscoorder: 'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
       Clubkampioen: 'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
       '2de': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
@@ -181,6 +184,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
       '2de Wintertoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
       '3de Wintertoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
     };
+
     const url = images[type];
     if (url) return <img src={url} alt={type} className="w-10 h-10 object-contain" />;
     if (type === 'Verdediger') return <ShieldIcon className="w-8 h-8 text-black" />;
@@ -210,29 +214,42 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
   const avgPoints = stats.gamesPlayed > 0 ? (Number(stats.points) || 0) / stats.gamesPlayed : 0;
 
-  // ✅ seizoen start = eerste punt uit seasonHistory (bij jou is dat seasonStartDate)
-  const seasonStartMs = useMemo(() => {
-    const d = seasonHistory?.[0]?.date;
-    const ms = d ? toMs(d) : 0;
-    return ms;
-  }, [seasonHistory]);
-
-  // ✅ Totaal aantal wedstrijden in het seizoen (round1 + round2) vanaf seasonStartDate
-  const totalSeasonMatches = useMemo(() => {
+  /**
+   * ✅ Aanwezigheid moet "AVONDEN" zijn:
+   * - 1 GameSession = 1 avond
+   * - tel alleen sessies waar echt gespeeld is (round1Results/round2Results gevuld)
+   * - alleen SEIZOEN: vanaf de eerste datum in seasonHistory (startpunt)
+   */
+  const seasonAttendance = useMemo(() => {
     const h = history || [];
-    return h.reduce((sum, s) => {
-      const dateMs = toMs(String((s as any).date || ''));
-      if (!seasonStartMs || !dateMs || dateMs < seasonStartMs) return sum;
 
-      const r1 = Array.isArray(s.round1Results) ? s.round1Results.filter(isValidMatch).length : 0;
-      const r2 = Array.isArray(s.round2Results) ? s.round2Results.filter(isValidMatch).length : 0;
-      return sum + r1 + r2;
-    }, 0);
-  }, [history, seasonStartMs]);
+    const seasonStartMs = toMs(seasonHistory?.[0]?.date || '');
 
-  // ✅ Aanwezigheid als wedstrijden: X/Y (seizoen)
-  // X = stats.gamesPlayed (jouw stats zijn seizoensstats)
-  const attendanceText = `${stats.gamesPlayed}/${totalSeasonMatches || stats.gamesPlayed || 0}`;
+    const hasAnyResults = (s: GameSession) =>
+      (Array.isArray(s.round1Results) && s.round1Results.length > 0) ||
+      (Array.isArray(s.round2Results) && s.round2Results.length > 0);
+
+    const inTeams = (teams: Player[][] | undefined) =>
+      (teams || []).some((team) => team.some((p) => p.id === player.id));
+
+    const inSeason = (s: GameSession) => {
+      const ms = toMs(String((s as any).date || ''));
+      if (!ms) return false;
+      if (seasonStartMs && ms < seasonStartMs) return false;
+      return true;
+    };
+
+    const totalNights = h.filter((s) => inSeason(s) && hasAnyResults(s)).length;
+
+    const attendedNights = h.filter((s) => {
+      if (!inSeason(s) || !hasAnyResults(s)) return false;
+      return inTeams(s.teams) || inTeams((s as any).round2Teams);
+    }).length;
+
+    return { attendedNights, totalNights };
+  }, [history, player.id, seasonHistory]);
+
+  const attendanceText = `${seasonAttendance.attendedNights}/${seasonAttendance.totalNights}`;
 
   return createPortal(
     <div className="print-portal hidden">
@@ -242,7 +259,17 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             body::before { display: none !important; }
             html, body { background: white !important; height: 100%; margin: 0; padding: 0; }
             body > *:not(.print-portal) { display: none !important; }
-            .print-portal { display: block !important; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white; color: black; font-family: sans-serif; z-index: 9999; }
+            .print-portal {
+              display: block !important;
+              position: absolute;
+              top: 0; left: 0;
+              width: 100%;
+              height: 100%;
+              background: white;
+              color: black;
+              font-family: sans-serif;
+              z-index: 9999;
+            }
             @page { size: A4; margin: 10mm; }
             .stat-box { border: 2px solid #e5e7eb; padding: 10px; border-radius: 8px; text-align: center; }
             .print-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
@@ -266,6 +293,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
                 {player.name.charAt(0)}
               </div>
             )}
+
             <div>
               <h1 className="text-4xl font-black uppercase tracking-wide">{player.name}</h1>
               <div className="flex gap-2 mt-2 text-sm font-bold uppercase text-gray-600">
@@ -275,6 +303,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               </div>
             </div>
           </div>
+
           <img
             src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png"
             alt="Logo"
@@ -282,7 +311,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           />
         </div>
 
-        {/* ✅ PRIJZENKAST BOVEN */}
+        {/* ✅ PRIJZENKAST NAAR BOVEN */}
         {trophies.length > 0 && (
           <div className="mb-6 break-inside-avoid">
             <h3 className="text-lg font-bold border-b border-gray-300 pb-1 mb-3 uppercase">Prijzenkast</h3>
@@ -300,7 +329,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         )}
 
-        {/* STATS GRID */}
+        {/* ✅ STATS GRID: 5 vakjes, "Aanwezig = avonden" */}
         <div className="print-grid">
           <div className="stat-box">
             <div className="text-[10px] uppercase text-gray-500 font-bold">Gespeeld</div>
@@ -325,15 +354,14 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
 
           <div className="stat-box">
-            <div className="text-[10px] uppercase text-gray-500 font-bold">Aanwezig (seizoen)</div>
+            <div className="text-[10px] uppercase text-gray-500 font-bold">Aanwezig (avonden)</div>
             <div className="text-2xl font-black">{attendanceText}</div>
           </div>
         </div>
 
-        {/* GRAFIEKEN */}
+        {/* ✅ GRAFIEK: alleen seizoen */}
         <div className="mb-8">
           <PrintChart data={seasonHistory} title="Verloop Huidig Seizoen" />
-          <PrintChart data={allTimeHistory} title="All-Time Verloop" />
         </div>
 
         {/* RELATIES */}
@@ -350,7 +378,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         </div>
 
-        {/* FOOTER (zonder URL linksonder) */}
+        {/* FOOTER (zonder URL) */}
         <div className="text-center text-[10px] text-gray-400 mt-auto pt-4 border-t border-gray-200">
           Gegenereerd door de Bounceball App - {new Date().toLocaleDateString('nl-NL')}
         </div>
@@ -361,3 +389,4 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 };
 
 export default PlayerPrintView;
+```0
