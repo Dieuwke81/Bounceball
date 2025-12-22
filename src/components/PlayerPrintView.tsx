@@ -602,6 +602,19 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               color: var(--ink);
               margin-bottom: 8px;
             }
+
+            /* =========================================================
+               ✅ RELATIES ALTIJD OP NIEUWE PAGINA
+               ========================================================= */
+            .relationships-page {
+              break-before: page;
+              page-break-before: always; /* fallback */
+            }
+            .relationships-page,
+            .relationships-grid {
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
           }
         `}
       </style>
@@ -632,11 +645,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             </div>
           </div>
 
-          <img
-            src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png"
-            alt="Logo"
-            className="h-20 w-auto"
-          />
+          <img src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png" alt="Logo" className="h-20 w-auto" />
         </div>
 
         {/* PRIJZENKAST */}
@@ -657,7 +666,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         )}
 
-        {/* RIJ 1 (4 vakjes) */}
+        {/* RIJ 1 */}
         <div className="print-grid">
           <div className="stat-box tile-green">
             <div className="stat-title">Speelavonden aanwezig</div>
@@ -694,7 +703,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         </div>
 
-        {/* RIJ 2 (4 vakjes) */}
+        {/* RIJ 2 */}
         <div className="print-grid">
           <div className="stat-box tile-orange">
             <div className="stat-title">Gespeelde wedstrijden</div>
@@ -736,8 +745,8 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           <PrintChart data={allTimeHistory} title="All-Time Verloop" />
         </div>
 
-        {/* RELATIES */}
-        <div className="mb-8">
+        {/* RELATIES — altijd nieuwe pagina */}
+        <div className="relationships-page mb-8">
           <h3 className="text-lg font-bold border-b border-gray-300 pb-1 mb-3 uppercase">
             Statistieken vs Spelers (Top 5)
           </h3>
