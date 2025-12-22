@@ -469,14 +469,32 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
             @page { size: A4; margin: 10mm; }
 
+            /* =========================================================
+               Theme (menu kleuren) + kaartjes
+               ========================================================= */
+            :root {
+              --tile-blue:   #3b82f6;
+              --tile-orange: #f59e0b;
+              --tile-purple: #8b5cf6;
+              --tile-yellow: #fbbf24;
+              --tile-pink:   #ec4899;
+              --tile-green:  #22c55e;
+              --tile-red:    #ef4444;
+              --tile-teal:   #14b8a6;
+              --ink: #0f172a;
+              --muted: #475569;
+              --border: #cbd5e1;
+              --paper: #ffffff;
+            }
+
             .print-portal {
               display: block !important;
               position: absolute;
               top: 0; left: 0;
               width: 100%;
               height: 100%;
-              background: white;
-              color: black;
+              background: var(--paper);
+              color: var(--ink);
               font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
               z-index: 9999;
             }
@@ -485,16 +503,25 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             a[href]:after { content: "" !important; }
             a:after { content: "" !important; }
 
-            /* =========================
-               Styling: netter / "appealing"
-               ========================= */
             .stat-box {
-              border: 1.5px solid #d1d5db;
+              border: 1.5px solid var(--border);
               padding: 10px;
-              border-radius: 10px;
+              border-radius: 14px;
               text-align: center;
-              background: #fafafa;
+              background: #fff;
+              position: relative;
+              overflow: hidden;
             }
+
+            /* kleur-variant (zelfde gevoel als menu tegels) */
+            .tile-green  { border-left: 7px solid var(--tile-green);  background: rgba(34,197,94,0.10); }
+            .tile-yellow { border-left: 7px solid var(--tile-yellow); background: rgba(251,191,36,0.12); }
+            .tile-pink   { border-left: 7px solid var(--tile-pink);   background: rgba(236,72,153,0.10); }
+            .tile-blue   { border-left: 7px solid var(--tile-blue);   background: rgba(59,130,246,0.10); }
+            .tile-orange { border-left: 7px solid var(--tile-orange); background: rgba(245,158,11,0.12); }
+            .tile-purple { border-left: 7px solid var(--tile-purple); background: rgba(139,92,246,0.10); }
+            .tile-teal   { border-left: 7px solid var(--tile-teal);   background: rgba(20,184,166,0.10); }
+            .tile-red    { border-left: 7px solid var(--tile-red);    background: rgba(239,68,68,0.10); }
 
             .print-grid {
               display: grid;
@@ -513,39 +540,33 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             .stat-title {
               font-size: 10px;
               text-transform: uppercase;
-              color: #6b7280;
-              font-weight: 800;
-              letter-spacing: 0.04em;
+              color: var(--muted);
+              font-weight: 900;
+              letter-spacing: 0.06em;
             }
 
             .stat-value {
               font-size: 22px;
-              font-weight: 900;
-              color: #111827;
+              font-weight: 950;
+              color: var(--ink);
             }
 
             .stat-sub {
               font-size: 10px;
-              color: #6b7280;
+              color: var(--muted);
               margin-top: 2px;
-              font-weight: 700;
+              font-weight: 800;
             }
 
-            /* Accent borders */
-            .accent-green { border-left: 4px solid #16a34a; }
-            .accent-orange { border-left: 4px solid #f59e0b; }
-            .accent-red { border-left: 4px solid #dc2626; }
-            .accent-blue { border-left: 4px solid #2563eb; }
-
-            /* Resultaten: onder elkaar + kleur dot */
+            /* Resultaten: onder elkaar + dots met menu kleuren */
             .result-grid {
               margin-top: 6px;
               display: flex;
               flex-direction: column;
-              gap: 5px;
+              gap: 6px;
               font-size: 12px;
-              font-weight: 800;
-              color: #111827;
+              font-weight: 900;
+              color: var(--ink);
             }
             .result-row {
               display: flex;
@@ -560,25 +581,25 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               border-radius: 999px;
               display: inline-block;
             }
-            .dot-win { background: #16a34a; }
-            .dot-draw { background: #f59e0b; }
-            .dot-loss { background: #dc2626; }
+            .dot-win  { background: var(--tile-green); }
+            .dot-draw { background: var(--tile-yellow); }
+            .dot-loss { background: var(--tile-red); }
 
-            /* Chart card iets netter */
+            /* Charts */
             .chart-card {
-              border: 1.5px solid #d1d5db;
-              border-radius: 12px;
+              border: 1.5px solid var(--border);
+              border-radius: 14px;
               background: #ffffff;
               padding: 12px;
               margin-bottom: 14px;
             }
             .chart-title {
               font-size: 11px;
-              font-weight: 900;
-              letter-spacing: 0.06em;
+              font-weight: 950;
+              letter-spacing: 0.08em;
               text-transform: uppercase;
               text-align: center;
-              color: #111827;
+              color: var(--ink);
               margin-bottom: 8px;
             }
           }
@@ -618,7 +639,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           />
         </div>
 
-        {/* PRIJZENKAST BOVEN */}
+        {/* PRIJZENKAST */}
         {trophies.length > 0 && (
           <div className="mb-6 break-inside-avoid">
             <h3 className="text-lg font-bold border-b border-gray-300 pb-1 mb-3 uppercase">Prijzenkast</h3>
@@ -636,9 +657,9 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         )}
 
-        {/* RIJ 1 */}
+        {/* RIJ 1 (4 vakjes) */}
         <div className="print-grid">
-          <div className="stat-box accent-green">
+          <div className="stat-box tile-green">
             <div className="stat-title">Speelavonden aanwezig</div>
             <div className="stat-value">
               {seasonAttendance.attendedNights}/{seasonAttendance.totalNights}
@@ -646,13 +667,13 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             <div className="stat-sub">Minimaal: {seasonRanks.minNights} avonden</div>
           </div>
 
-          <div className="stat-box accent-blue">
+          <div className="stat-box tile-yellow">
             <div className="stat-title">Competitie</div>
             <div className="stat-value">{eligible50 ? ordinalNl(seasonRanks.position) : '—'}</div>
             {!eligible50 && <div className="stat-sub">min 50% aanwezig</div>}
           </div>
 
-          <div className="stat-box accent-orange">
+          <div className="stat-box tile-pink">
             <div className="stat-title">Topscoorder</div>
             <div className="stat-value">{eligible50 ? `${ordinalNl(seasonRanks.topscorerRank)}` : '—'}</div>
             <div className="stat-sub">
@@ -662,7 +683,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             </div>
           </div>
 
-          <div className="stat-box accent-red">
+          <div className="stat-box tile-blue">
             <div className="stat-title">Verdediger</div>
             <div className="stat-value">{eligible50 ? `${ordinalNl(seasonRanks.defenderRank)}` : '—'}</div>
             <div className="stat-sub">
@@ -673,14 +694,14 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         </div>
 
-        {/* RIJ 2 */}
+        {/* RIJ 2 (4 vakjes) */}
         <div className="print-grid">
-          <div className="stat-box">
+          <div className="stat-box tile-orange">
             <div className="stat-title">Gespeelde wedstrijden</div>
             <div className="stat-value">{stats.gamesPlayed}</div>
           </div>
 
-          <div className="stat-box">
+          <div className="stat-box tile-purple">
             <div className="stat-title">Resultaten</div>
             <div className="result-grid">
               <div className="result-row">
@@ -698,12 +719,12 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             </div>
           </div>
 
-          <div className="stat-box">
+          <div className="stat-box tile-teal">
             <div className="stat-title">Goals</div>
             <div className="stat-value">{stats.goalsScored}</div>
           </div>
 
-          <div className="stat-box">
+          <div className="stat-box tile-red">
             <div className="stat-title">Gem. Punten</div>
             <div className="stat-value">{avgPoints.toFixed(2)}</div>
           </div>
