@@ -970,33 +970,28 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           <div className="stat-box tile-purple">
             <div className="stat-title">Resultaten</div>
 
-            {/* ✅ zonder "punten" + mooi gecentreerd */}
             <div className="result-grid">
-              <div className="result-item">
-                <span className="result-dot dot-win" />
-                <span className="result-text">
-                  <span className="result-count">{stats.wins}</span>
-                  <span className="result-label">Gewonnen</span>
-                </span>
-              </div>
+  <div className="result-item">
+    <span className="result-text">
+      <span className="result-count">{stats.wins}</span>
+      <span className="result-label">Gewonnen</span>
+    </span>
+  </div>
 
-              <div className="result-item">
-                <span className="result-dot dot-draw" />
-                <span className="result-text">
-                  <span className="result-count">{stats.draws}</span>
-                  <span className="result-label">Gelijk</span>
-                </span>
-              </div>
+  <div className="result-item">
+    <span className="result-text">
+      <span className="result-count">{stats.draws}</span>
+      <span className="result-label">Gelijk</span>
+    </span>
+  </div>
 
-              <div className="result-item">
-                <span className="result-dot dot-loss" />
-                <span className="result-text">
-                  <span className="result-count">{stats.losses}</span>
-                  <span className="result-label">Verloren</span>
-                </span>
-              </div>
-            </div>
-          </div>
+  <div className="result-item">
+    <span className="result-text">
+      <span className="result-count">{stats.losses}</span>
+      <span className="result-label">Verloren</span>
+    </span>
+  </div>
+</div>
 
           <div className="stat-box tile-teal">
             <div className="stat-title">Goals</div>
