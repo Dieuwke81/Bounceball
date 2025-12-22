@@ -119,10 +119,7 @@ const RelationshipList: React.FC<{
           const relatedPlayer = playerMap.get(id);
           if (!relatedPlayer) return null;
           return (
-            <li
-              key={id}
-              className="flex justify-between items-center text-sm text-gray-300"
-            >
+            <li key={id} className="flex justify-between items-center text-sm text-gray-300">
               <span className="truncate">{relatedPlayer.name}</span>
               <span className="font-mono bg-gray-600 text-xs px-2 py-0.5 rounded-full">
                 {count}x
@@ -148,6 +145,7 @@ interface PlayerDetailProps {
   ratingLogs: RatingLogEntry[];
   trophies: Trophy[];
   seasonStartDate?: string; // ✅ nieuw
+  competitionName?: string | null; // ✅ NIEUW: komt uit sheet tab "Instellingen"
   onBack: () => void;
 }
 
@@ -158,6 +156,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
   ratingLogs,
   trophies,
   seasonStartDate,
+  competitionName, // ✅
   onBack,
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
@@ -207,7 +206,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       'Speler van het jaar':
         'https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png',
       '1ste Introductietoernooi':
-        'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
+        'https://i.postimg.cc/YqW7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
       '2de Introductietoernooi':
         'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
       '3de Introductietoernooi':
@@ -247,7 +246,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     const opponentLosses = new Map<number, number>();
 
     const processMatch = (sessionTeams: Player[][], match: MatchResult) => {
-      // zoek teamIndex van speler BINNEN de teams van deze ronde
       const playerTeamIndex = sessionTeams.findIndex((team) =>
         team.some((p) => p.id === player.id)
       );
@@ -269,14 +267,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         playerTeamGoalsList.find((g) => g.playerId === player.id)?.count || 0;
       goalsScored += playerGoalCount;
 
-      const playerTeamScore = playerTeamGoalsList.reduce(
-        (sum, g) => sum + (g?.count || 0),
-        0
-      );
-      const opponentTeamScore = opponentTeamGoalsList.reduce(
-        (sum, g) => sum + (g?.count || 0),
-        0
-      );
+      const playerTeamScore = playerTeamGoalsList.reduce((sum, g) => sum + (g?.count || 0), 0);
+      const opponentTeamScore = opponentTeamGoalsList.reduce((sum, g) => sum + (g?.count || 0), 0);
 
       if (playerTeamScore > opponentTeamScore) {
         wins++;
@@ -360,15 +352,16 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
       {isPrinting && (
         <PlayerPrintView
-  player={player}
-  stats={stats}
-  trophies={playerTrophies}
-  players={players}
-  history={history}                 // ✅ toevoegen
-  seasonHistory={seasonRatingHistory}
-  allTimeHistory={allTimeRatingHistory}
-  onClose={() => setIsPrinting(false)}
-/>
+          player={player}
+          stats={stats}
+          trophies={playerTrophies}
+          players={players}
+          history={history}
+          seasonHistory={seasonRatingHistory}
+          allTimeHistory={allTimeRatingHistory}
+          competitionName={competitionName} // ✅ NIEUW: exact uit Instellingen
+          onClose={() => setIsPrinting(false)}
+        />
       )}
 
       <div className="flex items-center justify-between mb-6">
@@ -452,11 +445,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
           value={stats.goalsScored}
           subtext={`${(stats.goalsScored / (stats.gamesPlayed || 1)).toFixed(2)} gem.`}
         />
-        <StatCard
-          title="Gem. Punten"
-          value={avgPoints.toFixed(2)}
-          subtext={`Totaal: ${stats.points}`}
-        />
+        <StatCard title="Gem. Punten" value={avgPoints.toFixed(2)} subtext={`Totaal: ${stats.points}`} />
       </div>
 
       {/* ALL-TIME */}
@@ -468,9 +457,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         {allTimeRatingHistory.length > 1 ? (
           <RatingChart data={allTimeRatingHistory} />
         ) : (
-          <p className="text-gray-500 text-sm text-center py-4">
-            Nog niet genoeg all-time data (rating logs).
-          </p>
+          <p className="text-gray-500 text-sm text-center py-4">Nog niet genoeg all-time data (rating logs).</p>
         )}
       </div>
 
@@ -483,9 +470,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         {seasonRatingHistory.length > 1 ? (
           <RatingChart data={seasonRatingHistory} />
         ) : (
-          <p className="text-gray-500 text-sm text-center py-4">
-            Nog niet genoeg seizoensdata.
-          </p>
+          <p className="text-gray-500 text-sm text-center py-4">Nog niet genoeg seizoensdata.</p>
         )}
       </div>
 
