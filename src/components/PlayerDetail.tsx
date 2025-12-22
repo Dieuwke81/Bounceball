@@ -182,7 +182,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
   const getTrophyStyle = (type: TrophyType) => {
     if (type.includes('1ste') || type === 'Clubkampioen') {
-      return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600';
+      return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-300 to-yellow-600';
     }
     if (type.includes('2de')) return 'text-slate-500';
     if (type.includes('3de')) return 'text-amber-700';
