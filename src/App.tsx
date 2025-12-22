@@ -76,7 +76,8 @@ const areTeamCompositionsIdentical = (teamsA: Player[][], teamsB: Player[][]): b
   if (teamsA.length !== teamsB.length) return false;
   if (teamsA.length === 0) return true;
 
-  const getCanonicalTeam = (team: Player[]) => JSON.stringify(team.map((p) => p.id).sort((a, b) => a - b));
+  const getCanonicalTeam = (team: Player[]) =>
+    JSON.stringify(team.map((p) => p.id).sort((a, b) => a - b));
 
   const mapA = new Map<string, number>();
   for (const team of teamsA) {
@@ -480,9 +481,7 @@ const App: React.FC = () => {
       try {
         const savedGame = JSON.parse(savedGameJSON);
         if (
-          window.confirm(
-            'Er is een niet-opgeslagen wedstrijd gevonden. Wil je doorgaan waar je was gebleven?'
-          )
+          window.confirm('Er is een niet-opgeslagen wedstrijd gevonden. Wil je doorgaan waar je was gebleven?')
         ) {
           setAttendingPlayerIds(new Set(savedGame.attendingPlayerIds || []));
           setTeams(savedGame.teams || []);
@@ -530,9 +529,7 @@ const App: React.FC = () => {
       setRatingLogs(logs || []);
       setTrophies(fetchedTrophies || []);
     } catch (e: any) {
-      setError(
-        e.message || 'Er is een onbekende fout opgetreden bij het laden van de gegevens.'
-      );
+      setError(e.message || 'Er is een onbekende fout opgetreden bij het laden van de gegevens.');
     } finally {
       setIsLoading(false);
     }
@@ -643,7 +640,8 @@ const App: React.FC = () => {
 
     potentialNames.forEach((originalName) => {
       const normalizedName = normalize(originalName);
-      const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
+      const matchedPlayer =
+        playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
       if (matchedPlayer) {
         if (!newAttendingPlayerIds.has(matchedPlayer.id)) newlyFoundPlayers.push(matchedPlayer.name);
         newAttendingPlayerIds.add(matchedPlayer.id);
@@ -688,7 +686,10 @@ const App: React.FC = () => {
     localStorage.removeItem(UNSAVED_GAME_KEY);
   };
 
-  const attendingPlayers = useMemo(() => players.filter((p) => attendingPlayerIds.has(p.id)), [players, attendingPlayerIds]);
+  const attendingPlayers = useMemo(
+    () => players.filter((p) => attendingPlayerIds.has(p.id)),
+    [players, attendingPlayerIds]
+  );
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId);
   const activeHistory = viewingArchive || history;
 
@@ -947,7 +948,9 @@ const App: React.FC = () => {
 
       const numTeams = originalTeams.length;
       if (remainingPlayers.length < numTeams)
-        throw new Error(`Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`);
+        throw new Error(
+          `Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`
+        );
 
       let regeneratedTeams = await generateTeams(remainingPlayers, numTeams, constraints);
 
@@ -1249,9 +1252,7 @@ const App: React.FC = () => {
             <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
               <div className="text-sm">
                 <div className="font-semibold text-gray-100">Haal vaak-samen spelers uit elkaar</div>
-                <div className="text-xs text-gray-400">
-                  Balans blijft belangrijker.
-                </div>
+                <div className="text-xs text-gray-400">Balans blijft belangrijker.</div>
               </div>
               <input
                 type="checkbox"
@@ -1265,9 +1266,7 @@ const App: React.FC = () => {
             <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
               <div className="text-sm">
                 <div className="font-semibold text-gray-100">Top 6 zoveel mogelijk spreiden</div>
-                <div className="text-xs text-gray-400">
-                  Balans blijft belangrijker.
-                </div>
+                <div className="text-xs text-gray-400">Balans blijft belangrijker.</div>
               </div>
               <input
                 type="checkbox"
@@ -1445,6 +1444,7 @@ const App: React.FC = () => {
             ratingLogs={ratingLogs}
             trophies={trophies}
             seasonStartDate={seasonStartDate}
+            competitionName={competitionName} {/* ✅ HIER TOEGEVOEGD */}
             onBack={() => setCurrentView('stats')}
           />
         ) : (
