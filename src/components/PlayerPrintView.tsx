@@ -695,28 +695,57 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               padding: 10px;
               background: #fff;
               box-shadow: 0 7px 18px var(--shadow);
+              position: relative;
+              overflow: hidden;
             }
+
+            /* ✅ KLEUR in de REL-CARDS (subtiel) */
+            .rel-card:before {
+              content: "";
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              height: 6px;
+              background: linear-gradient(90deg, var(--tile-blue), var(--tile-purple), var(--tile-pink));
+              opacity: 0.55;
+            }
+            .rel-card:after {
+              content: "";
+              position: absolute;
+              right: 0;
+              top: 0;
+              width: 70px;
+              height: 70px;
+              border-radius: 999px;
+              background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), rgba(15,23,42,0.05));
+              transform: translate(24px,-28px);
+            }
+
+            /* per variant: top-gradient + zachte achtergrond */
+            .rel-frequent { background: linear-gradient(180deg, rgba(20,184,166,0.10), rgba(255,255,255,0.92)); }
+            .rel-best     { background: linear-gradient(180deg, rgba(34,197,94,0.10), rgba(255,255,255,0.92)); }
+            .rel-worst    { background: linear-gradient(180deg, rgba(239,68,68,0.10), rgba(255,255,255,0.92)); }
+            .rel-easy     { background: linear-gradient(180deg, rgba(251,191,36,0.12), rgba(255,255,255,0.92)); }
+            .rel-hard     { background: linear-gradient(180deg, rgba(139,92,246,0.10), rgba(255,255,255,0.92)); }
+
+            .rel-frequent:before { background: linear-gradient(90deg, var(--tile-teal), var(--tile-blue)); }
+            .rel-best:before     { background: linear-gradient(90deg, var(--tile-green), var(--tile-teal)); }
+            .rel-worst:before    { background: linear-gradient(90deg, var(--tile-red), var(--tile-orange)); }
+            .rel-easy:before     { background: linear-gradient(90deg, var(--tile-yellow), var(--tile-orange)); }
+            .rel-hard:before     { background: linear-gradient(90deg, var(--tile-purple), var(--tile-pink)); }
+
             .rel-title {
               font-size: 10px;
               text-transform: uppercase;
               color: var(--muted);
               font-weight: 950;
               letter-spacing: 0.08em;
-              border-bottom: 1px solid #e2e8f0;
+              border-bottom: 1px solid rgba(226,232,240,0.9);
               padding-bottom: 6px;
-              margin-bottom: 6px;
+              margin: 8px 0 6px; /* ruimte voor de kleur-strip */
               position: relative;
-            }
-            .rel-title:after {
-              content: "";
-              position: absolute;
-              left: 0;
-              bottom: -1px;
-              width: 56px;
-              height: 3px;
-              border-radius: 999px;
-              background: var(--tile-blue);
-              opacity: 0.55;
+              z-index: 1;
             }
 
             .rel-row {
@@ -725,8 +754,11 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               align-items: center;
               padding: 6px 0;
               border-bottom: 1px solid rgba(226,232,240,0.85);
+              position: relative;
+              z-index: 1;
             }
             .rel-row:last-child { border-bottom: 0; }
+
             .rel-name { font-weight: 800; color: var(--ink); display: flex; align-items: center; gap: 8px; }
             .rel-rank {
               width: 18px; height: 18px;
@@ -740,28 +772,32 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               background: var(--tile-blue);
               box-shadow: 0 2px 6px rgba(15,23,42,0.18);
             }
+
+            /* ✅ KLEURIGE badges voor de "x" telling per variant */
             .rel-count {
               font-weight: 950;
               font-variant-numeric: tabular-nums;
               padding: 2px 8px;
               border-radius: 999px;
-              background: rgba(15,23,42,0.06);
               border: 1px solid rgba(203,213,225,0.9);
               color: var(--muted);
+              background: rgba(15,23,42,0.06);
             }
-
-            /* Variants per kolom + accent underline */
-            .rel-frequent .rel-title:after { background: var(--tile-teal); }
-            .rel-best     .rel-title:after { background: var(--tile-green); }
-            .rel-worst    .rel-title:after { background: var(--tile-red); }
-            .rel-easy     .rel-title:after { background: var(--tile-yellow); }
-            .rel-hard     .rel-title:after { background: var(--tile-purple); }
 
             .rel-frequent .rel-rank { background: var(--tile-teal); }
             .rel-best     .rel-rank { background: var(--tile-green); }
             .rel-worst    .rel-rank { background: var(--tile-red); }
             .rel-easy     .rel-rank { background: var(--tile-yellow); color: var(--ink); }
             .rel-hard     .rel-rank { background: var(--tile-purple); }
+
+            .rel-frequent .rel-count { background: rgba(20,184,166,0.12); border-color: rgba(20,184,166,0.35); }
+            .rel-best     .rel-count { background: rgba(34,197,94,0.12);  border-color: rgba(34,197,94,0.35); }
+            .rel-worst    .rel-count { background: rgba(239,68,68,0.12);  border-color: rgba(239,68,68,0.35); }
+            .rel-easy     .rel-count { background: rgba(251,191,36,0.16); border-color: rgba(245,158,11,0.35); color: var(--ink); }
+            .rel-hard     .rel-count { background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.35); }
+
+            /* kleine hover is niet relevant in print, maar zorgt vaak voor betere anti-aliasing in export */
+            .rel-row { break-inside: avoid; }
 
             /* =========================================================
                ✅ GRAFIEKEN op nieuwe pagina
@@ -822,11 +858,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             </div>
           </div>
 
-          <img
-            src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png"
-            alt="Logo"
-            className="h-20 w-auto"
-          />
+          <img src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png" alt="Logo" className="h-20 w-auto" />
         </div>
 
         {/* PRIJZENKAST */}
