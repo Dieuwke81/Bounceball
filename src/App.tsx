@@ -1290,7 +1290,7 @@ const App: React.FC = () => {
             {showFrequentPairs && (
               <div className="mt-3 bg-gray-900/40 rounded-lg p-3">
                 <div className="text-xs text-gray-400 mb-2">
-                  Top combinaties (dit seizoen, alleen aanwezigen)
+                  Vaak samen spelers (dit seizoen, alleen aanwezigen)
                 </div>
                 {frequentPairsForUI.length === 0 ? (
                   <div className="text-xs text-gray-500">Nog geen data.</div>
