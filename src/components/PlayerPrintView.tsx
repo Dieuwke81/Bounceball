@@ -921,4 +921,3 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 };
 
 export default PlayerPrintView;
-```0
