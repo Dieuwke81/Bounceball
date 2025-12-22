@@ -244,8 +244,6 @@ const computeSeasonStandingsByPlayer = (seasonHistory: GameSession[]) => {
 
 // ============================================================================
 // Preferences optimizer (soft): balans eerst, daarna "uit elkaar"
-// - Nooit spread slechter maken dan bestSpread + tolerance
-// - Binnen die band: probeer penalties te verminderen
 // ============================================================================
 
 const optimizeTeamsSoft = (params: {
@@ -257,23 +255,11 @@ const optimizeTeamsSoft = (params: {
   separateTop6: boolean;
   top6Ids: Set<number>;
 }) => {
-  const {
-    teams,
-    constraints,
-    attendingIds,
-    seasonPairCounts,
-    separateFrequent,
-    separateTop6,
-    top6Ids,
-  } = params;
+  const { teams, constraints, attendingIds, seasonPairCounts, separateFrequent, separateTop6, top6Ids } = params;
 
   if (!separateFrequent && !separateTop6) return teams;
 
-  // Baseline spread
   const baseSpread = calcSpread(teams);
-
-  // Tolerance: je wilde "balans is belangrijkst"
-  // -> we staan alleen minieme afwijking toe (0.01 avg rating spread)
   const SPREAD_TOLERANCE = 0.01;
 
   const cloneTeams = (t: Player[][]) => t.map((team) => [...team]);
@@ -284,7 +270,6 @@ const optimizeTeamsSoft = (params: {
     for (const team of t) {
       const ids = team.map((p) => p.id).filter((id) => attendingIds.has(id));
 
-      // (A) vaak samen gespeeld -> straf op pair frequency (hoogste impact)
       if (separateFrequent) {
         for (let i = 0; i < ids.length; i++) {
           for (let j = i + 1; j < ids.length; j++) {
@@ -293,10 +278,8 @@ const optimizeTeamsSoft = (params: {
         }
       }
 
-      // (B) top6 -> straf als meerdere top6 in dezelfde ploeg zitten
       if (separateTop6) {
         const topCount = ids.reduce((s, id) => s + (top6Ids.has(id) ? 1 : 0), 0);
-        // 0/1 top6 in team = ok, 2+ = extra straf (kwadratisch)
         if (topCount >= 2) pen += (topCount - 1) * (topCount - 1) * 50;
       }
     }
@@ -308,16 +291,13 @@ const optimizeTeamsSoft = (params: {
   let bestSpread = baseSpread;
   let bestPenalty = penalty(best);
 
-  // Quick exit if penalty already 0-ish
   if (bestPenalty === 0) return best;
 
   const teamCount = best.length;
   if (teamCount < 2) return best;
 
-  // Precompute indices for faster random picks
   const teamSizes = best.map((t) => t.length);
   const maxIters = 20000;
-
   const randomInt = (max: number) => Math.floor(Math.random() * max);
 
   for (let iter = 0; iter < maxIters; iter++) {
@@ -334,23 +314,17 @@ const optimizeTeamsSoft = (params: {
     const pa = cand[a][ia];
     const pb = cand[b][ib];
 
-    // swap
     cand[a][ia] = pb;
     cand[b][ib] = pa;
 
-    // Hard validity gates (keepers + constraints)
     if (!hasValidKeeperDistribution(cand)) continue;
     if (!isCompositionValid(cand, constraints)) continue;
 
     const candSpread = calcSpread(cand);
-    // Balans blijft prioriteit: spread mag niet te veel slechter worden
     if (candSpread > baseSpread + SPREAD_TOLERANCE) continue;
 
     const candPenalty = penalty(cand);
 
-    // Lexicographic:
-    // 1) spread verbeteren? altijd ok
-    // 2) spread gelijk/within band -> penalty verbeteren? ok
     const spreadBetter = candSpread < bestSpread - 1e-6;
     const spreadSameEnough = Math.abs(candSpread - bestSpread) <= 1e-6;
 
@@ -367,9 +341,7 @@ const optimizeTeamsSoft = (params: {
 };
 
 // ============================================================================
-// ✅ FIX: ratings per ronde berekenen met juiste teams:
-// - ronde 1 -> session.teams
-// - ronde 2 -> session.round2Teams (als aanwezig) anders session.teams
+// ✅ FIX: ratings per ronde berekenen met juiste teams
 // ============================================================================
 
 const calculateRatingDeltas = (
@@ -429,7 +401,6 @@ const App: React.FC = () => {
   const [competitionName, setCompetitionName] = useState<string | null>(null);
   const [seasonStartDate, setSeasonStartDate] = useState<string>('');
 
-  // ✅ NEW: toggles
   const [separateFrequentTeammates, setSeparateFrequentTeammates] = useState<boolean>(false);
   const [separateTop6OnPoints, setSeparateTop6OnPoints] = useState<boolean>(false);
   const [showFrequentPairs, setShowFrequentPairs] = useState<boolean>(true);
@@ -521,8 +492,8 @@ const App: React.FC = () => {
         trophies: fetchedTrophies,
         seasonStartDate,
       } = await getInitialData();
-      setSeasonStartDate(seasonStartDate || '');
 
+      setSeasonStartDate(seasonStartDate || '');
       setPlayers(players);
       setHistory(history);
       setCompetitionName(name || null);
@@ -640,8 +611,7 @@ const App: React.FC = () => {
 
     potentialNames.forEach((originalName) => {
       const normalizedName = normalize(originalName);
-      const matchedPlayer =
-        playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
+      const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
       if (matchedPlayer) {
         if (!newAttendingPlayerIds.has(matchedPlayer.id)) newlyFoundPlayers.push(matchedPlayer.name);
         newAttendingPlayerIds.add(matchedPlayer.id);
@@ -690,13 +660,12 @@ const App: React.FC = () => {
     () => players.filter((p) => attendingPlayerIds.has(p.id)),
     [players, attendingPlayerIds]
   );
+
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId);
   const activeHistory = viewingArchive || history;
 
-  // ✅ season pair counts (voor “vaak samen gespeeld”)
   const seasonPairCounts = useMemo(() => computeSeasonPairCounts(activeHistory), [activeHistory]);
 
-  // ✅ top6 op punten (met tiebreaks GF, GD)
   const top6Ids = useMemo(() => {
     const attendingSet = new Set(attendingPlayers.map((p) => p.id));
     const standings = computeSeasonStandingsByPlayer(activeHistory);
@@ -713,7 +682,6 @@ const App: React.FC = () => {
     return new Set<number>(sorted);
   }, [activeHistory, attendingPlayers]);
 
-  // ✅ lijst “vaak samen” (alleen voor UI)
   const frequentPairsForUI = useMemo(() => {
     const idToPlayer = new Map(players.map((p) => [p.id, p]));
     const attendingSet = new Set(attendingPlayers.map((p) => p.id));
@@ -762,7 +730,6 @@ const App: React.FC = () => {
     try {
       let generated = await generateTeams(attendingPlayers, numberOfTeams, constraints);
 
-      // ✅ soft preferences (balans eerst)
       if (separateFrequentTeammates || separateTop6OnPoints) {
         const attendingSet = new Set(attendingPlayers.map((p) => p.id));
         generated = optimizeTeamsSoft({
@@ -826,7 +793,6 @@ const App: React.FC = () => {
       .filter((p) => ratingChanges[p.id] !== undefined)
       .map((p) => ({
         id: p.id,
-        // ✅ FIX: geen clamp meer -> ratings mogen < 0 en > 10 worden
         rating: parseFloat((p.rating + ratingChanges[p.id]).toFixed(2)),
       }));
 
@@ -887,10 +853,7 @@ const App: React.FC = () => {
 
     teamPoints.sort(
       (a, b) =>
-        b.points - a.points ||
-        b.goalDifference - a.goalDifference ||
-        b.goalsFor - a.goalsFor ||
-        a.teamIndex - b.teamIndex
+        b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor || a.teamIndex - b.teamIndex
     );
 
     const newPairings: Match[] = [];
@@ -943,14 +906,11 @@ const App: React.FC = () => {
 
     try {
       const remainingPlayers = attendingPlayers;
-      if (remainingPlayers.length < 4)
-        throw new Error('Niet genoeg spelers over om nieuwe teams te maken (minimaal 4).');
+      if (remainingPlayers.length < 4) throw new Error('Niet genoeg spelers over om nieuwe teams te maken (minimaal 4).');
 
       const numTeams = originalTeams.length;
       if (remainingPlayers.length < numTeams)
-        throw new Error(
-          `Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`
-        );
+        throw new Error(`Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`);
 
       let regeneratedTeams = await generateTeams(remainingPlayers, numTeams, constraints);
 
@@ -986,9 +946,10 @@ const App: React.FC = () => {
   // Final results (toernooi) opslaan
   // —————————————————
   const handleSaveFinalResults = async (matches: Match[]) => {
-    if (!requireAdmin()) return; // 🔐
+    if (!requireAdmin()) return;
 
     setActionInProgress('savingFinal');
+
     const round2Results: MatchResult[] = matches.map((match, index): MatchResult => ({
       ...match,
       team1Goals: goalScorers[`${index}-team1`] || [],
@@ -1009,9 +970,10 @@ const App: React.FC = () => {
   // Simpele match opslaan (1 wedstrijd)
   // —————————————————
   const handleSaveSimpleMatch = async (match: Match) => {
-    if (!requireAdmin()) return; // 🔐
+    if (!requireAdmin()) return;
 
     setActionInProgress('savingSimple');
+
     const results: MatchResult[] = [
       {
         ...match,
@@ -1037,7 +999,6 @@ const App: React.FC = () => {
     setActionInProgress('generating');
     try {
       const allPlayers = teams.flat();
-
       let regeneratedTeams = await generateTeams(allPlayers, 2, constraints, teams);
 
       if (!regeneratedTeams || regeneratedTeams.length === 0) {
@@ -1072,7 +1033,7 @@ const App: React.FC = () => {
   // Double header opslaan (2 losse sessies)
   // —————————————————
   const handleSaveDoubleHeader = async (match2Result: MatchResult) => {
-    if (!requireAdmin()) return; // 🔐
+    if (!requireAdmin()) return;
 
     setActionInProgress('savingDouble');
     if (!originalTeams || !teams2) {
@@ -1212,7 +1173,7 @@ const App: React.FC = () => {
   // ✅ Handmatige invoer opslaan — NU MET round2Teams
   // —————————————————
   const handleSaveManualEntry = async (data: GameSession) => {
-    if (!requireAdmin()) return; // 🔐
+    if (!requireAdmin()) return;
     setActionInProgress('savingManual');
     await handleSaveSession(data);
     setActionInProgress(null);
@@ -1239,13 +1200,8 @@ const App: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-1 space-y-8">
           <AttendanceParser onParse={handleParseAttendance} />
-          <PlayerList
-            players={players}
-            attendingPlayerIds={attendingPlayerIds}
-            onPlayerToggle={handlePlayerToggle}
-          />
+          <PlayerList players={players} attendingPlayerIds={attendingPlayerIds} onPlayerToggle={handlePlayerToggle} />
 
-          {/* ✅ NEW: preferences / inzicht */}
           <div className="bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-700/50">
             <h3 className="text-white font-bold text-lg mb-3">Team-voorkeuren</h3>
 
@@ -1262,7 +1218,6 @@ const App: React.FC = () => {
               />
             </label>
 
-            {/* ✅ tweede toggle (anoniem) */}
             <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
               <div className="text-sm">
                 <div className="font-semibold text-gray-100">Top 6 zoveel mogelijk spreiden</div>
@@ -1288,9 +1243,7 @@ const App: React.FC = () => {
 
             {showFrequentPairs && (
               <div className="mt-3 bg-gray-900/40 rounded-lg p-3">
-                <div className="text-xs text-gray-400 mb-2">
-                  Vaak-samen spelers (dit seizoen, alleen aanwezigen)
-                </div>
+                <div className="text-xs text-gray-400 mb-2">Vaak-samen spelers (dit seizoen, alleen aanwezigen)</div>
                 {frequentPairsForUI.length === 0 ? (
                   <div className="text-xs text-gray-500">Nog geen data.</div>
                 ) : (
@@ -1345,7 +1298,7 @@ const App: React.FC = () => {
               <button
                 onClick={() => handleGenerateTeams('tournament')}
                 disabled={actionInProgress === 'generating' || attendingPlayers.length < 4}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors	duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
               >
                 Toernooi
               </button>
@@ -1353,15 +1306,14 @@ const App: React.FC = () => {
               <button
                 onClick={() => handleGenerateTeams('doubleHeader')}
                 disabled={actionInProgress === 'generating' || attendingPlayers.length < 2}
-                className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-lg transition-colors	duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
               >
                 2 Wedstrijden
               </button>
             </div>
 
             <p className="text-xs text-gray-500 mt-3 text-center">
-              Klik voor 1x50min op 1 wedstrijd. Voor 8-10 spelers klik op 2 wedstrijden. Voor 16-30
-              spelers klik op toernooi.
+              Klik voor 1x50min op 1 wedstrijd. Voor 8-10 spelers klik op 2 wedstrijden. Voor 16-30 spelers klik op toernooi.
             </p>
           </div>
 
@@ -1437,33 +1389,30 @@ const App: React.FC = () => {
         );
       case 'playerDetail':
         return selectedPlayer ? (
-          <PlayerDetail
-            player={selectedPlayer}
-            history={activeHistory}
-            players={players}
-            ratingLogs={ratingLogs}
-            trophies={trophies}
-            seasonStartDate={seasonStartDate}
-            competitionName={competitionName} {/* ✅ HIER TOEGEVOEGD */}
-            onBack={() => setCurrentView('stats')}
-          />
+          <>
+            {/* competitionName doorgeven (geen inline JSX comment in props) */}
+            <PlayerDetail
+              player={selectedPlayer}
+              history={activeHistory}
+              players={players}
+              ratingLogs={ratingLogs}
+              trophies={trophies}
+              seasonStartDate={seasonStartDate}
+              competitionName={competitionName}
+              onBack={() => setCurrentView('stats')}
+            />
+          </>
         ) : (
           <p>Speler niet gevonden.</p>
         );
       case 'manualEntry':
-        return (
-          <ManualEntry
-            allPlayers={players}
-            onSave={handleSaveManualEntry}
-            isLoading={actionInProgress === 'savingManual'}
-          />
-        );
+        return <ManualEntry allPlayers={players} onSave={handleSaveManualEntry} isLoading={actionInProgress === 'savingManual'} />;
       case 'competitionManagement':
         return isManagementAuthenticated ? (
           <CompetitionManagement
             currentHistory={history}
-            players={players}                 // ✅ TOEGEVOEGD
-            seasonStartDate={seasonStartDate} // ✅ TOEGEVOEGD
+            players={players}
+            seasonStartDate={seasonStartDate}
             onViewArchive={(archive) => {
               setViewingArchive(archive);
               setCurrentView('stats');
@@ -1517,9 +1466,7 @@ const App: React.FC = () => {
         currentView === view ? 'opacity-100' : 'opacity-70 hover:opacity-100'
       }`}
     >
-      <div
-        className={`relative p-3 rounded-2xl shadow-lg mb-1 transition-transform group-hover:scale-110 ${colorClass}`}
-      >
+      <div className={`relative p-3 rounded-2xl shadow-lg mb-1 transition-transform group-hover:scale-110 ${colorClass}`}>
         {isProtected && (
           <LockIcon className="w-3 h-3 text-white absolute top-0 right-0 -mt-1 -mr-1 drop-shadow-md" />
         )}
@@ -1579,13 +1526,11 @@ const App: React.FC = () => {
           >
             <strong className="font-bold">Archiefmodus:</strong>
             <span className="ml-2">
-              Je bekijkt een gearchiveerde competitie. Ga naar het 'Wedstrijd' tabblad om terug te keren
-              naar de live data.
+              Je bekijkt een gearchiveerde competitie. Ga naar het 'Wedstrijd' tabblad om terug te keren naar de live data.
             </span>
           </div>
         )}
 
-        {/* --- NAVIGATIE: 2 x 4 GRID (RAINBOW COLORS) --- */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-8 shadow-xl border border-gray-700/50">
           <div className="grid grid-cols-4 gap-x-6 gap-y-6 justify-items-center">
             <NavItem
