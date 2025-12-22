@@ -564,13 +564,19 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             /* Stat tiles */
             .stat-box {
               border: 1.5px solid var(--border);
-              padding: 10px;
+              padding: 12px 10px;                 /* ✅ iets meer lucht */
               border-radius: 14px;
               text-align: center;
               background: #fff;
               position: relative;
               overflow: hidden;
               box-shadow: 0 7px 18px var(--shadow);
+
+              /* ✅ alles netjes midden + nooit afkappen */
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              min-height: 96px;
             }
 
             .stat-box:before {
@@ -609,54 +615,91 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               margin-bottom: 18px;
             }
 
+            /* ✅ TITELS: mogen wrappen, niet afkappen */
             .stat-title {
-              font-size: 10px;
+              font-size: 9px;                    /* ✅ iets kleiner */
               text-transform: uppercase;
               color: var(--muted);
               font-weight: 950;
-              letter-spacing: 0.09em;
+              letter-spacing: 0.06em;            /* ✅ minder spacing -> past beter */
+              line-height: 1.15;
+              white-space: normal;
+              word-break: break-word;
+              padding: 0 6px;
+              margin-bottom: 4px;
+              z-index: 1;
             }
 
             .stat-value {
               font-size: 22px;
               font-weight: 950;
               color: var(--ink);
+              line-height: 1.05;
+              z-index: 1;
             }
 
             .stat-sub {
               font-size: 10px;
               color: var(--muted);
-              margin-top: 2px;
+              margin-top: 4px;
               font-weight: 800;
+              line-height: 1.15;
+              white-space: normal;
+              word-break: break-word;
+              z-index: 1;
             }
 
-            /* Resultaten: onder elkaar + dots met menu kleuren */
+            /* ✅ Resultaten: netjes onder elkaar, zonder "punten" */
             .result-grid {
               margin-top: 6px;
               display: flex;
               flex-direction: column;
-              gap: 6px;
-              font-size: 12px;
-              font-weight: 900;
-              color: var(--ink);
-            }
-            .result-row {
-              display: flex;
+              gap: 8px;
               align-items: center;
               justify-content: center;
-              gap: 8px;
-              line-height: 1.1;
+              z-index: 1;
             }
+
+            .result-item {
+              display: flex;
+              align-items: center;
+              gap: 10px;
+            }
+
             .result-dot {
               width: 9px;
               height: 9px;
               border-radius: 999px;
               display: inline-block;
               box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+              flex: 0 0 auto;
             }
             .dot-win  { background: var(--tile-green); }
             .dot-draw { background: var(--tile-yellow); }
             .dot-loss { background: var(--tile-red); }
+
+            .result-text {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              line-height: 1.05;
+            }
+
+            .result-count {
+              font-size: 16px;
+              font-weight: 950;
+              color: var(--ink);
+              font-variant-numeric: tabular-nums;
+            }
+
+            .result-label {
+              font-size: 9px;
+              font-weight: 950;
+              text-transform: uppercase;
+              letter-spacing: 0.06em;
+              color: var(--muted);
+              margin-top: 1px;
+            }
 
             /* Charts */
             .chart-card {
@@ -773,7 +816,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               box-shadow: 0 2px 6px rgba(15,23,42,0.18);
             }
 
-            /* ✅ KLEURIGE badges voor de "x" telling per variant */
             .rel-count {
               font-weight: 950;
               font-variant-numeric: tabular-nums;
@@ -796,7 +838,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             .rel-easy     .rel-count { background: rgba(251,191,36,0.16); border-color: rgba(245,158,11,0.35); color: var(--ink); }
             .rel-hard     .rel-count { background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.35); }
 
-            /* kleine hover is niet relevant in print, maar zorgt vaak voor betere anti-aliasing in export */
             .rel-row { break-inside: avoid; }
 
             /* =========================================================
@@ -928,18 +969,31 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
           <div className="stat-box tile-purple">
             <div className="stat-title">Resultaten</div>
+
+            {/* ✅ zonder "punten" + mooi gecentreerd */}
             <div className="result-grid">
-              <div className="result-row">
+              <div className="result-item">
                 <span className="result-dot dot-win" />
-                <span>{stats.wins} gewonnen</span>
+                <span className="result-text">
+                  <span className="result-count">{stats.wins}</span>
+                  <span className="result-label">Gewonnen</span>
+                </span>
               </div>
-              <div className="result-row">
+
+              <div className="result-item">
                 <span className="result-dot dot-draw" />
-                <span>{stats.draws} gelijk</span>
+                <span className="result-text">
+                  <span className="result-count">{stats.draws}</span>
+                  <span className="result-label">Gelijk</span>
+                </span>
               </div>
-              <div className="result-row">
+
+              <div className="result-item">
                 <span className="result-dot dot-loss" />
-                <span>{stats.losses} verloren</span>
+                <span className="result-text">
+                  <span className="result-count">{stats.losses}</span>
+                  <span className="result-label">Verloren</span>
+                </span>
               </div>
             </div>
           </div>
