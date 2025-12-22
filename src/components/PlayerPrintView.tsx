@@ -280,8 +280,17 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
         <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#e2e8f0" strokeWidth="1" />
         <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#e2e8f0" strokeWidth="1" />
 
-        {/* zachte kleur i.p.v. zwart */}
-        <polyline fill="none" stroke="#0f172a" strokeWidth="2.8" points={points} strokeLinejoin="round" />
+        {/* lijn + subtle gradient */}
+        <defs>
+          <linearGradient id="ratingLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#22c55e" />
+            <stop offset="35%" stopColor="#3b82f6" />
+            <stop offset="70%" stopColor="#8b5cf6" />
+            <stop offset="100%" stopColor="#ec4899" />
+          </linearGradient>
+        </defs>
+
+        <polyline fill="none" stroke="url(#ratingLine)" strokeWidth="3.2" points={points} strokeLinejoin="round" />
 
         <text
           x={padding - 5}
@@ -318,8 +327,8 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
         </text>
 
         {/* highlight laatste punt */}
-        <circle cx={getX(data.length - 1)} cy={getY(data[data.length - 1].rating)} r="4.5" fill="#3b82f6" />
-        <circle cx={getX(data.length - 1)} cy={getY(data[data.length - 1].rating)} r="2.5" fill="#0f172a" />
+        <circle cx={getX(data.length - 1)} cy={getY(data[data.length - 1].rating)} r="5" fill="#3b82f6" />
+        <circle cx={getX(data.length - 1)} cy={getY(data[data.length - 1].rating)} r="2.7" fill="#0f172a" />
         <text
           x={getX(data.length - 1)}
           y={getY(data[data.length - 1].rating) - 10}
@@ -449,7 +458,8 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
     return { attendedNights, totalNights: seasonMeta.totalNights };
   }, [seasonMeta, player.id]);
 
-  const eligible50 = seasonAttendance.totalNights > 0 && seasonAttendance.attendedNights / seasonAttendance.totalNights >= 0.5;
+  const eligible50 =
+    seasonAttendance.totalNights > 0 && seasonAttendance.attendedNights / seasonAttendance.totalNights >= 0.5;
 
   const seasonRanks = useMemo(() => {
     const { standings, goalsForPlayer, defense } = computeSeasonAggregates({
@@ -504,8 +514,8 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               --border: #cbd5e1;
               --paper: #ffffff;
 
-              --shadow: rgba(15,23,42,0.08);
-              --soft: rgba(15,23,42,0.04);
+              --shadow: rgba(15,23,42,0.10);
+              --soft: rgba(15,23,42,0.05);
             }
 
             .print-portal {
@@ -537,7 +547,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               left: 0;
               bottom: -2px;
               width: 100%;
-              height: 6px;
+              height: 7px;
               background: linear-gradient(90deg,
                 var(--tile-red),
                 var(--tile-orange),
@@ -548,7 +558,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
                 var(--tile-purple),
                 var(--tile-pink)
               );
-              opacity: 0.35;
+              opacity: 0.45;
             }
 
             /* Stat tiles */
@@ -560,7 +570,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               background: #fff;
               position: relative;
               overflow: hidden;
-              box-shadow: 0 6px 16px var(--shadow);
+              box-shadow: 0 7px 18px var(--shadow);
             }
 
             .stat-box:before {
@@ -568,22 +578,22 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               position: absolute;
               top: 0;
               right: 0;
-              width: 60px;
-              height: 60px;
+              width: 74px;
+              height: 74px;
               border-radius: 999px;
-              background: var(--soft);
-              transform: translate(18px,-18px);
+              background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), var(--soft));
+              transform: translate(24px,-24px);
             }
 
             /* kleur-variant (zelfde gevoel als menu tegels) */
-            .tile-green  { border-left: 8px solid var(--tile-green);  background: rgba(34,197,94,0.10); }
-            .tile-yellow { border-left: 8px solid var(--tile-yellow); background: rgba(251,191,36,0.12); }
-            .tile-pink   { border-left: 8px solid var(--tile-pink);   background: rgba(236,72,153,0.10); }
-            .tile-blue   { border-left: 8px solid var(--tile-blue);   background: rgba(59,130,246,0.10); }
-            .tile-orange { border-left: 8px solid var(--tile-orange); background: rgba(245,158,11,0.12); }
-            .tile-purple { border-left: 8px solid var(--tile-purple); background: rgba(139,92,246,0.10); }
-            .tile-teal   { border-left: 8px solid var(--tile-teal);   background: rgba(20,184,166,0.10); }
-            .tile-red    { border-left: 8px solid var(--tile-red);    background: rgba(239,68,68,0.10); }
+            .tile-green  { border-left: 9px solid var(--tile-green);  background: linear-gradient(180deg, rgba(34,197,94,0.14), rgba(34,197,94,0.06)); }
+            .tile-yellow { border-left: 9px solid var(--tile-yellow); background: linear-gradient(180deg, rgba(251,191,36,0.16), rgba(251,191,36,0.06)); }
+            .tile-pink   { border-left: 9px solid var(--tile-pink);   background: linear-gradient(180deg, rgba(236,72,153,0.14), rgba(236,72,153,0.06)); }
+            .tile-blue   { border-left: 9px solid var(--tile-blue);   background: linear-gradient(180deg, rgba(59,130,246,0.14), rgba(59,130,246,0.06)); }
+            .tile-orange { border-left: 9px solid var(--tile-orange); background: linear-gradient(180deg, rgba(245,158,11,0.16), rgba(245,158,11,0.06)); }
+            .tile-purple { border-left: 9px solid var(--tile-purple); background: linear-gradient(180deg, rgba(139,92,246,0.14), rgba(139,92,246,0.06)); }
+            .tile-teal   { border-left: 9px solid var(--tile-teal);   background: linear-gradient(180deg, rgba(20,184,166,0.14), rgba(20,184,166,0.06)); }
+            .tile-red    { border-left: 9px solid var(--tile-red);    background: linear-gradient(180deg, rgba(239,68,68,0.14), rgba(239,68,68,0.06)); }
 
             .print-grid {
               display: grid;
@@ -604,7 +614,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               text-transform: uppercase;
               color: var(--muted);
               font-weight: 950;
-              letter-spacing: 0.08em;
+              letter-spacing: 0.09em;
             }
 
             .stat-value {
@@ -638,8 +648,8 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               line-height: 1.1;
             }
             .result-dot {
-              width: 8px;
-              height: 8px;
+              width: 9px;
+              height: 9px;
               border-radius: 999px;
               display: inline-block;
               box-shadow: 0 1px 0 rgba(0,0,0,0.15);
@@ -655,7 +665,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               background: #ffffff;
               padding: 12px;
               margin-bottom: 14px;
-              box-shadow: 0 6px 16px var(--shadow);
+              box-shadow: 0 7px 18px var(--shadow);
             }
             .chart-title {
               font-size: 11px;
@@ -671,11 +681,11 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               content: "";
               display: block;
               margin: 8px auto 0;
-              width: 70px;
+              width: 86px;
               height: 3px;
               border-radius: 999px;
-              background: linear-gradient(90deg, var(--tile-blue), var(--tile-purple), var(--tile-pink));
-              opacity: 0.55;
+              background: linear-gradient(90deg, var(--tile-green), var(--tile-blue), var(--tile-purple), var(--tile-pink));
+              opacity: 0.70;
             }
 
             /* Relationships cards */
@@ -684,7 +694,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               border-radius: 14px;
               padding: 10px;
               background: #fff;
-              box-shadow: 0 6px 16px var(--shadow);
+              box-shadow: 0 7px 18px var(--shadow);
             }
             .rel-title {
               font-size: 10px;
@@ -695,7 +705,20 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               border-bottom: 1px solid #e2e8f0;
               padding-bottom: 6px;
               margin-bottom: 6px;
+              position: relative;
             }
+            .rel-title:after {
+              content: "";
+              position: absolute;
+              left: 0;
+              bottom: -1px;
+              width: 56px;
+              height: 3px;
+              border-radius: 999px;
+              background: var(--tile-blue);
+              opacity: 0.55;
+            }
+
             .rel-row {
               display: flex;
               justify-content: space-between;
@@ -715,6 +738,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               font-weight: 950;
               color: white;
               background: var(--tile-blue);
+              box-shadow: 0 2px 6px rgba(15,23,42,0.18);
             }
             .rel-count {
               font-weight: 950;
@@ -726,7 +750,13 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               color: var(--muted);
             }
 
-            /* Variants per kolom */
+            /* Variants per kolom + accent underline */
+            .rel-frequent .rel-title:after { background: var(--tile-teal); }
+            .rel-best     .rel-title:after { background: var(--tile-green); }
+            .rel-worst    .rel-title:after { background: var(--tile-red); }
+            .rel-easy     .rel-title:after { background: var(--tile-yellow); }
+            .rel-hard     .rel-title:after { background: var(--tile-purple); }
+
             .rel-frequent .rel-rank { background: var(--tile-teal); }
             .rel-best     .rel-rank { background: var(--tile-green); }
             .rel-worst    .rel-rank { background: var(--tile-red); }
@@ -792,7 +822,11 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             </div>
           </div>
 
-          <img src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png" alt="Logo" className="h-20 w-auto" />
+          <img
+            src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png"
+            alt="Logo"
+            className="h-20 w-auto"
+          />
         </div>
 
         {/* PRIJZENKAST */}
@@ -801,10 +835,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-3 uppercase">Prijzenkast</h3>
             <div className="grid grid-cols-2 gap-3">
               {trophies.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center border border-slate-200 p-2 rounded-xl bg-slate-50"
-                >
+                <div key={t.id} className="flex items-center border border-slate-200 p-2 rounded-xl bg-slate-50">
                   <div className="mr-3">{getTrophyContent(t.type)}</div>
                   <div>
                     <div className="font-black text-sm">{t.type}</div>
@@ -839,7 +870,9 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             <div className="stat-title">Topscoorder</div>
             <div className="stat-value">{eligible50 ? `${ordinalNl(seasonRanks.topscorerRank)}` : '—'}</div>
             <div className="stat-sub">
-              {eligible50 ? `${seasonRanks.topscorerGoals} goals (${seasonRanks.topscorerAvg.toFixed(2)}/w)` : 'min 50% aanwezig'}
+              {eligible50
+                ? `${seasonRanks.topscorerGoals} goals (${seasonRanks.topscorerAvg.toFixed(2)}/w)`
+                : 'min 50% aanwezig'}
             </div>
           </div>
 
@@ -911,9 +944,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
         </div>
 
         {/* FOOTER */}
-        <div className="print-footer">
-          Gegenereerd door de Bounceball App {new Date().toLocaleDateString('nl-NL')}
-        </div>
+        <div className="print-footer">Gegenereerd door de Bounceball App {new Date().toLocaleDateString('nl-NL')}</div>
       </div>
     </div>,
     document.body
@@ -921,3 +952,4 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 };
 
 export default PlayerPrintView;
+```0
