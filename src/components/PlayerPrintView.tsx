@@ -249,10 +249,7 @@ const rankDefender = (defense: Map<number, DefenseRow>, playerId: number, eligib
  * PrintChart
  * ========================================================================== */
 
-const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: string }> = ({
-  data,
-  title,
-}) => {
+const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: string }> = ({ data, title }) => {
   if (!data || data.length < 2) return null;
 
   const width = 800;
@@ -266,8 +263,7 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
   const maxY = maxRating + range * 0.1;
 
   const getX = (index: number) => (index / (data.length - 1)) * (width - padding * 2) + padding;
-  const getY = (rating: number) =>
-    height - padding - ((rating - minY) / (maxY - minY)) * (height - padding * 2);
+  const getY = (rating: number) => height - padding - ((rating - minY) / (maxY - minY)) * (height - padding * 2);
 
   const points = data.map((d, i) => `${getX(i)},${getY(d.rating)}`).join(' ');
 
@@ -280,16 +276,17 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
     <div className="chart-card break-inside-avoid">
       <h5 className="chart-title">{title}</h5>
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
-        <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#eee" strokeWidth="1" />
-        <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#eee" strokeWidth="1" />
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#eee" strokeWidth="1" />
+        <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#e2e8f0" strokeWidth="1" />
+        <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#e2e8f0" strokeWidth="1" />
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#e2e8f0" strokeWidth="1" />
 
-        <polyline fill="none" stroke="#111" strokeWidth="2.5" points={points} strokeLinejoin="round" />
+        {/* zachte kleur i.p.v. zwart */}
+        <polyline fill="none" stroke="#0f172a" strokeWidth="2.8" points={points} strokeLinejoin="round" />
 
         <text
           x={padding - 5}
           y={getY(maxRating)}
-          className="text-[12px] fill-gray-600 font-bold"
+          className="text-[12px] fill-slate-600 font-bold"
           textAnchor="end"
           dominantBaseline="middle"
         >
@@ -298,38 +295,35 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
         <text
           x={padding - 5}
           y={getY(minRating)}
-          className="text-[12px] fill-gray-600 font-bold"
+          className="text-[12px] fill-slate-600 font-bold"
           textAnchor="end"
           dominantBaseline="middle"
         >
           {minRating.toFixed(1)}
         </text>
 
-        <text x={getX(0)} y={height - 15} className="text-[12px] fill-gray-600" textAnchor="start">
+        <text x={getX(0)} y={height - 15} className="text-[12px] fill-slate-600" textAnchor="start">
           {formatDate(data[0].date)}
         </text>
         <text
           x={getX(Math.floor(data.length / 2))}
           y={height - 15}
-          className="text-[12px] fill-gray-600"
+          className="text-[12px] fill-slate-600"
           textAnchor="middle"
         >
           {formatDate(data[Math.floor(data.length / 2)].date)}
         </text>
-        <text
-          x={getX(data.length - 1)}
-          y={height - 15}
-          className="text-[12px] fill-gray-600"
-          textAnchor="end"
-        >
+        <text x={getX(data.length - 1)} y={height - 15} className="text-[12px] fill-slate-600" textAnchor="end">
           {formatDate(data[data.length - 1].date)}
         </text>
 
-        <circle cx={getX(data.length - 1)} cy={getY(data[data.length - 1].rating)} r="4" fill="#111" />
+        {/* highlight laatste punt */}
+        <circle cx={getX(data.length - 1)} cy={getY(data[data.length - 1].rating)} r="4.5" fill="#3b82f6" />
+        <circle cx={getX(data.length - 1)} cy={getY(data[data.length - 1].rating)} r="2.5" fill="#0f172a" />
         <text
           x={getX(data.length - 1)}
           y={getY(data[data.length - 1].rating) - 10}
-          className="text-[12px] fill-black font-bold"
+          className="text-[12px] fill-slate-900 font-bold"
           textAnchor="end"
         >
           {data[data.length - 1].rating.toFixed(2)}
@@ -385,8 +379,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
   const getTrophyContent = (type: TrophyType) => {
     const images: { [key: string]: string } = {
-      Verdediger:
-        'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
+      Verdediger: 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
       Topscoorder: 'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
       Clubkampioen: 'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
       '2de': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
@@ -404,26 +397,33 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
     };
     const url = images[type];
     if (url) return <img src={url} alt={type} className="w-10 h-10 object-contain" />;
-    if (type === 'Verdediger') return <ShieldIcon className="w-8 h-8 text-black" />;
-    return <TrophyIcon className="w-8 h-8 text-black" />;
+    if (type === 'Verdediger') return <ShieldIcon className="w-8 h-8 text-slate-900" />;
+    return <TrophyIcon className="w-8 h-8 text-slate-900" />;
   };
 
-  const RelationshipSection: React.FC<{ title: string; data: [number, number][] }> = ({ title, data }) => (
-    <div className="break-inside-avoid mb-4">
-      <h4 className="font-bold uppercase text-xs mb-2 text-gray-600 border-b border-gray-300 pb-1">{title}</h4>
+  const RelationshipSection: React.FC<{ title: string; data: [number, number][]; variant?: string }> = ({
+    title,
+    data,
+    variant,
+  }) => (
+    <div className={`break-inside-avoid mb-4 rel-card ${variant || ''}`}>
+      <h4 className="rel-title">{title}</h4>
       <ul className="text-xs">
         {data.length > 0 ? (
-          data.slice(0, 5).map(([id, count]) => {
+          data.slice(0, 5).map(([id, count], idx) => {
             const p = playerMap.get(id);
             return (
-              <li key={id} className="flex justify-between py-1 border-b border-gray-100 last:border-0">
-                <span className="font-medium">{p ? p.name : `Speler ${id}`}</span>
-                <span className="font-bold text-gray-500">{count}x</span>
+              <li key={id} className="rel-row">
+                <span className="rel-name">
+                  <span className="rel-rank">{idx + 1}</span>
+                  {p ? p.name : `Speler ${id}`}
+                </span>
+                <span className="rel-count">{count}x</span>
               </li>
             );
           })
         ) : (
-          <li className="text-gray-400 italic py-1">- Geen data -</li>
+          <li className="text-slate-400 italic py-1">- Geen data -</li>
         )}
       </ul>
     </div>
@@ -449,8 +449,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
     return { attendedNights, totalNights: seasonMeta.totalNights };
   }, [seasonMeta, player.id]);
 
-  const eligible50 =
-    seasonAttendance.totalNights > 0 && seasonAttendance.attendedNights / seasonAttendance.totalNights >= 0.5;
+  const eligible50 = seasonAttendance.totalNights > 0 && seasonAttendance.attendedNights / seasonAttendance.totalNights >= 0.5;
 
   const seasonRanks = useMemo(() => {
     const { standings, goalsForPlayer, defense } = computeSeasonAggregates({
@@ -499,10 +498,14 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               --tile-green:  #22c55e;
               --tile-red:    #ef4444;
               --tile-teal:   #14b8a6;
+
               --ink: #0f172a;
               --muted: #475569;
               --border: #cbd5e1;
               --paper: #ffffff;
+
+              --shadow: rgba(15,23,42,0.08);
+              --soft: rgba(15,23,42,0.04);
             }
 
             .print-portal {
@@ -521,6 +524,34 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             a[href]:after { content: "" !important; }
             a:after { content: "" !important; }
 
+            /* HEADER polish */
+            .header-wrap {
+              border-bottom: 2px solid var(--ink);
+              padding-bottom: 14px;
+              margin-bottom: 18px;
+              position: relative;
+            }
+            .header-wrap:after {
+              content: "";
+              position: absolute;
+              left: 0;
+              bottom: -2px;
+              width: 100%;
+              height: 6px;
+              background: linear-gradient(90deg,
+                var(--tile-red),
+                var(--tile-orange),
+                var(--tile-yellow),
+                var(--tile-green),
+                var(--tile-teal),
+                var(--tile-blue),
+                var(--tile-purple),
+                var(--tile-pink)
+              );
+              opacity: 0.35;
+            }
+
+            /* Stat tiles */
             .stat-box {
               border: 1.5px solid var(--border);
               padding: 10px;
@@ -529,17 +560,30 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               background: #fff;
               position: relative;
               overflow: hidden;
+              box-shadow: 0 6px 16px var(--shadow);
+            }
+
+            .stat-box:before {
+              content: "";
+              position: absolute;
+              top: 0;
+              right: 0;
+              width: 60px;
+              height: 60px;
+              border-radius: 999px;
+              background: var(--soft);
+              transform: translate(18px,-18px);
             }
 
             /* kleur-variant (zelfde gevoel als menu tegels) */
-            .tile-green  { border-left: 7px solid var(--tile-green);  background: rgba(34,197,94,0.10); }
-            .tile-yellow { border-left: 7px solid var(--tile-yellow); background: rgba(251,191,36,0.12); }
-            .tile-pink   { border-left: 7px solid var(--tile-pink);   background: rgba(236,72,153,0.10); }
-            .tile-blue   { border-left: 7px solid var(--tile-blue);   background: rgba(59,130,246,0.10); }
-            .tile-orange { border-left: 7px solid var(--tile-orange); background: rgba(245,158,11,0.12); }
-            .tile-purple { border-left: 7px solid var(--tile-purple); background: rgba(139,92,246,0.10); }
-            .tile-teal   { border-left: 7px solid var(--tile-teal);   background: rgba(20,184,166,0.10); }
-            .tile-red    { border-left: 7px solid var(--tile-red);    background: rgba(239,68,68,0.10); }
+            .tile-green  { border-left: 8px solid var(--tile-green);  background: rgba(34,197,94,0.10); }
+            .tile-yellow { border-left: 8px solid var(--tile-yellow); background: rgba(251,191,36,0.12); }
+            .tile-pink   { border-left: 8px solid var(--tile-pink);   background: rgba(236,72,153,0.10); }
+            .tile-blue   { border-left: 8px solid var(--tile-blue);   background: rgba(59,130,246,0.10); }
+            .tile-orange { border-left: 8px solid var(--tile-orange); background: rgba(245,158,11,0.12); }
+            .tile-purple { border-left: 8px solid var(--tile-purple); background: rgba(139,92,246,0.10); }
+            .tile-teal   { border-left: 8px solid var(--tile-teal);   background: rgba(20,184,166,0.10); }
+            .tile-red    { border-left: 8px solid var(--tile-red);    background: rgba(239,68,68,0.10); }
 
             .print-grid {
               display: grid;
@@ -551,16 +595,16 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             .relationships-grid {
               display: grid;
               grid-template-columns: 1fr 1fr 1fr;
-              gap: 15px;
-              margin-bottom: 20px;
+              gap: 14px;
+              margin-bottom: 18px;
             }
 
             .stat-title {
               font-size: 10px;
               text-transform: uppercase;
               color: var(--muted);
-              font-weight: 900;
-              letter-spacing: 0.06em;
+              font-weight: 950;
+              letter-spacing: 0.08em;
             }
 
             .stat-value {
@@ -598,6 +642,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               height: 8px;
               border-radius: 999px;
               display: inline-block;
+              box-shadow: 0 1px 0 rgba(0,0,0,0.15);
             }
             .dot-win  { background: var(--tile-green); }
             .dot-draw { background: var(--tile-yellow); }
@@ -610,16 +655,83 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               background: #ffffff;
               padding: 12px;
               margin-bottom: 14px;
+              box-shadow: 0 6px 16px var(--shadow);
             }
             .chart-title {
               font-size: 11px;
               font-weight: 950;
-              letter-spacing: 0.08em;
+              letter-spacing: 0.10em;
               text-transform: uppercase;
               text-align: center;
               color: var(--ink);
               margin-bottom: 8px;
+              position: relative;
             }
+            .chart-title:after {
+              content: "";
+              display: block;
+              margin: 8px auto 0;
+              width: 70px;
+              height: 3px;
+              border-radius: 999px;
+              background: linear-gradient(90deg, var(--tile-blue), var(--tile-purple), var(--tile-pink));
+              opacity: 0.55;
+            }
+
+            /* Relationships cards */
+            .rel-card {
+              border: 1.5px solid var(--border);
+              border-radius: 14px;
+              padding: 10px;
+              background: #fff;
+              box-shadow: 0 6px 16px var(--shadow);
+            }
+            .rel-title {
+              font-size: 10px;
+              text-transform: uppercase;
+              color: var(--muted);
+              font-weight: 950;
+              letter-spacing: 0.08em;
+              border-bottom: 1px solid #e2e8f0;
+              padding-bottom: 6px;
+              margin-bottom: 6px;
+            }
+            .rel-row {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 6px 0;
+              border-bottom: 1px solid rgba(226,232,240,0.85);
+            }
+            .rel-row:last-child { border-bottom: 0; }
+            .rel-name { font-weight: 800; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+            .rel-rank {
+              width: 18px; height: 18px;
+              border-radius: 999px;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 10px;
+              font-weight: 950;
+              color: white;
+              background: var(--tile-blue);
+            }
+            .rel-count {
+              font-weight: 950;
+              font-variant-numeric: tabular-nums;
+              padding: 2px 8px;
+              border-radius: 999px;
+              background: rgba(15,23,42,0.06);
+              border: 1px solid rgba(203,213,225,0.9);
+              color: var(--muted);
+            }
+
+            /* Variants per kolom */
+            .rel-frequent .rel-rank { background: var(--tile-teal); }
+            .rel-best     .rel-rank { background: var(--tile-green); }
+            .rel-worst    .rel-rank { background: var(--tile-red); }
+            .rel-easy     .rel-rank { background: var(--tile-yellow); color: var(--ink); }
+            .rel-hard     .rel-rank { background: var(--tile-purple); }
 
             /* =========================================================
                ✅ GRAFIEKEN op nieuwe pagina
@@ -634,12 +746,21 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
                ========================================================= */
             .relationships-page {
               break-before: page;
-              page-break-before: always; /* fallback */
+              page-break-before: always;
             }
             .relationships-page,
             .relationships-grid {
               break-inside: avoid;
               page-break-inside: avoid;
+            }
+
+            /* Footer */
+            .print-footer {
+              font-size: 10px;
+              color: #94a3b8;
+              text-align: center;
+              padding-top: 12px;
+              border-top: 1px solid #e2e8f0;
             }
           }
         `}
@@ -647,48 +768,47 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
       <div className="p-6 max-w-4xl mx-auto">
         {/* HEADER */}
-        <div className="flex items-center justify-between mb-6 border-b-2 border-black pb-4">
+        <div className="flex items-center justify-between header-wrap">
           <div className="flex items-center">
             {player.photoBase64 ? (
               <img
                 src={player.photoBase64}
                 alt={player.name}
-                className="w-24 h-24 rounded-full object-cover border-2 border-black mr-6"
+                className="w-24 h-24 rounded-full object-cover border-2 border-slate-900 mr-6"
               />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-gray-200 border-2 border-black mr-6 flex items-center justify-center text-3xl font-bold">
+              <div className="w-24 h-24 rounded-full bg-slate-100 border-2 border-slate-900 mr-6 flex items-center justify-center text-3xl font-black">
                 {player.name.charAt(0)}
               </div>
             )}
 
             <div>
               <h1 className="text-4xl font-black uppercase tracking-wide">{player.name}</h1>
-              <div className="flex gap-2 mt-2 text-sm font-bold uppercase text-gray-600">
-                {player.isKeeper && <span className="border border-black px-2 py-1 rounded">Keeper</span>}
-                {player.isFixedMember && <span className="border border-black px-2 py-1 rounded">Lid</span>}
-                <span className="border border-black px-2 py-1 rounded">Rating: {player.rating.toFixed(2)}</span>
+              <div className="flex gap-2 mt-2 text-sm font-bold uppercase text-slate-600">
+                {player.isKeeper && <span className="border border-slate-900 px-2 py-1 rounded">Keeper</span>}
+                {player.isFixedMember && <span className="border border-slate-900 px-2 py-1 rounded">Lid</span>}
+                <span className="border border-slate-900 px-2 py-1 rounded">Rating: {player.rating.toFixed(2)}</span>
               </div>
             </div>
           </div>
 
-          <img
-            src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png"
-            alt="Logo"
-            className="h-20 w-auto"
-          />
+          <img src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png" alt="Logo" className="h-20 w-auto" />
         </div>
 
         {/* PRIJZENKAST */}
         {trophies.length > 0 && (
           <div className="mb-6 break-inside-avoid">
-            <h3 className="text-lg font-bold border-b border-gray-300 pb-1 mb-3 uppercase">Prijzenkast</h3>
+            <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-3 uppercase">Prijzenkast</h3>
             <div className="grid grid-cols-2 gap-3">
               {trophies.map((t) => (
-                <div key={t.id} className="flex items-center border border-gray-200 p-2 rounded bg-gray-50">
-                  <div className="mr-3 text-gray-800">{getTrophyContent(t.type)}</div>
+                <div
+                  key={t.id}
+                  className="flex items-center border border-slate-200 p-2 rounded-xl bg-slate-50"
+                >
+                  <div className="mr-3">{getTrophyContent(t.type)}</div>
                   <div>
-                    <div className="font-bold text-sm">{t.type}</div>
-                    <div className="text-xs text-gray-500">{t.year}</div>
+                    <div className="font-black text-sm">{t.type}</div>
+                    <div className="text-xs text-slate-500 font-bold">{t.year}</div>
                   </div>
                 </div>
               ))}
@@ -697,7 +817,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
         )}
 
         {/* ✅ TITEL van het huidige seizoen/competitie (uit instellingen) */}
-        <h3 className="text-lg font-bold border-b border-gray-300 pb-1 mb-4 uppercase">{seasonTitle}</h3>
+        <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-4 uppercase">{seasonTitle}</h3>
 
         {/* RIJ 1 */}
         <div className="print-grid">
@@ -719,9 +839,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             <div className="stat-title">Topscoorder</div>
             <div className="stat-value">{eligible50 ? `${ordinalNl(seasonRanks.topscorerRank)}` : '—'}</div>
             <div className="stat-sub">
-              {eligible50
-                ? `${seasonRanks.topscorerGoals} goals (${seasonRanks.topscorerAvg.toFixed(2)}/w)`
-                : 'min 50% aanwezig'}
+              {eligible50 ? `${seasonRanks.topscorerGoals} goals (${seasonRanks.topscorerAvg.toFixed(2)}/w)` : 'min 50% aanwezig'}
             </div>
           </div>
 
@@ -780,20 +898,20 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
         {/* RELATIES — altijd nieuwe pagina */}
         <div className="relationships-page mb-8">
-          <h3 className="text-lg font-bold border-b border-gray-300 pb-1 mb-3 uppercase">
+          <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-3 uppercase">
             Statistieken vs Spelers (Top 5)
           </h3>
           <div className="relationships-grid">
-            <RelationshipSection title="Vaak samen" data={stats.mostFrequentTeammates} />
-            <RelationshipSection title="Beste Medespeler" data={stats.bestTeammates} />
-            <RelationshipSection title="Slechtste Medespeler" data={stats.worstTeammates} />
-            <RelationshipSection title="Makkelijkste Tegenstander" data={stats.bestOpponents} />
-            <RelationshipSection title="Lastigste Tegenstander" data={stats.worstOpponents} />
+            <RelationshipSection title="Vaak samen" data={stats.mostFrequentTeammates} variant="rel-frequent" />
+            <RelationshipSection title="Beste Medespeler" data={stats.bestTeammates} variant="rel-best" />
+            <RelationshipSection title="Slechtste Medespeler" data={stats.worstTeammates} variant="rel-worst" />
+            <RelationshipSection title="Makkelijkste Tegenstander" data={stats.bestOpponents} variant="rel-easy" />
+            <RelationshipSection title="Lastigste Tegenstander" data={stats.worstOpponents} variant="rel-hard" />
           </div>
         </div>
 
         {/* FOOTER */}
-        <div className="text-center text-[10px] text-gray-400 mt-auto pt-4 border-t border-gray-200">
+        <div className="print-footer">
           Gegenereerd door de Bounceball App {new Date().toLocaleDateString('nl-NL')}
         </div>
       </div>
@@ -803,3 +921,4 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 };
 
 export default PlayerPrintView;
+```0
