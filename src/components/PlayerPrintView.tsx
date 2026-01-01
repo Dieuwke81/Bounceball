@@ -18,7 +18,8 @@ const hasAnyResults = (s: GameSession) =>
   (Array.isArray(s.round1Results) && s.round1Results.length > 0) ||
   (Array.isArray(s.round2Results) && s.round2Results.length > 0);
 
-const sumGoals = (goals: any[]) => (goals || []).reduce((sum, g) => sum + (Number(g?.count) || 0), 0);
+const sumGoals = (goals: any[]) =>
+  (goals || []).reduce((sum, g) => sum + (Number(g?.count) || 0), 0);
 
 const ordinalNl = (n: number) => {
   if (!Number.isFinite(n) || n <= 0) return '—';
@@ -94,7 +95,8 @@ const computeSeasonAggregates = (params: {
   const defense = new Map<number, DefenseRow>();
 
   const ensureStanding = (id: number) => {
-    if (!standings.has(id)) standings.set(id, { pts: 0, gf: 0, gd: 0, matches: 0 });
+    if (!standings.has(id))
+      standings.set(id, { pts: 0, gf: 0, gd: 0, matches: 0 });
     return standings.get(id)!;
   };
 
@@ -114,8 +116,12 @@ const computeSeasonAggregates = (params: {
   };
 
   const applyMatch = (teamsForRound: Player[][] | undefined, match: MatchResult) => {
-    const t1 = (teamsForRound?.[match.team1Index] || []).filter((p) => allowedIds.has(p.id));
-    const t2 = (teamsForRound?.[match.team2Index] || []).filter((p) => allowedIds.has(p.id));
+    const t1 = (teamsForRound?.[match.team1Index] || []).filter((p) =>
+      allowedIds.has(p.id)
+    );
+    const t2 = (teamsForRound?.[match.team2Index] || []).filter((p) =>
+      allowedIds.has(p.id)
+    );
     if (!t1.length || !t2.length) return;
 
     const s1 = sumGoals(match.team1Goals || []);
@@ -130,6 +136,7 @@ const computeSeasonAggregates = (params: {
       row.gd += s1 - s2;
       row.matches += 1;
     });
+
     t2.forEach((p) => {
       const row = ensureStanding(p.id);
       row.gf += s2;
@@ -149,6 +156,7 @@ const computeSeasonAggregates = (params: {
       d.conceded += s2;
       d.matches += 1;
     });
+
     t2.forEach((p) => {
       const d = ensureDefense(p.id);
       d.conceded += s1;
@@ -185,13 +193,15 @@ const PlayerPrintView: React.FC<any> = ({
   competitionName,
   onClose,
 }) => {
-  const avgPoints = stats.gamesPlayed > 0 ? (Number(stats.points) || 0) / stats.gamesPlayed : 0;
+  const avgPoints =
+    stats.gamesPlayed > 0
+      ? (Number(stats.points) || 0) / stats.gamesPlayed
+      : 0;
 
   return createPortal(
-    <div className="print-portal hidden">
+    <div className="print-portal hidden print:block">
       <div className="p-6 max-w-4xl mx-auto">
 
-        {/* RIJ 2 */}
         <div className="print-grid">
 
           <div className="stat-box tile-orange">
@@ -224,7 +234,7 @@ const PlayerPrintView: React.FC<any> = ({
                 </span>
               </div>
             </div>
-          </div> {/* ✅ FIX: deze closing div ontbrak */}
+          </div>
 
           <div className="stat-box tile-teal">
             <div className="stat-title">Goals</div>
