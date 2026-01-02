@@ -24,10 +24,10 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     defense: false,
   });
 
-  // De schakelaar: standaard verbergen we mensen die te weinig speelden
+  // Toggle om spelers die te weinig speelden te tonen/verbergen
   const [showIneligible, setShowIneligible] = useState(false);
 
-  // ✅ toggle om bij "Beste verdediger" alleen keepers te tonen
+  // Toggle voor beste verdediger, alleen keepers tonen
   const [defenseKeepersOnly, setDefenseKeepersOnly] = useState(false);
 
   // Nieuwe state voor print overlay
@@ -48,7 +48,6 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
   // ============================
   // Attendance per SPEELAVOND (sessie)
-  // - telt als aanwezig als speler in R1 teams zit OF in R2 teams (als aanwezig)
   // ============================
   const { playerGames, totalSessions, minGames } = useMemo(() => {
     const playerGamesMap = new Map<number, number>();
@@ -73,14 +72,12 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     return {
       playerGames: playerGamesMap,
       totalSessions: sessions,
-      // drempel op basis van avonden (zoals je UI tekst zegt)
       minGames: Math.max(1, Math.round(sessions / 2)),
     };
   }, [history]);
 
   // ============================
   // Matches per speler (aantal wedstrijden)
-  // LET OP: Round1Results gebruiken teamsR1, Round2Results gebruiken teamsR2
   // ============================
   const playerMatches = useMemo(() => {
     const map = new Map<number, number>();
@@ -140,11 +137,9 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       .sort((a, b) => b.avg - a.avg || b.goals - a.goals || a.playerId - b.playerId);
   }, [history, playerGames, minGames, playerMatches]);
 
+  // ... deel 2 volgt (voor punten, verdediging, UI, etc.)
   // ============================
-  // Competitie punten (totaal punten / wedstrijden) ✅
-  // - sorting: avg desc
-  // - tie-break: doelsaldo (gd) desc
-  // - tie-break: goals voor (gf) desc
+  // Competitie punten (totaal punten / wedstrijden)
   // ============================
   const competitionPoints = useMemo(() => {
     const ptsByPlayer = new Map<number, number>();
@@ -206,16 +201,15 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       })
       .sort(
         (a, b) =>
-          b.avg - a.avg || // ✅ hoofdregel
-          b.gd - a.gd || // tie-break 1
-          b.gf - a.gf || // tie-break 2
+          b.avg - a.avg || // hoofdregel: avg desc
+          b.gd - a.gd ||   // tie-break 1: doelsaldo desc
+          b.gf - a.gf ||   // tie-break 2: goals voor desc
           a.playerId - b.playerId
       );
   }, [history, playerGames, minGames, playerMatches]);
 
   // ============================
   // Beste verdediger (tegengoals / wedstrijden) -> lager is beter
-  // Belangrijk: Round2Results moet teamsR2 gebruiken
   // ============================
   const bestDefense = useMemo(() => {
     const againstByPlayer = new Map<number, number>();
@@ -255,6 +249,9 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       .sort((a, b) => a.avg - b.avg || b.games - a.games || a.playerId - b.playerId);
   }, [history, playerGames, minGames, playerMatches]);
 
+  // ============================
+  // Meest aanwezig
+  // ============================
   const mostAttended = useMemo(() => {
     if (totalSessions === 0) return [];
     return Array.from(playerGames.entries())
@@ -267,22 +264,27 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       .sort((a, b) => b.count - a.count || a.playerId - b.playerId);
   }, [playerGames, totalSessions]);
 
+  // ============================
+  // Attendance history voor grafiek
+  // ============================
   const attendanceHistory = useMemo(() => {
     if (!history) return [];
     return history
       .map((session) => ({
         date: session.date,
-        count: getTeamsR1(session).flat().length || 0, // trend: opkomst per avond (R1)
+        count: getTeamsR1(session).flat().length || 0,
       }))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [history]);
 
+  // ============================
+  // Goal difference history voor grafiek
+  // ============================
   const goalDifferenceHistory = useMemo(() => {
     if (!history || history.length === 0) return [];
 
     return history
       .map((session) => {
-        // doelsaldo per avond: neem alle matches (R1 + R2)
         const allMatches = [...(session.round1Results || []), ...(session.round2Results || [])];
         if (allMatches.length === 0) return null;
 
@@ -301,7 +303,9 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [history]);
 
-  // ✅ gefilterde "beste verdediger" lijst (optioneel alleen keepers)
+  // ============================
+  // Gefilterde beste verdediger lijst (optioneel alleen keepers)
+  // ============================
   const bestDefenseForDisplay = useMemo(() => {
     if (!defenseKeepersOnly) return bestDefense;
     return bestDefense.filter((row) => {
@@ -310,25 +314,9 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
     });
   }, [bestDefense, defenseKeepersOnly, playerMap]);
 
-  if (history.length === 0) {
-    return (
-      <div className="bg-gray-800 rounded-xl shadow-lg p-8 text-center">
-        <h2 className="text-2xl font-bold text-white mb-2">Geen Data</h2>
-        <p className="text-gray-400">Sla je eerste toernooi af om hier statistieken te zien.</p>
-      </div>
-    );
-  }
-
-  // --- Print overlay component ---
-  if (showPrintAll) {
-    return (
-      <StatsPrintAll
-        history={history}
-        players={players}
-        onClose={() => setShowPrintAll(false)}
-      />
-    );
-  }
+  // ============================
+  // UI componenten hieronder
+  // ============================
 
   const StatCard: React.FC<{
     title: string;
@@ -413,4 +401,174 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
     if (displayedData.length === 0) {
       return (
-        <p className="text-gray-500 text-sm text-center
+        <p className="text-gray-500 text-sm text-center italic">
+          Geen spelers voldoen aan de criteria.
+        </p>
+      );
+    }
+
+    return (
+      <>
+        {displayedData.map(renderRow)}
+        {filteredData.length > 10 && (
+          <div className="mt-2">
+            <button
+              onClick={toggleShowAll}
+              className="w-full text-center py-2 text-sm text-cyan-400 hover:text-cyan-300 font-semibold rounded-lg hover:bg-gray-700/50 transition-colors"
+            >
+              {showAllFlag ? 'Minder Weergeven' : `Toon Alle ${filteredData.length}`}
+            </button>
+          </div>
+        )}
+      </>
+    );
+  };
+  // ============================
+  // RENDER
+  // ============================
+
+  return (
+    <div className="p-6 space-y-8">
+
+      {/* HEADER */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold text-white">Statistieken</h2>
+
+        {/* PRINT ICOON */}
+        <button
+          onClick={() => setShowPrint(true)}
+          title="Print statistieken"
+          className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition"
+        >
+          🖨️
+        </button>
+      </div>
+
+      {/* COMPETITIE */}
+      <StatCard
+        title="Competitie"
+        icon={<span className="text-2xl">🏆</span>}
+      >
+        <StatList
+          data={competitionPoints}
+          showAllFlag={showAllCompetition}
+          toggleShowAll={() => setShowAllCompetition((v) => !v)}
+          renderRow={(row, index) => {
+            const player = playerMap.get(row.playerId);
+            if (!player) return null;
+            return (
+              <StatRow
+                key={row.playerId}
+                rank={index + 1}
+                player={player}
+                value={row.avg.toFixed(2)}
+                subtext={`${row.points} punten • ${row.games} weds`}
+                meetsThreshold={row.meetsThreshold}
+              />
+            );
+          }}
+        />
+      </StatCard>
+
+      {/* TOPSCORER */}
+      <StatCard
+        title="Topscorer"
+        icon={<span className="text-2xl">⚽</span>}
+      >
+        <StatList
+          data={topScorers}
+          showAllFlag={showAllGoals}
+          toggleShowAll={() => setShowAllGoals((v) => !v)}
+          renderRow={(row, index) => {
+            const player = playerMap.get(row.playerId);
+            if (!player) return null;
+            return (
+              <StatRow
+                key={row.playerId}
+                rank={index + 1}
+                player={player}
+                value={row.avg.toFixed(2)}
+                subtext={`${row.goals} goals • ${row.games} weds`}
+                meetsThreshold={row.meetsThreshold}
+              />
+            );
+          }}
+        />
+      </StatCard>
+
+      {/* BESTE VERDEDIGER */}
+      <StatCard
+        title="Beste Verdediger"
+        icon={<span className="text-2xl">🛡️</span>}
+        headerRight={
+          <label className="flex items-center text-sm text-gray-300 gap-2">
+            <input
+              type="checkbox"
+              checked={defenseKeepersOnly}
+              onChange={(e) => setDefenseKeepersOnly(e.target.checked)}
+            />
+            Alleen keepers
+          </label>
+        }
+      >
+        <StatList
+          data={bestDefenseForDisplay}
+          showAllFlag={showAllDefense}
+          toggleShowAll={() => setShowAllDefense((v) => !v)}
+          renderRow={(row, index) => {
+            const player = playerMap.get(row.playerId);
+            if (!player) return null;
+            return (
+              <StatRow
+                key={row.playerId}
+                rank={index + 1}
+                player={player}
+                value={row.avg.toFixed(2)}
+                subtext={`${row.games} weds`}
+                meetsThreshold={row.meetsThreshold}
+              />
+            );
+          }}
+        />
+      </StatCard>
+
+      {/* AANWEZIGHEID */}
+      <StatCard
+        title="Aanwezigheid"
+        icon={<span className="text-2xl">📅</span>}
+      >
+        <StatList
+          data={mostAttended}
+          showAllFlag={showAllAttendance}
+          toggleShowAll={() => setShowAllAttendance((v) => !v)}
+          renderRow={(row, index) => {
+            const player = playerMap.get(row.playerId);
+            if (!player) return null;
+            return (
+              <StatRow
+                key={row.playerId}
+                rank={index + 1}
+                player={player}
+                value={`${row.count}`}
+                subtext={`${row.percentage.toFixed(0)}%`}
+              />
+            );
+          }}
+        />
+      </StatCard>
+
+      {/* PRINT VIEW */}
+      {showPrint && (
+        <StatsPrintAll
+          competition={competitionPoints}
+          scorers={topScorers}
+          defense={bestDefense}
+          attendance={mostAttended}
+          onClose={() => setShowPrint(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default Statistics;
