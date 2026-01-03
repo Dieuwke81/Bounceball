@@ -2,10 +2,10 @@
 import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
 
-// Importeer de print component
+// We importeren de print component
 import StatsPrintAll from './StatsPrintAll';
 
-// We importeren alle iconen
+// We importeren alle iconen voor de zekerheid om crashes te voorkomen
 import TrophyIcon from './icons/TrophyIcon';
 import ShieldIcon from './icons/ShieldIcon';
 import UsersIcon from './icons/UsersIcon';
@@ -15,9 +15,10 @@ interface StatisticsProps {
   history: GameSession[];
   players: Player[];
   onSelectPlayer: (playerId: number) => void;
+  competitionName?: string;
 }
 
-const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlayer }) => {
+const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlayer, competitionName }) => {
   const [showAll, setShowAll] = useState({
     attendance: false,
     scorers: false,
@@ -185,7 +186,8 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
       .map(([playerId, games]) => {
         const points = ptsByPlayer.get(playerId) || 0;
         const gf = gfByPlayer.get(playerId) || 0;
-        const gd = gdByPlayer.get(playerId) || 0;
+        const gd = gdByPlayer.set(playerId, (gdByPlayer.get(playerId) || 0)); // dummy fix voor TS
+        const realGd = gdByPlayer.get(playerId) || 0;
 
         return {
           playerId,
@@ -193,7 +195,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
           games,
           avg: games > 0 ? points / games : 0,
           gf,
-          gd,
+          gd: realGd,
           meetsThreshold: (playerGames.get(playerId) || 0) >= minGames,
         };
       })
@@ -333,7 +335,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
   };
 
   // ============================
-  // VOLLEDIGE GRAFIEK LOGICA
+  // GRAFIEK COMPONENTEN (VOLLEDIG)
   // ============================
   const AttendanceChart: React.FC<{ data: { date: string; count: number }[] }> = ({ data }) => {
     if (data.length < 2) {
@@ -523,13 +525,13 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-cyan-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
           </svg>
-          <span className="text-xs font-bold">Print alleen via PC</span>
+          <span className="text-xs font-bold">Print PDF</span>
         </button>
       </div>
 
       <div className="text-center mb-4">
         <p className="text-gray-400">
-          Statistieken gebaseerd op <span className="font-bold text-white">{totalSessions}</span> speeldagen. <span className="italic">Minimaal <span className="font-bold text-white">{minGames}</span> speeldagen nodig.</span>
+          Statistieken gebaseerd op <span className="font-bold text-white">{totalSessions}</span> speeldagen. <span className="italic">Minimaal <span className="font-bold text-white">{minGames}</span> aanwezigheden nodig.</span>
         </p>
       </div>
 
@@ -568,7 +570,13 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
         <StatCard title="Balans van Teams" icon={<ChartBarIcon className="w-6 h-6 text-fuchsia-400" />}><GoalDifferenceChart data={goalDifferenceHistory} /></StatCard>
       </div>
 
-      {isPrinting && <StatsPrintAll title="Statistieken" {...printData} onClose={() => setIsPrinting(false)} />}
+      {isPrinting && (
+        <StatsPrintAll 
+          title={competitionName || "Statistieken"} 
+          {...printData} 
+          onClose={() => setIsPrinting(false)} 
+        />
+      )}
     </>
   );
 };
