@@ -1,4 +1,5 @@
 
+
 import React, { useMemo, useState } from 'react';
 import type { GameSession, Player } from '../types';
 
@@ -531,7 +532,7 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
 
       <div className="text-center mb-4">
         <p className="text-gray-400">
-          Statistieken gebaseerd op <span className="font-bold text-white">{totalSessions}</span> speeldagen. <span className="italic">Minimaal <span className="font-bold text-white">{minGames}</span speeldagen nodig.</span>
+          Statistieken gebaseerd op <span className="font-bold text-white">{totalSessions}</span> speeldagen. <span className="italic">Minimaal <span className="font-bold text-white">{minGames}</span> speeldagen nodig.</span>
         </p>
       </div>
 
