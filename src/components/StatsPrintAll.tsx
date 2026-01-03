@@ -18,12 +18,10 @@ interface StatsPrintAllProps {
   onClose: () => void;
 }
 
-// De verschillende afbeeldingen uit je statistieken
 const LOGOS = {
   competition: 'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
   scorers: 'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
   defense: 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
-  // Voor aanwezigheid gebruik ik een generiek zwart icoon omdat dit in de app een SVG was
   attendance: 'https://cdn-icons-png.flaticon.com/512/33/33308.png' 
 };
 
@@ -35,7 +33,7 @@ const Page: React.FC<{ title: string; subtitle: string; rows: PrintRow[]; logo: 
 }) => (
   <div className="print-page">
     <div className="header">
-      <img src={logo} alt="Icon" />
+      <img src={logo} alt="Logo" />
       <div>
         <h1>{title}</h1>
         <p>{subtitle}</p>
@@ -74,11 +72,9 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
   onClose,
 }) => {
   useEffect(() => {
-    // Kleine timeout om te zorgen dat afbeeldingen geladen zijn voor de print popup komt
     const timer = setTimeout(() => {
       window.print();
     }, 500);
-    
     window.onafterprint = onClose;
     return () => clearTimeout(timer);
   }, [onClose]);
@@ -93,7 +89,7 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
 
         .print-root {
           font-family: Arial, sans-serif;
-          color: #000; /* Volledig zwart voor print */
+          color: #000;
         }
 
         .print-page {
@@ -158,7 +154,7 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
 
       <Page
         title={`${title} – Competitie`}
-        subtitle="Punten per wedstrijd (Gemiddelde)"
+        subtitle="Punten per wedstrijd"
         rows={competition}
         logo={LOGOS.competition}
       />
@@ -172,14 +168,14 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
 
       <Page
         title={`${title} – Beste verdedigers`}
-        subtitle="Tegendoelpunten per wedstrijd (Lager is beter)"
+        subtitle="Tegendoelpunten per wedstrijd (lager is beter)"
         rows={defense}
         logo={LOGOS.defense}
       />
 
       <Page
         title={`${title} – Aanwezigheid`}
-        subtitle="Aantal speelavonden en deelname percentage"
+        subtitle="Aantal speelavonden"
         rows={attendance}
         logo={LOGOS.attendance}
       />
