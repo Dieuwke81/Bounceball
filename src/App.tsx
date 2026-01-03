@@ -1362,7 +1362,7 @@ const App: React.FC = () => {
         return <Rules />;
       case 'stats':
         return isManagementAuthenticated ? (
-          <Statistics history={activeHistory} players={players} onSelectPlayer={handleSelectPlayer} />
+          <Statistics history={activeHistory} players={players} onSelectPlayer={handleSelectPlayer} competitionName={competitionName || "Statistieken"} />
         ) : (
           <LoginScreen onLogin={handleLogin} />
         );
