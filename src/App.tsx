@@ -273,7 +273,9 @@ const optimizeTeamsSoft = (params: {
       if (separateFrequent) {
         for (let i = 0; i < ids.length; i++) {
           for (let j = i + 1; j < ids.length; j++) {
-            pen += seasonPairCounts.get(pairKey(ids[i], ids[j])) || 0;
+            const count = seasonPairCounts.get(pairKey(ids[i], ids[j])) || 0;
+            // ✅ Penalty verzwaard: kwadraat van het aantal keer samen gespeeld
+            pen += (count * count) * 10;
           }
         }
       }
@@ -297,7 +299,8 @@ const optimizeTeamsSoft = (params: {
   if (teamCount < 2) return best;
 
   const teamSizes = best.map((t) => t.length);
-  const maxIters = 20000;
+  // ✅ maxIters verhoogd naar 50000 voor meer hussel-pogingen
+  const maxIters = 50000;
   const randomInt = (max: number) => Math.floor(Math.random() * max);
 
   for (let iter = 0; iter < maxIters; iter++) {
@@ -1389,19 +1392,16 @@ const App: React.FC = () => {
         );
       case 'playerDetail':
         return selectedPlayer ? (
-          <>
-            {/* competitionName doorgeven (geen inline JSX comment in props) */}
-            <PlayerDetail
-              player={selectedPlayer}
-              history={activeHistory}
-              players={players}
-              ratingLogs={ratingLogs}
-              trophies={trophies}
-              seasonStartDate={seasonStartDate}
-              competitionName={competitionName}
-              onBack={() => setCurrentView('stats')}
-            />
-          </>
+          <PlayerDetail
+            player={selectedPlayer}
+            history={activeHistory}
+            players={players}
+            ratingLogs={ratingLogs}
+            trophies={trophies}
+            seasonStartDate={seasonStartDate}
+            competitionName={competitionName}
+            onBack={() => setCurrentView('stats')}
+          />
         ) : (
           <p>Speler niet gevonden.</p>
         );
@@ -1497,7 +1497,7 @@ const App: React.FC = () => {
   if (error || players.length === 0) {
     const guideError =
       error ||
-      "De app kon verbinding maken, maar heeft geen spelers gevonden. Dit is de meest voorkomende oorzaak van een 'leeg' scherm. Volg de stappen in de Koppelingsassistent om het probleem op te lossen.";
+      "De app kon verbinding maken, maar heeft geen spelers gevonden. Volg de stappen in de Koppelingsassistent om het probleem op te lossen.";
     return <SetupGuide error={guideError} onRetry={fetchData} />;
   }
 
