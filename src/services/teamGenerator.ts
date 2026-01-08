@@ -9,6 +9,22 @@ const ITERATIONS = 1000000; // A good balance between performance and quality.
 const SPREAD_TOLERANCE = 0.02; 
 const MAX_CANDIDATES = 50;     
 
+// Helper om te kijken hoeveel spelers er maximaal hetzelfde zijn tussen twee indelingen
+const getMaxOverlap = (teamsA: Player[][], teamsB: Player[][]): number => {
+  let maxOverlap = 0;
+  for (const teamA of teamsA) {
+    const idsA = new Set(teamA.map(p => p.id));
+    for (const teamB of teamsB) {
+      let overlap = 0;
+      for (const pB of teamB) {
+        if (idsA.has(pB.id)) overlap++;
+      }
+      if (overlap > maxOverlap) maxOverlap = overlap;
+    }
+  }
+  return maxOverlap;
+};
+
 const areTeamCompositionsIdentical = (teamsA: Player[][], teamsB: Player[][]): boolean => {
   if (teamsA.length !== teamsB.length) return false;
   if (teamsA.length === 0) return true;
@@ -108,7 +124,6 @@ const calculateTogetherPenalty = (teams: Player[][], pairCounts: Map<PairKey, nu
       for (let j = i + 1; j < team.length; j++) {
         const key = makePairKey(team[i].id, team[j].id);
         const c = pairCounts.get(key) || 0;
-        // ✅ Heavy Penalty: Kwadraat
         penalty += (c * c);
       }
     }
@@ -158,7 +173,14 @@ export const generateTeams = async (
         const keeperCounts = currentTeams.map(t => t.filter(p => p.isKeeper).length);
         if (Math.max(...keeperCounts) - Math.min(...keeperCounts) > 1) continue;
         if (!isCompositionValid(currentTeams, constraints)) continue;
-        if (excludeComposition && areTeamCompositionsIdentical(currentTeams, excludeComposition)) continue;
+        
+        // ✅ VERBETERDE EXCLUDE LOGICA
+        // Als er een eerdere indeling is, mag de overlap maximaal (teamgrootte - 2) zijn.
+        // Dus bij teams van 5 moeten er minimaal 2 spelers per team gewisseld zijn.
+        if (excludeComposition) {
+            const maxAllowedOverlap = maxTeamSize - 2; 
+            if (getMaxOverlap(currentTeams, excludeComposition) > maxAllowedOverlap) continue;
+        }
 
         const teamAverageRatings = currentTeams.map(team => {
           if (team.length === 0) return 0;
@@ -181,7 +203,7 @@ export const generateTeams = async (
         if (minSpread < 0.001 && candidates.length >= 10) break;
       }
 
-      if (!candidates.length) return reject(new Error('Kon geen geldige teamindeling vinden.'));
+      if (!candidates.length) return reject(new Error('Kon geen geldige teamindeling vinden met genoeg variatie t.o.v. de eerste wedstrijd.'));
       candidates.sort((a, b) => a.spread - b.spread || a.penalty - b.penalty);
       resolve(candidates[0].teams);
     }, 0);
