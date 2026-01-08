@@ -356,7 +356,6 @@ const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
     const teamA = result[i];
     const teamB = result[i + 1];
 
-    // 1. Splits keepers en veldspelers
     const keepersA = teamA.filter(p => p.isKeeper);
     const othersA = teamA.filter(p => !p.isKeeper);
     const keepersB = teamB.filter(p => p.isKeeper);
@@ -364,17 +363,14 @@ const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
 
     const slots: { a: Player | null, b: Player | null }[] = [];
 
-    // 2. Koppel keepers (indien beide teams er minstens één hebben)
     const numKeeperPairs = Math.min(keepersA.length, keepersB.length);
     for (let k = 0; k < numKeeperPairs; k++) {
       slots.push({ a: keepersA.shift()!, b: keepersB.shift()! });
     }
 
-    // 3. Voeg overgebleven keepers terug bij de 'others' (voor als 1 team geen keeper heeft)
     const remainingA = [...keepersA, ...othersA].sort((a, b) => b.rating - a.rating);
     const remainingB = [...keepersB, ...othersB].sort((a, b) => b.rating - a.rating);
 
-    // 4. Koppel de rest op basis van rating
     const maxRemaining = Math.max(remainingA.length, remainingB.length);
     for (let r = 0; r < maxRemaining; r++) {
       slots.push({ 
@@ -383,13 +379,11 @@ const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
       });
     }
 
-    // 5. Hussel de slot-volgorde (zodat keepers niet altijd bovenaan staan)
     for (let j = slots.length - 1; j > 0; j--) {
       const k = Math.floor(Math.random() * (j + 1));
       [slots[j], slots[k]] = [slots[k], slots[j]];
     }
 
-    // 6. Zet de teams weer in elkaar
     result[i] = slots.map(s => s.a).filter((p): p is Player => p !== null);
     result[i + 1] = slots.map(s => s.b).filter((p): p is Player => p !== null);
   }
@@ -463,9 +457,6 @@ const App: React.FC = () => {
   const [showFrequentPairs, setShowFrequentPairs] = useState<boolean>(true);
   const [syncOpponentRatings, setSyncOpponentRatings] = useState<boolean>(false);
 
-  // —————————————————
-  // LocalStorage: on-change opslaan
-  // —————————————————
   useEffect(() => {
     if (gameMode) {
       const stateToSave = {
@@ -503,9 +494,6 @@ const App: React.FC = () => {
     syncOpponentRatings,
   ]);
 
-  // —————————————————
-  // LocalStorage: bij laden herstellen
-  // —————————————————
   useEffect(() => {
     const savedGameJSON = localStorage.getItem(UNSAVED_GAME_KEY);
     if (savedGameJSON) {
@@ -538,9 +526,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // —————————————————
-  // Data ophalen vanuit Google Sheet
-  // —————————————————
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -571,9 +556,6 @@ const App: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  // —————————————————
-  // Notificaties automatisch laten verdwijnen
-  // —————————————————
   useEffect(() => {
     if (notification) {
       const timer = setTimeout(() => setNotification(null), 5000);
@@ -585,9 +567,6 @@ const App: React.FC = () => {
     setNotification({ message, type });
   };
 
-  // —————————————————
-  // Aanwezigheid toggelen
-  // —————————————————
   const handlePlayerToggle = (playerId: number) => {
     setAttendingPlayerIds((prev) => {
       const newSet = new Set(prev);
@@ -597,9 +576,6 @@ const App: React.FC = () => {
     });
   };
 
-  // —————————————————
-  // Aanwezigheidsparser
-  // —————————————————
   const handleParseAttendance = (text: string) => {
     const normalize = (str: string): string =>
       str
@@ -700,9 +676,6 @@ const App: React.FC = () => {
     }
   };
 
-  // —————————————————
-  // Game state reset
-  // —————————————————
   const resetGameState = () => {
     setTeams([]);
     setTeams2(null);
@@ -765,9 +738,6 @@ const App: React.FC = () => {
     return entries;
   }, [seasonPairCounts, players, attendingPlayers]);
 
-  // —————————————————
-  // Teams genereren
-  // —————————————————
   const handleGenerateTeams = async (mode: GameMode) => {
     resetGameState();
     setGameMode(mode);
@@ -805,7 +775,6 @@ const App: React.FC = () => {
         });
       }
 
-      // ✅ Ratings syncen (incl. keepers tegenover elkaar)
       if (syncOpponentRatings) {
         generated = syncRatingsBetweenOpponents(generated);
       }
@@ -821,9 +790,6 @@ const App: React.FC = () => {
     }
   };
 
-  // —————————————————
-  // Goals invoer
-  // —————————————————
   const handleGoalChange = (
     matchIndex: number,
     teamIdentifier: 'team1' | 'team2',
@@ -845,9 +811,6 @@ const App: React.FC = () => {
     });
   };
 
-  // —————————————————
-  // ✅ Sessie opslaan (generiek) — NU MET round2Teams
-  // —————————————————
   const handleSaveSession = async (sessionData: GameSession) => {
     const ratingChanges = calculateRatingDeltas({
       teams: sessionData.teams,
@@ -883,9 +846,6 @@ const App: React.FC = () => {
     }
   };
 
-  // —————————————————
-  // Ronde 1 opslaan & ronde 2 pairings bepalen
-  // —————————————————
   const handleSaveRound1 = (matches: Match[]) => {
     const results: MatchResult[] = matches.map((match, index): MatchResult => ({
       ...match,
@@ -964,9 +924,6 @@ const App: React.FC = () => {
     setCurrentRound(2);
   };
 
-  // —————————————————
-  // Ronde 2 teams opnieuw genereren (blessures)
-  // —————————————————
   const handleRegenerateTeamsForR2 = async () => {
     if (!originalTeams) return;
     setActionInProgress('regeneratingTeams');
@@ -979,7 +936,6 @@ const App: React.FC = () => {
       if (remainingPlayers.length < numTeams)
         throw new Error(`Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`);
 
-      // ✅ Nu wordt activeHistory meegestuurd naar de motor
       let regeneratedTeams = await generateTeams(remainingPlayers, numTeams, constraints, null, activeHistory);
 
       if (separateFrequentTeammates || separateTop6OnPoints) {
@@ -995,7 +951,6 @@ const App: React.FC = () => {
         });
       }
 
-      // ✅ Ratings syncen
       if (syncOpponentRatings) {
         regeneratedTeams = syncRatingsBetweenOpponents(regeneratedTeams);
       }
@@ -1015,9 +970,6 @@ const App: React.FC = () => {
     }
   };
 
-  // —————————————————
-  // Final results (toernooi) opslaan
-  // —————————————————
   const handleSaveFinalResults = async (matches: Match[]) => {
     if (!requireAdmin()) return;
 
@@ -1039,9 +991,6 @@ const App: React.FC = () => {
     setActionInProgress(null);
   };
 
-  // —————————————————
-  // Simpele match opslaan (1 wedstrijd)
-  // —————————————————
   const handleSaveSimpleMatch = async (match: Match) => {
     if (!requireAdmin()) return;
 
@@ -1065,14 +1014,12 @@ const App: React.FC = () => {
     setActionInProgress(null);
   };
 
-  // —————————————————
-  // Double header: tweede wedstrijd starten
-  // —————————————————
   const handleStartSecondDoubleHeaderMatch = async (match1Result: MatchResult) => {
     setActionInProgress('generating');
     try {
       const allPlayers = teams.flat();
-      // ✅ Nu wordt activeHistory meegestuurd naar de motor
+      // ✅ Gebruikt nu activeHistory en stuurt de eerste indeling mee naar de motor
+      // De motor regelt nu zelf dat er minimaal 2 spelers per team anders zijn.
       let regeneratedTeams = await generateTeams(allPlayers, 2, constraints, teams, activeHistory);
 
       if (!regeneratedTeams || regeneratedTeams.length === 0) {
@@ -1092,7 +1039,6 @@ const App: React.FC = () => {
         });
       }
 
-      // ✅ Ratings syncen
       if (syncOpponentRatings) {
         regeneratedTeams = syncRatingsBetweenOpponents(regeneratedTeams);
       }
@@ -1108,9 +1054,6 @@ const App: React.FC = () => {
     }
   };
 
-  // —————————————————
-  // Double header opslaan (2 losse sessies)
-  // —————————————————
   const handleSaveDoubleHeader = async (match2Result: MatchResult) => {
     if (!requireAdmin()) return;
 
@@ -1140,9 +1083,6 @@ const App: React.FC = () => {
     setActionInProgress(null);
   };
 
-  // —————————————————
-  // Constraints
-  // —————————————————
   const handleAddConstraint = (constraint: Constraint) => {
     setConstraints((prev) => [...prev, constraint]);
   };
@@ -1151,9 +1091,6 @@ const App: React.FC = () => {
     setConstraints((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // —————————————————
-  // Spelersbeheer
-  // —————————————————
   const handleAddPlayer = async (newPlayer: NewPlayer) => {
     try {
       const { newId } = await addPlayer(newPlayer);
@@ -1190,9 +1127,6 @@ const App: React.FC = () => {
     }
   };
 
-  // —————————————————
-  // Prijzen
-  // —————————————————
   const handleAddTrophy = async (newTrophy: Omit<Trophy, 'id'>) => {
     try {
       await addTrophy(newTrophy);
@@ -1214,17 +1148,11 @@ const App: React.FC = () => {
     }
   };
 
-  // —————————————————
-  // View / selectie
-  // —————————————————
   const handleSelectPlayer = (playerId: number) => {
     setSelectedPlayerId(playerId);
     setCurrentView('playerDetail');
   };
 
-  // —————————————————
-  // Login voor beheer
-  // —————————————————
   const handleLogin = (password: string): boolean => {
     if (password === ADMIN_PASSWORD) {
       setIsManagementAuthenticated(true);
@@ -1248,9 +1176,6 @@ const App: React.FC = () => {
     return false;
   };
 
-  // —————————————————
-  // ✅ Handmatige invoer opslaan — NU MET round2Teams
-  // —————————————————
   const handleSaveManualEntry = async (data: GameSession) => {
     if (!requireAdmin()) return;
     setActionInProgress('savingManual');
@@ -1258,9 +1183,6 @@ const App: React.FC = () => {
     setActionInProgress(null);
   };
 
-  // —————————————————
-  // Competitienaam
-  // —————————————————
   const handleSetCompetitionName = async (name: string) => {
     try {
       await setCompetitionNameService(name);
@@ -1271,9 +1193,6 @@ const App: React.FC = () => {
     }
   };
 
-  // —————————————————
-  // Hoofd “Wedstrijd”-view
-  // —————————————————
   const renderMainView = () => (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -1443,9 +1362,6 @@ const App: React.FC = () => {
     </>
   );
 
-  // —————————————————
-  // Content router
-  // —————————————————
   const renderContent = () => {
     switch (currentView) {
       case 'main':
@@ -1541,9 +1457,6 @@ const App: React.FC = () => {
     }
   };
 
-  // —————————————————
-  // Navigatieknop component
-  // —————————————————
   const NavItem: React.FC<{
     view: View;
     label: string;
@@ -1570,9 +1483,6 @@ const App: React.FC = () => {
     </button>
   );
 
-  // —————————————————
-  // Loading / error states
-  // —————————————————
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
@@ -1595,9 +1505,6 @@ const App: React.FC = () => {
     return <SetupGuide error={guideError} onRetry={fetchData} />;
   }
 
-  // —————————————————
-  // Hoofd-render
-  // —————————————————
   return (
     <div className="min-h-screen text-white pb-8">
       <div className="container mx-auto p-4 md:p-6">
