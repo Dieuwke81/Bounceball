@@ -273,7 +273,7 @@ const optimizeTeamsSoft = (params: {
         for (let i = 0; i < ids.length; i++) {
           for (let j = i + 1; j < ids.length; j++) {
             const count = seasonPairCounts.get(pairKey(ids[i], ids[j])) || 0;
-            // ✅ Penalty verzwaard: kwadraat van het aantal keer samen gespeeld
+            // ✅ Heavy Penalty: Kwadraat van het aantal keer samen gespeeld
             pen += (count * count) * 10;
           }
         }
@@ -298,7 +298,7 @@ const optimizeTeamsSoft = (params: {
   if (teamCount < 2) return best;
 
   const teamSizes = best.map((t) => t.length);
-  // ✅ maxIters verhoogd naar 50000 voor meer hussel-pogingen
+  // ✅ maxIters naar 50000
   const maxIters = 50000;
   const randomInt = (max: number) => Math.floor(Math.random() * max);
 
@@ -730,7 +730,7 @@ const App: React.FC = () => {
 
     setActionInProgress('generating');
     try {
-      // ✅ AANPASSING: Nu wordt activeHistory meegestuurd naar de motor
+      // ✅ AANPASSING: activeHistory direct naar motor sturen
       let generated = await generateTeams(attendingPlayers, numberOfTeams, constraints, null, activeHistory);
 
       if (separateFrequentTeammates || separateTop6OnPoints) {
@@ -915,7 +915,7 @@ const App: React.FC = () => {
       if (remainingPlayers.length < numTeams)
         throw new Error(`Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`);
 
-      // ✅ AANPASSING: Nu wordt activeHistory meegestuurd naar de motor bij regenereren
+      // ✅ AANPASSING: activeHistory naar motor bij regenereren
       let regeneratedTeams = await generateTeams(remainingPlayers, numTeams, constraints, null, activeHistory);
 
       if (separateFrequentTeammates || separateTop6OnPoints) {
@@ -1003,7 +1003,7 @@ const App: React.FC = () => {
     setActionInProgress('generating');
     try {
       const allPlayers = teams.flat();
-      // ✅ AANPASSING: Nu wordt activeHistory meegestuurd naar de motor
+      // ✅ AANPASSING: activeHistory naar motor
       let regeneratedTeams = await generateTeams(allPlayers, 2, constraints, teams, activeHistory);
 
       if (!regeneratedTeams || regeneratedTeams.length === 0) {
@@ -1394,16 +1394,19 @@ const App: React.FC = () => {
         );
       case 'playerDetail':
         return selectedPlayer ? (
-          <PlayerDetail
-            player={selectedPlayer}
-            history={activeHistory}
-            players={players}
-            ratingLogs={ratingLogs}
-            trophies={trophies}
-            seasonStartDate={seasonStartDate}
-            competitionName={competitionName}
-            onBack={() => setCurrentView('stats')}
-          />
+          <>
+            {/* competitionName doorgeven (geen inline JSX comment in props) */}
+            <PlayerDetail
+              player={selectedPlayer}
+              history={activeHistory}
+              players={players}
+              ratingLogs={ratingLogs}
+              trophies={trophies}
+              seasonStartDate={seasonStartDate}
+              competitionName={competitionName}
+              onBack={() => setCurrentView('stats')}
+            />
+          </>
         ) : (
           <p>Speler niet gevonden.</p>
         );
