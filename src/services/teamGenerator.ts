@@ -86,8 +86,8 @@ const buildSeasonPairCounts = (seasonHistory?: GameSession[]): Map<PairKey, numb
     }
   };
   const addPairsFromMatch = (teamsForThatRound: Player[][], match: MatchResult) => {
-    const teamA = teamsForRound[match.team1Index] || [];
-    const teamB = teamsForRound[match.team2Index] || [];
+    const teamA = teamsForThatRound[match.team1Index] || [];
+    const teamB = teamsForThatRound[match.team2Index] || [];
     addPairsFromTeam(teamA);
     addPairsFromTeam(teamB);
   };
@@ -108,7 +108,7 @@ const calculateTogetherPenalty = (teams: Player[][], pairCounts: Map<PairKey, nu
       for (let j = i + 1; j < team.length; j++) {
         const key = makePairKey(team[i].id, team[j].id);
         const c = pairCounts.get(key) || 0;
-        // ✅ Penalty zwaarder: Kwadraat
+        // ✅ Heavy Penalty: Kwadraat
         penalty += (c * c);
       }
     }
