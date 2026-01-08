@@ -1,4 +1,3 @@
-
 // App.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type {
@@ -731,7 +730,8 @@ const App: React.FC = () => {
 
     setActionInProgress('generating');
     try {
-      let generated = await generateTeams(attendingPlayers, numberOfTeams, constraints);
+      // ✅ AANPASSING: Nu wordt activeHistory meegestuurd naar de motor
+      let generated = await generateTeams(attendingPlayers, numberOfTeams, constraints, null, activeHistory);
 
       if (separateFrequentTeammates || separateTop6OnPoints) {
         const attendingSet = new Set(attendingPlayers.map((p) => p.id));
@@ -915,7 +915,8 @@ const App: React.FC = () => {
       if (remainingPlayers.length < numTeams)
         throw new Error(`Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`);
 
-      let regeneratedTeams = await generateTeams(remainingPlayers, numTeams, constraints);
+      // ✅ AANPASSING: Nu wordt activeHistory meegestuurd naar de motor bij regenereren
+      let regeneratedTeams = await generateTeams(remainingPlayers, numTeams, constraints, null, activeHistory);
 
       if (separateFrequentTeammates || separateTop6OnPoints) {
         const attendingSet = new Set(remainingPlayers.map((p) => p.id));
@@ -1002,7 +1003,8 @@ const App: React.FC = () => {
     setActionInProgress('generating');
     try {
       const allPlayers = teams.flat();
-      let regeneratedTeams = await generateTeams(allPlayers, 2, constraints, teams);
+      // ✅ AANPASSING: Nu wordt activeHistory meegestuurd naar de motor
+      let regeneratedTeams = await generateTeams(allPlayers, 2, constraints, teams, activeHistory);
 
       if (!regeneratedTeams || regeneratedTeams.length === 0) {
         throw new Error('Kon geen unieke teamindeling genereren.');
