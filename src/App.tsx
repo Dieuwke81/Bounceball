@@ -273,7 +273,7 @@ const optimizeTeamsSoft = (params: {
         for (let i = 0; i < ids.length; i++) {
           for (let j = i + 1; j < ids.length; j++) {
             const count = seasonPairCounts.get(pairKey(ids[i], ids[j])) || 0;
-            // ✅ Heavy Penalty: Kwadraat van het aantal keer samen gespeeld
+            // ✅ Penalty verzwaard: kwadraat van het aantal keer samen gespeeld
             pen += (count * count) * 10;
           }
         }
@@ -298,7 +298,7 @@ const optimizeTeamsSoft = (params: {
   if (teamCount < 2) return best;
 
   const teamSizes = best.map((t) => t.length);
-  // ✅ maxIters naar 50000
+  // ✅ maxIters verhoogd naar 50000 voor meer hussel-pogingen
   const maxIters = 50000;
   const randomInt = (max: number) => Math.floor(Math.random() * max);
 
@@ -340,6 +340,50 @@ const optimizeTeamsSoft = (params: {
   }
 
   return best;
+};
+
+// ============================================================================
+// ✅ Sync Ratings: Tegenstanders op dezelfde plekken zetten
+// ============================================================================
+
+const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
+  const result = [...teams.map((t) => [...t])];
+
+  // We lopen door de teams in paren (0vs1, 2vs3, 4vs5)
+  for (let i = 0; i < result.length; i += 2) {
+    if (!result[i + 1]) break;
+
+    const teamA = result[i];
+    const teamB = result[i + 1];
+
+    // 1. Sorteer beide teams op rating (hoog naar laag)
+    teamA.sort((a, b) => b.rating - a.rating);
+    teamB.sort((a, b) => b.rating - a.rating);
+
+    // 2. Maak een lijst van indexen (0, 1, 2, 3, 4)
+    const maxLen = Math.max(teamA.length, teamB.length);
+    const indices = Array.from({ length: maxLen }, (_, idx) => idx);
+
+    // 3. Hussel de indexen willekeurig
+    for (let j = indices.length - 1; j > 0; j--) {
+      const k = Math.floor(Math.random() * (j + 1));
+      [indices[j], indices[k]] = [indices[k], indices[j]];
+    }
+
+    // 4. Bouw beide teams opnieuw op basis van diezelfde gehusselde index-volgorde
+    const shuffledA: Player[] = [];
+    const shuffledB: Player[] = [];
+
+    indices.forEach((idx) => {
+      if (teamA[idx]) shuffledA.push(teamA[idx]);
+      if (teamB[idx]) shuffledB.push(teamB[idx]);
+    });
+
+    result[i] = shuffledA;
+    result[i + 1] = shuffledB;
+  }
+
+  return result;
 };
 
 // ============================================================================
@@ -406,6 +450,7 @@ const App: React.FC = () => {
   const [separateFrequentTeammates, setSeparateFrequentTeammates] = useState<boolean>(false);
   const [separateTop6OnPoints, setSeparateTop6OnPoints] = useState<boolean>(false);
   const [showFrequentPairs, setShowFrequentPairs] = useState<boolean>(true);
+  const [syncOpponentRatings, setSyncOpponentRatings] = useState<boolean>(false);
 
   // —————————————————
   // LocalStorage: on-change opslaan
@@ -426,6 +471,7 @@ const App: React.FC = () => {
         separateFrequentTeammates,
         separateTop6OnPoints,
         showFrequentPairs,
+        syncOpponentRatings,
       };
       localStorage.setItem(UNSAVED_GAME_KEY, JSON.stringify(stateToSave));
     }
@@ -443,6 +489,7 @@ const App: React.FC = () => {
     separateFrequentTeammates,
     separateTop6OnPoints,
     showFrequentPairs,
+    syncOpponentRatings,
   ]);
 
   // —————————————————
@@ -469,6 +516,7 @@ const App: React.FC = () => {
           setSeparateFrequentTeammates(!!savedGame.separateFrequentTeammates);
           setSeparateTop6OnPoints(!!savedGame.separateTop6OnPoints);
           setShowFrequentPairs(savedGame.showFrequentPairs !== false);
+          setSyncOpponentRatings(!!savedGame.syncOpponentRatings);
         } else {
           localStorage.removeItem(UNSAVED_GAME_KEY);
         }
@@ -730,7 +778,7 @@ const App: React.FC = () => {
 
     setActionInProgress('generating');
     try {
-      // ✅ AANPASSING: activeHistory direct naar motor sturen
+      // ✅ Nu wordt activeHistory meegestuurd naar de motor
       let generated = await generateTeams(attendingPlayers, numberOfTeams, constraints, null, activeHistory);
 
       if (separateFrequentTeammates || separateTop6OnPoints) {
@@ -744,6 +792,11 @@ const App: React.FC = () => {
           separateTop6: separateTop6OnPoints,
           top6Ids,
         });
+      }
+
+      // ✅ NIEUW: Ratings syncen tussen tegenstanders indien toggle aan staat
+      if (syncOpponentRatings) {
+        generated = syncRatingsBetweenOpponents(generated);
       }
 
       setTeams(generated);
@@ -915,7 +968,7 @@ const App: React.FC = () => {
       if (remainingPlayers.length < numTeams)
         throw new Error(`Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`);
 
-      // ✅ AANPASSING: activeHistory naar motor bij regenereren
+      // ✅ Nu wordt activeHistory meegestuurd naar de motor
       let regeneratedTeams = await generateTeams(remainingPlayers, numTeams, constraints, null, activeHistory);
 
       if (separateFrequentTeammates || separateTop6OnPoints) {
@@ -929,6 +982,11 @@ const App: React.FC = () => {
           separateTop6: separateTop6OnPoints,
           top6Ids,
         });
+      }
+
+      // ✅ Ratings syncen
+      if (syncOpponentRatings) {
+        regeneratedTeams = syncRatingsBetweenOpponents(regeneratedTeams);
       }
 
       const newPairings: Match[] = [];
@@ -1003,7 +1061,7 @@ const App: React.FC = () => {
     setActionInProgress('generating');
     try {
       const allPlayers = teams.flat();
-      // ✅ AANPASSING: activeHistory naar motor
+      // ✅ Nu wordt activeHistory meegestuurd naar de motor
       let regeneratedTeams = await generateTeams(allPlayers, 2, constraints, teams, activeHistory);
 
       if (!regeneratedTeams || regeneratedTeams.length === 0) {
@@ -1021,6 +1079,11 @@ const App: React.FC = () => {
           separateTop6: separateTop6OnPoints,
           top6Ids,
         });
+      }
+
+      // ✅ Ratings syncen
+      if (syncOpponentRatings) {
+        regeneratedTeams = syncRatingsBetweenOpponents(regeneratedTeams);
       }
 
       setTeams2(regeneratedTeams);
@@ -1236,6 +1299,19 @@ const App: React.FC = () => {
               />
             </label>
 
+            <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
+              <div className="text-sm">
+                <div className="font-semibold text-gray-100">Sync ratings tegenstanders</div>
+                <div className="text-xs text-gray-400">Posities in beide teams gelijkwaardig.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={syncOpponentRatings}
+                onChange={(e) => setSyncOpponentRatings(e.target.checked)}
+                className="w-5 h-5"
+              />
+            </label>
+
             <label className="flex items-center justify-between gap-3 px-1 py-2">
               <div className="text-xs text-gray-400">Toon “vaak samen” lijst</div>
               <input
@@ -1367,7 +1443,12 @@ const App: React.FC = () => {
         return <Rules />;
       case 'stats':
         return isManagementAuthenticated ? (
-          <Statistics history={activeHistory} players={players} onSelectPlayer={handleSelectPlayer} competitionName={competitionName || "Statistieken"} />
+          <Statistics 
+            history={activeHistory} 
+            players={players} 
+            onSelectPlayer={handleSelectPlayer} 
+            competitionName={competitionName || "Statistieken"} 
+          />
         ) : (
           <LoginScreen onLogin={handleLogin} />
         );
@@ -1394,19 +1475,16 @@ const App: React.FC = () => {
         );
       case 'playerDetail':
         return selectedPlayer ? (
-          <>
-            {/* competitionName doorgeven (geen inline JSX comment in props) */}
-            <PlayerDetail
-              player={selectedPlayer}
-              history={activeHistory}
-              players={players}
-              ratingLogs={ratingLogs}
-              trophies={trophies}
-              seasonStartDate={seasonStartDate}
-              competitionName={competitionName}
-              onBack={() => setCurrentView('stats')}
-            />
-          </>
+          <PlayerDetail
+            player={selectedPlayer}
+            history={activeHistory}
+            players={players}
+            ratingLogs={ratingLogs}
+            trophies={trophies}
+            seasonStartDate={seasonStartDate}
+            competitionName={competitionName}
+            onBack={() => setCurrentView('stats')}
+          />
         ) : (
           <p>Speler niet gevonden.</p>
         );
