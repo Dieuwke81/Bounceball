@@ -343,7 +343,7 @@ const optimizeTeamsSoft = (params: {
 };
 
 // ============================================================================
-// ✅ Sync Ratings: Tegenstanders op dezelfde plekken zetten
+// ✅ Sync Ratings & Keepers: Tegenstanders op dezelfde plekken zetten
 // ============================================================================
 
 const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
@@ -356,31 +356,42 @@ const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
     const teamA = result[i];
     const teamB = result[i + 1];
 
-    // 1. Sorteer beide teams op rating (hoog naar laag)
-    teamA.sort((a, b) => b.rating - a.rating);
-    teamB.sort((a, b) => b.rating - a.rating);
+    // 1. Splits keepers en veldspelers
+    const keepersA = teamA.filter(p => p.isKeeper);
+    const othersA = teamA.filter(p => !p.isKeeper);
+    const keepersB = teamB.filter(p => p.isKeeper);
+    const othersB = teamB.filter(p => !p.isKeeper);
 
-    // 2. Maak een lijst van indexen (0, 1, 2, 3, 4)
-    const maxLen = Math.max(teamA.length, teamB.length);
-    const indices = Array.from({ length: maxLen }, (_, idx) => idx);
+    const slots: { a: Player | null, b: Player | null }[] = [];
 
-    // 3. Hussel de indexen willekeurig
-    for (let j = indices.length - 1; j > 0; j--) {
-      const k = Math.floor(Math.random() * (j + 1));
-      [indices[j], indices[k]] = [indices[k], indices[j]];
+    // 2. Koppel keepers (indien beide teams er minstens één hebben)
+    const numKeeperPairs = Math.min(keepersA.length, keepersB.length);
+    for (let k = 0; k < numKeeperPairs; k++) {
+      slots.push({ a: keepersA.shift()!, b: keepersB.shift()! });
     }
 
-    // 4. Bouw beide teams opnieuw op basis van diezelfde gehusselde index-volgorde
-    const shuffledA: Player[] = [];
-    const shuffledB: Player[] = [];
+    // 3. Voeg overgebleven keepers terug bij de 'others' (voor als 1 team geen keeper heeft)
+    const remainingA = [...keepersA, ...othersA].sort((a, b) => b.rating - a.rating);
+    const remainingB = [...keepersB, ...othersB].sort((a, b) => b.rating - a.rating);
 
-    indices.forEach((idx) => {
-      if (teamA[idx]) shuffledA.push(teamA[idx]);
-      if (teamB[idx]) shuffledB.push(teamB[idx]);
-    });
+    // 4. Koppel de rest op basis van rating
+    const maxRemaining = Math.max(remainingA.length, remainingB.length);
+    for (let r = 0; r < maxRemaining; r++) {
+      slots.push({ 
+        a: remainingA[r] || null, 
+        b: remainingB[r] || null 
+      });
+    }
 
-    result[i] = shuffledA;
-    result[i + 1] = shuffledB;
+    // 5. Hussel de slot-volgorde (zodat keepers niet altijd bovenaan staan)
+    for (let j = slots.length - 1; j > 0; j--) {
+      const k = Math.floor(Math.random() * (j + 1));
+      [slots[j], slots[k]] = [slots[k], slots[j]];
+    }
+
+    // 6. Zet de teams weer in elkaar
+    result[i] = slots.map(s => s.a).filter((p): p is Player => p !== null);
+    result[i + 1] = slots.map(s => s.b).filter((p): p is Player => p !== null);
   }
 
   return result;
@@ -794,7 +805,7 @@ const App: React.FC = () => {
         });
       }
 
-      // ✅ NIEUW: Ratings syncen tussen tegenstanders indien toggle aan staat
+      // ✅ Ratings syncen (incl. keepers tegenover elkaar)
       if (syncOpponentRatings) {
         generated = syncRatingsBetweenOpponents(generated);
       }
@@ -1302,7 +1313,7 @@ const App: React.FC = () => {
             <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
               <div className="text-sm">
                 <div className="font-semibold text-gray-100">Sync ratings tegenstanders</div>
-                <div className="text-xs text-gray-400">Posities in beide teams gelijkwaardig.</div>
+                <div className="text-xs text-gray-400">Plaats keepers en ratings gelijkwaardig.</div>
               </div>
               <input
                 type="checkbox"
