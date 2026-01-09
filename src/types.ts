@@ -93,6 +93,7 @@ export interface NKMatch {
   referee: Player;
   subHigh: Player; // Rating >= 5
   subLow: Player;  // Rating < 5
+  isPlayed: boolean;
 }
 
 export interface NKRound {
