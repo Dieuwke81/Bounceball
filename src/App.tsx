@@ -25,6 +25,8 @@ import PlayerDetail from './components/PlayerDetail';
 import ManualEntry from './components/ManualEntry';
 import CompetitionManagement from './components/CompetitionManagement';
 import TrophyRoom from './components/TrophyRoom';
+import NKManager from './components/NKManager'; // Toegevoegd
+
 import {
   getInitialData,
   saveGameSession,
@@ -59,7 +61,8 @@ type View =
   | 'playerDetail'
   | 'manualEntry'
   | 'competitionManagement'
-  | 'trophyRoom';
+  | 'trophyRoom'
+  | 'nk'; // Toegevoegd
 
 type Notification = { message: string; type: 'success' | 'error' };
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
@@ -349,7 +352,6 @@ const optimizeTeamsSoft = (params: {
 const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
   const result = [...teams.map((t) => [...t])];
 
-  // We lopen door de teams in paren (0vs1, 2vs3, 4vs5)
   for (let i = 0; i < result.length; i += 2) {
     if (!result[i + 1]) break;
 
@@ -936,6 +938,7 @@ const App: React.FC = () => {
       if (remainingPlayers.length < numTeams)
         throw new Error(`Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`);
 
+      // ✅ Nu wordt activeHistory meegestuurd naar de motor
       let regeneratedTeams = await generateTeams(remainingPlayers, numTeams, constraints, null, activeHistory);
 
       if (separateFrequentTeammates || separateTop6OnPoints) {
@@ -1018,8 +1021,7 @@ const App: React.FC = () => {
     setActionInProgress('generating');
     try {
       const allPlayers = teams.flat();
-      // ✅ Gebruikt nu activeHistory en stuurt de eerste indeling mee naar de motor
-      // De motor regelt nu zelf dat er minimaal 2 spelers per team anders zijn.
+      // ✅ Nu wordt activeHistory meegestuurd naar de motor
       let regeneratedTeams = await generateTeams(allPlayers, 2, constraints, teams, activeHistory);
 
       if (!regeneratedTeams || regeneratedTeams.length === 0) {
@@ -1323,8 +1325,18 @@ const App: React.FC = () => {
               </button>
             </div>
 
+            <div className="mt-6 border-t border-gray-700 pt-6">
+               <button
+                  onClick={() => setCurrentView('nk')}
+                  className="w-full bg-gradient-to-r from-amber-400 to-amber-700 hover:from-amber-500 hover:to-amber-800 text-white font-black py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-3"
+                >
+                  <TrophyIcon className="w-6 h-6" />
+                  NK TOERNOOI MANAGER (MASTER PLANNER)
+                </button>
+            </div>
+
             <p className="text-xs text-gray-500 mt-3 text-center">
-              Klik voor 1x50min op 1 wedstrijd. Voor 8-10 spelers klik op 2 wedstrijden. Voor 16-30 spelers klik op toernooi.
+              Klik voor 1x50min op 1 wedstrijd. Voor 8-10 spelers klik op 2 wedstrijden. Voor 16-30 spelers klik op toernooi. Gebruik NK voor een volledige toernooidag.
             </p>
           </div>
 
@@ -1450,6 +1462,13 @@ const App: React.FC = () => {
             isAuthenticated={isManagementAuthenticated}
             onAddTrophy={handleAddTrophy}
             onDeleteTrophy={handleDeleteTrophy}
+          />
+        );
+      case 'nk':
+        return (
+          <NKManager 
+            players={players} 
+            onClose={() => setCurrentView('main')} 
           />
         );
       default:
