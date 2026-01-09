@@ -28,10 +28,15 @@ export const generateNKSchedule = (
     const playersActiveThisRound = new Set<number>();
 
     const playersWithTokens = players.filter(p => matchTokens.get(p.id)! > 0);
+    
+    // BELANGRIJK: Bepaal hoeveel zalen we deze ronde ECHT kunnen vullen
     let hallsToFill = Math.min(hallsCount, Math.floor(playersWithTokens.length / playersPerMatch));
 
+    // Als we geen enkele zaal meer kunnen vullen maar er zijn nog wel tokens, 
+    // dan is het schema wiskundig niet sluitend. We stoppen dan om een crash te voorkomen.
+    if (hallsToFill === 0) break;
+
     for (let h = 0; h < hallsToFill; h++) {
-      // 1. Selecteer de 8 of 10 spelers die nu gaan spelen (gebaseerd op meeste tokens over)
       const candidates = players
         .filter(p => !playersActiveThisRound.has(p.id) && matchTokens.get(p.id)! > 0)
         .sort((a, b) => matchTokens.get(b.id)! - matchTokens.get(a.id)! || Math.random() - 0.5);
@@ -40,31 +45,26 @@ export const generateNKSchedule = (
       const matchPlayers = candidates.slice(0, playersPerMatch);
       matchPlayers.forEach(p => playersActiveThisRound.add(p.id));
 
-      // 2. Zoek de beste Team 1 vs Team 2 verdeling binnen deze groep (Variatie-optimalisatie)
       let bestT1: Player[] = [];
       let bestT2: Player[] = [];
       let lowestPenalty = Infinity;
 
-      // Probeer 200 verschillende verdelingen van deze 10 mensen om de beste variatie te vinden
       for (let attempt = 0; attempt < 200; attempt++) {
         const shuffled = [...matchPlayers].sort(() => Math.random() - 0.5);
         const t1 = shuffled.slice(0, playersPerTeam);
         const t2 = shuffled.slice(playersPerTeam);
 
-        // Harde eis: Keepers verdelen (indien er 2 zijn)
+        // Verbeterde keeper check: verschil mag niet groter zijn dan 1
         const keepersT1 = t1.filter(p => p.isKeeper).length;
         const keepersT2 = t2.filter(p => p.isKeeper).length;
-        if (matchPlayers.filter(p => p.isKeeper).length >= 2) {
-            if (keepersT1 !== 1 || keepersT2 !== 1) continue; 
-        }
+        if (Math.abs(keepersT1 - keepersT2) > 1) continue; 
 
-        // Bereken Penalty voor variatie (Samen gespeeld vandaag?)
         let currentPenalty = 0;
         const checkTeam = (team: Player[]) => {
           for (let i = 0; i < team.length; i++) {
             for (let j = i + 1; j < team.length; j++) {
               if (teammateHistory.get(team[i].id)?.has(team[j].id)) {
-                currentPenalty += 100; // Dikke penalty voor herhaling
+                currentPenalty += 100; 
               }
             }
           }
@@ -72,7 +72,6 @@ export const generateNKSchedule = (
         checkTeam(t1);
         checkTeam(t2);
 
-        // Voeg rating-spread toe aan penalty voor balans (minder belangrijk dan variatie)
         const avg1 = t1.reduce((s, p) => s + p.rating, 0) / t1.length;
         const avg2 = t2.reduce((s, p) => s + p.rating, 0) / t2.length;
         currentPenalty += Math.abs(avg1 - avg2) * 10;
@@ -82,38 +81,31 @@ export const generateNKSchedule = (
           bestT1 = t1;
           bestT2 = t2;
         }
-        
-        if (lowestPenalty === 0) break; // Perfecte verdeling gevonden
+        if (lowestPenalty === 0) break; 
       }
 
-      // 3. Rollen (Ref/Subs) toewijzen uit de overgebleven spelers die nog GEEN rol hebben
+      // Rollen toewijzen met extra veiligheidscheck
       const restPool = players.filter(p => !playersActiveThisRound.has(p.id));
       
       const findRole = (condition: (p: Player) => boolean) => {
         const idx = restPool.findIndex(condition);
         const p = idx !== -1 ? restPool.splice(idx, 1)[0] : restPool.shift();
-        if (p) playersActiveThisRound.add(p.id);
-        return p;
+        if (p) {
+            playersActiveThisRound.add(p.id);
+            return p;
+        }
+        return null; // Geef null terug als er niemand meer is
       };
 
       const referee = findRole(() => true);
       const subHigh = findRole(p => p.rating >= 5);
       const subLow = findRole(p => p.rating < 5);
 
-      // 4. Tokens aftrekken en geschiedenis bijwerken (alleen voor actieve spelers)
       [...bestT1, ...bestT2].forEach(p => {
         matchTokens.set(p.id, matchTokens.get(p.id)! - 1);
+        bestT1.forEach(partner => { if (p.id !== partner.id) teammateHistory.get(p.id)?.add(partner.id); });
+        bestT2.forEach(partner => { if (p.id !== partner.id) teammateHistory.get(p.id)?.add(partner.id); });
       });
-
-      const updateHistory = (team: Player[]) => {
-        team.forEach(p => {
-          team.forEach(partner => {
-            if (p.id !== partner.id) teammateHistory.get(p.id)?.add(partner.id);
-          });
-        });
-      };
-      updateHistory(bestT1);
-      updateHistory(bestT2);
 
       roundMatches.push({
         id: `r${roundNum}h${h}`,
@@ -122,9 +114,9 @@ export const generateNKSchedule = (
         team2: bestT2,
         team1Score: 0,
         team2Score: 0,
-        referee: referee!,
-        subHigh: subHigh!,
-        subLow: subLow!
+        referee: referee as Player, // Cast naar Player, UI moet null checken of dummy tonen
+        subHigh: subHigh as Player,
+        subLow: subLow as Player
       });
     }
 
@@ -136,6 +128,8 @@ export const generateNKSchedule = (
       });
       roundNum++;
     } else break;
+    
+    if (roundNum > 300) break; // Harde fail-safe
   }
 
   const standings: NKStandingsEntry[] = players.map(p => ({
