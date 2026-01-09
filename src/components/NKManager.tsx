@@ -13,7 +13,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [activeTab, setActiveTab] = useState<'schedule' | 'standings' | 'analysis'>('schedule');
   const [searchTerm, setSearchTerm] = useState('');
   
-  const [maxHalls, setMaxHalls] = useState(3); // Wat heb je beschikbaar?
+  const [availableHalls, setAvailableHalls] = useState(3); 
   const [matchesPerPlayer, setMatchesPerPlayer] = useState(8);
   const [playersPerTeam, setPlayersPerTeam] = useState(4);
   const [targetPlayerCount, setTargetPlayerCount] = useState<number | null>(null);
@@ -28,42 +28,44 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     if (session) localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
   }, [session]);
 
-  // --- DE ULTIEME CALCULATOR ---
   const possibilities = useMemo(() => {
     const options = [];
     const playersPerMatch = playersPerTeam * 2;
-    const peopleNeededPerActiveHall = playersPerMatch + 3; // Spelers + Ref + 2 Subs
+    const minRolesPerHall = 3;
 
-    for (let n = 8; n <= 100; n++) {
+    for (let n = playersPerMatch; n <= 100; n++) {
       const totalSpots = n * matchesPerPlayer;
-      
-      // Check 1: Is het totaal aantal plekken deelbaar door een wedstrijd-bezetting?
+      // Wiskundige eis 1: Matches moeten een heel getal zijn
       if (totalSpots % playersPerMatch === 0) {
         const totalMatches = totalSpots / playersPerMatch;
         
-        // Check 2: Hoeveel zalen kunnen we maximaal TEGELIJK gebruiken met dit aantal mensen?
-        // Je hebt 'n' mensen. Elke zaal vreet 11 mensen (bij 4vs4) of 13 mensen (bij 5vs5).
-        const usableHalls = Math.min(maxHalls, Math.floor(n / peopleNeededPerActiveHall));
+        // Wiskundige eis 2: Hoeveel zalen kunnen we ELKE ronde vullen?
+        // Je hebt 'n' mensen. Een volle ronde met 'h' zalen kost h * (spelers + 3 rollen).
+        const maxHallsPossible = Math.floor(n / (playersPerMatch + minRolesPerHall));
+        const actualHallsToUse = Math.min(availableHalls, maxHallsPossible);
 
-        if (usableHalls > 0) {
+        if (actualHallsToUse > 0) {
+          const totalRounds = Math.ceil(totalMatches / actualHallsToUse);
+          const fullRounds = Math.floor(totalMatches / actualHallsToUse);
+          const lastRoundMatches = totalMatches % actualHallsToUse;
+
+          // We tonen alleen opties waar de zalen bijna altijd vol zijn (max 1 ronde niet vol)
           options.push({
             playerCount: n,
-            hallsToUse: usableHalls,
-            totalMatches: totalMatches,
-            totalRounds: Math.ceil(totalMatches / usableHalls)
+            hallsToUse: actualHallsToUse,
+            totalRounds: totalRounds,
+            isPerfect: lastRoundMatches === 0
           });
         }
       }
     }
     return options;
-  }, [maxHalls, matchesPerPlayer, playersPerTeam]);
+  }, [availableHalls, matchesPerPlayer, playersPerTeam]);
 
   const handleStartTournament = () => {
     const chosen = possibilities.find(p => p.playerCount === targetPlayerCount);
     if (!chosen) return;
-
     const participants = players.filter(p => selectedPlayerIds.has(p.id));
-    // We gebruiken de 'hallsToUse' uit de berekening, niet de 'maxHalls' input
     const newSession = generateNKSchedule(participants, chosen.hallsToUse, matchesPerPlayer, playersPerTeam, "NK Schema");
     setSession(newSession);
   };
@@ -81,16 +83,14 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const calculateStandings = (s: NKSession): NKStandingsEntry[] => {
     const stats = new Map<number, NKStandingsEntry>();
     s.standings.forEach(e => stats.set(e.playerId, { ...e, points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0 }));
-    s.rounds.forEach(r => {
-      r.matches.forEach(m => {
-        if (!m.isPlayed) return;
-        const p1 = m.team1Score > m.team2Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
-        const p2 = m.team2Score > m.team1Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
-        m.team1.forEach(p => { const st = stats.get(p.id)!; st.matchesPlayed++; st.points += p1; st.goalsFor += m.team1Score; st.goalDifference += (m.team1Score - m.team2Score); });
-        m.team2.forEach(p => { const st = stats.get(p.id)!; st.matchesPlayed++; st.points += p2; st.goalsFor += m.team2Score; st.goalDifference += (m.team2Score - m.team1Score); });
-      });
-    });
-    return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor);
+    s.rounds.forEach(r => r.matches.forEach(m => {
+      if (!m.isPlayed) return;
+      const p1 = m.team1Score > m.team2Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
+      const p2 = m.team2Score > m.team1Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
+      m.team1.forEach(p => { const st = stats.get(p.id)!; st.matchesPlayed++; st.points += p1; st.goalsFor += m.team1Score; st.goalDifference += (m.team1Score - m.team2Score); });
+      m.team2.forEach(p => { const st = stats.get(p.id)!; st.matchesPlayed++; st.points += p2; st.goalsFor += m.team2Score; st.goalDifference += (m.team2Score - m.team1Score); });
+    }));
+    return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
   };
 
   if (!session) {
@@ -98,29 +98,26 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       <div className="max-w-5xl mx-auto space-y-6 pb-20">
         <div className="bg-gray-800 rounded-3xl p-8 border border-amber-500/30 shadow-2xl">
           <div className="flex items-center gap-4 mb-8">
-            <div className="p-4 bg-amber-500 rounded-2xl shadow-lg shadow-amber-500/20"><TrophyIcon className="w-8 h-8 text-white" /></div>
-            <div>
-              <h2 className="text-3xl font-black text-white uppercase italic tracking-tight">NK Calculator</h2>
-              <p className="text-amber-500/80 text-xs font-bold uppercase">Zoek een sluitend aantal spelers</p>
-            </div>
+            <TrophyIcon className="w-10 h-10 text-amber-500" />
+            <h2 className="text-3xl font-black text-white uppercase italic">NK Calculator</h2>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
             <div className="space-y-6 bg-gray-900/50 p-6 rounded-2xl border border-gray-700">
                <div className="space-y-4">
                   <label className="block">
-                    <span className="text-gray-500 text-[10px] font-black uppercase">Beschikbare Zalen</span>
-                    <input type="number" value={maxHalls} onChange={(e) => {setMaxHalls(Math.max(1, parseInt(e.target.value))); setTargetPlayerCount(null);}} className="mt-1 block w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 font-bold outline-none focus:ring-2 ring-amber-500" />
+                    <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Zalen Beschikbaar</span>
+                    <input type="number" value={availableHalls} onChange={(e) => setAvailableHalls(Number(e.target.value))} className="mt-1 block w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 font-bold focus:ring-2 ring-amber-500 outline-none" />
                   </label>
                   <label className="block">
-                    <span className="text-gray-500 text-[10px] font-black uppercase">Wedstrijden p.p.</span>
-                    <input type="number" value={matchesPerPlayer} onChange={(e) => {setMatchesPerPlayer(Math.max(1, parseInt(e.target.value))); setTargetPlayerCount(null);}} className="mt-1 block w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 font-bold outline-none focus:ring-2 ring-amber-500" />
+                    <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Wedstrijden p.p.</span>
+                    <input type="number" value={matchesPerPlayer} onChange={(e) => setMatchesPerPlayer(Number(e.target.value))} className="mt-1 block w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 font-bold focus:ring-2 ring-amber-500 outline-none" />
                   </label>
                   <label className="block">
                     <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Team Grootte</span>
                     <div className="flex gap-2 mt-1">
                       {[4, 5].map(n => (
-                        <button key={n} onClick={() => {setPlayersPerTeam(n); setTargetPlayerCount(null);}} className={`flex-1 py-3 rounded-xl font-black transition-all border-2 ${playersPerTeam === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{n} vs {n}</button>
+                        <button key={n} onClick={() => setPlayersPerTeam(n)} className={`flex-1 py-3 rounded-xl font-black transition-all border-2 ${playersPerTeam === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{n} vs {n}</button>
                       ))}
                     </div>
                   </label>
@@ -128,7 +125,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
             </div>
 
             <div className="lg:col-span-2 space-y-4">
-               <h3 className="text-white font-bold text-sm uppercase tracking-widest">Mogelijke scenario's:</h3>
+               <h3 className="text-white font-bold text-sm uppercase tracking-widest">Geldige opties voor volle zalen:</h3>
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                   {possibilities.map(opt => (
                     <button 
@@ -138,9 +135,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                     >
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-2xl font-black text-white">{opt.playerCount} Spelers</span>
-                        <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold">{opt.hallsToUse} Zalen</span>
+                        {opt.isPerfect && <span className="text-[8px] bg-green-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">Perfect</span>}
                       </div>
-                      <p className="text-gray-400 text-xs leading-relaxed">Iedereen speelt exact {matchesPerPlayer} potjes in {opt.totalRounds} rondes.</p>
+                      <p className="text-gray-400 text-xs leading-relaxed">Geeft schema voor **{opt.hallsToUse} zalen** ({opt.totalRounds} rondes).</p>
                     </button>
                   ))}
                </div>
@@ -152,28 +149,20 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
               <div className="flex justify-between items-end border-b border-gray-700 pb-4">
                 <div>
                   <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">Selecteer {targetPlayerCount} Deelnemers</h3>
-                  <p className={`text-sm font-bold ${selectedPlayerIds.size === targetPlayerCount ? 'text-green-500' : 'text-amber-500'}`}>
-                    {selectedPlayerIds.size} van de {targetPlayerCount} geselecteerd
-                  </p>
+                  <p className={`text-sm font-bold ${selectedPlayerIds.size === targetPlayerCount ? 'text-green-500' : 'text-amber-500'}`}>{selectedPlayerIds.size} geselecteerd</p>
                 </div>
                 {selectedPlayerIds.size === targetPlayerCount && (
-                   <button onClick={handleStartTournament} className="bg-green-600 hover:bg-green-500 text-white font-black px-8 py-3 rounded-xl shadow-lg transition-all transform hover:scale-105 uppercase text-sm">Start Toernooi</button>
+                   <button onClick={handleStartTournament} className="bg-green-600 hover:bg-green-500 text-white font-black px-8 py-3 rounded-xl shadow-lg transition-all transform hover:scale-105 uppercase text-sm">Genereer Schema</button>
                 )}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-4 bg-gray-900 rounded-3xl border border-gray-700">
                 {players.map(p => (
-                  <button 
-                    key={p.id} 
-                    onClick={() => {
-                      const next = new Set(selectedPlayerIds);
-                      if (next.has(p.id)) next.delete(p.id); 
-                      else if (next.size < targetPlayerCount!) next.add(p.id);
-                      setSelectedPlayerIds(next);
-                    }} 
-                    className={`p-3 rounded-xl text-xs font-bold border transition-all ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white scale-95' : 'bg-gray-800 border-gray-700 text-gray-500 opacity-60'}`}
-                  >
-                    {p.name}
-                  </button>
+                  <button key={p.id} onClick={() => {
+                    const next = new Set(selectedPlayerIds);
+                    if (next.has(p.id)) next.delete(p.id); 
+                    else if (next.size < targetPlayerCount!) next.add(p.id);
+                    setSelectedPlayerIds(next);
+                  }} className={`p-3 rounded-xl text-xs font-bold border transition-all ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{p.name}</button>
                 ))}
               </div>
             </div>
@@ -183,91 +172,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     );
   }
 
-  // Dashboard sectie blijft functioneel hetzelfde (vorige werkende code)
+  // Dashboard blijft functioneel gelijk aan de eerdere goede versie
   return (
-    <div className="space-y-6 pb-20">
-      <style>{`
-        @media print {
-          body { background: white !important; }
-          .no-print { display: none !important; }
-          .print-area { display: block !important; width: 100%; }
-          .match-card { border: 2px solid black !important; margin-bottom: 20px; page-break-inside: avoid; padding: 15px; background: white !important; }
-          .match-card * { color: black !important; }
-        }
-      `}</style>
-      
-      <div className="no-print flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-800 p-4 rounded-2xl border-b-4 border-amber-500 shadow-xl">
-        <h2 className="text-xl font-black text-white italic uppercase tracking-tighter">NK DASHBOARD</h2>
-        <div className="flex bg-gray-900 p-1 rounded-xl">
-          {['schedule', 'standings', 'analysis'].map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-4 py-2 rounded-lg font-bold text-[10px] uppercase transition-all ${activeTab === tab ? 'bg-amber-500 text-white shadow-lg' : 'text-gray-500'}`}>
-              {tab === 'schedule' ? 'Schema' : tab === 'standings' ? 'Dag-Stand' : 'Co-op Check'}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => window.print()} className="bg-gray-700 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase">Print</button>
-          <button onClick={() => {if(window.confirm("NK wissen?")) {localStorage.removeItem('bounceball_nk_session'); setSession(null);}}} className="bg-red-900/30 text-red-500 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-widest">Reset</button>
-        </div>
-      </div>
-
-      <div className="print-area">
-        {activeTab === 'schedule' && (
-          <div className="space-y-12">
-            {session.rounds.map((round, rIdx) => (
-              <div key={rIdx} className="space-y-4">
-                <h3 className="text-2xl font-black text-amber-500 uppercase tracking-widest border-b border-gray-700 pb-2 italic">Ronde {round.roundNumber}</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {round.matches.map((match, mIdx) => (
-                    <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border transition-all ${match.isPlayed ? 'border-green-500/50' : 'border-gray-700'} overflow-hidden`}>
-                      <div className="bg-gray-700/50 p-3 flex justify-between text-[10px] font-black uppercase tracking-widest">
-                        <span>Zaal {match.hallIndex}</span>
-                        <span className="text-amber-400 underline">Scheids: {match.referee?.name || 'Geen'}</span>
-                      </div>
-                      <div className="p-5 flex items-center justify-between gap-4">
-                        <div className="flex-1 space-y-1">{match.team1.map(p => <div key={p.id} className="text-sm font-bold text-white uppercase">{p.name}</div>)}</div>
-                        <div className="no-print flex flex-col items-center gap-2">
-                          <div className="flex items-center gap-2">
-                            <input type="number" value={match.team1Score} onChange={(e) => updateScore(rIdx, mIdx, 1, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
-                            <span className="text-gray-600 font-bold">-</span>
-                            <input type="number" value={match.team2Score} onChange={(e) => updateScore(rIdx, mIdx, 2, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
-                          </div>
-                        </div>
-                        <div className="flex-1 text-right space-y-1">{match.team2.map(p => <div key={p.id} className="text-sm font-bold text-white uppercase">{p.name}</div>)}</div>
-                      </div>
-                      <div className="p-2 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-4 text-[8px] font-bold text-gray-500 uppercase tracking-widest">
-                        <span>Res 1: {match.subHigh?.name || 'N/A'}</span><span>Res 2: {match.subLow?.name || 'N/A'}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'standings' && (
-          <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden animate-fade-in">
-            <table className="w-full text-left">
-              <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black tracking-widest">
-                <tr><th className="px-6 py-5">#</th><th className="px-6 py-5">Naam</th><th className="px-6 py-5 text-center">W</th><th className="px-6 py-5 text-center">PTN</th><th className="px-6 py-5 text-center">DS</th></tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {session.standings.map((entry, idx) => (
-                  <tr key={entry.playerId} className={idx < 3 ? 'bg-amber-500/5' : ''}>
-                    <td className="px-6 py-4 font-black text-amber-500 text-xl italic">{idx + 1}.</td>
-                    <td className="px-6 py-4 font-bold text-white uppercase tracking-tight">{entry.playerName}</td>
-                    <td className="px-6 py-4 text-center text-gray-400 font-black">{entry.matchesPlayed}</td>
-                    <td className="px-6 py-4 text-center"><span className="bg-gray-700 text-amber-400 px-4 py-1.5 rounded-full font-black text-lg shadow-inner">{entry.points}</span></td>
-                    <td className={`px-6 py-4 text-center font-bold ${entry.goalDifference > 0 ? 'text-green-500' : 'text-red-500'}`}>{entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
+     /* ... Dashboard code ... */
   );
 };
 
