@@ -234,31 +234,51 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
               <div key={rIdx} className="space-y-4">
                 <h3 className="round-title text-2xl font-black text-amber-500 uppercase tracking-widest border-b border-gray-700 pb-2 italic">Ronde {round.roundNumber}</h3>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {round.matches.map((match, mIdx) => (
-                    <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border transition-all ${match.isPlayed ? 'border-green-500/50' : 'border-gray-700'} overflow-hidden`}>
-                      <div className="bg-gray-700/50 p-3 flex justify-between text-[10px] font-black uppercase tracking-widest">
-                        <span>Zaal {match.hallIndex}</span>
-                        <span className="text-amber-400 underline">Scheids: {match.referee?.name || 'Geen'}</span>
-                      </div>
-                      <div className="p-5 flex items-center justify-between gap-4">
-                        <div className="flex-1 space-y-1">{match.team1.map(p => <div key={p.id} className="text-sm font-bold text-white uppercase">{p.name}</div>)}</div>
-                        <div className="no-print flex flex-col items-center gap-2">
-                          <div className="flex items-center gap-2">
-                            <input type="number" value={match.team1Score} onChange={(e) => updateScore(rIdx, mIdx, 1, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
-                            <span className="text-gray-600 font-bold">-</span>
-                            <input type="number" value={match.team2Score} onChange={(e) => updateScore(rIdx, mIdx, 2, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
+                  {round.matches.map((match, mIdx) => {
+                    // ✅ Gemiddelde berekenen per team
+                    const avg1 = match.team1.reduce((sum, p) => sum + p.rating, 0) / match.team1.length;
+                    const avg2 = match.team2.reduce((sum, p) => sum + p.rating, 0) / match.team2.length;
+                    
+                    return (
+                      <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border transition-all ${match.isPlayed ? 'border-green-500/50 shadow-green-500/5' : 'border-gray-700'} overflow-hidden`}>
+                        <div className="bg-gray-700/50 p-3 flex justify-between text-[10px] font-black uppercase tracking-widest">
+                          <span>Zaal {match.hallIndex}</span>
+                          <div className="flex items-center gap-4">
+                              {match.isPlayed && <span className="text-green-500">✓ GESPEELD</span>}
+                              <span className="text-amber-400 underline">Scheids: {match.referee?.name || 'Geen'}</span>
                           </div>
-                          <button onClick={() => togglePlayed(rIdx, mIdx)} className={`mt-1 text-[8px] font-black px-2 py-1 rounded ${match.isPlayed ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400'}`}>
-                            {match.isPlayed ? 'HERSTEL' : 'BEVESTIG'}
-                          </button>
                         </div>
-                        <div className="flex-1 text-right space-y-1">{match.team2.map(p => <div key={p.id} className="text-sm font-bold text-white uppercase">{p.name}</div>)}</div>
+                        <div className="p-5 flex items-center justify-between gap-4">
+                          {/* Team 1 */}
+                          <div className="flex-1 space-y-1">
+                            <div className="text-[10px] text-gray-500 font-bold mb-1">AVG: {avg1.toFixed(2)}</div>
+                            {match.team1.map(p => <div key={p.id} className="text-sm font-bold text-white uppercase">{p.name}</div>)}
+                          </div>
+
+                          {/* Score Input */}
+                          <div className="no-print flex flex-col items-center gap-2">
+                            <div className="flex items-center gap-2">
+                              <input type="number" value={match.team1Score} onChange={(e) => updateScore(rIdx, mIdx, 1, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
+                              <span className="text-gray-600 font-bold">-</span>
+                              <input type="number" value={match.team2Score} onChange={(e) => updateScore(rIdx, mIdx, 2, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
+                            </div>
+                            <button onClick={() => togglePlayed(rIdx, mIdx)} className={`mt-1 text-[8px] font-black px-2 py-1 rounded ${match.isPlayed ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400'}`}>
+                              {match.isPlayed ? 'HERSTEL' : 'BEVESTIG'}
+                            </button>
+                          </div>
+
+                          {/* Team 2 */}
+                          <div className="flex-1 text-right space-y-1">
+                            <div className="text-[10px] text-gray-500 font-bold mb-1">AVG: {avg2.toFixed(2)}</div>
+                            {match.team2.map(p => <div key={p.id} className="text-sm font-bold text-white uppercase">{p.name}</div>)}
+                          </div>
+                        </div>
+                        <div className="p-2 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-4 text-[8px] font-bold text-gray-500 uppercase tracking-widest">
+                          <span>Res 1: {match.subHigh?.name || 'N/A'}</span><span>Res 2: {match.subLow?.name || 'N/A'}</span>
+                        </div>
                       </div>
-                      <div className="p-2 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-4 text-[8px] font-bold text-gray-500 uppercase tracking-widest">
-                        <span>Res 1: {match.subHigh?.name || 'N/A'}</span><span>Res 2: {match.subLow?.name || 'N/A'}</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -269,7 +289,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden animate-fade-in">
             <table className="w-full text-left">
               <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black tracking-widest">
-                <tr><th className="px-6 py-5">#</th><th className="px-6 py-5">Naam</th><th className="px-6 py-5 text-center">W</th><th className="px-6 py-5 text-center">PTN</th><th className="px-6 py-5 text-center">DS</th><th className="px-6 py-5 text-center">GV</th></tr>
+                <tr><th className="px-6 py-5">#</th><th className="px-6 py-5">Deelnemer</th><th className="px-6 py-5 text-center">W</th><th className="px-6 py-5 text-center">PTN</th><th className="px-6 py-5 text-center">DS</th><th className="px-6 py-5 text-center">GV</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
                 {session.standings.map((entry, idx) => (
@@ -286,7 +306,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
             </table>
           </div>
         )}
-
+        
         {activeTab === 'analysis' && (
           <div className="space-y-4 no-print">
             <div className="bg-gray-900 p-4 rounded-2xl border border-gray-700">
