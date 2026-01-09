@@ -114,6 +114,7 @@ export interface NKSession {
   competitionName: string;
   totalRounds: number;
   hallsCount: number;
+  playersPerTeam: number;
   rounds: NKRound[];
   standings: NKStandingsEntry[];
   isCompleted: boolean;
