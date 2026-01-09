@@ -1,96 +1,65 @@
-import { Player, Constraint, NKSession, NKRound, NKMatch, NKStandingsEntry } from '../types';
+import { Player, NKSession, NKRound, NKMatch, NKStandingsEntry } from '../types';
 
-const MAX_ATTEMPTS = 500;
-
-/**
- * De Master Planner voor het NK.
- * Genereert een compleet toernooischema op basis van alle gestelde eisen.
- */
 export const generateNKSchedule = (
   players: Player[],
   hallsCount: number,
   totalRounds: number,
+  playersPerTeam: number, // Nieuwe parameter
   competitionName: string
 ): NKSession => {
   
-  // 1. Initialiseer statistieken om eerlijkheid te bewaken
-  const playerStats = new Map<number, { 
-    played: number, 
-    ref: number, 
-    sub: number, 
-    partners: Set<number> 
-  }>();
-
-  players.forEach(p => {
-    playerStats.set(p.id, { played: 0, ref: 0, sub: 0, partners: new Set() });
-  });
+  const playerStats = new Map<number, { played: number, ref: number, sub: number }>();
+  players.forEach(p => playerStats.set(p.id, { played: 0, ref: 0, sub: 0 }));
 
   const rounds: NKRound[] = [];
+  const playersPerMatch = playersPerTeam * 2;
 
-  // 2. Loop door alle rondes en vul het schema
   for (let r = 1; r <= totalRounds; r++) {
     const roundMatches: NKMatch[] = [];
     const availablePlayers = [...players].sort((a, b) => {
-        // Prioriteit aan spelers die het minst gespeeld hebben
         return playerStats.get(a.id)!.played - playerStats.get(b.id)!.played || Math.random() - 0.5;
     });
 
-    // Bereken hoeveel zalen we deze ronde echt nodig hebben
-    // Op een NK speelt iedereen idealiter evenveel. 
-    // We vullen zalen zolang er mensen zijn die 'achterlopen' op het gemiddelde.
     let hallsThisRound = hallsCount;
-    const playersNeeded = hallsThisRound * 10;
     
-    // Als we in de laatste ronde zitten, kijken we of we minder zalen nodig hebben
     if (r === totalRounds) {
-        const totalMatchesPossible = totalRounds * hallsCount * 10;
-        const targetMatchesPerPlayer = Math.floor(totalMatchesPossible / players.length);
-        const playersWhoStillNeedToPlay = players.filter(p => playerStats.get(p.id)!.played < targetMatchesPerPlayer);
-        hallsThisRound = Math.max(1, Math.ceil(playersWhoStillNeedToPlay.length / 10));
+        const totalSpots = totalRounds * hallsCount * playersPerMatch;
+        const target = Math.floor(totalSpots / players.length);
+        const needToPlay = players.filter(p => playerStats.get(p.id)!.played < target);
+        hallsThisRound = Math.max(1, Math.ceil(needToPlay.length / playersPerMatch));
     }
 
-    const roundActivePlayers: Player[] = [];
-    const playersToAssign = [...availablePlayers];
+    const roundActivePlayers = availablePlayers.splice(0, hallsThisRound * playersPerMatch);
+    const restPool = [...availablePlayers];
 
-    // Selecteer spelers voor deze ronde
-    for (let i = 0; i < hallsThisRound * 10; i++) {
-        if (playersToAssign.length > 0) {
-            roundActivePlayers.push(playersToAssign.shift()!);
-        }
-    }
-
-    const restPool = [...playersToAssign];
-
-    // Maak matches voor de actieve zalen
     for (let h = 0; h < hallsThisRound; h++) {
-      const matchPlayers = roundActivePlayers.splice(0, 10);
-      if (matchPlayers.length < 10) break;
+      const matchPlayers = roundActivePlayers.splice(0, playersPerMatch);
+      if (matchPlayers.length < playersPerMatch) break;
 
-      // Verdeel matchPlayers in Team 1 en Team 2 (met keeper logica)
       const keepers = matchPlayers.filter(p => p.isKeeper);
       const fieldPlayers = matchPlayers.filter(p => !p.isKeeper);
       
       const team1: Player[] = [];
       const team2: Player[] = [];
 
-      // Keepers tegenover elkaar
       if (keepers.length >= 2) {
-        team1.push(keepers[0]);
-        team2.push(keepers[1]);
+        team1.push(keepers.shift()!);
+        team2.push(keepers.shift()!);
       } else if (keepers.length === 1) {
-        team1.push(keepers[0]);
+        team1.push(keepers.shift()!);
       }
 
-      // Vul aan met veldspelers (probeer balans en variatie)
-      // (Voor de generator in deze fase doen we een simpele verdeling, 
-      // de echte verfijning gebeurt in de definitieve component)
       fieldPlayers.forEach(p => {
-        if (team1.length < 5) team1.push(p);
+        if (team1.length < playersPerTeam) team1.push(p);
         else team2.push(p);
       });
 
-      // Assign rollen uit de rustpool
-      // We hebben nodig: 1 Ref, 1 SubHigh (>=5), 1 SubLow (<5)
+      // Mocht er nog een keeper over zijn (bijv. 3 keepers in 1 match pool)
+      keepers.forEach(k => {
+        if (team1.length < playersPerTeam) team1.push(k);
+        else team2.push(k);
+      });
+
       const findRolePlayer = (pool: Player[], criteria: (p: Player) => boolean): Player | null => {
           const idx = pool.findIndex(criteria);
           if (idx !== -1) return pool.splice(idx, 1)[0];
@@ -105,10 +74,7 @@ export const generateNKSchedule = (
       if (subHigh) playerStats.get(subHigh.id)!.sub++;
       if (subLow) playerStats.get(subLow.id)!.sub++;
 
-      // Update gespeeld statistieken
-      [...team1, ...team2].forEach(p => {
-        playerStats.get(p.id)!.played++;
-      });
+      [...team1, ...team2].forEach(p => playerStats.get(p.id)!.played++);
 
       roundMatches.push({
         id: `r${r}h${h}`,
@@ -130,22 +96,9 @@ export const generateNKSchedule = (
     });
   }
 
-  // 3. Initialiseer de stand
   const standings: NKStandingsEntry[] = players.map(p => ({
-    playerId: p.id,
-    playerName: p.name,
-    points: 0,
-    goalDifference: 0,
-    goalsFor: 0,
-    matchesPlayed: 0
+    playerId: p.id, playerName: p.name, points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0
   }));
 
-  return {
-    competitionName,
-    totalRounds,
-    hallsCount,
-    rounds,
-    standings,
-    isCompleted: false
-  };
+  return { competitionName, totalRounds, hallsCount, playersPerTeam, rounds, standings, isCompleted: false };
 };
