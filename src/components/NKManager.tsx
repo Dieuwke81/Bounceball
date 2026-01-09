@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Player, NKSession, NKStandingsEntry } from '../types';
+import { Player, NKSession, NKStandingsEntry, NKMatch } from '../types';
 import { generateNKSchedule } from '../services/nkGenerator';
 import TrophyIcon from './icons/TrophyIcon';
 
@@ -13,7 +13,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [activeTab, setActiveTab] = useState<'schedule' | 'standings' | 'analysis'>('schedule');
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Calculator & Setup States
   const [hallsCount, setHallsCount] = useState(2);
   const [matchesPerPlayer, setMatchesPerPlayer] = useState(6);
   const [playersPerTeam, setPlayersPerTeam] = useState(5);
@@ -33,94 +32,71 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     const options = [];
     const playersPerMatch = playersPerTeam * 2;
     for (let n = playersPerMatch; n <= 100; n++) {
-      const totalPlayerSpotsNeeded = n * matchesPerPlayer;
-      const spotsAvailablePerRound = hallsCount * playersPerMatch;
-      if (totalPlayerSpotsNeeded % spotsAvailablePerRound === 0) {
-        options.push({
-          playerCount: n,
-          totalRounds: totalPlayerSpotsNeeded / spotsAvailablePerRound,
-        });
+      const totalSpots = n * matchesPerPlayer;
+      if (totalSpots % playersPerMatch === 0) {
+        options.push({ playerCount: n, totalRounds: totalSpots / (hallsCount * playersPerMatch) });
       }
     }
     return options;
   }, [hallsCount, matchesPerPlayer, playersPerTeam]);
 
-  const coOpData = useMemo(() => {
-    if (!session) return [];
-    const pairCounts = new Map<string, number>();
-    const participants = players.filter(p => session.standings.some(s => s.playerId === p.id));
-    for (let i = 0; i < participants.length; i++) {
-      for (let j = i + 1; j < participants.length; j++) {
-        const key = [participants[i].id, participants[j].id].sort().join('-');
-        pairCounts.set(key, 0);
-      }
-    }
-    session.rounds.forEach(round => {
-      round.matches.forEach(match => {
-        const countPairs = (team: Player[]) => {
-          for (let i = 0; i < team.length; i++) {
-            for (let j = i + 1; j < team.length; j++) {
-              const key = [team[i].id, team[j].id].sort().join('-');
-              if (pairCounts.has(key)) pairCounts.set(key, pairCounts.get(key)! + 1);
-            }
-          }
-        };
-        countPairs(match.team1);
-        countPairs(match.team2);
-      });
-    });
-    return Array.from(pairCounts.entries()).map(([key, count]) => {
-      const [id1, id2] = key.split('-').map(Number);
-      return {
-        p1: players.find(p => p.id === id1)?.name || '?',
-        p2: players.find(p => p.id === id2)?.name || '?',
-        count
-      };
-    }).sort((a, b) => b.count - a.count || a.p1.localeCompare(b.p1));
-  }, [session, players]);
-
-  const filteredCoOp = coOpData.filter(d => 
-    d.p1.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    d.p2.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleStartTournament = () => {
-    const participants = players.filter(p => selectedPlayerIds.has(p.id));
-    const newSession = generateNKSchedule(participants, hallsCount, matchesPerPlayer, playersPerTeam, "NK Schema");
-    setSession(newSession);
-  };
-
-  const updateScore = (roundIdx: number, matchIdx: number, team: 1 | 2, score: number) => {
-    if (!session) return;
-    const newSession = { ...session };
-    const match = newSession.rounds[roundIdx].matches[matchIdx];
-    if (team === 1) match.team1Score = score; else match.team2Score = score;
-    newSession.standings = calculateStandings(newSession);
-    setSession(newSession);
-  };
-
   const calculateStandings = (s: NKSession): NKStandingsEntry[] => {
     const stats = new Map<number, NKStandingsEntry>();
     s.standings.forEach(e => stats.set(e.playerId, { ...e, points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0 }));
+
     s.rounds.forEach(r => {
       r.matches.forEach(m => {
+        // ✅ CRUCIALE FIX: Alleen rekenen als de wedstrijd echt gespeeld is
+        if (!m.isPlayed) return;
+
         const p1 = m.team1Score > m.team2Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
         const p2 = m.team2Score > m.team1Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
-        m.team1.forEach(p => { const st = stats.get(p.id)!; st.matchesPlayed++; st.points += p1; st.goalsFor += m.team1Score; st.goalDifference += (m.team1Score - m.team2Score); });
-        m.team2.forEach(p => { const st = stats.get(p.id)!; st.matchesPlayed++; st.points += p2; st.goalsFor += m.team2Score; st.goalDifference += (m.team2Score - m.team1Score); });
+
+        m.team1.forEach(p => {
+          const st = stats.get(p.id);
+          if (st) { st.matchesPlayed++; st.points += p1; st.goalsFor += m.team1Score; st.goalDifference += (m.team1Score - m.team2Score); }
+        });
+        m.team2.forEach(p => {
+          const st = stats.get(p.id);
+          if (st) { st.matchesPlayed++; st.points += p2; st.goalsFor += m.team2Score; st.goalDifference += (m.team2Score - m.team1Score); }
+        });
       });
     });
     return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor);
   };
 
+  const updateScore = (roundIdx: number, mIdx: number, team: 1 | 2, score: number) => {
+    if (!session) return;
+    const newSession = { ...session };
+    const match = newSession.rounds[roundIdx].matches[mIdx];
+    
+    if (team === 1) match.team1Score = score; else match.team2Score = score;
+    
+    // Zodra er een score wordt ingevoerd, markeren we de wedstrijd als "Gespeeld"
+    match.isPlayed = true;
+
+    newSession.standings = calculateStandings(newSession);
+    setSession(newSession);
+  };
+
+  const togglePlayed = (roundIdx: number, mIdx: number) => {
+    if (!session) return;
+    const newSession = { ...session };
+    const match = newSession.rounds[roundIdx].matches[mIdx];
+    match.isPlayed = !match.isPlayed;
+    newSession.standings = calculateStandings(newSession);
+    setSession(newSession);
+  };
+
+  // --- RENDER ---
   if (!session) {
     return (
       <div className="max-w-5xl mx-auto space-y-6 pb-20">
         <div className="bg-gray-800 rounded-3xl p-8 border border-amber-500/30 shadow-2xl">
           <div className="flex items-center gap-4 mb-8">
-            <div className="p-4 bg-amber-500 rounded-2xl"><TrophyIcon className="w-8 h-8 text-white" /></div>
+            <div className="p-4 bg-amber-500 rounded-2xl shadow-lg shadow-amber-500/20"><TrophyIcon className="w-8 h-8 text-white" /></div>
             <div>
-              <h2 className="text-3xl font-black text-white uppercase italic">NK Master Planner</h2>
+              <h2 className="text-3xl font-black text-white uppercase italic tracking-tight">NK Master Planner</h2>
               <p className="text-amber-500/80 text-xs font-bold uppercase tracking-widest">Stap 1: Bereken je toernooi</p>
             </div>
           </div>
@@ -152,7 +128,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                   {possibilities.map(opt => (
                     <button key={opt.playerCount} onClick={() => {setTargetPlayerCount(opt.playerCount); setSelectedPlayerIds(new Set());}} className={`p-4 rounded-2xl border-2 text-left transition-all ${targetPlayerCount === opt.playerCount ? 'bg-amber-500/20 border-amber-500 shadow-lg' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}`}>
                       <div className="flex justify-between items-center"><span className="text-xl font-black text-white">{opt.playerCount} Spelers</span></div>
-                      <p className="text-gray-400 text-xs mt-1">Totaal: {opt.totalRounds} rondes.</p>
+                      <p className="text-gray-400 text-xs mt-1">Totaal: {Math.ceil(opt.totalRounds)} rondes.</p>
                     </button>
                   ))}
                </div>
@@ -191,13 +167,13 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         @media print {
           body { background: white !important; }
           .no-print { display: none !important; }
-          .print-area { display: block !important; }
+          .print-area { display: block !important; width: 100%; }
           .match-card { border: 2px solid black !important; margin-bottom: 20px; page-break-inside: avoid; padding: 15px; background: white !important; }
           .match-card * { color: black !important; }
         }
       `}</style>
       <div className="no-print flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-800 p-4 rounded-2xl border-b-4 border-amber-500 shadow-xl">
-        <h2 className="text-xl font-black text-white italic uppercase">NK Dashboard</h2>
+        <h2 className="text-xl font-black text-white italic uppercase tracking-tighter">NK Dashboard</h2>
         <div className="flex bg-gray-900 p-1 rounded-xl">
           {['schedule', 'standings', 'analysis'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-4 py-2 rounded-lg font-bold text-[10px] uppercase transition-all ${activeTab === tab ? 'bg-amber-500 text-white shadow-lg' : 'text-gray-500'}`}>
@@ -210,25 +186,34 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <button onClick={() => {if(window.confirm("NK wissen?")) {localStorage.removeItem('bounceball_nk_session'); setSession(null);}}} className="bg-red-900/30 text-red-500 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-widest">Reset</button>
         </div>
       </div>
+
       <div className="print-area">
         {activeTab === 'schedule' && (
           <div className="space-y-12">
             {session.rounds.map((round, rIdx) => (
               <div key={rIdx} className="space-y-4">
-                <h3 className="text-2xl font-black text-amber-500 uppercase tracking-widest border-b border-gray-700 pb-2">Ronde {round.roundNumber}</h3>
+                <h3 className="text-2xl font-black text-amber-500 uppercase tracking-widest border-b border-gray-700 pb-2 italic">Ronde {round.roundNumber}</h3>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {round.matches.map((match, mIdx) => (
-                    <div key={match.id} className="match-card bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden shadow-lg">
+                    <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border transition-all ${match.isPlayed ? 'border-green-500/50 shadow-green-500/5' : 'border-gray-700'} overflow-hidden`}>
                       <div className="bg-gray-700/50 p-3 flex justify-between text-[10px] font-black uppercase tracking-widest">
                         <span>Zaal {match.hallIndex}</span>
-                        <span className="text-amber-400 underline">Scheids: {match.referee?.name || 'Geen'}</span>
+                        <div className="flex items-center gap-4">
+                            {match.isPlayed && <span className="text-green-500">✓ GESPEELD</span>}
+                            <span className="text-amber-400 underline">Scheids: {match.referee?.name || 'Geen'}</span>
+                        </div>
                       </div>
                       <div className="p-5 flex items-center justify-between gap-4">
                         <div className="flex-1 space-y-1">{match.team1.map(p => <div key={p.id} className="text-sm font-bold text-white uppercase">{p.name}</div>)}</div>
-                        <div className="no-print flex items-center gap-2">
-                          <input type="number" value={match.team1Score} onChange={(e) => updateScore(rIdx, mIdx, 1, parseInt(e.target.value) || 0)} className="w-10 h-10 bg-gray-900 rounded-lg text-center font-black text-white border border-gray-700" />
-                          <span className="text-gray-600 font-bold">-</span>
-                          <input type="number" value={match.team2Score} onChange={(e) => updateScore(rIdx, mIdx, 2, parseInt(e.target.value) || 0)} className="w-10 h-10 bg-gray-900 rounded-lg text-center font-black text-white border border-gray-700" />
+                        <div className="no-print flex flex-col items-center gap-2">
+                          <div className="flex items-center gap-2">
+                            <input type="number" value={match.team1Score} onChange={(e) => updateScore(rIdx, mIdx, 1, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
+                            <span className="text-gray-600 font-bold">-</span>
+                            <input type="number" value={match.team2Score} onChange={(e) => updateScore(rIdx, mIdx, 2, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
+                          </div>
+                          <button onClick={() => togglePlayed(rIdx, mIdx)} className={`mt-1 text-[8px] font-black px-2 py-1 rounded ${match.isPlayed ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400'}`}>
+                            {match.isPlayed ? 'HERSTEL' : 'BEVESTIG'}
+                          </button>
                         </div>
                         <div className="flex-1 text-right space-y-1">{match.team2.map(p => <div key={p.id} className="text-sm font-bold text-white uppercase">{p.name}</div>)}</div>
                       </div>
@@ -242,58 +227,32 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
             ))}
           </div>
         )}
+
         {activeTab === 'standings' && (
           <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden">
             <table className="w-full text-left">
               <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black tracking-widest">
-                <tr><th className="px-6 py-5">#</th><th className="px-6 py-5">Naam</th><th className="px-6 py-5 text-center">W</th><th className="px-6 py-5 text-center">PTN</th><th className="px-6 py-5 text-center">DS</th></tr>
+                <tr><th className="px-6 py-5">#</th><th className="px-6 py-5">Deelnemer</th><th className="px-6 py-5 text-center">W</th><th className="px-6 py-5 text-center">PTN</th><th className="px-6 py-5 text-center">DS</th><th className="px-6 py-5 text-center">GV</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
                 {session.standings.map((entry, idx) => (
                   <tr key={entry.playerId} className={idx < 3 ? 'bg-amber-500/5' : ''}>
-                    <td className="px-6 py-4 font-black text-amber-500">{idx + 1}.</td>
+                    <td className="px-6 py-4 font-black text-amber-500 text-xl italic">{idx + 1}.</td>
                     <td className="px-6 py-4 font-bold text-white uppercase tracking-tight">{entry.playerName}</td>
-                    <td className="px-6 py-4 text-center text-gray-400 font-bold">{entry.matchesPlayed}</td>
-                    <td className="px-6 py-4 text-center"><span className="bg-gray-700 text-amber-400 px-3 py-1 rounded-full font-black shadow-inner">{entry.points}</span></td>
-                    <td className={`px-6 py-4 text-center font-bold ${entry.goalDifference > 0 ? 'text-green-500' : 'text-red-500'}`}>{entry.goalDifference}</td>
+                    <td className="px-6 py-4 text-center text-gray-400 font-black">{entry.matchesPlayed}</td>
+                    <td className="px-6 py-4 text-center"><span className="bg-gray-700 text-amber-400 px-4 py-1.5 rounded-full font-black text-lg shadow-inner">{entry.points}</span></td>
+                    <td className={`px-6 py-4 text-center font-bold ${entry.goalDifference > 0 ? 'text-green-500' : entry.goalDifference < 0 ? 'text-red-500' : 'text-gray-500'}`}>{entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}</td>
+                    <td className="px-6 py-4 text-center text-gray-400">{entry.goalsFor}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        {activeTab === 'analysis' && (
-          <div className="space-y-4 no-print">
-            <div className="bg-gray-900 p-4 rounded-2xl border border-gray-700">
-              <input type="text" placeholder="Zoek speler..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 text-sm focus:ring-2 ring-amber-500 outline-none" />
-            </div>
-            <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden">
-              <div className="max-h-[600px] overflow-y-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0">
-                    <tr><th className="px-6 py-4">Speler 1</th><th className="px-6 py-4">Speler 2</th><th className="px-6 py-4 text-center">Samen</th></tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {filteredCoOp.map((pair, i) => (
-                      <tr key={i} className={pair.count > 1 ? 'bg-red-500/5' : pair.count === 0 ? 'opacity-40' : ''}>
-                        <td className="px-6 py-3 text-sm font-bold text-gray-200 uppercase">{pair.p1}</td>
-                        <td className="px-6 py-3 text-sm font-bold text-gray-200 uppercase">{pair.p2}</td>
-                        <td className="px-6 py-3 text-center">
-                          <span className={`px-3 py-1 rounded-full font-black text-xs ${pair.count === 0 ? 'bg-gray-900 text-gray-600' : pair.count > 1 ? 'bg-red-900 text-red-200' : 'bg-green-900 text-green-200'}`}>
-                            {pair.count}x
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* ... Analysis Tab blijft gelijk ... */}
       </div>
     </div>
   );
 };
 
-export default NKManager; // Zorg dat deze regel exact zo onderaan staat!
+export default NKManager;
