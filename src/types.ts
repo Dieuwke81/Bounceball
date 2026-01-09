@@ -81,3 +81,40 @@ export interface Trophy {
 export interface SeasonSettings {
   seasonStartDate: string; // "YYYY-MM-DD"
 }
+
+// Nieuwe types voor de NK Module
+export interface NKMatch {
+  id: string;
+  hallIndex: number;
+  team1: Player[];
+  team2: Player[];
+  team1Score: number;
+  team2Score: number;
+  referee: Player;
+  subHigh: Player; // Rating >= 5
+  subLow: Player;  // Rating < 5
+}
+
+export interface NKRound {
+  roundNumber: number;
+  matches: NKMatch[];
+  restingPlayers: Player[]; // De rest die geen specifieke rol heeft die ronde
+}
+
+export interface NKStandingsEntry {
+  playerId: number;
+  playerName: string;
+  points: number;
+  goalDifference: number;
+  goalsFor: number;
+  matchesPlayed: number;
+}
+
+export interface NKSession {
+  competitionName: string;
+  totalRounds: number;
+  hallsCount: number;
+  rounds: NKRound[];
+  standings: NKStandingsEntry[];
+  isCompleted: boolean;
+}
