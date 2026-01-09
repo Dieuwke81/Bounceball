@@ -8,157 +8,153 @@ export const generateNKSchedule = (
   competitionName: string
 ): NKSession => {
   const playersPerMatch = playersPerTeam * 2;
-  
-  // Tokens bijhouden voor speeltijd
+  const totalSpotsNeeded = players.length * matchesPerPlayer;
+  const totalMatchesToGenerate = totalSpotsNeeded / playersPerMatch;
+
+  // 1. Bijhouden van tegoeden en historie
   const matchTokens = new Map<number, number>();
-  // We houden nu een exacte teller bij: hoe vaak heeft A met B gespeeld?
   const pairHistory = new Map<string, number>();
-  
   const getPairKey = (id1: number, id2: number) => [id1, id2].sort().join('-');
 
   players.forEach(p => {
     matchTokens.set(p.id, matchesPerPlayer);
   });
 
-  const rounds: NKRound[] = [];
-  let roundNum = 1;
+  const allGeneratedMatches: NKMatch[] = [];
 
-  // We blijven rondes genereren zolang er tokens zijn
-  while (Array.from(matchTokens.values()).some(count => count > 0)) {
-    const roundMatches: NKMatch[] = [];
-    const playersActiveThisRound = new Set<number>();
+  // 2. Genereer alle wedstrijden die nodig zijn voor het hele toernooi
+  for (let mIdx = 0; mIdx < totalMatchesToGenerate; mIdx++) {
+    const matchPlayers: Player[] = [];
+    
+    // Selecteer 8 of 10 spelers die de meeste wedstrijden tegoed hebben
+    // We sorteren op tokens (DESC) en voegen een beetje random toe voor variatie
+    const candidates = [...players].sort((a, b) => {
+      const tokensA = matchTokens.get(a.id)!;
+      const tokensB = matchTokens.get(b.id)!;
+      return tokensB - tokensA || Math.random() - 0.5;
+    });
 
-    const playersWithTokens = players.filter(p => matchTokens.get(p.id)! > 0);
-    let hallsToFill = Math.min(hallsCount, Math.floor(playersWithTokens.length / playersPerMatch));
+    const selectedForMatch = candidates.slice(0, playersPerMatch);
 
-    if (hallsToFill === 0) break;
+    // Update tokens direct
+    selectedForMatch.forEach(p => matchTokens.set(p.id, matchTokens.get(p.id)! - 1));
 
-    for (let h = 0; h < hallsToFill; h++) {
-      // 1. SELECTIE VAN DE 10 SPELERS VOOR DEZE ZAAL
-      const matchPlayers: Player[] = [];
-      
-      // Pak de eerste speler (degene die de meeste wedstrijden nog moet en nog niet speelt)
-      const seedPlayer = players
-        .filter(p => !playersActiveThisRound.has(p.id) && matchTokens.get(p.id)! > 0)
-        .sort((a, b) => matchTokens.get(b.id)! - matchTokens.get(a.id)! || Math.random() - 0.5)[0];
+    // 3. Verfijn de verdeling (Team 1 vs Team 2) voor deze specifieate groep
+    let bestT1: Player[] = [];
+    let bestT2: Player[] = [];
+    let lowestPenalty = Infinity;
 
-      if (!seedPlayer) break;
-      matchPlayers.push(seedPlayer);
-      playersActiveThisRound.add(seedPlayer.id);
+    for (let attempt = 0; attempt < 400; attempt++) {
+      const shuffled = [...selectedForMatch].sort(() => Math.random() - 0.5);
+      const t1 = shuffled.slice(0, playersPerTeam);
+      const t2 = shuffled.slice(playersPerTeam);
 
-      // Zoek de overige 7 of 9 spelers die het MINST met de huidige groep in de zaal hebben gezeten
-      while (matchPlayers.length < playersPerMatch) {
-        const candidates = players.filter(p => !playersActiveThisRound.has(p.id) && matchTokens.get(p.id)! > 0);
-        if (candidates.length === 0) break;
+      // Keeper check
+      const k1 = t1.filter(p => p.isKeeper).length;
+      const k2 = t2.filter(p => p.isKeeper).length;
+      if (Math.abs(k1 - k2) > 1) continue;
 
-        // Bereken voor elke kandidaat hoeveel 'strafpunten' hij krijgt op basis van de mensen al in de zaal
-        const bestCandidate = candidates.map(c => {
-          let conflictScore = 0;
-          matchPlayers.forEach(m => {
-            const count = pairHistory.get(getPairKey(c.id, m.id)) || 0;
-            // Kwadraat zorgt dat 2x samen spelen veel zwaarder weegt dan 1x
-            conflictScore += (count * count * 100); 
-          });
-          // Neem tokens mee in de score zodat mensen met veel potjes tegoed voorrang houden
-          conflictScore -= (matchTokens.get(c.id)! * 10);
-          return { player: c, score: conflictScore };
-        }).sort((a, b) => a.score - b.score)[0];
-
-        matchPlayers.push(bestCandidate.player);
-        playersActiveThisRound.add(bestCandidate.player.id);
-      }
-
-      if (matchPlayers.length < playersPerMatch) break;
-
-      // 2. VERDELING VAN DE GROEP IN TEAM 1 EN TEAM 2
-      let bestT1: Player[] = [];
-      let bestT2: Player[] = [];
-      let lowestPenalty = Infinity;
-
-      // Probeer 500 verschillende verdelingen van deze geselecteerde groep
-      for (let attempt = 0; attempt < 500; attempt++) {
-        const shuffled = [...matchPlayers].sort(() => Math.random() - 0.5);
-        const t1 = shuffled.slice(0, playersPerTeam);
-        const t2 = shuffled.slice(playersPerTeam);
-
-        // Keepers verdelen
-        const k1 = t1.filter(p => p.isKeeper).length;
-        const k2 = t2.filter(p => p.isKeeper).length;
-        if (Math.abs(k1 - k2) > 1) continue; 
-
-        let currentPenalty = 0;
-        const checkTeam = (team: Player[]) => {
-          for (let i = 0; i < team.length; i++) {
-            for (let j = i + 1; j < team.length; j++) {
-              const count = pairHistory.get(getPairKey(team[i].id, team[j].id)) || 0;
-              currentPenalty += (count * count * 500); // Extreem zware straf voor team-herhaling
-            }
-          }
-        };
-        checkTeam(t1);
-        checkTeam(t2);
-
-        // Balans toevoegen
-        const avg1 = t1.reduce((s, p) => s + p.rating, 0) / t1.length;
-        const avg2 = t2.reduce((s, p) => s + p.rating, 0) / t2.length;
-        currentPenalty += Math.abs(avg1 - avg2) * 50;
-
-        if (currentPenalty < lowestPenalty) {
-          lowestPenalty = currentPenalty;
-          bestT1 = t1;
-          bestT2 = t2;
-        }
-        if (lowestPenalty === 0) break;
-      }
-
-      // 3. ROLLEN TOEWIJZEN (Scheids/Reserves)
-      const restPool = players.filter(p => !playersActiveThisRound.has(p.id));
-      const findRole = (condition: (p: Player) => boolean) => {
-        const idx = restPool.findIndex(condition);
-        const p = idx !== -1 ? restPool.splice(idx, 1)[0] : restPool.shift();
-        if (p) playersActiveThisRound.add(p.id);
-        return p;
-      };
-
-      const referee = findRole(() => true);
-      const subHigh = findRole(p => p.rating >= 5);
-      const subLow = findRole(p => p.rating < 5);
-
-      // 4. GESCHIEDENIS BIJWERKEN
-      [...bestT1, ...bestT2].forEach(p => matchTokens.set(p.id, matchTokens.get(p.id)! - 1));
-      
-      const updateHistory = (team: Player[]) => {
+      let currentPenalty = 0;
+      const checkTeam = (team: Player[]) => {
         for (let i = 0; i < team.length; i++) {
           for (let j = i + 1; j < team.length; j++) {
-            const key = getPairKey(team[i].id, team[j].id);
-            pairHistory.set(key, (pairHistory.get(key) || 0) + 1);
+            const count = pairHistory.get(getPairKey(team[i].id, team[j].id)) || 0;
+            currentPenalty += (count * count * 1000); // Zware straf voor herhaling
           }
         }
       };
-      updateHistory(bestT1);
-      updateHistory(bestT2);
+      checkTeam(t1);
+      checkTeam(t2);
 
-      roundMatches.push({
-        id: `r${roundNum}h${h}`,
-        hallIndex: h + 1,
-        team1: bestT1,
-        team2: bestT2,
-        team1Score: 0,
-        team2Score: 0,
-        referee: referee as Player,
-        subHigh: subHigh as Player,
-        subLow: subLow as Player
-      });
+      const avg1 = t1.reduce((s, p) => s + p.rating, 0) / t1.length;
+      const avg2 = t2.reduce((s, p) => s + p.rating, 0) / t2.length;
+      currentPenalty += Math.abs(avg1 - avg2) * 50;
+
+      if (currentPenalty < lowestPenalty) {
+        lowestPenalty = currentPenalty;
+        bestT1 = t1;
+        bestT2 = t2;
+      }
+      if (lowestPenalty === 0) break;
     }
 
-    if (roundMatches.length > 0) {
-      rounds.push({
-        roundNumber: roundNum,
-        matches: roundMatches,
-        restingPlayers: players.filter(p => !playersActiveThisRound.has(p.id))
+    // Update pair history voor de gekozen teams
+    const updateHistory = (team: Player[]) => {
+      for (let i = 0; i < team.length; i++) {
+        for (let j = i + 1; j < team.length; j++) {
+          const key = getPairKey(team[i].id, team[j].id);
+          pairHistory.set(key, (pairHistory.get(key) || 0) + 1);
+        }
+      }
+    };
+    updateHistory(bestT1);
+    updateHistory(bestT2);
+
+    allGeneratedMatches.push({
+      id: `m${mIdx}`,
+      hallIndex: 0, // Wordt later ingevuld
+      team1: bestT1,
+      team2: bestT2,
+      team1Score: 0,
+      team2Score: 0,
+      referee: players[0], // Dummy, wordt later ingevuld
+      subHigh: players[0], // Dummy
+      subLow: players[0],  // Dummy
+    });
+  }
+
+  // 4. Verdeel alle gegenereerde wedstrijden over rondes en zalen
+  const rounds: NKRound[] = [];
+  const matchesToProcess = [...allGeneratedMatches];
+  let roundNum = 1;
+
+  while (matchesToProcess.length > 0) {
+    const roundMatches: NKMatch[] = [];
+    const playersInRound = new Set<number>();
+
+    for (let h = 0; h < hallsCount; h++) {
+      // Zoek een wedstrijd uit de lijst waarvan GEEN enkele speler al in deze ronde zit
+      const matchIdx = matchesToProcess.findIndex(m => {
+        const matchPlayers = [...m.team1, ...m.team2];
+        return !matchPlayers.some(p => playersInRound.has(p.id));
       });
-      roundNum++;
-    } else break;
+
+      if (matchIdx !== -1) {
+        const match = matchesToProcess.splice(matchIdx, 1)[0];
+        match.hallIndex = h + 1;
+        
+        // Nu we de zaal weten, wijzen we de rollen toe uit de rustende spelers
+        const playingIds = new Set([...playersInRound]);
+        [...match.team1, ...match.team2].forEach(p => playingIds.add(p.id));
+        
+        // We moeten ook de spelers uit de andere (al gekozen) matches van deze ronde meetellen
+        roundMatches.forEach(rm => {
+            [...rm.team1, ...rm.team2].forEach(p => playingIds.add(p.id));
+        });
+
+        const restPool = players.filter(p => !playingIds.has(p.id));
+        
+        const findRole = (pool: Player[], condition: (p: Player) => boolean) => {
+            const idx = pool.findIndex(condition);
+            return idx !== -1 ? pool.splice(idx, 1)[0] : pool.shift() || players[0];
+        };
+
+        match.referee = findRole(restPool, () => true);
+        match.subHigh = findRole(restPool, p => p.rating >= 5);
+        match.subLow = findRole(restPool, p => p.rating < 5);
+
+        roundMatches.push(match);
+        [...match.team1, ...match.team2].forEach(p => playersInRound.add(p.id));
+      }
+    }
+
+    rounds.push({
+      roundNumber: roundNum,
+      matches: roundMatches,
+      restingPlayers: players.filter(p => !playersInRound.has(p.id))
+    });
+    roundNum++;
+    if (roundNum > 200) break;
   }
 
   const standings: NKStandingsEntry[] = players.map(p => ({
