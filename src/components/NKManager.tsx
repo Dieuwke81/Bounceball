@@ -235,10 +235,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                 <h3 className="round-title text-2xl font-black text-amber-500 uppercase tracking-widest border-b border-gray-700 pb-2 italic">Ronde {round.roundNumber}</h3>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {round.matches.map((match, mIdx) => {
-                    // ✅ Gemiddelde berekenen per team
                     const avg1 = match.team1.reduce((sum, p) => sum + p.rating, 0) / match.team1.length;
                     const avg2 = match.team2.reduce((sum, p) => sum + p.rating, 0) / match.team2.length;
-                    
                     return (
                       <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border transition-all ${match.isPlayed ? 'border-green-500/50 shadow-green-500/5' : 'border-gray-700'} overflow-hidden`}>
                         <div className="bg-gray-700/50 p-3 flex justify-between text-[10px] font-black uppercase tracking-widest">
@@ -249,13 +247,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                           </div>
                         </div>
                         <div className="p-5 flex items-center justify-between gap-4">
-                          {/* Team 1 */}
                           <div className="flex-1 space-y-1">
                             <div className="text-[10px] text-gray-500 font-bold mb-1">AVG: {avg1.toFixed(2)}</div>
                             {match.team1.map(p => <div key={p.id} className="text-sm font-bold text-white uppercase">{p.name}</div>)}
                           </div>
-
-                          {/* Score Input */}
                           <div className="no-print flex flex-col items-center gap-2">
                             <div className="flex items-center gap-2">
                               <input type="number" value={match.team1Score} onChange={(e) => updateScore(rIdx, mIdx, 1, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
@@ -266,8 +261,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                               {match.isPlayed ? 'HERSTEL' : 'BEVESTIG'}
                             </button>
                           </div>
-
-                          {/* Team 2 */}
                           <div className="flex-1 text-right space-y-1">
                             <div className="text-[10px] text-gray-500 font-bold mb-1">AVG: {avg2.toFixed(2)}</div>
                             {match.team2.map(p => <div key={p.id} className="text-sm font-bold text-white uppercase">{p.name}</div>)}
@@ -286,20 +279,31 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         )}
 
         {activeTab === 'standings' && (
-          <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden animate-fade-in">
-            <table className="w-full text-left">
+          <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left table-fixed sm:table-auto min-w-[500px]">
               <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black tracking-widest">
-                <tr><th className="px-6 py-5">#</th><th className="px-6 py-5">Deelnemer</th><th className="px-6 py-5 text-center">W</th><th className="px-6 py-5 text-center">PTN</th><th className="px-6 py-5 text-center">DS</th><th className="px-6 py-5 text-center">GV</th></tr>
+                <tr>
+                  <th className="px-3 py-4 w-12">#</th>
+                  <th className="px-3 py-4">Deelnemer</th>
+                  <th className="px-2 py-4 text-center w-12">W</th>
+                  <th className="px-2 py-4 text-center w-20">PTN</th>
+                  <th className="px-2 py-4 text-center w-12">DS</th>
+                  <th className="px-2 py-4 text-center w-12">GV</th>
+                </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
                 {session.standings.map((entry, idx) => (
                   <tr key={entry.playerId} className={idx < 3 ? 'bg-amber-500/5' : ''}>
-                    <td className="px-6 py-4 font-black text-amber-500 text-xl italic">{idx + 1}.</td>
-                    <td className="px-6 py-4 font-bold text-white uppercase tracking-tight">{entry.playerName}</td>
-                    <td className="px-6 py-4 text-center text-gray-400 font-black">{entry.matchesPlayed}</td>
-                    <td className="px-6 py-4 text-center"><span className="bg-gray-700 text-amber-400 px-4 py-1.5 rounded-full font-black text-lg shadow-inner">{entry.points}</span></td>
-                    <td className={`px-6 py-4 text-center font-bold ${entry.goalDifference > 0 ? 'text-green-500' : entry.goalDifference < 0 ? 'text-red-500' : 'text-gray-500'}`}>{entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}</td>
-                    <td className="px-6 py-4 text-center text-gray-400">{entry.goalsFor}</td>
+                    <td className="px-3 py-4 font-black text-amber-500 text-lg sm:text-xl italic">{idx + 1}.</td>
+                    <td className="px-3 py-4 font-bold text-white uppercase tracking-tight text-xs sm:text-sm truncate">{entry.playerName}</td>
+                    <td className="px-2 py-4 text-center text-gray-400 font-black">{entry.matchesPlayed}</td>
+                    <td className="px-2 py-4 text-center">
+                      <span className="bg-gray-700 text-amber-400 px-3 py-1 rounded-full font-black text-sm sm:text-lg shadow-inner">{entry.points}</span>
+                    </td>
+                    <td className={`px-2 py-4 text-center font-bold text-sm ${entry.goalDifference > 0 ? 'text-green-500' : entry.goalDifference < 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                      {entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}
+                    </td>
+                    <td className="px-2 py-4 text-center text-gray-400 text-sm">{entry.goalsFor}</td>
                   </tr>
                 ))}
               </tbody>
