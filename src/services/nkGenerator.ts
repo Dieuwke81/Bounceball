@@ -12,9 +12,7 @@ export const generateNKSchedule = (
   const totalMatchesNeeded = totalPlayerSpots / playersPerMatch;
   const totalRounds = Math.ceil(totalMatchesNeeded / hallsToUse);
 
-  // Bereken het globale gemiddelde om op te sturen
   const globalAverage = players.reduce((s, p) => s + p.rating, 0) / players.length;
-
   const restCounts = new Map<number, number>();
   const togetherHistory = new Map<string, number>(); 
   const againstHistory = new Map<string, number>();  
@@ -30,20 +28,44 @@ export const generateNKSchedule = (
     const spotsToFill = hallsThisRound * playersPerMatch;
     const numPeopleToRest = players.length - spotsToFill;
 
-    // 1. SELECTIE RUSTERS (Harde eis voor aantal wedstrijden)
-    const playersSortedForRest = [...players].sort((a, b) => 
-      restCounts.get(a.id)! - restCounts.get(b.id)! || Math.random() - 0.5
-    );
-    const restingThisRound = playersSortedForRest.slice(0, numPeopleToRest);
-    const activeThisRound = playersSortedForRest.slice(numPeopleToRest);
-    restingThisRound.forEach(p => restCounts.set(p.id, restCounts.get(p.id)! + 1));
+    // 1. OPTIMALE SELECTIE VAN RUSTERS
+    // We proberen 50 verschillende groepjes rusters om de 'minst conflicterende' actieve pool te vinden
+    let bestActiveThisRound: Player[] = [];
+    let bestRestingThisRound: Player[] = [];
+    let lowestInitialConflict = Infinity;
+
+    for (let i = 0; i < 50; i++) {
+        const candidateRest = [...players].sort((a, b) => 
+            restCounts.get(a.id)! - restCounts.get(b.id)! || Math.random() - 0.5
+        ).slice(0, numPeopleToRest);
+        
+        const candidateActive = players.filter(p => !candidateRest.find(r => r.id === p.id));
+        
+        // Bereken hoe zwaar deze groep actieve spelers al met elkaar belast is
+        let conflictScore = 0;
+        for (let x = 0; x < candidateActive.length; x++) {
+            for (let y = x + 1; y < candidateActive.length; y++) {
+                const key = getPairKey(candidateActive[x].id, candidateActive[y].id);
+                const combined = (togetherHistory.get(key) || 0) + (againstHistory.get(key) || 0);
+                conflictScore += Math.pow(combined, 3); // Exponentieel zwaarder
+            }
+        }
+
+        if (conflictScore < lowestInitialConflict) {
+            lowestInitialConflict = conflictScore;
+            bestActiveThisRound = candidateActive;
+            bestRestingThisRound = candidateRest;
+        }
+    }
+
+    bestRestingThisRound.forEach(p => restCounts.set(p.id, restCounts.get(p.id)! + 1));
 
     // 2. SUPER BRUTE FORCE (100.000 POGINGEN)
     let bestRoundMatches: NKMatch[] = [];
     let lowestPenalty = Infinity;
 
     for (let attempt = 0; attempt < 100000; attempt++) {
-      const shuffledActive = [...activeThisRound].sort(() => Math.random() - 0.5);
+      const shuffledActive = [...bestActiveThisRound].sort(() => Math.random() - 0.5);
       const currentRoundMatches: NKMatch[] = [];
       let roundValid = true;
       let roundPenalty = 0;
@@ -53,27 +75,23 @@ export const generateNKSchedule = (
         const t1 = matchPlayers.slice(0, playersPerTeam);
         const t2 = matchPlayers.slice(playersPerTeam);
 
-        // EIS 1: Keepers (max 1 per team)
-        const k1 = t1.filter(p => p.isKeeper).length;
-        const k2 = t2.filter(p => p.isKeeper).length;
-        if (k1 > 1 || k2 > 1 || Math.abs(k1 - k2) > 1) {
-          roundValid = false; break;
-        }
-
-        // EIS 2: Balans binnen de wedstrijd (harde eis 0.3)
+        // BALANS EISEN (0.3 grens)
         const avg1 = t1.reduce((s, p) => s + p.rating, 0) / t1.length;
         const avg2 = t2.reduce((s, p) => s + p.rating, 0) / t2.length;
-        if (Math.abs(avg1 - avg2) > 0.301) {
-          roundValid = false; break;
-        }
+        if (Math.abs(avg1 - avg2) > 0.301) { roundValid = false; break; }
+        
+        // KEEPER EISEN
+        const k1 = t1.filter(p => p.isKeeper).length;
+        const k2 = t2.filter(p => p.isKeeper).length;
+        if (k1 > 1 || k2 > 1 || Math.abs(k1 - k2) > 1) { roundValid = false; break; }
 
-        // EIS 3: Globale spreiding (max 1 punt afwijking van globaal gemiddelde)
-        // Dit garandeert dat het verschil tussen het allerbeste en slechtste team max 2.0 is.
+        // SPREIDING EIS (2.0 max verschil tussen alle teams)
         if (Math.abs(avg1 - globalAverage) > 1.0 || Math.abs(avg2 - globalAverage) > 1.0) {
           roundValid = false; break;
         }
 
-        roundPenalty += calculateTotalPenalty(t1, t2, togetherHistory, againstHistory, getPairKey);
+        // BEREKEN PENALTY (Samen, Tegen, en Totaal)
+        roundPenalty += calculateEnhancedPenalty(t1, t2, togetherHistory, againstHistory, getPairKey);
         
         currentRoundMatches.push({
           id: `r${r}h${h}`, hallIndex: h + 1, team1: t1, team2: t2,
@@ -89,41 +107,30 @@ export const generateNKSchedule = (
       }
     }
 
-    // Mocht 100k pogingen niet genoeg zijn voor de filters, doen we een nood-ronde zonder de globale 1.0 check
-    if (bestRoundMatches.length === 0) {
-        // (Dit zou wiskundig alleen gebeuren bij zeer extreme rating-verschillen in de groep)
-        console.warn("Ronde balans was te lastig, versoepelen...");
-        // ... (hier zou een fallback kunnen, maar met 100k is dit nagenoeg onmogelijk)
-    }
-
-    // 3. ROLLEN EN HISTORIE
-    const availableForRoles = [...restingThisRound];
+    // 3. ROLLEN EN HISTORIE BIJWERKEN
+    const rolePool = [...bestRestingThisRound];
     const findRole = (pool: Player[], cond: (p: Player) => boolean) => {
         const idx = pool.findIndex(cond);
         return idx !== -1 ? pool.splice(idx, 1)[0] : pool.shift() || players[0];
     };
 
     bestRoundMatches.forEach(match => {
-      match.referee = findRole(availableForRoles, () => true);
-      match.subHigh = findRole(availableForRoles, p => p.rating >= 5);
-      match.subLow = findRole(availableForRoles, p => p.rating < 5);
+      match.referee = findRole(rolePool, () => true);
+      match.subHigh = findRole(rolePool, p => p.rating >= 5);
+      match.subLow = findRole(rolePool, p => p.rating < 5);
 
-      [match.team1, match.team2].forEach(team => {
-        for (let i = 0; i < team.length; i++) {
-          for (let j = i+1; j < team.length; j++) {
-            const key = getPairKey(team[i].id, team[j].id);
-            togetherHistory.set(key, (togetherHistory.get(key) || 0) + 1);
-          }
-        }
+      // Sla op in historie
+      match.team1.forEach(p1 => {
+        match.team1.forEach(p2 => { if(p1.id !== p2.id) togetherHistory.set(getPairKey(p1.id, p2.id), (togetherHistory.get(getPairKey(p1.id, p2.id)) || 0) + 0.5); });
+        match.team2.forEach(p2 => { againstHistory.set(getPairKey(p1.id, p2.id), (againstHistory.get(getPairKey(p1.id, p2.id)) || 0) + 1); });
       });
-      match.team1.forEach(p1 => match.team2.forEach(p2 => {
-        const key = getPairKey(p1.id, p2.id);
-        againstHistory.set(key, (againstHistory.get(key) || 0) + 1);
-      }));
+      match.team2.forEach(p1 => {
+        match.team2.forEach(p2 => { if(p1.id !== p2.id) togetherHistory.set(getPairKey(p1.id, p2.id), (togetherHistory.get(getPairKey(p1.id, p2.id)) || 0) + 0.5); });
+      });
       matchesRemaining--;
     });
 
-    rounds.push({ roundNumber: r, matches: bestRoundMatches, restingPlayers: restingThisRound });
+    rounds.push({ roundNumber: r, matches: bestRoundMatches, restingPlayers: bestRestingThisRound });
   }
 
   const standings: NKStandingsEntry[] = players.map(p => ({
@@ -133,16 +140,47 @@ export const generateNKSchedule = (
   return { competitionName, totalRounds: rounds.length, hallsCount: hallsToUse, playersPerTeam, rounds, standings, isCompleted: false };
 };
 
-const calculateTotalPenalty = (t1: Player[], t2: Player[], tog: Map<string, number>, ag: Map<string, number>, keyFn: any) => {
+// DE VERBETERDE PENALTY FUNCTIE MET HARDE GRENZEN
+const calculateEnhancedPenalty = (t1: Player[], t2: Player[], tog: Map<string, number>, ag: Map<string, number>, keyFn: any) => {
   let p = 0;
-  const weight = (c: number) => [0, 10, 500, 10000, 1000000][c] || 1000000;
+
+  const getWeight = (count: number) => {
+    if (count < 1) return 0;
+    if (count < 2) return 10;
+    if (count < 3) return 500;
+    if (count < 4) return 10000;
+    return 2000000; // De "Muur" voor 4 of meer
+  };
+
+  // 1. Samen Penalty
   [t1, t2].forEach(team => {
     for (let i = 0; i < team.length; i++) {
       for (let j = i+1; j < team.length; j++) {
-        p += weight(tog.get(keyFn(team[i].id, team[j].id)) || 0);
+        const key = keyFn(team[i].id, team[j].id);
+        const tCount = tog.get(key) || 0;
+        const aCount = ag.get(key) || 0;
+        
+        p += getWeight(tCount);
+        
+        // 2. Totaal confrontaties check (Samen + Tegen mag niet > 6)
+        if (tCount + aCount >= 6) p += 5000000;
       }
     }
   });
-  t1.forEach(p1 => t2.forEach(p2 => p += weight(ag.get(keyFn(p1.id, p2.id)) || 0) / 2));
+
+  // 3. Tegen Penalty
+  t1.forEach(p1 => {
+    t2.forEach(p2 => {
+      const key = keyFn(p1.id, p2.id);
+      const aCount = ag.get(key) || 0;
+      const tCount = tog.get(key) || 0;
+
+      p += getWeight(aCount) / 2;
+
+      // Totaal confrontaties check
+      if (tCount + aCount >= 6) p += 5000000;
+    });
+  });
+
   return p;
 };
