@@ -313,24 +313,29 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                               </span>
                           </div>
                         </div>
-                        <div className="p-5 flex items-center justify-between gap-4">
+                        {/* ✅ AANGEPASTE STRUCTUUR VOOR VERTICALE ALIGNERING */}
+                        <div className="p-5 flex items-stretch justify-between gap-4">
                           {/* Team Blauw */}
-                          <div className="flex-1 space-y-1">
-                            <div className="text-[10px] text-blue-400 font-black uppercase tracking-widest whitespace-nowrap mb-1">
-                                Team Blauw
+                          <div className="flex-1 flex flex-col justify-between">
+                            <div>
+                              <div className="text-[10px] text-blue-400 font-black uppercase tracking-widest whitespace-nowrap mb-2">
+                                  Team Blauw
+                              </div>
+                              <div className="space-y-1">
+                                {match.team1.map(p => (
+                                    <div key={p.id} className={`text-sm uppercase ${isHighlighted(p.name) ? 'text-green-400 font-black scale-105 origin-left' : 'text-white'}`}>
+                                        {p.name}
+                                    </div>
+                                ))}
+                              </div>
                             </div>
-                            {match.team1.map(p => (
-                                <div key={p.id} className={`text-sm uppercase ${isHighlighted(p.name) ? 'text-green-400 font-black scale-105 origin-left' : 'text-white'}`}>
-                                    {p.name}
-                                </div>
-                            ))}
                             <div className="text-[10px] text-gray-500 font-bold mt-2">
                                 AVG: {avg1.toFixed(2)}
                             </div>
                           </div>
 
-                          {/* Score Input */}
-                          <div className="no-print flex flex-col items-center gap-2">
+                          {/* Score Input (verticaal gecentreerd blijven) */}
+                          <div className="no-print flex flex-col justify-center items-center gap-2">
                             <div className="flex items-center gap-2">
                               <input type="number" value={match.team1Score} onChange={(e) => updateScore(rIdx, mIdx, 1, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
                               <span className="text-gray-600 font-bold">-</span>
@@ -342,15 +347,19 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                           </div>
 
                           {/* Team Geel */}
-                          <div className="flex-1 text-right space-y-1">
-                            <div className="text-[10px] text-amber-400 font-black uppercase tracking-widest whitespace-nowrap mb-1">
-                                Team Geel
+                          <div className="flex-1 flex flex-col justify-between text-right">
+                            <div>
+                              <div className="text-[10px] text-amber-400 font-black uppercase tracking-widest whitespace-nowrap mb-2">
+                                  Team Geel
+                              </div>
+                              <div className="space-y-1">
+                                {match.team2.map(p => (
+                                    <div key={p.id} className={`text-sm uppercase ${isHighlighted(p.name) ? 'text-green-400 font-black scale-105 origin-right' : 'text-white'}`}>
+                                        {p.name}
+                                    </div>
+                                ))}
+                              </div>
                             </div>
-                            {match.team2.map(p => (
-                                <div key={p.id} className={`text-sm uppercase ${isHighlighted(p.name) ? 'text-green-400 font-black scale-105 origin-right' : 'text-white'}`}>
-                                    {p.name}
-                                </div>
-                            ))}
                             <div className="text-[10px] text-gray-500 font-bold mt-2">
                                 AVG: {avg2.toFixed(2)}
                             </div>
