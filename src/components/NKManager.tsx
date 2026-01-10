@@ -16,7 +16,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [highlightName, setHighlightName] = useState(''); 
   const [isGenerating, setIsGenerating] = useState(false);
   
-  // Setup States
+  // Calculator States
   const [hallsCount, setHallsCount] = useState(3);
   const [hallNames, setHallNames] = useState<string[]>(['A', 'B', 'C']);
   const [matchesPerPlayer, setMatchesPerPlayer] = useState(8);
@@ -24,12 +24,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [targetPlayerCount, setTargetPlayerCount] = useState<number | null>(null);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(new Set());
 
-  // Werk hallNames bij als hallsCount verandert
   useEffect(() => {
     const names = [...hallNames];
     if (hallsCount > names.length) {
       for (let i = names.length; i < hallsCount; i++) {
-        names.push(String.fromCharCode(65 + i)); // Voeg standaard A, B, C toe
+        names.push(String.fromCharCode(65 + i)); 
       }
     } else {
       names.splice(hallsCount);
@@ -37,30 +36,19 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     setHallNames(names);
   }, [hallsCount]);
 
-  // Data laden uit LocalStorage
   useEffect(() => {
     const saved = localStorage.getItem('bounceball_nk_session');
     if (saved) {
-      try {
-        setSession(JSON.parse(saved));
-      } catch (e) {
-        console.error("Fout bij laden van NK sessie", e);
-      }
+      try { setSession(JSON.parse(saved)); } catch (e) { console.error(e); }
     }
   }, []);
 
-  // Data opslaan in LocalStorage
   useEffect(() => {
-    if (session) {
-      localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
-    }
+    if (session) localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
   }, [session]);
 
-  const isHighlighted = (name: string) => {
-    return highlightName && name.toLowerCase() === highlightName.toLowerCase();
-  };
+  const isHighlighted = (name: string) => highlightName && name.toLowerCase() === highlightName.toLowerCase();
 
-  // --- CALCULATOR ---
   const possibilities = useMemo(() => {
     const options = [];
     const playersPerMatch = playersPerTeam * 2;
@@ -86,7 +74,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return options;
   }, [hallsCount, matchesPerPlayer, playersPerTeam]);
 
-  // --- ANALYSE ---
   const coOpData = useMemo(() => {
     if (!session) return [];
     const pairCounts = new Map<string, { together: number, against: number }>();
@@ -128,7 +115,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     }).sort((a, b) => b.together - a.together || b.against - a.against || a.p1.localeCompare(b.p1));
   }, [session, players]);
 
-  // --- ACTIES ---
   const handleStartTournament = async () => {
     const chosen = possibilities.find(p => p.playerCount === targetPlayerCount);
     if (!chosen) return;
@@ -139,9 +125,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     setIsGenerating(true);
     try {
       const participants = players.filter(p => selectedPlayerIds.has(p.id));
-      // Gebruik alleen de namen voor het aantal zalen dat daadwerkelijk gebruikt gaat worden
-      const finalHallNames = hallNames.slice(0, chosen.hallsToUse);
-      const newSession = await generateNKSchedule(participants, finalHallNames, matchesPerPlayer, playersPerTeam, "NK Schema");
+      const newSession = await generateNKSchedule(participants, hallNames.slice(0, chosen.hallsToUse), matchesPerPlayer, playersPerTeam, "NK Schema");
       setSession(newSession);
     } catch (error) {
       console.error(error);
@@ -182,13 +166,12 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     setSession(newSession);
   };
 
-  // --- RENDER ---
   if (isGenerating) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-white">
         <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
         <h2 className="text-3xl font-black italic uppercase tracking-tighter">Schema Berekenen...</h2>
-        <p className="text-gray-400 animate-pulse mt-2">Balans en variatie worden geoptimaliseerd.</p>
+        <p className="text-gray-400 animate-pulse mt-2 text-center">Balans en variatie worden geoptimaliseerd. Dit duurt een paar seconden.</p>
       </div>
     );
   }
@@ -200,7 +183,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <div className="flex items-center gap-4 mb-8">
             <div className="p-4 bg-amber-500 rounded-2xl shadow-lg shadow-amber-500/20"><TrophyIcon className="w-8 h-8 text-white" /></div>
             <div>
-              <h2 className="text-3xl font-black text-white uppercase italic tracking-tight">NK Calculator</h2>
+              <h2 className="text-3xl font-black text-white uppercase italic tracking-tight">NK Setup</h2>
               <p className="text-amber-500/80 text-xs font-bold uppercase tracking-widest">Stap 1: Bereken je toernooi</p>
             </div>
           </div>
@@ -211,29 +194,17 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                     <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Zalen Beschikbaar</span>
                     <input type="number" value={hallsCount} onChange={(e) => {setHallsCount(Number(e.target.value)); setTargetPlayerCount(null);}} className="mt-1 block w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 font-bold focus:ring-2 ring-amber-500 outline-none" />
                   </label>
-                  
-                  {/* ✅ HIER IS HET INVOERVELD VOOR ZAALNAMEN */}
                   <div className="grid grid-cols-3 gap-2">
                     {hallNames.map((name, i) => (
                       <div key={i} className="flex flex-col">
-                        <span className="text-[8px] text-gray-600 font-bold mb-0.5">NAAM {i+1}</span>
-                        <input 
-                          type="text" 
-                          value={name} 
-                          maxLength={1}
-                          onChange={(e) => {
-                            const next = [...hallNames]; 
-                            next[i] = e.target.value.toUpperCase(); 
-                            setHallNames(next);
-                          }} 
-                          className="bg-gray-700 border-gray-600 rounded text-white text-center p-1 text-xs font-bold uppercase focus:border-amber-500 outline-none" 
-                          placeholder={`${i+1}`} 
-                        />
+                        <span className="text-[8px] text-gray-600 font-bold mb-0.5 uppercase">Zaal {i+1}</span>
+                        <input type="text" value={name} maxLength={1} onChange={(e) => {
+                            const next = [...hallNames]; next[i] = e.target.value.toUpperCase(); setHallNames(next);
+                        }} className="bg-gray-700 border-gray-600 rounded text-white text-center p-1 text-xs font-bold uppercase focus:border-amber-500 outline-none" />
                       </div>
                     ))}
                   </div>
-
-                  <label className="block pt-2">
+                  <label className="block">
                     <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Wedstrijden p.p.</span>
                     <input type="number" value={matchesPerPlayer} onChange={(e) => {setMatchesPerPlayer(Number(e.target.value)); setTargetPlayerCount(null);}} className="mt-1 block w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 font-bold focus:ring-2 ring-amber-500 outline-none" />
                   </label>
@@ -256,7 +227,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                         <span className="text-2xl font-black text-white">{opt.playerCount} Spelers</span>
                         {opt.isPerfect && <span className="text-[8px] bg-green-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">Perfect</span>}
                       </div>
-                      <p className="text-gray-400 text-xs leading-relaxed">Geeft schema voor **{opt.hallsToUse} zalen** ({opt.totalRounds} rondes).</p>
+                      <p className="text-gray-400 text-xs leading-relaxed">Schema voor **{opt.hallsToUse} zalen** ({opt.totalRounds} rondes).</p>
                     </button>
                   ))}
                </div>
@@ -266,7 +237,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
             <div className="space-y-6 animate-fade-in">
               <div className="flex justify-between items-end border-b border-gray-700 pb-4">
                 <div>
-                  <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">Selecteer {targetPlayerCount} Deelnemers</h3>
+                  <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">Selecteer {targetPlayerCount} Spelers</h3>
                   <p className={`text-sm font-bold ${selectedPlayerIds.size === targetPlayerCount ? 'text-green-500' : 'text-amber-500'}`}>{selectedPlayerIds.size} geselecteerd</p>
                 </div>
                 {selectedPlayerIds.size === targetPlayerCount && (
@@ -277,8 +248,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                 {players.map(p => (
                   <button key={p.id} onClick={() => {
                     const next = new Set(selectedPlayerIds);
-                    if (next.has(p.id)) next.delete(p.id); 
-                    else if (next.size < targetPlayerCount!) next.add(p.id);
+                    if (next.has(p.id)) next.delete(p.id); else if (next.size < targetPlayerCount!) next.add(p.id);
                     setSelectedPlayerIds(next);
                   }} className={`p-3 rounded-xl text-xs font-bold border transition-all ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white shadow-inner scale-95' : 'bg-gray-800 border-gray-700 text-gray-500 opacity-60'}`}>{p.name}</button>
                 ))}
@@ -320,16 +290,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       <div className="print-area">
         {activeTab === 'schedule' && (
           <div className="space-y-12">
-            {/* HIGHLIGHT INPUT */}
             <div className="no-print bg-gray-900/50 p-4 rounded-xl border border-gray-700 mb-6 shadow-inner">
                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 block">Highlight speler op schema</label>
-                <input 
-                    type="text" 
-                    placeholder="Typ een naam..." 
-                    value={highlightName}
-                    onChange={(e) => setHighlightName(e.target.value)}
-                    className="w-full bg-gray-800 border-gray-700 rounded-lg text-white p-2 text-sm focus:ring-2 ring-green-500 outline-none transition-all"
-                />
+                <input type="text" placeholder="Typ een naam..." value={highlightName} onChange={(e) => setHighlightName(e.target.value)} className="w-full bg-gray-800 border-gray-700 rounded-lg text-white p-2 text-sm focus:ring-2 ring-green-500 outline-none transition-all" />
             </div>
 
             {session.rounds.map((round, rIdx) => (
@@ -339,7 +302,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                   {round.matches.map((match, mIdx) => {
                     const avg1 = match.team1.reduce((sum, p) => sum + p.rating, 0) / match.team1.length;
                     const avg2 = match.team2.reduce((sum, p) => sum + p.rating, 0) / match.team2.length;
-                    
                     return (
                       <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border transition-all ${match.isPlayed ? 'border-green-500/50 shadow-green-500/5' : 'border-gray-700'} overflow-hidden`}>
                         <div className="bg-gray-700/50 p-3 flex justify-between text-[10px] font-black uppercase tracking-widest">
@@ -351,14 +313,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                               </span>
                           </div>
                         </div>
-                        {/* VERTICALE ALIGNERING */}
                         <div className="p-5 flex items-stretch justify-between gap-4">
-                          {/* Team Blauw */}
                           <div className="flex-1 flex flex-col justify-between">
                             <div>
-                              <div className="text-[10px] text-blue-400 font-black uppercase tracking-widest whitespace-nowrap mb-2">
-                                  Team Blauw
-                              </div>
+                              <div className="text-[10px] text-blue-400 font-black uppercase tracking-widest whitespace-nowrap mb-2">Team Blauw</div>
                               <div className="space-y-1">
                                 {match.team1.map(p => (
                                     <div key={p.id} className={`text-sm uppercase ${isHighlighted(p.name) ? 'text-green-400 font-black scale-105 origin-left' : 'text-white'}`}>
@@ -367,12 +325,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                                 ))}
                               </div>
                             </div>
-                            <div className="text-[10px] text-gray-500 font-bold mt-2 uppercase tracking-tighter">
-                                GEM: {avg1.toFixed(2)}
-                            </div>
+                            <div className="text-[10px] text-gray-500 font-bold mt-2 uppercase">GEM: {avg1.toFixed(2)}</div>
                           </div>
-
-                          {/* Score Input */}
                           <div className="no-print flex flex-col justify-center items-center gap-2">
                             <div className="flex items-center gap-2">
                               <input type="number" value={match.team1Score} onChange={(e) => updateScore(rIdx, mIdx, 1, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
@@ -383,13 +337,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                               {match.isPlayed ? 'HERSTEL' : 'GESPEELD'}
                             </button>
                           </div>
-
-                          {/* Team Geel */}
                           <div className="flex-1 flex flex-col justify-between text-right">
                             <div>
-                              <div className="text-[10px] text-amber-400 font-black uppercase tracking-widest whitespace-nowrap mb-2">
-                                  Team Geel
-                              </div>
+                              <div className="text-[10px] text-amber-400 font-black uppercase tracking-widest whitespace-nowrap mb-2">Team Geel</div>
                               <div className="space-y-1">
                                 {match.team2.map(p => (
                                     <div key={p.id} className={`text-sm uppercase ${isHighlighted(p.name) ? 'text-green-400 font-black scale-105 origin-right' : 'text-white'}`}>
@@ -398,18 +348,12 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                                 ))}
                               </div>
                             </div>
-                            <div className="text-[10px] text-gray-500 font-bold mt-2 uppercase tracking-tighter">
-                                GEM: {avg2.toFixed(2)}
-                            </div>
+                            <div className="text-[10px] text-gray-500 font-bold mt-2 uppercase">GEM: {avg2.toFixed(2)}</div>
                           </div>
                         </div>
                         <div className="p-2 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-4 text-[8px] font-bold uppercase tracking-widest">
-                          <span className={isHighlighted(match.subHigh?.name || '') ? 'text-green-400 font-black' : 'text-pink-400'}>
-                              Res 1: {match.subHigh?.name || 'N/A'}
-                          </span>
-                          <span className={isHighlighted(match.subLow?.name || '') ? 'text-green-400 font-black' : 'text-pink-400'}>
-                              Res 2: {match.subLow?.name || 'N/A'}
-                          </span>
+                          <span className={isHighlighted(match.subHigh?.name || '') ? 'text-green-400 font-black' : 'text-pink-400'}>Res 1: {match.subHigh?.name || 'N/A'}</span>
+                          <span className={isHighlighted(match.subLow?.name || '') ? 'text-green-400 font-black' : 'text-pink-400'}>Res 2: {match.subLow?.name || 'N/A'}</span>
                         </div>
                       </div>
                     );
@@ -424,14 +368,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden animate-fade-in">
             <table className="w-full text-left table-auto">
               <thead className="bg-gray-900 text-gray-400 text-[9px] uppercase font-black tracking-tighter sm:tracking-widest">
-                <tr>
-                  <th className="px-2 py-4 text-center w-8">#</th>
-                  <th className="px-2 py-4">Deelnemer</th>
-                  <th className="px-1 py-4 text-center w-8">W</th>
-                  <th className="px-1 py-4 text-center w-12">PTN</th>
-                  <th className="px-1 py-4 text-center w-8">DS</th>
-                  <th className="px-1 py-4 text-center w-8">GV</th>
-                </tr>
+                <tr><th className="px-2 py-4 text-center w-8">#</th><th className="px-2 py-4">Deelnemer</th><th className="px-1 py-4 text-center w-8">W</th><th className="px-1 py-4 text-center w-12">PTN</th><th className="px-1 py-4 text-center w-8">DS</th><th className="px-1 py-4 text-center w-8">GV</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
                 {session.standings.map((entry, idx) => (
