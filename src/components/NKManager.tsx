@@ -29,6 +29,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     if (session) localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
   }, [session]);
 
+  // --- CALCULATOR ---
   const possibilities = useMemo(() => {
     const options = [];
     const playersPerMatch = playersPerTeam * 2;
@@ -54,38 +55,55 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return options;
   }, [availableHalls, matchesPerPlayer, playersPerTeam]);
 
+  // --- UITGEBREIDE CO-OP & TEGEN ANALYSE ---
   const coOpData = useMemo(() => {
     if (!session) return [];
-    const pairCounts = new Map<string, number>();
+    const pairCounts = new Map<string, { together: number, against: number }>();
     const participants = players.filter(p => session.standings.some(s => s.playerId === p.id));
+    
+    // Initialiseer alle paren
     for (let i = 0; i < participants.length; i++) {
       for (let j = i + 1; j < participants.length; j++) {
         const key = [participants[i].id, participants[j].id].sort().join('-');
-        pairCounts.set(key, 0);
+        pairCounts.set(key, { together: 0, against: 0 });
       }
     }
+
     session.rounds.forEach(round => {
       round.matches.forEach(match => {
-        const countPairs = (team: Player[]) => {
-          for (let i = 0; i < team.length; i++) {
-            for (let j = i + 1; j < team.length; j++) {
-              const key = [team[i].id, team[j].id].sort().join('-');
-              if (pairCounts.has(key)) pairCounts.set(key, pairCounts.get(key)! + 1);
-            }
+        // Tel wie er SAMEN spelen (Team 1)
+        for (let i = 0; i < match.team1.length; i++) {
+          for (let j = i + 1; j < match.team1.length; j++) {
+            const key = [match.team1[i].id, match.team1[j].id].sort().join('-');
+            if (pairCounts.has(key)) pairCounts.get(key)!.together++;
           }
-        };
-        countPairs(match.team1);
-        countPairs(match.team2);
+        }
+        // Tel wie er SAMEN spelen (Team 2)
+        for (let i = 0; i < match.team2.length; i++) {
+          for (let j = i + 1; j < match.team2.length; j++) {
+            const key = [match.team2[i].id, match.team2[j].id].sort().join('-');
+            if (pairCounts.has(key)) pairCounts.get(key)!.together++;
+          }
+        }
+        // Tel wie er TEGEN elkaar spelen (Team 1 vs Team 2)
+        match.team1.forEach(p1 => {
+          match.team2.forEach(p2 => {
+            const key = [p1.id, p2.id].sort().join('-');
+            if (pairCounts.has(key)) pairCounts.get(key)!.against++;
+          });
+        });
       });
     });
-    return Array.from(pairCounts.entries()).map(([key, count]) => {
+
+    return Array.from(pairCounts.entries()).map(([key, counts]) => {
       const [id1, id2] = key.split('-').map(Number);
       return {
         p1: players.find(p => p.id === id1)?.name || '?',
         p2: players.find(p => p.id === id2)?.name || '?',
-        count
+        together: counts.together,
+        against: counts.against
       };
-    }).sort((a, b) => b.count - a.count || a.p1.localeCompare(b.p1));
+    }).sort((a, b) => b.together - a.together || b.against - a.against || a.p1.localeCompare(b.p1));
   }, [session, players]);
 
   const handleStartTournament = () => {
@@ -278,7 +296,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         )}
 
         {activeTab === 'standings' && (
-          <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden">
+          <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden animate-fade-in">
             <table className="w-full text-left table-auto">
               <thead className="bg-gray-900 text-gray-400 text-[9px] uppercase font-black tracking-tighter sm:tracking-widest">
                 <tr>
@@ -323,16 +341,26 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
               <div className="max-h-[600px] overflow-y-auto">
                 <table className="w-full text-left">
                   <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0">
-                    <tr><th className="px-6 py-4">Speler 1</th><th className="px-6 py-4">Speler 2</th><th className="px-6 py-4 text-center">Samen</th></tr>
+                    <tr>
+                      <th className="px-4 py-4">Speler 1</th>
+                      <th className="px-4 py-4">Speler 2</th>
+                      <th className="px-2 py-4 text-center">Samen</th>
+                      <th className="px-2 py-4 text-center">Tegen</th>
+                    </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
                     {coOpData.filter(d => d.p1.toLowerCase().includes(searchTerm.toLowerCase()) || d.p2.toLowerCase().includes(searchTerm.toLowerCase())).map((pair, i) => (
-                      <tr key={i} className={pair.count > 1 ? 'bg-red-500/5' : pair.count === 0 ? 'opacity-40' : ''}>
-                        <td className="px-6 py-3 text-sm font-bold text-gray-200 uppercase">{pair.p1}</td>
-                        <td className="px-6 py-3 text-sm font-bold text-gray-200 uppercase">{pair.p2}</td>
-                        <td className="px-6 py-3 text-center">
-                          <span className={`px-3 py-1 rounded-full font-black text-xs ${pair.count === 0 ? 'bg-gray-900 text-gray-600' : pair.count > 1 ? 'bg-red-900 text-red-200' : 'bg-green-900 text-green-200'}`}>
-                            {pair.count}x
+                      <tr key={i} className={pair.together > 1 ? 'bg-red-500/5' : (pair.together === 0 && pair.against === 0) ? 'opacity-40' : ''}>
+                        <td className="px-4 py-3 text-[11px] font-bold text-gray-200 uppercase">{pair.p1}</td>
+                        <td className="px-4 py-3 text-[11px] font-bold text-gray-200 uppercase">{pair.p2}</td>
+                        <td className="px-2 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full font-black text-[10px] ${pair.together === 0 ? 'bg-gray-900 text-gray-600' : pair.together > 1 ? 'bg-red-900 text-red-200' : 'bg-green-900 text-green-200'}`}>
+                            {pair.together}x
+                          </span>
+                        </td>
+                        <td className="px-2 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full font-black text-[10px] ${pair.against === 0 ? 'bg-gray-900 text-gray-600' : 'bg-purple-900 text-purple-200'}`}>
+                            {pair.against}x
                           </span>
                         </td>
                       </tr>
