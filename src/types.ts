@@ -85,7 +85,7 @@ export interface SeasonSettings {
 // Nieuwe types voor de NK Module
 export interface NKMatch {
   id: string;
-  hallIndex: number;
+  hallName: string;
   team1: Player[];
   team2: Player[];
   team1Score: number;
@@ -114,7 +114,7 @@ export interface NKStandingsEntry {
 export interface NKSession {
   competitionName: string;
   totalRounds: number;
-  hallsCount: number;
+  hallNames: string[];
   playersPerTeam: number;
   rounds: NKRound[];
   standings: NKStandingsEntry[];
