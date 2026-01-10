@@ -140,7 +140,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-white">
         <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
-        <h2 className="text-3xl font-black italic uppercase text-center">Schema Berekenen...</h2>
+        <h2 className="text-3xl font-black italic uppercase">Schema Berekenen...</h2>
         <p className="text-gray-400 animate-pulse mt-2 text-center px-8 text-sm">Geduld, de computer verdeelt de rustbeurten en teams perfect over de dag.</p>
       </div>
     );
@@ -164,7 +164,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                   <input type="number" value={hallsCount} onChange={(e) => {setHallsCount(Number(e.target.value)); setTargetPlayerCount(null);}} className="w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 font-bold focus:ring-2 ring-amber-500 outline-none" />
                   <div className="grid grid-cols-3 gap-2">
                     {hallNames.map((name, i) => (
-                      <input key={i} type="text" value={name} maxLength={1} onChange={(e) => { const n = [...hallNames]; n[i] = e.target.value.toUpperCase(); setHallNames(n); }} className="bg-gray-700 border-gray-600 rounded text-white text-center p-1 text-xs font-bold uppercase" />
+                      <input key={i} type="text" value={name} maxLength={1} onChange={(e) => { const n = [...hallNames]; n[i] = e.target.value.toUpperCase(); setHallNames(n); }} className="bg-gray-700 border-gray-600 rounded text-white text-center p-1 text-xs font-bold uppercase focus:border-amber-500 outline-none" />
                     ))}
                   </div>
                   <label className="block text-gray-500 text-[10px] font-black uppercase">Wedstrijden p.p.</label>
@@ -208,7 +208,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="space-y-6 pb-20 tracking-tight">
       <style>{`
         @media print {
-          body { background: white !important; }
+          body { background: white !important; padding: 0; }
           .no-print { display: none !important; }
           .print-area { display: block !important; width: 100%; }
           .match-card { border: 2px solid black !important; margin-bottom: 20px; page-break-inside: avoid; padding: 15px; background: white !important; }
@@ -307,6 +307,33 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        
+        {activeTab === 'analysis' && (
+          <div className="space-y-4 no-print animate-fade-in">
+            <div className="bg-gray-900 p-4 rounded-2xl border border-gray-700 shadow-inner">
+              <input type="text" placeholder="Zoek speler..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 text-sm outline-none transition-all focus:ring-2 ring-amber-500" />
+            </div>
+            <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden shadow-2xl">
+              <div className="max-h-[600px] overflow-y-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0 shadow-md">
+                    <tr><th className="px-4 py-4 text-xs">Speler 1</th><th className="px-4 py-4 text-xs">Speler 2</th><th className="px-2 py-4 text-center">Samen</th><th className="px-2 py-4 text-center">Tegen</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {coOpData.filter(d => d.p1.toLowerCase().includes(searchTerm.toLowerCase()) || d.p2.toLowerCase().includes(searchTerm.toLowerCase())).map((pair, i) => (
+                      <tr key={i} className={pair.together > 1 ? 'bg-red-500/5' : (pair.together === 0 && pair.against === 0) ? 'opacity-40' : 'hover:bg-gray-700/30 transition-colors'}>
+                        <td className="px-4 py-3 text-[11px] font-bold text-gray-200 uppercase">{pair.p1}</td>
+                        <td className="px-4 py-3 text-[11px] font-bold text-gray-200 uppercase">{pair.p2}</td>
+                        <td className="px-2 py-3 text-center"><span className={`px-2 py-0.5 rounded-full font-black text-[10px] ${pair.together === 0 ? 'bg-gray-900 text-gray-600' : pair.together > 1 ? 'bg-red-900 text-red-200 shadow-lg' : 'bg-green-900 text-green-200'}`}>{pair.together}x</span></td>
+                        <td className="px-2 py-3 text-center"><span className={`px-2 py-0.5 rounded-full font-black text-[10px] ${pair.against === 0 ? 'bg-gray-900 text-gray-600' : 'bg-purple-900 text-purple-200'}`}>{pair.against}x</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </div>
