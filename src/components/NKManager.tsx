@@ -13,6 +13,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [session, setSession] = useState<NKSession | null>(null);
   const [activeTab, setActiveTab] = useState<'schedule' | 'standings' | 'analysis'>('schedule');
   const [searchTerm, setSearchTerm] = useState('');
+  const [highlightName, setHighlightName] = useState(''); // Nieuwe state voor highlight
   const [isGenerating, setIsGenerating] = useState(false);
   
   // Calculator States
@@ -22,7 +23,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [targetPlayerCount, setTargetPlayerCount] = useState<number | null>(null);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(new Set());
 
-  // 1. DATA LADEN UIT LOCAL STORAGE
   useEffect(() => {
     const saved = localStorage.getItem('bounceball_nk_session');
     if (saved) {
@@ -34,12 +34,16 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     }
   }, []);
 
-  // 2. DATA OPSLAAN IN LOCAL STORAGE BIJ ELKE WIJZIGING
   useEffect(() => {
     if (session) {
       localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
     }
   }, [session]);
+
+  // Helper om te checken of een naam gehighlight moet worden
+  const isHighlighted = (name: string) => {
+    return highlightName && name.toLowerCase() === highlightName.toLowerCase();
+  };
 
   // --- CALCULATOR ---
   const possibilities = useMemo(() => {
@@ -274,6 +278,18 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       <div className="print-area">
         {activeTab === 'schedule' && (
           <div className="space-y-12">
+            {/* HIGHLIGHT INPUT */}
+            <div className="no-print bg-gray-900/50 p-4 rounded-xl border border-gray-700 mb-6 shadow-inner">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 block">Highlight speler op schema</label>
+                <input 
+                    type="text" 
+                    placeholder="Typ een naam om te zoeken..." 
+                    value={highlightName}
+                    onChange={(e) => setHighlightName(e.target.value)}
+                    className="w-full bg-gray-800 border-gray-700 rounded-lg text-white p-2 text-sm focus:ring-2 ring-green-500 outline-none transition-all"
+                />
+            </div>
+
             {session.rounds.map((round, rIdx) => (
               <div key={rIdx} className="space-y-4">
                 <h3 className="round-title text-2xl font-black text-amber-500 uppercase tracking-widest border-b border-gray-700 pb-2 italic">Ronde {round.roundNumber}</h3>
@@ -281,19 +297,26 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                   {round.matches.map((match, mIdx) => {
                     const avg1 = match.team1.reduce((sum, p) => sum + p.rating, 0) / match.team1.length;
                     const avg2 = match.team2.reduce((sum, p) => sum + p.rating, 0) / match.team2.length;
+                    
                     return (
                       <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border transition-all ${match.isPlayed ? 'border-green-500/50 shadow-green-500/5' : 'border-gray-700'} overflow-hidden`}>
                         <div className="bg-gray-700/50 p-3 flex justify-between text-[10px] font-black uppercase tracking-widest">
                           <span>Zaal {match.hallIndex}</span>
                           <div className="flex items-center gap-4">
                               {match.isPlayed && <span className="text-green-500 font-black">✓ GESPEELD</span>}
-                              <span className="text-amber-400 underline">Scheids: {match.referee?.name || 'Geen'}</span>
+                              <span className={`underline ${isHighlighted(match.referee?.name || '') ? 'text-green-400 font-black' : 'text-amber-400'}`}>
+                                Scheids: {match.referee?.name || 'Geen'}
+                              </span>
                           </div>
                         </div>
                         <div className="p-5 flex items-center justify-between gap-4">
                           <div className="flex-1 space-y-1">
                             <div className="text-[10px] text-gray-500 font-bold mb-1">AVG: {avg1.toFixed(2)}</div>
-                            {match.team1.map(p => <div key={p.id} className="text-sm font-bold text-white uppercase">{p.name}</div>)}
+                            {match.team1.map(p => (
+                                <div key={p.id} className={`text-sm uppercase ${isHighlighted(p.name) ? 'text-green-400 font-black scale-105 origin-left' : 'text-white'}`}>
+                                    {p.name}
+                                </div>
+                            ))}
                           </div>
                           <div className="no-print flex flex-col items-center gap-2">
                             <div className="flex items-center gap-2">
@@ -307,11 +330,20 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                           </div>
                           <div className="flex-1 text-right space-y-1">
                             <div className="text-[10px] text-gray-500 font-bold mb-1">AVG: {avg2.toFixed(2)}</div>
-                            {match.team2.map(p => <div key={p.id} className="text-sm font-bold text-white uppercase">{p.name}</div>)}
+                            {match.team2.map(p => (
+                                <div key={p.id} className={`text-sm uppercase ${isHighlighted(p.name) ? 'text-green-400 font-black scale-105 origin-right' : 'text-white'}`}>
+                                    {p.name}
+                                </div>
+                            ))}
                           </div>
                         </div>
-                        <div className="p-2 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-4 text-[8px] font-bold text-gray-500 uppercase tracking-widest">
-                          <span>Res 1: {match.subHigh?.name || 'N/A'}</span><span>Res 2: {match.subLow?.name || 'N/A'}</span>
+                        <div className="p-2 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-4 text-[8px] font-bold uppercase tracking-widest">
+                          <span className={isHighlighted(match.subHigh?.name || '') ? 'text-green-400 font-black' : 'text-gray-500'}>
+                              Res 1: {match.subHigh?.name || 'N/A'}
+                          </span>
+                          <span className={isHighlighted(match.subLow?.name || '') ? 'text-green-400 font-black' : 'text-gray-500'}>
+                              Res 2: {match.subLow?.name || 'N/A'}
+                          </span>
                         </div>
                       </div>
                     );
