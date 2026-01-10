@@ -29,7 +29,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     if (session) localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
   }, [session]);
 
-  // --- CALCULATOR ---
   const possibilities = useMemo(() => {
     const options = [];
     const playersPerMatch = playersPerTeam * 2;
@@ -279,31 +278,35 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         )}
 
         {activeTab === 'standings' && (
-          <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left table-fixed sm:table-auto min-w-[500px]">
-              <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black tracking-widest">
+          <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden">
+            <table className="w-full text-left table-auto">
+              <thead className="bg-gray-900 text-gray-400 text-[9px] uppercase font-black tracking-tighter sm:tracking-widest">
                 <tr>
-                  <th className="px-3 py-4 w-12">#</th>
-                  <th className="px-3 py-4">Deelnemer</th>
-                  <th className="px-2 py-4 text-center w-12">W</th>
-                  <th className="px-2 py-4 text-center w-20">PTN</th>
-                  <th className="px-2 py-4 text-center w-12">DS</th>
-                  <th className="px-2 py-4 text-center w-12">GV</th>
+                  <th className="px-2 py-4 text-center w-8">#</th>
+                  <th className="px-2 py-4">Deelnemer</th>
+                  <th className="px-1 py-4 text-center w-8">W</th>
+                  <th className="px-1 py-4 text-center w-12">PTN</th>
+                  <th className="px-1 py-4 text-center w-8">DS</th>
+                  <th className="px-1 py-4 text-center w-8">GV</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
                 {session.standings.map((entry, idx) => (
                   <tr key={entry.playerId} className={idx < 3 ? 'bg-amber-500/5' : ''}>
-                    <td className="px-3 py-4 font-black text-amber-500 text-lg sm:text-xl italic">{idx + 1}.</td>
-                    <td className="px-3 py-4 font-bold text-white uppercase tracking-tight text-xs sm:text-sm truncate">{entry.playerName}</td>
-                    <td className="px-2 py-4 text-center text-gray-400 font-black">{entry.matchesPlayed}</td>
-                    <td className="px-2 py-4 text-center">
-                      <span className="bg-gray-700 text-amber-400 px-3 py-1 rounded-full font-black text-sm sm:text-lg shadow-inner">{entry.points}</span>
+                    <td className="px-2 py-3 text-center font-black text-amber-500 text-sm">{idx + 1}</td>
+                    <td className="px-2 py-3 font-bold text-white uppercase text-[11px] sm:text-sm truncate max-w-[80px] sm:max-w-none">
+                      {entry.playerName}
                     </td>
-                    <td className={`px-2 py-4 text-center font-bold text-sm ${entry.goalDifference > 0 ? 'text-green-500' : entry.goalDifference < 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                    <td className="px-1 py-3 text-center text-gray-400 text-xs font-black">{entry.matchesPlayed}</td>
+                    <td className="px-1 py-3 text-center">
+                      <span className="bg-gray-700 text-amber-400 px-2 py-0.5 rounded-full font-black text-xs sm:text-sm">
+                        {entry.points}
+                      </span>
+                    </td>
+                    <td className={`px-1 py-3 text-center font-bold text-xs ${entry.goalDifference > 0 ? 'text-green-500' : entry.goalDifference < 0 ? 'text-red-500' : 'text-gray-500'}`}>
                       {entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}
                     </td>
-                    <td className="px-2 py-4 text-center text-gray-400 text-sm">{entry.goalsFor}</td>
+                    <td className="px-1 py-3 text-center text-gray-400 text-xs">{entry.goalsFor}</td>
                   </tr>
                 ))}
               </tbody>
