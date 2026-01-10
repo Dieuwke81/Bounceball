@@ -23,6 +23,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [targetPlayerCount, setTargetPlayerCount] = useState<number | null>(null);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(new Set());
 
+  // Data laden uit LocalStorage
   useEffect(() => {
     const saved = localStorage.getItem('bounceball_nk_session');
     if (saved) {
@@ -34,6 +35,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     }
   }, []);
 
+  // Data opslaan in LocalStorage
   useEffect(() => {
     if (session) {
       localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
@@ -180,7 +182,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       <div className="max-w-5xl mx-auto space-y-6 pb-20">
         <div className="bg-gray-800 rounded-3xl p-8 border border-amber-500/30 shadow-2xl">
           <div className="flex items-center gap-4 mb-8">
-            <div className="p-4 bg-amber-500 rounded-2xl shadow-lg shadow-amber-500/20"><TrophyIcon className="w-10 h-10 text-amber-500" /></div>
+            <div className="p-4 bg-amber-500 rounded-2xl shadow-lg shadow-amber-500/20"><TrophyIcon className="w-8 h-8 text-white" /></div>
             <div>
               <h2 className="text-3xl font-black text-white uppercase italic">NK Calculator</h2>
               <p className="text-amber-500/80 text-xs font-bold uppercase tracking-widest">Stap 1: Bereken je toernooi</p>
@@ -314,15 +316,17 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                         <div className="p-5 flex items-center justify-between gap-4">
                           {/* Team Blauw */}
                           <div className="flex-1 space-y-1">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-[10px] text-blue-400 font-black uppercase tracking-widest">Team Blauw</span>
-                                <span className="text-[10px] text-gray-500 font-bold">AVG: {avg1.toFixed(2)}</span>
+                            <div className="text-[10px] text-blue-400 font-black uppercase tracking-widest whitespace-nowrap mb-1">
+                                Team Blauw
                             </div>
                             {match.team1.map(p => (
                                 <div key={p.id} className={`text-sm uppercase ${isHighlighted(p.name) ? 'text-green-400 font-black scale-105 origin-left' : 'text-white'}`}>
                                     {p.name}
                                 </div>
                             ))}
+                            <div className="text-[10px] text-gray-500 font-bold mt-2">
+                                AVG: {avg1.toFixed(2)}
+                            </div>
                           </div>
 
                           {/* Score Input */}
@@ -339,15 +343,17 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
                           {/* Team Geel */}
                           <div className="flex-1 text-right space-y-1">
-                            <div className="flex justify-between items-center mb-1 flex-row-reverse">
-                                <span className="text-[10px] text-amber-400 font-black uppercase tracking-widest">Team Geel</span>
-                                <span className="text-[10px] text-gray-500 font-bold">AVG: {avg2.toFixed(2)}</span>
+                            <div className="text-[10px] text-amber-400 font-black uppercase tracking-widest whitespace-nowrap mb-1">
+                                Team Geel
                             </div>
                             {match.team2.map(p => (
                                 <div key={p.id} className={`text-sm uppercase ${isHighlighted(p.name) ? 'text-green-400 font-black scale-105 origin-right' : 'text-white'}`}>
                                     {p.name}
                                 </div>
                             ))}
+                            <div className="text-[10px] text-gray-500 font-bold mt-2">
+                                AVG: {avg2.toFixed(2)}
+                            </div>
                           </div>
                         </div>
                         <div className="p-2 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-4 text-[8px] font-bold uppercase tracking-widest">
