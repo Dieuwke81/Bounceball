@@ -16,10 +16,10 @@ export const generateNKSchedule = async (
 
   const togetherHistory = new Map<string, number>(); 
   const againstHistory = new Map<string, number>();  
-  const restTokens = new Map<number, number>();
+  const restTokens = new Map<number, number>(); // Hoe vaak moet je nog rusten?
   const getPairKey = (id1: number, id2: number) => [id1, id2].sort().join('-');
 
-  // Iedereen moet een x aantal keer rusten (Totaal rondes - wedstrijden pp)
+  // Initialiseer rust-tokens
   players.forEach(p => {
     restTokens.set(p.id, totalRounds - matchesPerPlayer);
   });
@@ -36,109 +36,98 @@ export const generateNKSchedule = async (
     let bestResting: Player[] = [];
     let roundFound = false;
 
-    // Startwaarden voor de zoektocht
     let currentBalanceLimit = 0.30;
     let currentHistoryLimit = 3;
+    let failCounter = 0;
 
-    // Blijf zoeken tot de ronde gevuld is
     while (!roundFound) {
+      failCounter++;
       onProgress(`Ronde ${r}: Balans ${currentBalanceLimit.toFixed(2)} | Max herhaling: ${currentHistoryLimit}`);
+      
+      // Browser ademruimte
       await sleep(1);
 
-      // We proberen 100.000 keer per balans-stap
-      const ITERATIONS_PER_STEP = 100000;
-      const CHUNK_SIZE = 1000; // Kleine brokjes werk om browser levend te houden
+      // Doe 20.000 pogingen per balans-stap (sneller dan 100k, maar vaker versoepelen)
+      const ITERATIONS_PER_STEP = 20000;
 
-      for (let i = 0; i < ITERATIONS_PER_STEP; i += CHUNK_SIZE) {
-        if (i % CHUNK_SIZE === 0) await sleep(0);
+      for (let i = 0; i < ITERATIONS_PER_STEP; i++) {
+        // 1. Kies ruster groep op basis van tokens
+        const resting = [...players].sort((a, b) => 
+          (restTokens.get(b.id)! - restTokens.get(a.id)!) || Math.random() - 0.5
+        ).slice(0, numPeopleToRest);
 
-        for (let j = 0; j < CHUNK_SIZE; j++) {
-          // 1. Kies spelers die moeten rusten (wie rust-tokens heeft)
-          const resting = [...players].sort((a, b) => 
-            (restTokens.get(b.id)! - restCounts.get(a.id)!) || Math.random() - 0.5
-          ).slice(0, numPeopleToRest);
+        // Check High/Low mix voor rollen (>=5 en <5)
+        const highRes = resting.filter(p => p.rating >= 5).length;
+        const lowRes = resting.filter(p => p.rating < 5).length;
+        
+        // Eis versoepelen naarmate we langer zoeken
+        const minNeeded = failCounter > 10 ? 0 : hallsInRound; 
+        if (highRes < minNeeded || lowRes < minNeeded) continue;
 
-          // Harde eis: Reserves mix (1x High, 1x Low per zaal)
-          const highRusters = resting.filter(p => p.rating >= 5).length;
-          const lowRusters = resting.filter(p => p.rating < 5).length;
-          
-          if (highRusters < hallsInRound || lowRusters < hallsInRound) {
-              // Als we na heel veel pogingen geen perfecte rust-mix vinden, 
-              // versoepelen we deze eis een heel klein beetje om door te kunnen
-              if (currentBalanceLimit < 0.50) continue; 
-          }
+        const active = players.filter(p => !resting.find(res => res.id === p.id));
+        const shuffledActive = [...active].sort(() => Math.random() - 0.5);
+        
+        let tempMatches: NKMatch[] = [];
+        let valid = true;
 
-          const active = players.filter(p => !resting.find(res => res.id === p.id));
-          const shuffledActive = [...active].sort(() => Math.random() - 0.5);
-          
-          let tempMatches: NKMatch[] = [];
-          let valid = true;
+        for (let h = 0; h < hallsInRound; h++) {
+          const mPlayers = shuffledActive.slice(h * playersPerMatch, (h + 1) * playersPerMatch);
+          const t1 = mPlayers.slice(0, playersPerTeam);
+          const t2 = mPlayers.slice(playersPerTeam);
 
-          for (let h = 0; h < hallsInRound; h++) {
-            const mPlayers = shuffledActive.slice(h * playersPerMatch, (h + 1) * playersPerMatch);
-            const t1 = mPlayers.slice(0, playersPerTeam);
-            const t2 = mPlayers.slice(playersPerTeam);
+          // A. Balans check
+          const avg1 = t1.reduce((s, p) => s + p.rating, 0) / t1.length;
+          const avg2 = t2.reduce((s, p) => s + p.rating, 0) / t2.length;
+          if (Math.abs(avg1 - avg2) > (currentBalanceLimit + 0.001)) { valid = false; break; }
 
-            // A. Balans check
-            const avg1 = t1.reduce((s, p) => s + p.rating, 0) / t1.length;
-            const avg2 = t2.reduce((s, p) => s + p.rating, 0) / t2.length;
-            if (Math.abs(avg1 - avg2) > (currentBalanceLimit + 0.001)) { valid = false; break; }
+          // B. Keeper check (Max 1 per team)
+          const k1 = t1.filter(p => p.isKeeper).length;
+          const k2 = t2.filter(p => p.isKeeper).length;
+          if (k1 > 1 || k2 > 1 || Math.abs(k1 - k2) > 1) { valid = false; break; }
 
-            // B. Keeper check
-            const k1 = t1.filter(p => p.isKeeper).length;
-            const k2 = t2.filter(p => p.isKeeper).length;
-            if (k1 > 1 || k2 > 1 || Math.abs(k1 - k2) > 1) { valid = false; break; }
-
-            // C. Historie check (Samen & Tegen)
-            let historyConflict = false;
-            const checkTeam = (team: Player[]) => {
-              for (let x = 0; x < team.length; x++) {
-                for (let y = x + 1; y < team.length; y++) {
-                  const count = togetherHistory.get(getPairKey(team[x].id, team[y].id)) || 0;
-                  if (count >= currentHistoryLimit) return true;
-                }
+          // C. Historie check
+          let historyConflict = false;
+          const checkTeam = (team: Player[]) => {
+            for (let x = 0; x < team.length; x++) {
+              for (let y = x + 1; y < team.length; y++) {
+                if ((togetherHistory.get(getPairKey(team[x].id, team[y].id)) || 0) >= currentHistoryLimit) return true;
               }
-              return false;
-            };
-            if (checkTeam(t1) || checkTeam(t2)) historyConflict = true;
-            
-            t1.forEach(p1 => {
-              t2.forEach(p2 => {
-                const count = againstHistory.get(getPairKey(p1.id, p2.id)) || 0;
-                if (count >= currentHistoryLimit) historyConflict = true;
-                // Totaal check (Samen + Tegen mag max 6)
-                const tog = togetherHistory.get(getPairKey(p1.id, p2.id)) || 0;
-                if (tog + count >= 6) historyConflict = true;
-              });
+            }
+            return false;
+          };
+          if (checkTeam(t1) || checkTeam(t2)) historyConflict = true;
+          
+          t1.forEach(p1 => {
+            t2.forEach(p2 => {
+              if ((againstHistory.get(getPairKey(p1.id, p2.id)) || 0) >= currentHistoryLimit) historyConflict = true;
+              if (((togetherHistory.get(getPairKey(p1.id, p2.id)) || 0) + (againstHistory.get(getPairKey(p1.id, p2.id)) || 0)) >= 6) historyConflict = true;
             });
+          });
 
-            if (historyConflict) { valid = false; break; }
+          if (historyConflict && failCounter < 30) { valid = false; break; }
 
-            tempMatches.push({
-              id: `r${r}h${h}`, hallName: hallNames[h], team1: t1, team2: t2,
-              team1Score: 0, team2Score: 0, isPlayed: false,
-              referee: players[0], subHigh: players[0], subLow: players[0]
-            });
-          }
-
-          if (valid) {
-            bestRoundMatches = tempMatches;
-            bestResting = resting;
-            roundFound = true;
-            break;
-          }
+          tempMatches.push({
+            id: `r${r}h${h}`, hallName: hallNames[h], team1: t1, team2: t2,
+            team1Score: 0, team2Score: 0, isPlayed: false,
+            referee: players[0], subHigh: players[0], subLow: players[0]
+          });
         }
-        if (roundFound) break;
+
+        if (valid) {
+          bestRoundMatches = tempMatches;
+          bestResting = resting;
+          roundFound = true;
+          break;
+        }
       }
 
-      // Geen match na 100.000? Versoepel de grenzen
+      // Versoepel grenzen als we niets vinden
       if (!roundFound) {
-        currentBalanceLimit += 0.01;
-        // Na elke 5 stapjes balans rekken we de historie op
-        if (Math.round(currentBalanceLimit * 100) % 5 === 0) {
-            currentHistoryLimit++;
-        }
+        currentBalanceLimit += 0.02;
+        if (failCounter % 5 === 0) currentHistoryLimit++;
       }
+      
+      if (failCounter > 100) break; // Absolute noodstop
     }
 
     // Administratie bijwerken
@@ -154,18 +143,12 @@ export const generateNKSchedule = async (
       match.subLow = findRole(rolePool, p => p.rating < 5);
       match.referee = findRole(rolePool, () => true);
 
-      // Sla op in historie
-      const updatePair = (p1: number, p2: number, map: Map<string, number>) => {
-          const key = getPairKey(p1, p2);
-          map.set(key, (map.get(key) || 0) + 1);
-      };
-
       match.team1.forEach(p1 => {
-        match.team1.forEach(p2 => { if(p1.id !== p2.id) updatePair(p1.id, p2.id, togetherHistory); });
-        match.team2.forEach(p2 => { updatePair(p1.id, p2.id, againstHistory); });
+        match.team1.forEach(p2 => { if(p1.id !== p2.id) togetherHistory.set(getPairKey(p1.id, p2.id), (togetherHistory.get(getPairKey(p1.id, p2.id)) || 0) + 1); });
+        match.team2.forEach(p2 => { againstHistory.set(getPairKey(p1.id, p2.id), (againstHistory.get(getPairKey(p1.id, p2.id)) || 0) + 1); });
       });
       match.team2.forEach(p1 => {
-        match.team2.forEach(p2 => { if(p1.id !== p2.id) updatePair(p1.id, p2.id, togetherHistory); });
+        match.team2.forEach(p2 => { if(p1.id !== p2.id) togetherHistory.set(getPairKey(p1.id, p2.id), (togetherHistory.get(getPairKey(p1.id, p2.id)) || 0) + 1); });
       });
       matchesRemaining--;
     });
