@@ -1325,19 +1325,18 @@ const App: React.FC = () => {
               </button>
             </div>
 
-            <div className="mt-6 border-t border-gray-700 pt-6">
+            <p className="text-xs text-gray-500 mt-6 text-center">
+              Klik voor 1x50min op 1 wedstrijd. Voor 8-10 spelers klik op 2 wedstrijden. Voor 16-30 spelers klik op toernooi.
+            </p>
+
+            <div className="mt-8 flex justify-center border-t border-gray-700/50 pt-6">
                <button
                   onClick={() => setCurrentView('nk')}
-                  className="w-full bg-gradient-to-r from-amber-400 to-amber-700 hover:from-amber-500 hover:to-amber-800 text-white font-black py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-3"
+                  className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 hover:from-amber-500 hover:to-amber-700 text-white text-[10px] font-bold py-2 px-6 rounded-lg shadow-md transition-all transform hover:scale-105 uppercase tracking-wider"
                 >
-                  <TrophyIcon className="w-6 h-6" />
-                  NK TOERNOOI MANAGER (MASTER PLANNER)
+                  NK Toernooi Manager
                 </button>
             </div>
-
-            <p className="text-xs text-gray-500 mt-3 text-center">
-              Klik voor 1x50min op 1 wedstrijd. Voor 8-10 spelers klik op 2 wedstrijden. Voor 16-30 spelers klik op toernooi. Gebruik NK voor een volledige toernooidag.
-            </p>
           </div>
 
           {actionInProgress === 'generating' ? (
