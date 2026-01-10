@@ -140,8 +140,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-white">
         <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
-        <h2 className="text-3xl font-black italic uppercase tracking-tighter text-center">Schema Berekenen...</h2>
-        <p className="text-gray-400 animate-pulse mt-2 text-center px-8">Dit duurt een paar seconden. De browser bevriest niet.</p>
+        <h2 className="text-3xl font-black italic uppercase text-center">Schema Berekenen...</h2>
+        <p className="text-gray-400 animate-pulse mt-2 text-center px-8 text-sm">Geduld, de computer verdeelt de rustbeurten en teams perfect over de dag.</p>
       </div>
     );
   }
@@ -160,7 +160,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
             <div className="space-y-6 bg-gray-900/50 p-6 rounded-2xl border border-gray-700">
                <div className="space-y-4">
-                  <label className="block text-gray-500 text-[10px] font-black uppercase tracking-widest">Zalen</label>
+                  <label className="block text-gray-500 text-[10px] font-black uppercase">Zalen</label>
                   <input type="number" value={hallsCount} onChange={(e) => {setHallsCount(Number(e.target.value)); setTargetPlayerCount(null);}} className="w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 font-bold focus:ring-2 ring-amber-500 outline-none" />
                   <div className="grid grid-cols-3 gap-2">
                     {hallNames.map((name, i) => (
@@ -169,14 +169,14 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                   </div>
                   <label className="block text-gray-500 text-[10px] font-black uppercase">Wedstrijden p.p.</label>
                   <input type="number" value={matchesPerPlayer} onChange={(e) => {setMatchesPerPlayer(Number(e.target.value)); setTargetPlayerCount(null);}} className="w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 font-bold" />
-                  <div className="flex gap-2 mt-1">
+                  <div className="flex gap-2">
                       {[4, 5].map(n => <button key={n} onClick={() => {setPlayersPerTeam(n); setTargetPlayerCount(null);}} className={`flex-1 py-3 rounded-xl font-black border-2 ${playersPerTeam === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{n} vs {n}</button>)}
                   </div>
                </div>
             </div>
             <div className="lg:col-span-2">
-               <h3 className="text-white font-bold text-sm uppercase mb-4 tracking-widest">Kies Spelersaantal:</h3>
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+               <h3 className="text-white font-bold text-sm uppercase mb-4 tracking-widest">Geldige Opties:</h3>
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2">
                   {possibilities.map(opt => (
                     <button key={opt.playerCount} onClick={() => {setTargetPlayerCount(opt.playerCount); setSelectedPlayerIds(new Set());}} className={`p-5 rounded-2xl border-2 text-left transition-all ${targetPlayerCount === opt.playerCount ? 'bg-amber-500/20 border-amber-500 shadow-lg' : 'bg-gray-800 border-gray-700'}`}>
                       <span className="text-2xl font-black text-white">{opt.playerCount} Spelers</span>
@@ -189,12 +189,12 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           {targetPlayerCount && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex justify-between items-end border-b border-gray-700 pb-4">
-                <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Selecteer {targetPlayerCount} Spelers ({selectedPlayerIds.size})</h3>
+                <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Selecteer {targetPlayerCount} Deelnemers ({selectedPlayerIds.size})</h3>
                 {selectedPlayerIds.size === targetPlayerCount && <button onClick={handleStartTournament} className="bg-green-600 text-white font-black px-8 py-3 rounded-xl shadow-lg uppercase text-sm">Genereer</button>}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-4 bg-gray-900 rounded-3xl border border-gray-700">
                 {players.map(p => (
-                  <button key={p.id} onClick={() => { const n = new Set(selectedPlayerIds); if (n.has(p.id)) n.delete(p.id); else if (n.size < targetPlayerCount!) n.add(p.id); setSelectedPlayerIds(n); }} className={`p-3 rounded-xl text-xs font-bold border ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500 opacity-60'}`}>{p.name}</button>
+                  <button key={p.id} onClick={() => { const n = new Set(selectedPlayerIds); if (n.has(p.id)) n.delete(p.id); else if (n.size < targetPlayerCount!) n.add(p.id); setSelectedPlayerIds(n); }} className={`p-3 rounded-xl text-xs font-bold border transition-all ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white shadow-inner scale-95' : 'bg-gray-800 border-gray-700 text-gray-500 opacity-60'}`}>{p.name}</button>
                 ))}
               </div>
             </div>
@@ -205,7 +205,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   }
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-20 tracking-tight">
       <style>{`
         @media print {
           body { background: white !important; }
@@ -275,9 +275,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                             <div className="text-[10px] text-gray-500 font-bold mt-2 uppercase tracking-tighter">GEM: {avg2.toFixed(2)}</div>
                           </div>
                         </div>
-                        <div className="p-2 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-4 text-[8px] font-bold uppercase tracking-widest">
-                          <span className={isHighlighted(match.subHigh?.name || '') ? 'text-green-400 font-black' : 'text-pink-400'}>Res 1: {match.subHigh?.name}</span>
-                          <span className={isHighlighted(match.subLow?.name || '') ? 'text-green-400 font-black' : 'text-pink-400'}>Res 2: {match.subLow?.name}</span>
+                        <div className="p-2 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-4 text-[8px] font-bold uppercase tracking-widest text-pink-400">
+                          <span className={isHighlighted(match.subHigh?.name || '') ? 'text-green-400 font-black' : ''}>Res 1: {match.subHigh?.name}</span>
+                          <span className={isHighlighted(match.subLow?.name || '') ? 'text-green-400 font-black' : ''}>Res 2: {match.subLow?.name}</span>
                         </div>
                       </div>
                     );
@@ -298,9 +298,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                 {session.standings.map((entry, idx) => (
                   <tr key={entry.playerId} className={idx < 3 ? 'bg-amber-500/5' : ''}>
                     <td className="px-2 py-3 text-center font-black text-amber-500 text-sm">{idx + 1}</td>
-                    <td className="px-2 py-3 font-bold text-white uppercase text-[11px] truncate max-w-[80px]">{entry.playerName}</td>
+                    <td className="px-2 py-3 font-bold text-white uppercase text-[11px] sm:text-sm truncate max-w-[80px]">{entry.playerName}</td>
                     <td className="px-1 py-3 text-center text-gray-400 text-xs font-black">{entry.matchesPlayed}</td>
-                    <td className="px-1 py-3 text-center"><span className="bg-gray-700 text-amber-400 px-2 py-0.5 rounded-full font-black text-xs shadow-inner">{entry.points}</span></td>
+                    <td className="px-1 py-3 text-center"><span className="bg-gray-700 text-amber-400 px-2 py-0.5 rounded-full font-black text-xs sm:text-sm shadow-inner">{entry.points}</span></td>
                     <td className={`px-1 py-3 text-center font-bold text-xs ${entry.goalDifference > 0 ? 'text-green-500' : entry.goalDifference < 0 ? 'text-red-500' : 'text-gray-500'}`}>{entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}</td>
                     <td className="px-1 py-3 text-center text-gray-400 text-xs">{entry.goalsFor}</td>
                   </tr>
