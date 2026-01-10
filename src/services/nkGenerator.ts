@@ -13,8 +13,8 @@ export const generateNKSchedule = (
   const totalRounds = Math.ceil(totalMatchesNeeded / hallsToUse);
 
   const restCounts = new Map<number, number>();
-  const togetherHistory = new Map<string, number>(); // Geheugen: Samen in team
-  const againstHistory = new Map<string, number>();  // Geheugen: Tegen elkaar
+  const togetherHistory = new Map<string, number>(); 
+  const againstHistory = new Map<string, number>();  
   
   const getPairKey = (id1: number, id2: number) => [id1, id2].sort().join('-');
 
@@ -29,33 +29,52 @@ export const generateNKSchedule = (
     const spotsToFill = hallsThisRound * playersPerMatch;
     const numPeopleToRest = players.length - spotsToFill;
 
-    // A. Bepaal wie deze ronde RUSTEN
+    // 1. Wie rusten er?
     const playersSortedForRest = [...players].sort((a, b) => 
       restCounts.get(a.id)! - restCounts.get(b.id)! || Math.random() - 0.5
     );
-
     const restingThisRound = playersSortedForRest.slice(0, numPeopleToRest);
     const activeThisRound = playersSortedForRest.slice(numPeopleToRest);
     restingThisRound.forEach(p => restCounts.set(p.id, restCounts.get(p.id)! + 1));
 
-    // B. MIRROR-PAIRING (Sorteer op rating en maak duo's)
-    const sortedActive = [...activeThisRound].sort((a, b) => b.rating - a.rating);
+    // 2. DYNAMISCHE PAIRING (Variatie in tegenstanders)
+    const availableActive = [...activeThisRound].sort((a, b) => b.rating - a.rating);
     const pairs: {p1: Player, p2: Player}[] = [];
-    for (let i = 0; i < sortedActive.length; i += 2) {
-      if (sortedActive[i+1]) {
-        pairs.push({ p1: sortedActive[i], p2: sortedActive[i+1] });
-      }
+
+    while (availableActive.length > 0) {
+      const p1 = availableActive.shift()!;
+      // Zoek een partner uit de top 4 van de resterende lijst die de laagste 'tegen' historie heeft
+      // Dit zorgt dat 1 niet altijd tegen 2 speelt, maar soms tegen 3 of 4.
+      const searchWindow = availableActive.slice(0, 4);
+      let bestPartnerIdx = 0;
+      let lowestAgainstScore = Infinity;
+
+      searchWindow.forEach((cand, idx) => {
+        const againstCount = againstHistory.get(getPairKey(p1.id, cand.id)) || 0;
+        const ratingDiff = Math.abs(p1.rating - cand.rating);
+        // Score is combi van historie (zwaar) en rating (licht)
+        const score = (againstCount * 1000) + (ratingDiff * 10);
+        
+        if (score < lowestAgainstScore) {
+          lowestAgainstScore = score;
+          bestPartnerIdx = idx;
+        }
+      });
+
+      const p2 = availableActive.splice(bestPartnerIdx, 1)[0];
+      pairs.push({ p1, p2 });
     }
 
-    // Verdeel duo's over de zalen
+    // 3. Verdeel duo's over de zalen
     const hallMatchesPools: {p1: Player, p2: Player}[][] = Array.from({ length: hallsThisRound }, () => []);
-    pairs.forEach((pair, idx) => {
+    const shuffledPairs = pairs.sort(() => Math.random() - 0.5);
+    shuffledPairs.forEach((pair, idx) => {
       hallMatchesPools[idx % hallsThisRound].push(pair);
     });
 
     const availableForRoles = [...restingThisRound];
 
-    // C. Per zaal de verdeling optimaliseren op Samen én Tegen
+    // 4. Optimaliseer de teams binnen de zaal (0.3 grens + Samen historie)
     hallMatchesPools.forEach((matchPairs, hIdx) => {
       let team1: Player[] = [];
       let team2: Player[] = [];
@@ -65,45 +84,45 @@ export const generateNKSchedule = (
         else { team1.push(pair.p2); team2.push(pair.p1); }
       });
 
-      // Keeper Swap (nooit 2 keepers in 1 team)
+      // Keeper Fix
       const fixKeepers = () => {
         const k1 = team1.filter(p => p.isKeeper);
         const k2 = team2.filter(p => p.isKeeper);
         if (k1.length > 1 || k2.length > 1) {
-            const overflownTeam = k1.length > 1 ? team1 : team2;
-            const otherTeam = k1.length > 1 ? team2 : team1;
-            const kIdx = overflownTeam.findIndex(p => p.isKeeper);
-            const k = overflownTeam[kIdx];
-            const p = otherTeam[kIdx];
-            overflownTeam[kIdx] = p; otherTeam[kIdx] = k;
+            const over = k1.length > 1 ? team1 : team2;
+            const under = k1.length > 1 ? team2 : team1;
+            const idx = over.findIndex(p => p.isKeeper);
+            const pOver = over[idx]; const pUnder = under[idx];
+            over[idx] = pUnder; under[idx] = pOver;
         }
       };
       fixKeepers();
 
-      // OPTIMALISATIE LUS (Probeer 200 combinaties per wedstrijd)
-      for (let attempt = 0; attempt < 200; attempt++) {
-        const pairToFlip = Math.floor(Math.random() * matchPairs.length);
-        const p1 = team1[pairToFlip];
-        const p2 = team2[pairToFlip];
+      // OPTIMALISATIE: Probeer 500 keer paartjes te flippen voor de beste historie
+      for (let attempt = 0; attempt < 500; attempt++) {
+        const pIdx = Math.floor(Math.random() * matchPairs.length);
+        const p1 = team1[pIdx]; const p2 = team2[pIdx];
 
-        const currentPenalty = calculateTotalPenalty(team1, team2, togetherHistory, againstHistory, getPairKey);
+        const curPenalty = calculateTotalPenalty(team1, team2, togetherHistory, againstHistory, getPairKey);
         
-        // Probeer paartje om te draaien
-        team1[pairToFlip] = p2; team2[pairToFlip] = p1;
+        // Flip
+        team1[pIdx] = p2; team2[pIdx] = p1;
         const newPenalty = calculateTotalPenalty(team1, team2, togetherHistory, againstHistory, getPairKey);
         
-        const keeperSafe = team1.filter(x => x.isKeeper).length <= 1 && team2.filter(x => x.isKeeper).length <= 1;
+        const avg1 = team1.reduce((s,x)=>s+x.rating,0)/team1.length;
+        const avg2 = team2.reduce((s,x)=>s+x.rating,0)/team2.length;
+        const balanceOk = Math.abs(avg1 - avg2) <= 0.35; // Iets ruimer voor variatie
+        const keeperOk = team1.filter(x=>x.isKeeper).length <= 1 && team2.filter(x=>x.isKeeper).length <= 1;
 
-        if (newPenalty < currentPenalty && keeperSafe) {
-          // Houden zo, is beter
+        if (newPenalty < curPenalty && balanceOk && keeperOk) {
+          // Houden
         } else {
-          // Terugdraaien
-          team1[pairToFlip] = p1; team2[pairToFlip] = p2;
+          team1[pIdx] = p1; team2[pIdx] = p2; // Terug
         }
       }
 
-      // Update de geschiedenis voor de volgende rondes/zalen
-      // 1. Samen gespeeld
+      // 5. Update alle historie
+      // Samen
       [team1, team2].forEach(team => {
         for (let i = 0; i < team.length; i++) {
           for (let j = i+1; j < team.length; j++) {
@@ -112,10 +131,10 @@ export const generateNKSchedule = (
           }
         }
       });
-      // 2. Tegen elkaar gespeeld
-      team1.forEach(p1 => {
-        team2.forEach(p2 => {
-          const key = getPairKey(p1.id, p2.id);
+      // Tegen
+      team1.forEach(tp1 => {
+        team2.forEach(tp2 => {
+          const key = getPairKey(tp1.id, tp2.id);
           againstHistory.set(key, (againstHistory.get(key) || 0) + 1);
         });
       });
@@ -146,31 +165,31 @@ export const generateNKSchedule = (
   return { competitionName, totalRounds: rounds.length, hallsCount: hallsToUse, playersPerTeam, rounds, standings, isCompleted: false };
 };
 
-// Hulpscherm voor de penalty-berekening (Samen + Tegen)
-const calculateTotalPenalty = (
-  t1: Player[], 
-  t2: Player[], 
-  togHist: Map<string, number>, 
-  agHist: Map<string, number>, 
-  keyFn: any
-) => {
+// EXTREME PENALTY LOGICA
+const calculateTotalPenalty = (t1: Player[], t2: Player[], togHist: Map<string, number>, agHist: Map<string, number>, keyFn: any) => {
   let penalty = 0;
-  
-  // Straf voor teamgenoot herhaling (zwaar gewicht)
+
+  const getWeight = (count: number) => {
+    if (count === 0) return 0;
+    if (count === 1) return 10;
+    if (count === 2) return 500;
+    if (count === 3) return 10000;
+    return 1000000; // Harde muur voor 4 of meer
+  };
+
+  // Samen straf
   [t1, t2].forEach(team => {
     for (let i = 0; i < team.length; i++) {
       for (let j = i+1; j < team.length; j++) {
-        const count = togHist.get(keyFn(team[i].id, team[j].id)) || 0;
-        penalty += (count * count * 1000);
+        penalty += getWeight(togHist.get(keyFn(team[i].id, team[j].id)) || 0);
       }
     }
   });
 
-  // Straf voor tegenstander herhaling (iets lichter gewicht, maar nog steeds belangrijk)
+  // Tegen straf
   t1.forEach(p1 => {
     t2.forEach(p2 => {
-      const count = agHist.get(keyFn(p1.id, p2.id)) || 0;
-      penalty += (count * count * 500);
+      penalty += getWeight(agHist.get(keyFn(p1.id, p2.id)) || 0);
     });
   });
 
