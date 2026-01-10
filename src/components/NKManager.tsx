@@ -17,25 +17,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   
   // Calculator States
-  const [hallsCount, setHallsCount] = useState(3);
-  const [hallNames, setHallNames] = useState<string[]>(['A', 'B', 'C']);
+  const [availableHalls, setAvailableHalls] = useState(3); 
   const [matchesPerPlayer, setMatchesPerPlayer] = useState(8);
   const [playersPerTeam, setPlayersPerTeam] = useState(4);
   const [targetPlayerCount, setTargetPlayerCount] = useState<number | null>(null);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(new Set());
-
-  // Werk hallNames bij als hallsCount verandert
-  useEffect(() => {
-    const names = [...hallNames];
-    if (hallsCount > names.length) {
-      for (let i = names.length; i < hallsCount; i++) {
-        names.push(String.fromCharCode(65 + i)); // Voeg A, B, C toe
-      }
-    } else {
-      names.splice(hallsCount);
-    }
-    setHallNames(names);
-  }, [hallsCount]);
 
   // Data laden uit LocalStorage
   useEffect(() => {
@@ -71,7 +57,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       if (totalSpots % playersPerMatch === 0) {
         const totalMatches = totalSpots / playersPerMatch;
         const maxHallsPossible = Math.floor(n / (playersPerMatch + minRolesPerHall));
-        const actualHallsToUse = Math.min(hallsCount, maxHallsPossible);
+        const actualHallsToUse = Math.min(availableHalls, maxHallsPossible);
 
         if (actualHallsToUse > 0) {
           options.push({
@@ -84,7 +70,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       }
     }
     return options;
-  }, [hallsCount, matchesPerPlayer, playersPerTeam]);
+  }, [availableHalls, matchesPerPlayer, playersPerTeam]);
 
   // --- ANALYSE ---
   const coOpData = useMemo(() => {
@@ -198,25 +184,17 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <div className="flex items-center gap-4 mb-8">
             <div className="p-4 bg-amber-500 rounded-2xl shadow-lg shadow-amber-500/20"><TrophyIcon className="w-8 h-8 text-white" /></div>
             <div>
-              <h2 className="text-3xl font-black text-white uppercase italic">NK Setup</h2>
+              <h2 className="text-3xl font-black text-white uppercase italic">NK Calculator</h2>
               <p className="text-amber-500/80 text-xs font-bold uppercase tracking-widest">Stap 1: Bereken je toernooi</p>
             </div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
             <div className="space-y-6 bg-gray-900/50 p-6 rounded-2xl border border-gray-700">
-               <h3 className="text-white font-bold text-sm uppercase mb-4 border-b border-gray-700 pb-2 tracking-widest">Instellingen</h3>
                <div className="space-y-4">
                   <label className="block">
                     <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Zalen Beschikbaar</span>
-                    <input type="number" value={hallsCount} onChange={(e) => setHallsCount(Number(e.target.value))} className="mt-1 block w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 font-bold focus:ring-2 ring-amber-500 outline-none" />
+                    <input type="number" value={availableHalls} onChange={(e) => setAvailableHalls(Number(e.target.value))} className="mt-1 block w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 font-bold focus:ring-2 ring-amber-500 outline-none" />
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {hallNames.map((name, i) => (
-                      <input key={i} type="text" value={name} onChange={(e) => {
-                        const next = [...hallNames]; next[i] = e.target.value; setHallNames(next);
-                      }} className="bg-gray-700 border-gray-600 rounded text-white text-center p-1 text-xs font-bold uppercase" placeholder={`Zaal ${i+1}`} />
-                    ))}
-                  </div>
                   <label className="block">
                     <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Wedstrijden p.p.</span>
                     <input type="number" value={matchesPerPlayer} onChange={(e) => setMatchesPerPlayer(Number(e.target.value))} className="mt-1 block w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 font-bold focus:ring-2 ring-amber-500 outline-none" />
@@ -296,8 +274,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           ))}
         </div>
         <div className="flex gap-2">
-          <button onClick={() => window.print()} className="bg-gray-700 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest text-white hover:bg-gray-600 transition-colors">Print</button>
-          <button onClick={() => {if(window.confirm("NK wissen?")) {localStorage.removeItem('bounceball_nk_session'); setSession(null);}}} className="bg-red-900/30 text-red-500 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors hover:bg-red-900/50">Reset</button>
+          <button onClick={() => window.print()} className="bg-gray-700 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest">Print</button>
+          <button onClick={() => {if(window.confirm("NK wissen?")) {localStorage.removeItem('bounceball_nk_session'); setSession(null);}}} className="bg-red-900/30 text-red-500 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-widest">Reset</button>
         </div>
       </div>
 
@@ -327,7 +305,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                     return (
                       <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border transition-all ${match.isPlayed ? 'border-green-500/50 shadow-green-500/5' : 'border-gray-700'} overflow-hidden`}>
                         <div className="bg-gray-700/50 p-3 flex justify-between text-[10px] font-black uppercase tracking-widest">
-                          <span>ZAAL {match.hallName}</span>
+                          <span>Zaal {match.hallIndex}</span>
                           <div className="flex items-center gap-4">
                               {match.isPlayed && <span className="text-green-500 font-black">✓ GESPEELD</span>}
                               <span className={`underline ${isHighlighted(match.referee?.name || '') ? 'text-green-400 font-black' : 'text-pink-400'}`}>
@@ -364,7 +342,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                               <input type="number" value={match.team2Score} onChange={(e) => updateScore(rIdx, mIdx, 2, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
                             </div>
                             <button onClick={() => togglePlayed(rIdx, mIdx)} className={`mt-1 text-[8px] font-black px-2 py-1 rounded ${match.isPlayed ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400'}`}>
-                              {match.isPlayed ? 'HERSTEL' : 'BEVESTIG'}
+                              {match.isPlayed ? 'HERSTEL' : 'GESPEELD'}
                             </button>
                           </div>
 
