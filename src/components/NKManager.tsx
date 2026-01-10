@@ -184,7 +184,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <div className="flex items-center gap-4 mb-8">
             <div className="p-4 bg-amber-500 rounded-2xl shadow-lg shadow-amber-500/20"><TrophyIcon className="w-8 h-8 text-white" /></div>
             <div>
-              <h2 className="text-3xl font-black text-white uppercase italic">NK Calculator</h2>
+              <h2 className="text-3xl font-black text-white uppercase italic tracking-tight">NK Master Planner</h2>
               <p className="text-amber-500/80 text-xs font-bold uppercase tracking-widest">Stap 1: Bereken je toernooi</p>
             </div>
           </div>
@@ -308,12 +308,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                           <span>Zaal {match.hallIndex}</span>
                           <div className="flex items-center gap-4">
                               {match.isPlayed && <span className="text-green-500 font-black">✓ GESPEELD</span>}
-                              <span className={`underline ${isHighlighted(match.referee?.name || '') ? 'text-green-400 font-black' : 'text-amber-400'}`}>
+                              <span className={`underline ${isHighlighted(match.referee?.name || '') ? 'text-green-400 font-black' : 'text-pink-400'}`}>
                                 Scheids: {match.referee?.name || 'Geen'}
                               </span>
                           </div>
                         </div>
-                        {/* ✅ AANGEPASTE STRUCTUUR VOOR VERTICALE ALIGNERING */}
                         <div className="p-5 flex items-stretch justify-between gap-4">
                           {/* Team Blauw */}
                           <div className="flex-1 flex flex-col justify-between">
@@ -334,7 +333,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                             </div>
                           </div>
 
-                          {/* Score Input (verticaal gecentreerd blijven) */}
+                          {/* Score Input */}
                           <div className="no-print flex flex-col justify-center items-center gap-2">
                             <div className="flex items-center gap-2">
                               <input type="number" value={match.team1Score} onChange={(e) => updateScore(rIdx, mIdx, 1, parseInt(e.target.value) || 0)} className="w-12 h-12 bg-gray-900 rounded-xl text-center font-black text-xl text-white border-2 border-gray-700 focus:border-amber-500 outline-none" />
