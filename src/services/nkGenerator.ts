@@ -26,21 +26,27 @@ export const generateNKSchedule = async (
   let matchesRemaining = totalMatchesNeeded;
 
   for (let r = 1; r <= totalRounds; r++) {
-    await sleep(5); 
+    // Browser ademruimte om bevriezen te voorkomen
+    await sleep(5);
 
     const hallsThisRoundCount = Math.min(hallNames.length, matchesRemaining);
     const spotsToFill = hallsThisRoundCount * playersPerMatch;
     const numPeopleToRest = players.length - spotsToFill;
 
-    // 1. KIES WIE ER RUSTEN (Harde garantie voor aantal wedstrijden)
+    let bestRoundMatches: NKMatch[] = [];
+    let bestRestingThisRound: Player[] = [];
+    let roundFound = false;
+
+    // 1. KIES RUSTERS (Harde garantie voor aantal wedstrijden)
+    // We sorteren op wie het minst gerust heeft
     const sortedForRest = [...players].sort((a, b) => 
         restCounts.get(a.id)! - restCounts.get(b.id)! || Math.random() - 0.5
     );
     const restingThisRound = sortedForRest.slice(0, numPeopleToRest);
     const activeThisRound = players.filter(p => !restingThisRound.find(res => res.id === p.id));
-    restingThisRound.forEach(p => restCounts.set(p.id, restCounts.get(p.id)! + 1));
 
-    // 2. VERDEEL ACTIEVE SPELERS OVER DE ZALEN (Snake verdeling voor balans)
+    // 2. VERDEEL ACTIEVE SPELERS OVER DE ZALEN
+    // Sorteer even op rating voor een eerste ruwe verdeling (Snake-achtig)
     const activeSorted = [...activeThisRound].sort((a, b) => b.rating - a.rating);
     const hallPools: Player[][] = Array.from({ length: hallsThisRoundCount }, () => []);
     
@@ -55,21 +61,23 @@ export const generateNKSchedule = async (
 
     const roundMatches: NKMatch[] = [];
 
-    // 3. PER ZAAL: BRUTE FORCE VOOR DE BESTE BALANS EN VARIATIE
+    // 3. PER ZAAL: VIND DE BESTE VERDELING
     for (let h = 0; h < hallsThisRoundCount; h++) {
       const matchPool = hallPools[h];
       let bestT1: Player[] = [];
       let bestT2: Player[] = [];
       let lowestPenalty = Infinity;
-      let bestBalanceFound = Infinity;
-      let absoluteBestMatch: {t1: Player[], t2: Player[]} | null = null;
+      
+      // Glijdende schaal voor balans: we beginnen heel streng (0.3)
+      let balanceThreshold = 0.301;
 
       onProgress(`Ronde ${r}: Optimaliseren Zaal ${hallNames[h]}...`);
-      await sleep(1);
-
-      // We doen 100.000 pogingen PER ZAAL
-      for (let attempt = 0; attempt < 100000; attempt++) {
-        if (attempt % 25000 === 0) await sleep(0);
+      
+      // We doen maximaal 50.000 pogingen per zaal
+      for (let attempt = 0; attempt < 50000; attempt++) {
+        if (attempt === 10000) { balanceThreshold = 0.351; await sleep(0); }
+        if (attempt === 25000) { balanceThreshold = 0.451; await sleep(0); }
+        if (attempt === 40000) { balanceThreshold = 0.701; await sleep(0); }
 
         const shuffled = [...matchPool].sort(() => Math.random() - 0.5);
         const t1 = shuffled.slice(0, playersPerTeam);
@@ -84,28 +92,15 @@ export const generateNKSchedule = async (
         const avg2 = t2.reduce((s, p) => s + p.rating, 0) / t2.length;
         const diff = Math.abs(avg1 - avg2);
 
-        // Onthoud de allerbeste balans ooit gevonden voor noodgrepen
-        if (diff < bestBalanceFound) {
-          bestBalanceFound = diff;
-          absoluteBestMatch = { t1: [...t1], t2: [...t2] };
-        }
+        if (diff > balanceThreshold) continue;
 
-        // Als we binnen de 0.3 grens zitten, gaan we kijken naar de variatie-straf
-        if (diff <= 0.301) {
-          const penalty = calculateEnhancedPenalty(t1, t2, togetherHistory, againstHistory, getPairKey);
-          if (penalty < lowestPenalty) {
-            lowestPenalty = penalty;
-            bestT1 = [...t1];
-            bestT2 = [...t2];
-          }
-          if (lowestPenalty === 0) break; // Perfecte match gevonden
+        const penalty = calculateEnhancedPenalty(t1, t2, togetherHistory, againstHistory, getPairKey);
+        if (penalty < lowestPenalty) {
+          lowestPenalty = penalty;
+          bestT1 = [...t1];
+          bestT2 = [...t2];
         }
-      }
-
-      // Als er na 100k pogingen GEEN match was onder de 0.3, pak dan de absolute topper op balans
-      if (bestT1.length === 0 && absoluteBestMatch) {
-        bestT1 = absoluteBestMatch.t1;
-        bestT2 = absoluteBestMatch.t2;
+        if (lowestPenalty === 0) break;
       }
 
       // Update historie
@@ -132,6 +127,7 @@ export const generateNKSchedule = async (
     }
 
     // 4. ROLLEN TOEWIJZEN (Scheids/Reserves)
+    restingThisRound.forEach(p => restCounts.set(p.id, restCounts.get(p.id)! + 1));
     const rolePool = [...restingThisRound];
     const findRole = (pool: Player[], cond: (p: Player) => boolean) => {
         const idx = pool.findIndex(cond);
@@ -174,7 +170,7 @@ const calculateEnhancedPenalty = (t1: Player[], t2: Player[], tog: Map<string, n
     const tC = tog.get(key) || 0;
     const agC = ag.get(key) || 0;
     p += getWeight(agC) / 2;
-    if (tC + agC >= 6) p += 5000000;
+    if (tog + agC >= 6) p += 5000000;
   }));
   return p;
 };
