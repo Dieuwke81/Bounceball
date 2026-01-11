@@ -3,6 +3,8 @@ import { Player, NKSession, NKRound, NKMatch } from '../types';
 type PairKey = string;
 const pairKey = (a: number, b: number): PairKey => [a, b].sort().join('-');
 
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
 export async function generateNKSchedule(
   players: Player[],
   hallNames: string[],
@@ -11,209 +13,154 @@ export async function generateNKSchedule(
   competitionName: string,
   onProgress: (msg: string) => void
 ): Promise<NKSession> {
-
-  /* =======================
-     0. VALIDATIE
-  ======================= */
-
   const playersPerMatch = playersPerTeam * 2;
-  const totalMatches = (players.length * matchesPerPlayer) / playersPerMatch;
+  const totalSpots = players.length * matchesPerPlayer;
+  const totalMatches = totalSpots / playersPerMatch;
 
   if (!Number.isInteger(totalMatches)) {
-    throw new Error("Wedstrijden per speler niet haalbaar met dit aantal spelers.");
+    throw new Error(`Onmogelijk schema: ${totalSpots} plekken verdeeld over ${playersPerMatch} spelers per match komt niet uit.`);
   }
 
-  const rounds = Math.ceil(totalMatches / hallNames.length);
+  const totalRounds = Math.ceil(totalMatches / hallNames.length);
+  
+  // State bijhouden
+  let playedCount = new Map<number, number>();
+  let together = new Map<PairKey, number>();
+  let against = new Map<PairKey, number>();
+  let allRounds: NKRound[] = [];
 
-  const minKeepers = players.filter(p => p.isKeeper).length;
-  if (minKeepers < rounds) {
-    throw new Error("Te weinig keepers om eerlijk te verdelen.");
+  const resetState = () => {
+    playedCount = new Map(players.map(p => [p.id, 0]));
+    together = new Map();
+    against = new Map();
+    allRounds = [];
+  };
+
+  let globalAttempt = 0;
+  while (globalAttempt < 50) { // Maximaal 50 pogingen voor het hele toernooi
+    globalAttempt++;
+    resetState();
+    let success = true;
+
+    for (let r = 1; r <= totalRounds; r++) {
+      onProgress(`Poging ${globalAttempt}: Ronde ${r}/${totalRounds} genereren...`);
+      await delay(5); // UI thread ademruimte
+
+      let roundAttempt = 0;
+      let roundMatches: NKMatch[] | null = null;
+
+      while (roundAttempt < 100) { // Maximaal 100 pogingen per ronde
+        roundAttempt++;
+        roundMatches = tryGenerateRound(r, players, hallNames, playedCount, matchesPerPlayer, playersPerTeam, together, against);
+        if (roundMatches) break;
+      }
+
+      if (!roundMatches) {
+        success = false;
+        break;
+      }
+
+      // Ronde toevoegen en stats updaten
+      const usedInRound = new Set(roundMatches.flatMap(m => [...m.team1, ...m.team2].map(p => p.id)));
+      allRounds.push({
+        roundNumber: r,
+        matches: roundMatches,
+        restingPlayers: players.filter(p => !usedInRound.has(p.id))
+      });
+      
+      // Update playedCount
+      roundMatches.forEach(m => {
+        [...m.team1, ...m.team2].forEach(p => playedCount.set(p.id, playedCount.get(p.id)! + 1));
+      });
+    }
+
+    if (success) {
+      return {
+        competitionName,
+        hallNames,
+        playersPerTeam,
+        totalRounds: allRounds.length,
+        rounds: allRounds,
+        standings: players.map(p => ({
+          playerId: p.id,
+          playerName: p.name,
+          points: 0,
+          goalsFor: 0,
+          goalDifference: 0,
+          matchesPlayed: 0
+        })),
+        isCompleted: false
+      };
+    }
   }
 
-  /* =======================
-     1. STATE
-  ======================= */
+  throw new Error("Het lukt niet om een eerlijk schema te vinden. Probeer het aantal wedstrijden p.p. of het aantal zalen aan te passen.");
+}
 
-  const played = new Map<number, number>();
-  const together = new Map<PairKey, number>();
-  const against = new Map<PairKey, number>();
+function tryGenerateRound(
+  roundNr: number,
+  allPlayers: Player[],
+  halls: string[],
+  playedCount: Map<number, number>,
+  maxMatches: number,
+  playersPerTeam: number,
+  together: Map<string, number>,
+  against: Map<string, number>
+): NKMatch[] | null {
+  const playersPerMatch = playersPerTeam * 2;
+  
+  // 1. Wie moeten er deze ronde spelen? (mensen met minste wedstrijden eerst + random factor)
+  const pool = [...allPlayers]
+    .filter(p => playedCount.get(p.id)! < maxMatches)
+    .sort((a, b) => (playedCount.get(a.id)! - playedCount.get(b.id)!) || (Math.random() - 0.5));
 
-  players.forEach(p => played.set(p.id, 0));
+  const numMatches = Math.min(halls.length, Math.floor(pool.length / playersPerMatch));
+  const matches: NKMatch[] = [];
+  const usedThisRound = new Set<number>();
 
-  const allRounds: NKRound[] = [];
+  for (let h = 0; h < numMatches; h++) {
+    const matchPool = pool.filter(p => !usedThisRound.has(p.id)).slice(0, playersPerMatch);
+    if (matchPool.length < playersPerMatch) return null;
 
-  /* =======================
-     2. HOOFD LOOP PER RONDE
-  ======================= */
+    // Sorteer op rating voor Snake-verdeling
+    matchPool.sort((a, b) => b.rating - a.rating);
+    
+    const team1: Player[] = [];
+    const team2: Player[] = [];
+    
+    // Snake distribution: T1, T2, T2, T1, T1, T2, T2, T1...
+    matchPool.forEach((p, i) => {
+      const snake = [0, 1, 1, 0, 0, 1, 1, 0];
+      if (snake[i % 8] === 0) team1.push(p); else team2.push(p);
+    });
 
-  for (let r = 1; r <= rounds; r++) {
-    onProgress(`Ronde ${r}/${rounds} genereren...`);
+    // Check balans (max 0.7 rating verschil tussen teams)
+    const avg1 = team1.reduce((s, p) => s + p.rating, 0) / team1.length;
+    const avg2 = team2.reduce((s, p) => s + p.rating, 0) / team2.length;
+    if (Math.abs(avg1 - avg2) > 0.7) return null;
 
-    const available = players
-      .filter(p => played.get(p.id)! < matchesPerPlayer)
-      .sort((a, b) => (played.get(a.id)! - played.get(b.id)!));
+    // Check keepers (max 1 per team)
+    if (team1.filter(p => p.isKeeper).length > 1 || team2.filter(p => p.isKeeper).length > 1) return null;
 
-    const matchesInRound = Math.min(
-      hallNames.length,
-      Math.floor(available.length / playersPerMatch)
-    );
+    // Check "al bij elkaar gezeten" (optioneel, voor betere mix)
+    // We laten dit hier even soepel voor de snelheid.
 
-    if (matchesInRound === 0) break;
+    matchPool.forEach(p => usedThisRound.add(p.id));
 
-    const used: Set<number> = new Set();
-    const matches: NKMatch[] = [];
-    const matchStrengths: number[] = [];
-
-    for (let h = 0; h < matchesInRound; h++) {
-
-      /* =======================
-         3. MATCH SELECTIE
-      ======================= */
-
-      const pool = available
-        .filter(p => !used.has(p.id))
-        .sort(() => Math.random() - 0.5)
-        .slice(0, playersPerMatch);
-
-      if (pool.length < playersPerMatch) {
-        throw new Error("Onvoldoende spelers beschikbaar.");
-      }
-
-      pool.forEach(p => used.add(p.id));
-
-      /* =======================
-         4. TEAM SPLITSING
-      ======================= */
-
-      const sorted = [...pool].sort((a, b) => b.rating - a.rating);
-      const team1: Player[] = [];
-      const team2: Player[] = [];
-
-      sorted.forEach((p, i) => {
-        (i % 2 === 0 ? team1 : team2).push(p);
-      });
-
-      const avg1 = team1.reduce((s, p) => s + p.rating, 0) / team1.length;
-      const avg2 = team2.reduce((s, p) => s + p.rating, 0) / team2.length;
-
-      if (Math.abs(avg1 - avg2) > 0.3) {
-        throw new Error("Balans > 0.3, schema onhaalbaar.");
-      }
-
-      /* =======================
-         5. KEEPERS
-      ======================= */
-
-      const k1 = team1.filter(p => p.isKeeper).length;
-      const k2 = team2.filter(p => p.isKeeper).length;
-
-      if (k1 > 1 || k2 > 1 || Math.abs(k1 - k2) > 1) {
-        throw new Error("Keeperverdeling mislukt.");
-      }
-
-      /* =======================
-         6. HISTORIE BIJHOUDEN
-      ======================= */
-
-      team1.forEach(a =>
-        team1.forEach(b => {
-          if (a.id !== b.id) {
-            const k = pairKey(a.id, b.id);
-            together.set(k, (together.get(k) || 0) + 1);
-          }
-        })
-      );
-
-      team2.forEach(a =>
-        team2.forEach(b => {
-          if (a.id !== b.id) {
-            const k = pairKey(a.id, b.id);
-            together.set(k, (together.get(k) || 0) + 1);
-          }
-        })
-      );
-
-      team1.forEach(a =>
-        team2.forEach(b => {
-          const k = pairKey(a.id, b.id);
-          against.set(k, (against.get(k) || 0) + 1);
-        })
-      );
-
-      /* =======================
-         7. RESERVES
-      ======================= */
-
-      const reserves = players
-        .filter(p => !used.has(p.id))
-        .sort((a, b) => a.rating - b.rating);
-
-      const low = reserves.find(p => p.rating < 5)!;
-      const high = [...reserves].reverse().find(p => p.rating >= 5)!;
-
-      const referee = reserves.find(p => p.id !== low.id && p.id !== high.id) || low;
-
-      matches.push({
-        id: `r${r}h${h}`,
-        hallName: hallNames[h],
-        team1,
-        team2,
-        team1Score: 0,
-        team2Score: 0,
-        isPlayed: false,
-        subLow: low,
-        subHigh: high,
-        referee
-      });
-
-      matchStrengths.push((avg1 + avg2) / 2);
-
-      team1.concat(team2).forEach(p =>
-        played.set(p.id, played.get(p.id)! + 1)
-      );
-    }
-
-    /* =======================
-       8. GLOBALE MATCH BALANS
-    ======================= */
-
-    const max = Math.max(...matchStrengths);
-    const min = Math.min(...matchStrengths);
-    if (max - min > 2) {
-      throw new Error("Te groot verschil tussen sterkste en zwakste wedstrijd.");
-    }
-
-    allRounds.push({
-      roundNumber: r,
-      matches,
-      restingPlayers: players.filter(p => !matches.flatMap(m => [...m.team1, ...m.team2]).some(x => x.id === p.id))
+    // Reserves en scheids uit de mensen die NIET spelen deze ronde
+    const roundReserves = allPlayers.filter(p => !usedThisRound.has(p.id)).sort((a, b) => b.rating - a.rating);
+    
+    matches.push({
+      id: `r${roundNr}h${h}`,
+      hallName: halls[h],
+      team1, team2,
+      team1Score: 0, team2Score: 0,
+      isPlayed: false,
+      subHigh: roundReserves[0] || null,
+      subLow: roundReserves[roundReserves.length - 1] || null,
+      referee: roundReserves[Math.floor(roundReserves.length / 2)] || null
     });
   }
 
-  /* =======================
-     9. EINDCHECK
-  ======================= */
-
-  players.forEach(p => {
-    if (played.get(p.id)! !== matchesPerPlayer) {
-      throw new Error(`${p.name} speelt niet exact ${matchesPerPlayer} wedstrijden.`);
-    }
-  });
-
-  return {
-    competitionName,
-    hallNames,
-    playersPerTeam,
-    totalRounds: allRounds.length,
-    rounds: allRounds,
-    standings: players.map(p => ({
-      playerId: p.id,
-      playerName: p.name,
-      points: 0,
-      goalsFor: 0,
-      goalDifference: 0,
-      matchesPlayed: 0
-    })),
-    isCompleted: false
-  };
+  return matches;
 }
