@@ -75,9 +75,10 @@ export async function generateNKSchedule(
         const mInRound = Math.min(hallNames.length, Math.floor(pool.length / playersPerMatch));
         
         try {
+          // 1. Teams indelen
           for (let h = 0; h < mInRound; h++) {
             const mPlayers = pool.filter(p => !usedThisRound.has(p.id)).slice(0, playersPerMatch);
-            if (mPlayers.length < playersPerMatch) throw new Error("Stilstand");
+            if (mPlayers.length < playersPerMatch) throw new Error("Te weinig spelers");
 
             const { split, diff } = getBestTeamSplit(mPlayers, playersPerTeam, target);
             if (!split || diff > target + 0.2) throw new Error("Geen balans");
@@ -90,14 +91,22 @@ export async function generateNKSchedule(
             });
           }
 
-          const resting = players.filter(p => !usedThisRound.has(p.id)).sort((a,b) => a.rating - b.rating);
-          if (resting.length < currentMatches.length * 3) throw new Error("Te weinig officials");
+          // 2. Officials UNIEK toewijzen uit restingPool
+          let restingPool = players
+            .filter(p => !usedThisRound.has(p.id))
+            .sort((a, b) => a.rating - b.rating); // Laag naar hoog
 
-          currentMatches.forEach((m, idx) => {
-            m.subLow = resting[idx * 3];
-            m.subHigh = resting[resting.length - 1 - (idx * 3)];
-            m.referee = resting[idx * 3 + 1];
-          });
+          if (restingPool.length < currentMatches.length * 3) throw new Error("Te weinig officials");
+
+          for (let m of currentMatches) {
+            // Neem de laagste voor SubLow en haal uit de pool
+            m.subLow = restingPool.shift()!;
+            // Neem de hoogste voor SubHigh en haal uit de pool
+            m.subHigh = restingPool.pop()!;
+            // Neem een gemiddelde speler voor Scheids en haal uit de pool
+            const midIdx = Math.floor(restingPool.length / 2);
+            m.referee = restingPool.splice(midIdx, 1)[0];
+          }
 
           roundMatches = currentMatches;
           roundSuccess = true;
@@ -107,7 +116,13 @@ export async function generateNKSchedule(
 
       if (roundSuccess) {
         roundMatches.forEach(m => [...m.team1, ...m.team2].forEach(p => playedCount.set(p.id, playedCount.get(p.id)! + 1)));
-        allRounds.push({ roundNumber: r, matches: roundMatches, restingPlayers: players.filter(p => !roundMatches.some(m => [...m.team1, ...m.team2].some(x => x.id === p.id))) });
+        allRounds.push({ 
+            roundNumber: r, 
+            matches: roundMatches, 
+            restingPlayers: players.filter(p => !roundMatches.some(m => 
+                [...m.team1, ...m.team2, m.subLow, m.subHigh, m.referee].some(x => x?.id === p.id)
+            )) 
+        });
       } else {
         success = false;
         break;
@@ -122,5 +137,5 @@ export async function generateNKSchedule(
       };
     }
   }
-  throw new Error("Geen sluitend schema gevonden binnen 0.3 balans.");
+  throw new Error("Geen sluitend schema gevonden. Controleer of de rust-behoefte wordt gehaald.");
 }
