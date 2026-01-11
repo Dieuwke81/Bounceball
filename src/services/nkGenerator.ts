@@ -2,11 +2,7 @@ import { Player, NKSession, NKRound, NKMatch } from '../types';
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-/**
- * Vindt de allerbeste teamverdeling voor een groep van 8 of 10 spelers.
- * Checkt alle combinaties voor de kleinste rating-verschil.
- */
-function getBestTeamSplit(players: Player[], playersPerTeam: number, maxAllowedDiff: number) {
+function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff: number) {
   let bestDiff = Infinity;
   let bestSplit: { t1: Player[], t2: Player[] } | null = null;
 
@@ -20,9 +16,12 @@ function getBestTeamSplit(players: Player[], playersPerTeam: number, maxAllowedD
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
 
-      if (diff < bestDiff && k1 <= 1 && k2 <= 1) {
-        bestDiff = diff;
-        bestSplit = { t1: [...team1], t2: [...team2] };
+      // Keepers check: verplicht max 1 per team
+      if (k1 <= 1 && k2 <= 1) {
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestSplit = { t1: [...team1], t2: [...team2] };
+        }
       }
       return;
     }
@@ -30,11 +29,12 @@ function getBestTeamSplit(players: Player[], playersPerTeam: number, maxAllowedD
       team1.push(players[i]);
       combine(i + 1, team1);
       team1.pop();
+      if (bestDiff <= targetDiff) return; // Vroegtijdig stoppen als doel bereikt is
     }
   }
 
   combine(0, []);
-  return bestDiff <= maxAllowedDiff ? bestSplit : null;
+  return { split: bestSplit, diff: bestDiff };
 }
 
 export async function generateNKSchedule(
@@ -46,83 +46,86 @@ export async function generateNKSchedule(
   onProgress: (msg: string) => void
 ): Promise<NKSession> {
   const playersPerMatch = playersPerTeam * 2;
-  const totalSpots = players.length * matchesPerPlayer;
-  const totalMatches = totalSpots / playersPerMatch;
-
-  if (!Number.isInteger(totalMatches)) {
-    throw new Error("Berekening klopt niet. Controleer spelersaantal vs wedstrijden p.p.");
-  }
-
+  const totalMatches = (players.length * matchesPerPlayer) / playersPerMatch;
   const totalRounds = Math.ceil(totalMatches / hallNames.length);
+
   let attempt = 0;
-
-  while (attempt < 500) {
+  while (attempt < 100) {
     attempt++;
-    // Start met 0.3, pas na veel pogingen heel langzaam versoepelen
-    const currentMaxDiff = attempt < 150 ? 0.3 : 0.3 + (attempt - 150) * 0.002;
-    
-    onProgress(`Poging ${attempt} (Marge: ${currentMaxDiff.toFixed(2)})...`);
-    if (attempt % 10 === 0) await delay(1);
+    onProgress(`Hoofdpoging ${attempt}...`);
+    await delay(1);
 
-    try {
-      const playedCount = new Map(players.map(p => [p.id, 0]));
-      const allRounds: NKRound[] = [];
+    const playedCount = new Map(players.map(p => [p.id, 0]));
+    const allRounds: NKRound[] = [];
+    let success = true;
 
-      for (let r = 1; r <= totalRounds; r++) {
-        const roundMatches: NKMatch[] = [];
+    for (let r = 1; r <= totalRounds; r++) {
+      let roundMatches: NKMatch[] = [];
+      let roundSuccess = false;
+      
+      // Probeer elke ronde 100 keer te genereren met een schuivende balans-eis
+      for (let rAttempt = 0; rAttempt < 100; rAttempt++) {
+        // In de eerste rondes zijn we streng (0.3), later iets soepeler als het echt niet anders kan
+        const target = r < totalRounds - 1 ? 0.3 : 0.4 + (rAttempt * 0.01);
         const usedThisRound = new Set<number>();
-        
+        const currentMatches: NKMatch[] = [];
+
+        // Kies pool: wie moet het meest spelen?
         const pool = [...players]
           .filter(p => playedCount.get(p.id)! < matchesPerPlayer)
-          .sort((a, b) => (playedCount.get(a.id)! - playedCount.get(b.id)!) || (Math.random() - 0.5));
+          .sort((a, b) => (playedCount.get(b.id)! - playedCount.get(a.id)!) || (Math.random() - 0.5))
+          .reverse();
 
-        const matchesInRound = Math.min(hallNames.length, Math.floor(pool.length / playersPerMatch));
-        if (matchesInRound === 0) break;
+        const mInRound = Math.min(hallNames.length, Math.floor(pool.length / playersPerMatch));
+        
+        try {
+          for (let h = 0; h < mInRound; h++) {
+            const mPlayers = pool.filter(p => !usedThisRound.has(p.id)).slice(0, playersPerMatch);
+            if (mPlayers.length < playersPerMatch) throw new Error("Te weinig spelers");
 
-        // Eerst alle spelende teams bepalen
-        for (let h = 0; h < matchesInRound; h++) {
-          const matchPlayers = pool.filter(p => !usedThisRound.has(p.id)).slice(0, playersPerMatch);
-          const bestSplit = getBestTeamSplit(matchPlayers, playersPerTeam, currentMaxDiff);
-          if (!bestSplit) throw new Error("Balans niet mogelijk");
+            const { split, diff } = getBestTeamSplit(mPlayers, playersPerTeam, target);
+            if (!split || diff > target + 0.2) throw new Error("Geen balans");
 
-          matchPlayers.forEach(p => usedThisRound.add(p.id));
-          roundMatches.push({
-            id: `r${r}h${h}`, hallName: hallNames[h],
-            team1: bestSplit.t1, team2: bestSplit.t2,
-            team1Score: 0, team2Score: 0, isPlayed: false,
-            subLow: null as any, subHigh: null as any, referee: null as any
+            mPlayers.forEach(p => usedThisRound.add(p.id));
+            currentMatches.push({
+              id: `r${r}h${h}`, hallName: hallNames[h],
+              team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false,
+              subLow: null as any, subHigh: null as any, referee: null as any
+            });
+          }
+
+          // Officials toewijzen
+          const resting = players.filter(p => !usedThisRound.has(p.id)).sort((a,b) => a.rating - b.rating);
+          if (resting.length < currentMatches.length * 3) throw new Error("Te weinig officials");
+
+          currentMatches.forEach((m, idx) => {
+            m.subLow = resting[idx * 3];
+            m.subHigh = resting[resting.length - 1 - (idx * 3)];
+            m.referee = resting[idx * 3 + 1];
           });
-        }
 
-        // Nu de verplichte officials toewijzen uit de rustende spelers
-        const restingPool = players
-            .filter(p => !usedThisRound.has(p.id))
-            .sort((a, b) => a.rating - b.rating);
+          roundMatches = currentMatches;
+          roundSuccess = true;
+          break; 
+        } catch (e) { continue; }
+      }
 
-        if (restingPool.length < roundMatches.length * 3) {
-            throw new Error("Te weinig rustende spelers voor verplichte officials.");
-        }
-
-        roundMatches.forEach((match, idx) => {
-            // Pak 3 specifieke mensen uit de rust-pool voor deze match
-            const offset = idx * 3;
-            match.subLow = restingPool[offset];
-            match.subHigh = restingPool[restingPool.length - 1 - offset];
-            match.referee = restingPool[offset + 1];
-        });
-
+      if (roundSuccess) {
         roundMatches.forEach(m => [...m.team1, ...m.team2].forEach(p => playedCount.set(p.id, playedCount.get(p.id)! + 1)));
-        allRounds.push({ roundNumber: r, matches: roundMatches, restingPlayers: players.filter(p => !usedThisRound.has(p.id)) });
+        allRounds.push({ roundNumber: r, matches: roundMatches, restingPlayers: players.filter(p => !roundMatches.some(m => [...m.team1, ...m.team2].some(x => x.id === p.id))) });
+      } else {
+        success = false;
+        break;
       }
+    }
 
-      if (Array.from(playedCount.values()).every(v => v === matchesPerPlayer)) {
-        return {
-          competitionName, hallNames, playersPerTeam, totalRounds: allRounds.length,
-          rounds: allRounds, standings: players.map(p => ({ playerId: p.id, playerName: p.name, points: 0, goalsFor: 0, goalDifference: 0, matchesPlayed: 0 })),
-          isCompleted: false
-        };
-      }
-    } catch (e) { /* retry */ }
+    if (success && Array.from(playedCount.values()).every(v => v === matchesPerPlayer)) {
+      return {
+        competitionName, hallNames, playersPerTeam, totalRounds: allRounds.length,
+        rounds: allRounds, standings: players.map(p => ({ playerId: p.id, playerName: p.name, points: 0, goalsFor: 0, goalDifference: 0, matchesPlayed: 0 })),
+        isCompleted: false
+      };
+    }
   }
-  throw new Error("Geen schema gevonden met marge 0.3. Verlaag het aantal wedstrijden p.p. of voeg spelers toe.");
+  throw new Error("Het lukt niet om een sluitend schema te maken met deze spelers. Probeer 1 speler meer/minder of verlaag het aantal wedstrijden p.p.");
 }
