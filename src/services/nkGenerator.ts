@@ -16,7 +16,6 @@ function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff:
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
 
-      // Keepers check: verplicht max 1 per team
       if (k1 <= 1 && k2 <= 1) {
         if (diff < bestDiff) {
           bestDiff = diff;
@@ -29,7 +28,7 @@ function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff:
       team1.push(players[i]);
       combine(i + 1, team1);
       team1.pop();
-      if (bestDiff <= targetDiff) return; // Vroegtijdig stoppen als doel bereikt is
+      if (bestDiff <= targetDiff) return; 
     }
   }
 
@@ -63,14 +62,11 @@ export async function generateNKSchedule(
       let roundMatches: NKMatch[] = [];
       let roundSuccess = false;
       
-      // Probeer elke ronde 100 keer te genereren met een schuivende balans-eis
       for (let rAttempt = 0; rAttempt < 100; rAttempt++) {
-        // In de eerste rondes zijn we streng (0.3), later iets soepeler als het echt niet anders kan
         const target = r < totalRounds - 1 ? 0.3 : 0.4 + (rAttempt * 0.01);
         const usedThisRound = new Set<number>();
         const currentMatches: NKMatch[] = [];
 
-        // Kies pool: wie moet het meest spelen?
         const pool = [...players]
           .filter(p => playedCount.get(p.id)! < matchesPerPlayer)
           .sort((a, b) => (playedCount.get(b.id)! - playedCount.get(a.id)!) || (Math.random() - 0.5))
@@ -81,7 +77,7 @@ export async function generateNKSchedule(
         try {
           for (let h = 0; h < mInRound; h++) {
             const mPlayers = pool.filter(p => !usedThisRound.has(p.id)).slice(0, playersPerMatch);
-            if (mPlayers.length < playersPerMatch) throw new Error("Te weinig spelers");
+            if (mPlayers.length < playersPerMatch) throw new Error("Stilstand");
 
             const { split, diff } = getBestTeamSplit(mPlayers, playersPerTeam, target);
             if (!split || diff > target + 0.2) throw new Error("Geen balans");
@@ -94,7 +90,6 @@ export async function generateNKSchedule(
             });
           }
 
-          // Officials toewijzen
           const resting = players.filter(p => !usedThisRound.has(p.id)).sort((a,b) => a.rating - b.rating);
           if (resting.length < currentMatches.length * 3) throw new Error("Te weinig officials");
 
@@ -127,5 +122,5 @@ export async function generateNKSchedule(
       };
     }
   }
-  throw new Error("Het lukt niet om een sluitend schema te maken met deze spelers. Probeer 1 speler meer/minder of verlaag het aantal wedstrijden p.p.");
+  throw new Error("Geen sluitend schema gevonden binnen 0.3 balans.");
 }
