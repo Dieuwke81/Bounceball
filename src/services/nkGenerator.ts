@@ -1,21 +1,23 @@
 import { Player, NKSession, NKRound, NKMatch, NKStandingsEntry } from '../types';
 
-export const generateNKSchedule = (
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export const generateNKSchedule = async (
   players: Player[],
-  hallsToUse: number,
+  hallNames: string[],
   matchesPerPlayer: number,
   playersPerTeam: number,
-  competitionName: string
-): NKSession => {
+  competitionName: string,
+  onProgress: (msg: string) => void
+): Promise<NKSession> => {
   const playersPerMatch = playersPerTeam * 2;
   const totalPlayerSpots = players.length * matchesPerPlayer;
   const totalMatchesNeeded = totalPlayerSpots / playersPerMatch;
-  const totalRounds = Math.ceil(totalMatchesNeeded / hallsToUse);
+  const totalRounds = Math.ceil(totalMatchesNeeded / hallNames.length);
 
   const restCounts = new Map<number, number>();
   const togetherHistory = new Map<string, number>(); 
   const againstHistory = new Map<string, number>();  
-  
   const getPairKey = (id1: number, id2: number) => [id1, id2].sort().join('-');
 
   players.forEach(p => restCounts.set(p.id, 0));
@@ -24,169 +26,155 @@ export const generateNKSchedule = (
   let matchesRemaining = totalMatchesNeeded;
 
   for (let r = 1; r <= totalRounds; r++) {
-    const roundMatches: NKMatch[] = [];
-    const hallsThisRound = Math.min(hallsToUse, matchesRemaining);
-    const numActive = hallsThisRound * playersPerMatch;
-    const numRest = players.length - numActive;
+    await sleep(5); 
 
-    // 1. KIES RUSTERS (Harde eis voor aantal wedstrijden)
+    const hallsThisRoundCount = Math.min(hallNames.length, matchesRemaining);
+    const spotsToFill = hallsThisRoundCount * playersPerMatch;
+    const numPeopleToRest = players.length - spotsToFill;
+
+    // 1. KIES WIE ER RUSTEN (Harde garantie voor aantal wedstrijden)
     const sortedForRest = [...players].sort((a, b) => 
-      restCounts.get(a.id)! - restCounts.get(b.id)! || Math.random() - 0.5
+        restCounts.get(a.id)! - restCounts.get(b.id)! || Math.random() - 0.5
     );
-
-    const restingThisRound = sortedForRest.slice(0, numRest);
+    const restingThisRound = sortedForRest.slice(0, numPeopleToRest);
     const activeThisRound = players.filter(p => !restingThisRound.find(res => res.id === p.id));
     restingThisRound.forEach(p => restCounts.set(p.id, restCounts.get(p.id)! + 1));
 
-    // 2. VERDEEL KEEPERS OVER DE ZALEN
-    const activeKeepers = activeThisRound.filter(p => p.isKeeper).sort(() => Math.random() - 0.5);
-    const activeField = activeThisRound.filter(p => !p.isKeeper).sort(() => Math.random() - 0.5);
+    // 2. VERDEEL ACTIEVE SPELERS OVER DE ZALEN (Snake verdeling voor balans)
+    const activeSorted = [...activeThisRound].sort((a, b) => b.rating - a.rating);
+    const hallPools: Player[][] = Array.from({ length: hallsThisRoundCount }, () => []);
     
-    // Maak lege zaal-pools
-    const hallPools: { keepers: Player[], field: Player[] }[] = Array.from({ length: hallsThisRound }, () => ({
-      keepers: [],
-      field: []
-    }));
-
-    // Verdeel keepers eerst eerlijk over de zalen
-    activeKeepers.forEach((keeper, idx) => {
-      hallPools[idx % hallsThisRound].keepers.push(keeper);
+    let hIdx = 0;
+    let dir = 1;
+    activeSorted.forEach(p => {
+        hallPools[hIdx].push(p);
+        hIdx += dir;
+        if (hIdx >= hallsThisRoundCount) { hIdx = hallsThisRoundCount - 1; dir = -1; }
+        else if (hIdx < 0) { hIdx = 0; dir = 1; }
     });
 
-    // Vul aan met veldspelers
-    let fieldIdx = 0;
-    hallPools.forEach(pool => {
-      while (pool.keepers.length + pool.field.length < playersPerMatch && fieldIdx < activeField.length) {
-        pool.field.push(activeField[fieldIdx++]);
-      }
-    });
+    const roundMatches: NKMatch[] = [];
 
-    const availableForRoles = [...restingThisRound];
-
-    // 3. OPTIMALISEER PER ZAAL
-    hallPools.forEach((pool, hIdx) => {
+    // 3. PER ZAAL: BRUTE FORCE VOOR DE BESTE BALANS EN VARIATIE
+    for (let h = 0; h < hallsThisRoundCount; h++) {
+      const matchPool = hallPools[h];
       let bestT1: Player[] = [];
       let bestT2: Player[] = [];
       let lowestPenalty = Infinity;
-      let balanceThreshold = 0.301;
+      let bestBalanceFound = Infinity;
+      let absoluteBestMatch: {t1: Player[], t2: Player[]} | null = null;
 
-      // Verzamel alle spelers van deze zaal
-      const matchPool = [...pool.keepers, ...pool.field];
+      onProgress(`Ronde ${r}: Optimaliseren Zaal ${hallNames[h]}...`);
+      await sleep(1);
 
-      // Optimalisatie loop: probeer 500 verdelingen
-      for (let attempt = 0; attempt < 500; attempt++) {
-        // Versoepel balans heel langzaam bij nood
-        if (attempt > 300) balanceThreshold = 0.401;
+      // We doen 100.000 pogingen PER ZAAL
+      for (let attempt = 0; attempt < 100000; attempt++) {
+        if (attempt % 25000 === 0) await sleep(0);
 
         const shuffled = [...matchPool].sort(() => Math.random() - 0.5);
-        const t1: Player[] = [];
-        const t2: Player[] = [];
+        const t1 = shuffled.slice(0, playersPerTeam);
+        const t2 = shuffled.slice(playersPerTeam);
 
-        // ✅ KEEPER LOGICA: Verdeel keepers strikt over teams
-        const matchKeepers = shuffled.filter(p => p.isKeeper);
-        const matchField = shuffled.filter(p => !p.isKeeper);
+        // Keeper check
+        const k1 = t1.filter(p => p.isKeeper).length;
+        const k2 = t2.filter(p => p.isKeeper).length;
+        if (k1 > 1 || k2 > 1 || Math.abs(k1 - k2) > 1) continue;
 
-        matchKeepers.forEach((k, idx) => {
-          if (t1.filter(p => p.isKeeper).length <= t2.filter(p => p.isKeeper).length) {
-            t1.push(k);
-          } else {
-            t2.push(k);
-          }
-        });
-
-        // Vul aan met veldspelers
-        matchField.forEach(f => {
-          if (t1.length < playersPerTeam) t1.push(f);
-          else t2.push(f);
-        });
-
-        // Check Balans (0.3 grens)
         const avg1 = t1.reduce((s, p) => s + p.rating, 0) / t1.length;
         const avg2 = t2.reduce((s, p) => s + p.rating, 0) / t2.length;
         const diff = Math.abs(avg1 - avg2);
 
-        if (diff > balanceThreshold) continue;
-
-        // Check Keeper limit (Max 1 tenzij noodzakelijk)
-        const k1 = t1.filter(p => p.isKeeper).length;
-        const k2 = t2.filter(p => p.isKeeper).length;
-        // Als er 2 keepers zijn, moet het 1-1 zijn. Als er 3 zijn, 1-2.
-        if (matchKeepers.length === 2 && (k1 !== 1 || k2 !== 1)) continue;
-        if (matchKeepers.length <= 2 && (k1 > 1 || k2 > 1)) continue;
-
-        const penalty = calculateTotalPenalty(t1, t2, togetherHistory, againstHistory, getPairKey);
-        
-        if (penalty < lowestPenalty) {
-          lowestPenalty = penalty;
-          bestT1 = [...t1];
-          bestT2 = [...t2];
+        // Onthoud de allerbeste balans ooit gevonden voor noodgrepen
+        if (diff < bestBalanceFound) {
+          bestBalanceFound = diff;
+          absoluteBestMatch = { t1: [...t1], t2: [...t2] };
         }
-        if (lowestPenalty === 0) break;
+
+        // Als we binnen de 0.3 grens zitten, gaan we kijken naar de variatie-straf
+        if (diff <= 0.301) {
+          const penalty = calculateEnhancedPenalty(t1, t2, togetherHistory, againstHistory, getPairKey);
+          if (penalty < lowestPenalty) {
+            lowestPenalty = penalty;
+            bestT1 = [...t1];
+            bestT2 = [...t2];
+          }
+          if (lowestPenalty === 0) break; // Perfecte match gevonden
+        }
       }
 
-      // Update de geschiedenis voor de volgende rondes/zalen
-      [bestT1, bestT2].forEach(team => {
+      // Als er na 100k pogingen GEEN match was onder de 0.3, pak dan de absolute topper op balans
+      if (bestT1.length === 0 && absoluteBestMatch) {
+        bestT1 = absoluteBestMatch.t1;
+        bestT2 = absoluteBestMatch.t2;
+      }
+
+      // Update historie
+      const updateHist = (team: Player[]) => {
         for (let i = 0; i < team.length; i++) {
-          for (let j = i+1; j < team.length; j++) {
+          for (let j = i + 1; j < team.length; j++) {
             const key = getPairKey(team[i].id, team[j].id);
             togetherHistory.set(key, (togetherHistory.get(key) || 0) + 1);
           }
         }
-      });
-      bestT1.forEach(tp1 => {
-        bestT2.forEach(tp2 => {
-          const key = getPairKey(tp1.id, tp2.id);
-          againstHistory.set(key, (againstHistory.get(key) || 0) + 1);
-        });
-      });
-
-      const findRole = (pool: Player[], cond: (p: Player) => boolean) => {
-        const idx = pool.findIndex(cond);
-        return idx !== -1 ? pool.splice(idx, 1)[0] : pool.shift();
       };
+      updateHist(bestT1); updateHist(bestT2);
+      bestT1.forEach(p1 => bestT2.forEach(p2 => {
+        const key = getPairKey(p1.id, p2.id);
+        againstHistory.set(key, (againstHistory.get(key) || 0) + 1);
+      }));
 
       roundMatches.push({
-        id: `r${r}h${hIdx}`, hallIndex: hIdx + 1, team1: [...bestT1], team2: [...bestT2],
+        id: `r${r}h${h}`, hallName: hallNames[h], team1: bestT1, team2: bestT2,
         team1Score: 0, team2Score: 0, isPlayed: false,
-        referee: findRole(availableForRoles, () => true) as Player,
-        subHigh: findRole(availableForRoles, p => p.rating >= 5) as Player,
-        subLow: findRole(availableForRoles, p => p.rating < 5) as Player
+        referee: players[0], subHigh: players[0], subLow: players[0] 
       });
-
       matchesRemaining--;
+    }
+
+    // 4. ROLLEN TOEWIJZEN (Scheids/Reserves)
+    const rolePool = [...restingThisRound];
+    const findRole = (pool: Player[], cond: (p: Player) => boolean) => {
+        const idx = pool.findIndex(cond);
+        return idx !== -1 ? pool.splice(idx, 1)[0] : pool.shift() || players[0];
+    };
+
+    roundMatches.forEach(match => {
+        match.subHigh = findRole(rolePool, p => p.rating >= 5);
+        match.subLow = findRole(rolePool, p => p.rating < 5);
+        match.referee = findRole(rolePool, () => true);
     });
 
     rounds.push({ roundNumber: r, matches: roundMatches, restingPlayers: restingThisRound });
+    roundNum++;
   }
 
   const standings: NKStandingsEntry[] = players.map(p => ({
     playerId: p.id, playerName: p.name, points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0
   }));
 
-  return { competitionName, totalRounds: rounds.length, hallsCount: hallsToUse, playersPerTeam, rounds, standings, isCompleted: false };
+  return { competitionName, totalRounds: rounds.length, hallNames, playersPerTeam, rounds, standings, isCompleted: false };
 };
 
-const calculateTotalPenalty = (
-  t1: Player[], 
-  t2: Player[], 
-  togHist: Map<string, number>, 
-  agHist: Map<string, number>, 
-  keyFn: (id1: number, id2: number) => string
-) => {
-  let penalty = 0;
+const calculateEnhancedPenalty = (t1: Player[], t2: Player[], tog: Map<string, number>, ag: Map<string, number>, keyFn: any) => {
+  let p = 0;
+  const getWeight = (count: number) => [0, 10, 500, 10000, 2000000][Math.floor(count)] || 2000000;
   [t1, t2].forEach(team => {
     for (let i = 0; i < team.length; i++) {
       for (let j = i+1; j < team.length; j++) {
-        const count = togHist.get(keyFn(team[i].id, team[j].id)) || 0;
-        penalty += (count * count * 1000);
+        const key = keyFn(team[i].id, team[j].id);
+        const tC = tog.get(key) || 0;
+        const agC = ag.get(key) || 0;
+        p += getWeight(tC);
+        if (tC + agC >= 6) p += 5000000;
       }
     }
   });
-  t1.forEach(p1 => {
-    t2.forEach(p2 => {
-      const count = agHist.get(keyFn(p1.id, p2.id)) || 0;
-      penalty += (count * count * 500);
-    });
-  });
-  return penalty;
+  t1.forEach(p1 => t2.forEach(p2 => {
+    const key = keyFn(p1.id, p2.id);
+    const tC = tog.get(key) || 0;
+    const agC = ag.get(key) || 0;
+    p += getWeight(agC) / 2;
+    if (tC + agC >= 6) p += 5000000;
+  }));
+  return p;
 };
