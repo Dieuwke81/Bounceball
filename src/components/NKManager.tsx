@@ -86,55 +86,23 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   };
 
   // --- CALCULATOR ---
-const possibilities = useMemo(() => {
-const possibilities = useMemo(() => {
-  const options: {
-    playerCount: number;
-    hallsToUse: number;
-    totalRounds: number;
-  }[] = [];
-
-  const playersPerMatch = playersPerTeam * 2;
-
-  for (let n = playersPerMatch; n <= players.length; n++) {
-    const totalSpots = n * matchesPerPlayer;
-    if (totalSpots % playersPerMatch !== 0) continue;
-
-    const totalMatches = totalSpots / playersPerMatch;
-
-    for (let halls = 1; halls <= hallsCount; halls++) {
-      if (totalMatches % halls !== 0) continue;
-
-      const rounds = totalMatches / halls;
-      if (rounds < 1 || rounds > 30) continue;
-
-      options.push({
-        playerCount: n,
-        hallsToUse: halls,
-        totalRounds: rounds
-      });
+  const possibilities = useMemo(() => {
+    const options = [];
+    const playersPerMatch = playersPerTeam * 2;
+    for (let n = playersPerMatch; n <= 100; n++) {
+      const totalSpots = n * matchesPerPlayer;
+      if (totalSpots % playersPerMatch === 0) {
+        const totalMatches = totalSpots / playersPerMatch;
+        const maxHallsPossible = Math.floor(n / (playersPerMatch + 3));
+        const actualHallsToUse = Math.min(hallsCount, maxHallsPossible);
+        if (actualHallsToUse > 0) {
+          options.push({ playerCount: n, hallsToUse: actualHallsToUse, totalRounds: Math.ceil(totalMatches / actualHallsToUse) });
+        }
+      }
     }
-  }
+    return options;
+  }, [hallsCount, matchesPerPlayer, playersPerTeam]);
 
-  // Per playerCount alleen de optie met de minste rondes houden
-  const filteredOptions = [];
-  const map = new Map<number, { playerCount: number; hallsToUse: number; totalRounds: number }>();
-
-  for (const opt of options) {
-    const existing = map.get(opt.playerCount);
-    if (!existing || opt.totalRounds < existing.totalRounds) {
-      map.set(opt.playerCount, opt);
-    }
-  }
-
-  map.forEach(opt => filteredOptions.push(opt));
-
-  return filteredOptions.sort(
-    (a, b) =>
-      a.playerCount - b.playerCount ||
-      a.totalRounds - b.totalRounds
-  );
-}, [players.length, hallsCount, matchesPerPlayer, playersPerTeam]);
   // --- ANALYSE ---
   const coOpData = useMemo(() => {
     if (!session) return [];
