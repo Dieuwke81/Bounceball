@@ -36,6 +36,33 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     if (session) localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
   }, [session]);
 
+  const handleParseAttendance = () => {
+    const normalize = (str: string) => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const lines = attendanceText.split('\n');
+    const newSelected = new Set<number>(selectedPlayerIds);
+    
+    lines.forEach(line => {
+      // Verwijder nummers aan het begin (zoals 33. of 33)) en splits op leestekens
+      const cleaned = line.replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].trim();
+      if (!cleaned) return;
+
+      const match = players.find(p => 
+        normalize(p.name).includes(normalize(cleaned)) || 
+        normalize(cleaned).includes(normalize(p.name))
+      );
+      
+      if (match) {
+        if (newSelected.size < (targetPlayerCount || 100)) {
+          newSelected.add(match.id);
+        }
+      }
+    });
+
+    setSelectedPlayerIds(newSelected);
+    setAttendanceText('');
+    alert(`${newSelected.size} spelers geselecteerd.`);
+  };
+
   const possibilities = useMemo(() => {
     const options = [];
     const pPerMatch = playersPerTeam * 2;
@@ -45,7 +72,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         if (h > 0) {
           const totalMatches = (n * matchesPerPlayer) / pPerMatch;
           const resting = n - (h * pPerMatch);
-          const needs = h * 3; // 1 ref + 2 subs per zaal verplicht
+          const needs = h * 3;
           
           let label = "Onmogelijk";
           let color = "border-red-900/50 opacity-40";
@@ -119,14 +146,17 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="bg-gray-900/50 p-6 rounded-2xl border border-gray-700 space-y-4">
-          <label className="block text-[10px] font-black text-gray-500 uppercase">Zalen & Wedstrijden p.p.</label>
-          <input type="number" value={hallsCount} onChange={e => setHallsCount(+e.target.value)} className="w-full bg-gray-800 p-3 rounded-xl text-white font-bold border border-gray-700" />
-          <input type="number" value={matchesPerPlayer} onChange={e => setMatchesPerPlayer(+e.target.value)} className="w-full bg-gray-800 p-3 rounded-xl text-white font-bold border border-gray-700" />
+          <label className="block text-[10px] font-black text-gray-500 uppercase">Configuratie</label>
+          <div className="space-y-2">
+            <span className="text-[10px] text-gray-400 uppercase">Aantal Zalen</span>
+            <input type="number" value={hallsCount} onChange={e => setHallsCount(+e.target.value)} className="w-full bg-gray-800 p-3 rounded-xl text-white font-bold border border-gray-700 focus:ring-2 ring-amber-500 outline-none" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-[10px] text-gray-400 uppercase">Wedstrijden p.p.</span>
+            <input type="number" value={matchesPerPlayer} onChange={e => setMatchesPerPlayer(+e.target.value)} className="w-full bg-gray-800 p-3 rounded-xl text-white font-bold border border-gray-700 focus:ring-2 ring-amber-500 outline-none" />
+          </div>
           <div className="flex gap-2">
             {[4, 5].map(n => <button key={n} onClick={() => setPlayersPerTeam(n)} className={`flex-1 py-3 rounded-xl font-black border-2 ${playersPerTeam === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{n} vs {n}</button>)}
-          </div>
-          <div className="text-[10px] text-amber-500 font-bold bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 italic">
-            Let op: Elke zaal vereist verplicht 1 scheidsrechter en 2 reserves uit de rustende spelers.
           </div>
         </div>
 
@@ -148,17 +178,34 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           </div>
 
           {targetPlayerCount && (
-            <div className="pt-4 space-y-4 animate-fade-in">
-               <textarea value={attendanceText} onChange={e => setAttendanceText(e.target.value)} placeholder="Plak aanwezigheidslijst..." className="w-full h-24 bg-gray-900 border border-gray-700 rounded-xl text-white p-3 text-xs outline-none focus:ring-2 ring-amber-500" />
-               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            <div className="pt-4 space-y-4 animate-fade-in border-t border-gray-700 mt-4">
+               <div className="flex justify-between items-center">
+                  <h4 className="text-white font-black uppercase text-xs">Aanwezigheidslijst verwerken:</h4>
+                  <span className="text-[10px] text-amber-500 font-bold">{selectedPlayerIds.size} / {targetPlayerCount} Geselecteerd</span>
+               </div>
+               <textarea 
+                  value={attendanceText} 
+                  onChange={e => setAttendanceText(e.target.value)} 
+                  placeholder="Plak hier je lijst uit WhatsApp..." 
+                  className="w-full h-24 bg-gray-900 border border-gray-700 rounded-xl text-white p-3 text-xs outline-none focus:ring-2 ring-amber-500" 
+               />
+               <button 
+                  onClick={handleParseAttendance} 
+                  className="w-full py-3 bg-amber-500 text-white font-black rounded-xl uppercase text-xs shadow-lg hover:bg-amber-400 transition-colors"
+               >
+                  Verwerk Lijst
+               </button>
+
+               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-2 bg-gray-900/50 rounded-xl">
                  {players.map(p => (
                    <button key={p.id} onClick={() => {
                      const n = new Set(selectedPlayerIds);
                      if (n.has(p.id)) n.delete(p.id); else if (n.size < targetPlayerCount!) n.add(p.id);
                      setSelectedPlayerIds(n);
-                   }} className={`p-2 rounded-lg text-[10px] font-bold border ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{p.name}</button>
+                   }} className={`p-2 rounded-lg text-[10px] font-bold border transition-all ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{p.name}</button>
                  ))}
                </div>
+
                {selectedPlayerIds.size === targetPlayerCount && (
                  <button onClick={async () => {
                    setIsGenerating(true);
@@ -167,7 +214,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                      const s = await generateNKSchedule(p, hallNames, matchesPerPlayer, playersPerTeam, "NK", setProgressMsg);
                      setSession(s);
                    } catch(e:any) { alert(e.message); } finally { setIsGenerating(false); }
-                 }} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl uppercase hover:bg-green-500 tracking-widest">Genereer 0.3 Balans Schema</button>
+                 }} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl uppercase hover:bg-green-500 tracking-widest mt-4">Genereer 0.3 Balans Schema</button>
                )}
             </div>
           )}
@@ -215,9 +262,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                         </div>
                         <div className="no-print flex flex-col items-center gap-2">
                           <div className="flex items-center gap-2">
-                            <input type="number" value={match.team1Score} onChange={e => { const s = {...session}; s.rounds[rIdx].matches[mIdx].team1Score = +e.target.value; s.rounds[rIdx].matches[mIdx].isPlayed = true; s.standings = calculateStandings(s); setSession({...s}); }} className="w-12 h-12 bg-gray-900 text-white text-center rounded-xl font-black text-xl border-2 border-gray-700" />
+                            <input type="number" value={match.team1Score} onChange={e => { const s = {...session}; s.rounds[rIdx].matches[mIdx].team1Score = +e.target.value; s.rounds[rIdx].matches[mIdx].isPlayed = true; s.standings = calculateStandings(s); setSession({...s}); }} className="w-12 h-12 bg-gray-900 text-white text-center rounded-xl font-black text-xl border-2 border-gray-700 outline-none" />
                             <span className="text-gray-600 font-bold">-</span>
-                            <input type="number" value={match.team2Score} onChange={e => { const s = {...session}; s.rounds[rIdx].matches[mIdx].team2Score = +e.target.value; s.rounds[rIdx].matches[mIdx].isPlayed = true; s.standings = calculateStandings(s); setSession({...s}); }} className="w-12 h-12 bg-gray-900 text-white text-center rounded-xl font-black text-xl border-2 border-gray-700" />
+                            <input type="number" value={match.team2Score} onChange={e => { const s = {...session}; s.rounds[rIdx].matches[mIdx].team2Score = +e.target.value; s.rounds[rIdx].matches[mIdx].isPlayed = true; s.standings = calculateStandings(s); setSession({...s}); }} className="w-12 h-12 bg-gray-900 text-white text-center rounded-xl font-black text-xl border-2 border-gray-700 outline-none" />
                           </div>
                         </div>
                         <div className="flex-1 text-right space-y-1">
@@ -260,7 +307,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
         {activeTab === 'analysis' && (
           <div className="space-y-4 no-print animate-fade-in">
-            <input type="text" placeholder="Zoek speler..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-gray-700 rounded-xl text-white p-4 text-sm" />
+            <input type="text" placeholder="Zoek speler..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-gray-700 rounded-xl text-white p-4 text-sm outline-none focus:ring-2 ring-amber-500" />
             <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden max-h-[600px] overflow-y-auto">
               <table className="w-full text-left">
                 <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0">
