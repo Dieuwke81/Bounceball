@@ -11,143 +11,159 @@ export const generateNKSchedule = async (
   onProgress: (msg: string) => void
 ): Promise<NKSession> => {
   const playersPerMatch = playersPerTeam * 2;
-  const totalPlayerSpots = players.length * matchesPerPlayer;
-  const totalMatchesNeeded = totalPlayerSpots / playersPerMatch;
+  const totalMatchesNeeded = (players.length * matchesPerPlayer) / playersPerMatch;
   const totalRounds = Math.ceil(totalMatchesNeeded / hallNames.length);
 
-  const togetherHistory = new Map<string, number>(); 
-  const againstHistory = new Map<string, number>();  
-  const restTokens = new Map<number, number>(); 
-  const getPairKey = (id1: number, id2: number) => [id1, id2].sort().join('-');
+  // We proberen het hele toernooi maximaal 20 keer opnieuw als het vastloopt
+  for (let tournamentAttempt = 1; tournamentAttempt <= 20; tournamentAttempt++) {
+    const togetherHistory = new Map<string, number>(); 
+    const againstHistory = new Map<string, number>();  
+    const restTokens = new Map<number, number>(); 
+    const restCounts = new Map<number, number>();
+    const getPairKey = (id1: number, id2: number) => [id1, id2].sort().join('-');
 
-  players.forEach(p => {
-    restTokens.set(p.id, totalRounds - matchesPerPlayer);
-  });
+    players.forEach(p => {
+      restTokens.set(p.id, totalRounds - matchesPerPlayer);
+      restCounts.set(p.id, 0);
+    });
 
-  const rounds: NKRound[] = [];
-  let matchesRemaining = totalMatchesNeeded;
+    const rounds: NKRound[] = [];
+    let matchesRemaining = totalMatchesNeeded;
+    let tournamentFailed = false;
 
-  for (let r = 1; r <= totalRounds; r++) {
-    const hallsInRoundCount = Math.min(hallNames.length, matchesRemaining);
-    const spotsToFill = hallsInRoundCount * playersPerMatch;
-    const numPeopleToRest = players.length - spotsToFill;
+    for (let r = 1; r <= totalRounds; r++) {
+      const hallsInRoundCount = Math.min(hallNames.length, matchesRemaining);
+      const spotsToFill = hallsInRoundCount * playersPerMatch;
+      const numPeopleToRest = players.length - spotsToFill;
 
-    let bestRoundMatches: NKMatch[] = [];
-    let bestResting: Player[] = [];
-    let roundFound = false;
+      let bestRoundMatches: NKMatch[] = [];
+      let bestResting: Player[] = [];
+      let roundFound = false;
 
-    let currentBalanceLimit = 0.30;
-    let currentHistoryLimit = 3;
-    let attemptCounter = 0;
+      let currentBalanceLimit = 0.30;
+      let currentHistoryLimit = 3;
+      let attemptCounter = 0;
 
-    while (!roundFound) {
-      attemptCounter++;
-      if (attemptCounter % 1000 === 0) {
-          currentBalanceLimit += 0.05;
-          if (attemptCounter % 3000 === 0) currentHistoryLimit++;
-          onProgress(`Ronde ${r}: Balans naar ${currentBalanceLimit.toFixed(2)}...`);
-          await sleep(0);
-      }
+      while (!roundFound) {
+        attemptCounter++;
+        
+        // Browser feedback en ademruimte
+        if (attemptCounter % 1000 === 0) {
+            onProgress(`Poging ${tournamentAttempt} | Ronde ${r}: Balans zoeken...`);
+            await sleep(0);
+        }
 
-      // 1. Kies ruster groep op basis van tokens
-      const resting = [...players].sort((a, b) => 
-        (restTokens.get(b.id)! - restTokens.get(a.id)!) || Math.random() - 0.5
-      ).slice(0, numPeopleToRest);
+        // Als we écht te lang zoeken in één ronde (>10.000 keer), versoepelen we
+        if (attemptCounter > 3000) currentBalanceLimit = 0.40;
+        if (attemptCounter > 7000) currentBalanceLimit = 0.60;
 
-      // Check of de rustgroep wiskundig de mix KAN leveren
-      const highRusters = resting.filter(p => p.rating >= 5).length;
-      const lowRusters = resting.filter(p => p.rating < 5).length;
-      
-      // We hebben per zaal 1 High en 1 Low reserve nodig
-      if (attemptCounter < 5000 && (highRusters < hallsInRoundCount || lowRusters < hallsInRoundCount)) continue;
+        // Als we na 10.000 keer nog steeds niets hebben, is dit toernooi-pad waarschijnlijk doodlopend
+        if (attemptCounter > 10000) {
+            tournamentFailed = true;
+            break;
+        }
 
-      const active = players.filter(p => !resting.find(res => res.id === p.id));
-      const shuffledActive = [...active].sort(() => Math.random() - 0.5);
-      
-      let tempMatches: NKMatch[] = [];
-      let valid = true;
+        // 1. Kies ruster groep
+        const resting = [...players].sort((a, b) => 
+          (restTokens.get(b.id)! - restTokens.get(a.id)!) || Math.random() - 0.5
+        ).slice(0, numPeopleToRest);
 
-      for (let h = 0; h < hallsInRoundCount; h++) {
-        const mPlayers = shuffledActive.slice(h * playersPerMatch, (h + 1) * playersPerMatch);
-        if (mPlayers.length < playersPerMatch) { valid = false; break; }
+        // Check High/Low mix voor rollen
+        const highRusters = resting.filter(p => p.rating >= 5).length;
+        const lowRusters = resting.filter(p => p.rating < 5).length;
+        if (attemptCounter < 5000 && (highRusters < hallsInRoundCount || lowRusters < hallsInRoundCount)) continue;
 
-        const t1 = mPlayers.slice(0, playersPerTeam);
-        const t2 = mPlayers.slice(playersPerTeam);
-
-        const avg1 = t1.reduce((s, p) => s + p.rating, 0) / t1.length;
-        const avg2 = t2.reduce((s, p) => s + p.rating, 0) / t2.length;
-        if (Math.abs(avg1 - avg2) > currentBalanceLimit) { valid = false; break; }
-
-        const k1 = t1.filter(p => p.isKeeper).length;
-        const k2 = t2.filter(p => p.isKeeper).length;
-        if (k1 > 1 || k2 > 1 || Math.abs(k1 - k2) > 1) { valid = false; break; }
-
-        let historyConflict = false;
-        const checkHistory = (team: Player[]) => {
-            for (let x = 0; x < team.length; x++) {
-                for (let y = x + 1; y < team.length; y++) {
-                    if ((togetherHistory.get(getPairKey(team[x].id, team[y].id)) || 0) >= currentHistoryLimit) return true;
-                }
-            }
-            return false;
-        };
-        if (checkHistory(t1) || checkHistory(t2)) historyConflict = true;
-        if (historyConflict && attemptCounter < 4000) { valid = false; break; }
-
-        tempMatches.push({
-          id: `r${r}h${h}`, hallName: hallNames[h], team1: t1, team2: t2,
-          team1Score: 0, team2Score: 0, isPlayed: false,
-          referee: players[0], subHigh: players[0], subLow: players[0]
+        const active = players.filter(p => !resting.find(res => res.id === p.id));
+        
+        // --- NIEUW: GLOBAL TALENT SPREAD ---
+        // We sorteren de actieve spelers en verdelen ze via Snake over de zalen
+        // Dit voorkomt te sterke en te zwakke wedstrijden.
+        const sortedActive = active.sort((a, b) => b.rating - a.rating);
+        const hallPools: Player[][] = Array.from({ length: hallsInRoundCount }, () => []);
+        let hIdx = 0;
+        let dir = 1;
+        sortedActive.forEach(p => {
+            hallPools[hIdx].push(p);
+            hIdx += dir;
+            if (hIdx >= hallsInRoundCount) { hIdx = hallsInRoundCount - 1; dir = -1; }
+            else if (hIdx < 0) { hIdx = 0; dir = 1; }
         });
+
+        let tempMatches: NKMatch[] = [];
+        let validRound = true;
+
+        for (let h = 0; h < hallsInRoundCount; h++) {
+          const matchPool = hallPools[h];
+          const t1: Player[] = [];
+          const t2: Player[] = [];
+
+          // Mirror pairing binnen de zaal voor de 0.3 balans
+          const poolSorted = [...matchPool].sort((a, b) => b.rating - a.rating);
+          const pairs = [];
+          for (let i = 0; i < poolSorted.length; i += 2) {
+              pairs.push({p1: poolSorted[i], p2: poolSorted[i+1]});
+          }
+
+          pairs.forEach((pair, idx) => {
+              if (idx % 2 === 0) { t1.push(pair.p1); t2.push(pair.p2); }
+              else { t1.push(pair.p2); t2.push(pair.p1); }
+          });
+
+          // Checks
+          const avg1 = t1.reduce((s, p) => s + p.rating, 0) / t1.length;
+          const avg2 = t2.reduce((s, p) => s + p.rating, 0) / t2.length;
+          if (Math.abs(avg1 - avg2) > currentBalanceLimit) { validRound = false; break; }
+
+          const k1 = t1.filter(p => p.isKeeper).length;
+          const k2 = t2.filter(p => p.isKeeper).length;
+          if (k1 > 1 || k2 > 1 || Math.abs(k1 - k2) > 1) { validRound = false; break; }
+
+          // Historie check (Samen & Tegen)
+          let conflict = false;
+          const checkTeam = (team: Player[]) => {
+              for (let x = 0; x < team.length; x++) {
+                  for (let y = x + 1; y < team.length; y++) {
+                      if ((togetherHistory.get(getPairKey(team[x].id, team[y].id)) || 0) >= currentHistoryLimit) return true;
+                  }
+              }
+              return false;
+          };
+          if (checkTeam(t1) || checkTeam(t2)) conflict = true;
+          t1.forEach(p1 => t2.forEach(p2 => {
+              if ((againstHistory.get(getPairKey(p1.id, p2.id)) || 0) >= currentHistoryLimit) conflict = true;
+          }));
+
+          if (conflict && attemptCounter < 8000) { validRound = false; break; }
+
+          tempMatches.push({
+            id: `r${r}h${h}`, hallName: hallNames[h], team1: t1, team2: t2,
+            team1Score: 0, team2Score: 0, isPlayed: false,
+            referee: players[0], subHigh: players[0], subLow: players[0]
+          });
+        }
+
+        if (validRound && tempMatches.length === hallsInRoundCount) {
+          bestRoundMatches = tempMatches;
+          bestResting = resting;
+          roundFound = true;
+        }
       }
 
-      if (valid && tempMatches.length === hallsInRoundCount) {
-        bestRoundMatches = tempMatches;
-        bestResting = resting;
-        roundFound = true;
-      }
-      
-      if (attemptCounter > 15000) break; // Harde stop voor stabiliteit
-    }
+      if (tournamentFailed) break;
 
-    // --- STAP 3: ROLLEN TOEWIJZEN (DE "UITWEG" LOGICA) ---
-    if (roundFound) {
+      // --- ROLLEN TOEWIJZEN ---
       bestResting.forEach(p => restTokens.set(p.id, restTokens.get(p.id)! - 1));
-      
       const rolePool = [...bestResting];
-      
-      // ✅ We wijzen nu eerst de kritieke rollen toe uit de hele rust-pool
       const highReserves = rolePool.filter(p => p.rating >= 5);
       const lowReserves = rolePool.filter(p => p.rating < 5);
-      const chosenSubHigh: Player[] = [];
-      const chosenSubLow: Player[] = [];
-
-      for (let i = 0; i < hallsInRoundCount; i++) {
-          // Pak een High player voor reserve
-          const hIdx = highReserves.length > 0 ? 0 : -1;
-          if (hIdx !== -1) {
-              const p = highReserves.shift()!;
-              chosenSubHigh.push(p);
-              rolePool.splice(rolePool.findIndex(rp => rp.id === p.id), 1);
-          } else {
-              chosenSubHigh.push(rolePool.shift() || players[0]);
-          }
-
-          // Pak een Low player voor reserve
-          const lIdx = lowReserves.length > 0 ? 0 : -1;
-          if (lIdx !== -1) {
-              const p = lowReserves.shift()!;
-              chosenSubLow.push(p);
-              rolePool.splice(rolePool.findIndex(rp => rp.id === p.id), 1);
-          } else {
-              chosenSubLow.push(rolePool.shift() || players[0]);
-          }
-      }
-
-      // De overgebleven mensen in rolePool zijn nu beschikbaar als scheidsrechter
-      bestRoundMatches.forEach((match, idx) => {
-        match.subHigh = chosenSubHigh[idx];
-        match.subLow = chosenSubLow[idx];
+      
+      bestRoundMatches.forEach(match => {
+        match.subHigh = highReserves.length > 0 ? highReserves.shift()! : rolePool.shift()!;
+        if (match.subHigh) rolePool.splice(rolePool.findIndex(p => p.id === match.subHigh.id), 1);
+        
+        match.subLow = lowReserves.length > 0 ? lowReserves.shift()! : rolePool.shift()!;
+        if (match.subLow) rolePool.splice(rolePool.findIndex(p => p.id === match.subLow.id), 1);
+        
         match.referee = rolePool.shift() || players[0];
 
         // Update historie
@@ -167,11 +183,17 @@ export const generateNKSchedule = async (
 
       rounds.push({ roundNumber: r, matches: bestRoundMatches, restingPlayers: bestResting });
     }
+
+    if (!tournamentFailed && rounds.length === totalRounds) {
+        onProgress("Toernooi succesvol gegenereerd!");
+        return { competitionName, totalRounds: rounds.length, hallNames, playersPerTeam, rounds, standings: players.map(p => ({
+            playerId: p.id, playerName: p.name, points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0
+        })), isCompleted: false };
+    }
+    
+    onProgress(`Poging ${tournamentAttempt} mislukt. Herstarten...`);
+    await sleep(100);
   }
 
-  const standings: NKStandingsEntry[] = players.map(p => ({
-    playerId: p.id, playerName: p.name, points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0
-  }));
-
-  return { competitionName, totalRounds: rounds.length, hallNames, playersPerTeam, rounds, standings, isCompleted: false };
+  throw new Error("Het is niet gelukt om een schema te maken. Probeer de eisen iets te versoepelen.");
 };
