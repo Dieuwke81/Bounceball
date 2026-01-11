@@ -87,6 +87,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
   // --- CALCULATOR ---
 const possibilities = useMemo(() => {
+const possibilities = useMemo(() => {
   const options: {
     playerCount: number;
     hallsToUse: number;
@@ -115,7 +116,20 @@ const possibilities = useMemo(() => {
     }
   }
 
-  return options.sort(
+  // Per playerCount alleen de optie met de minste rondes houden
+  const filteredOptions = [];
+  const map = new Map<number, { playerCount: number; hallsToUse: number; totalRounds: number }>();
+
+  for (const opt of options) {
+    const existing = map.get(opt.playerCount);
+    if (!existing || opt.totalRounds < existing.totalRounds) {
+      map.set(opt.playerCount, opt);
+    }
+  }
+
+  map.forEach(opt => filteredOptions.push(opt));
+
+  return filteredOptions.sort(
     (a, b) =>
       a.playerCount - b.playerCount ||
       a.totalRounds - b.totalRounds
