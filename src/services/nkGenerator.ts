@@ -16,7 +16,10 @@ function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff:
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
 
-      if (k1 <= 1 && k2 <= 1) {
+      // VOORWAARDEN: 
+      // 1. Max 1 keeper per team
+      // 2. BEIDE teams moeten minimaal een 4.0 gemiddelde hebben
+      if (k1 <= 1 && k2 <= 1 && avg1 >= 4.0 && avg2 >= 4.0) {
         if (diff < bestDiff) {
           bestDiff = diff;
           bestSplit = { t1: [...team1], t2: [...team2] };
@@ -45,13 +48,20 @@ export async function generateNKSchedule(
   onProgress: (msg: string) => void
 ): Promise<NKSession> {
   const playersPerMatch = playersPerTeam * 2;
+  
+  // 1. Validatie van groepsgemiddelde
+  const groupAvg = players.reduce((s, p) => s + p.rating, 0) / players.length;
+  if (groupAvg < 4.0) {
+    throw new Error(`Onmogelijk: De geselecteerde groep heeft een gemiddelde van ${groupAvg.toFixed(2)}. Om teams van min. 4.0 te maken moet het groepsgemiddelde ook minimaal 4.0 zijn.`);
+  }
+
   const totalMatches = (players.length * matchesPerPlayer) / playersPerMatch;
   const totalRounds = Math.ceil(totalMatches / hallNames.length);
 
   let attempt = 0;
   while (attempt < 100) {
     attempt++;
-    onProgress(`Hoofdpoging ${attempt}...`);
+    onProgress(`Poging ${attempt} (Mikt op balans 0.3 & Gem 4.0+)...`);
     await delay(1);
 
     const playedCount = new Map(players.map(p => [p.id, 0]));
@@ -75,13 +85,12 @@ export async function generateNKSchedule(
         const mInRound = Math.min(hallNames.length, Math.floor(pool.length / playersPerMatch));
         
         try {
-          // 1. Teams indelen
           for (let h = 0; h < mInRound; h++) {
             const mPlayers = pool.filter(p => !usedThisRound.has(p.id)).slice(0, playersPerMatch);
-            if (mPlayers.length < playersPerMatch) throw new Error("Te weinig spelers");
+            if (mPlayers.length < playersPerMatch) throw new Error("Pool leeg");
 
             const { split, diff } = getBestTeamSplit(mPlayers, playersPerTeam, target);
-            if (!split || diff > target + 0.2) throw new Error("Geen balans");
+            if (!split) throw new Error("Geen balans of gem < 4.0");
 
             mPlayers.forEach(p => usedThisRound.add(p.id));
             currentMatches.push({
@@ -91,19 +100,12 @@ export async function generateNKSchedule(
             });
           }
 
-          // 2. Officials UNIEK toewijzen uit restingPool
-          let restingPool = players
-            .filter(p => !usedThisRound.has(p.id))
-            .sort((a, b) => a.rating - b.rating); // Laag naar hoog
-
+          let restingPool = players.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
           if (restingPool.length < currentMatches.length * 3) throw new Error("Te weinig officials");
 
           for (let m of currentMatches) {
-            // Neem de laagste voor SubLow en haal uit de pool
             m.subLow = restingPool.shift()!;
-            // Neem de hoogste voor SubHigh en haal uit de pool
             m.subHigh = restingPool.pop()!;
-            // Neem een gemiddelde speler voor Scheids en haal uit de pool
             const midIdx = Math.floor(restingPool.length / 2);
             m.referee = restingPool.splice(midIdx, 1)[0];
           }
@@ -137,5 +139,5 @@ export async function generateNKSchedule(
       };
     }
   }
-  throw new Error("Geen sluitend schema gevonden. Controleer of de rust-behoefte wordt gehaald.");
+  throw new Error("Het lukt niet om een schema te maken waarbij elk team minimaal 4.0 gemiddeld is. Selecteer sterkere spelers of verlaag het aantal wedstrijden.");
 }
