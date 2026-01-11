@@ -17,6 +17,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   
+  // Setup States
   const [hallsCount, setHallsCount] = useState(3);
   const [hallNames, setHallNames] = useState<string[]>(['A', 'B', 'C']);
   const [matchesPerPlayer, setMatchesPerPlayer] = useState(8);
@@ -25,31 +26,49 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(new Set());
   const [attendanceText, setAttendanceText] = useState('');
 
+  // Werk hallNames bij als hallsCount verandert
   useEffect(() => {
     const names = [...hallNames];
     if (hallsCount > names.length) {
-      for (let i = names.length; i < hallsCount; i++) names.push(String.fromCharCode(65 + i)); 
-    } else names.splice(hallsCount);
+      for (let i = names.length; i < hallsCount; i++) {
+        names.push(String.fromCharCode(65 + i)); 
+      }
+    } else {
+      names.splice(hallsCount);
+    }
     setHallNames(names);
   }, [hallsCount]);
 
+  // Data laden uit LocalStorage
   useEffect(() => {
     const saved = localStorage.getItem('bounceball_nk_session');
-    if (saved) { try { setSession(JSON.parse(saved)); } catch (e) { console.error(e); } }
+    if (saved) {
+      try {
+        setSession(JSON.parse(saved));
+      } catch (e) {
+        console.error("Fout bij laden van NK sessie", e);
+      }
+    }
   }, []);
 
+  // Data opslaan in LocalStorage
   useEffect(() => {
-    if (session) localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
+    if (session) {
+      localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
+    }
   }, [session]);
 
-  const isHighlighted = (name: string) => highlightName && name.toLowerCase() === highlightName.toLowerCase();
+  const isHighlighted = (name: string) => {
+    return highlightName && name.toLowerCase() === highlightName.toLowerCase();
+  };
 
+  // --- ATTENDANCE PARSER ---
   const handleParseAttendance = () => {
     const normalize = (str: string) => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
     const lines = attendanceText.split('\n');
     const newSelected = new Set<number>();
-    
     const playerLookup = new Map<string, Player>();
+    
     players.forEach(p => {
       playerLookup.set(normalize(p.name), p);
       playerLookup.set(normalize(p.name.split(' ')[0]), p);
@@ -63,9 +82,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
     setSelectedPlayerIds(newSelected);
     setAttendanceText('');
-    alert(`${newSelected.size} spelers geselecteerd uit lijst.`);
+    alert(`${newSelected.size} spelers geselecteerd.`);
   };
 
+  // --- CALCULATOR ---
   const possibilities = useMemo(() => {
     const options = [];
     const playersPerMatch = playersPerTeam * 2;
@@ -83,22 +103,60 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return options;
   }, [hallsCount, matchesPerPlayer, playersPerTeam]);
 
+  // --- ANALYSE ---
+  const coOpData = useMemo(() => {
+    if (!session) return [];
+    const pairCounts = new Map<string, { together: number, against: number }>();
+    const participants = players.filter(p => session.standings.some(s => s.playerId === p.id));
+    for (let i = 0; i < participants.length; i++) {
+      for (let j = i + 1; j < participants.length; j++) {
+        const key = [participants[i].id, participants[j].id].sort().join('-');
+        pairCounts.set(key, { together: 0, against: 0 });
+      }
+    }
+    session.rounds.forEach(round => {
+      round.matches.forEach(match => {
+        const countT = (team: Player[]) => {
+          for (let i = 0; i < team.length; i++) {
+            for (let j = i + 1; j < team.length; j++) {
+              const key = [team[i].id, team[j].id].sort().join('-');
+              if (pairCounts.has(key)) pairCounts.get(key)!.together++;
+            }
+          }
+        };
+        countT(match.team1); countT(match.team2);
+        match.team1.forEach(p1 => match.team2.forEach(p2 => {
+          const key = [p1.id, p2.id].sort().join('-');
+          if (pairCounts.has(key)) pairCounts.get(key)!.against++;
+        }));
+      });
+    });
+    return Array.from(pairCounts.entries()).map(([key, counts]) => ({
+      p1: players.find(p => p.id === Number(key.split('-')[0]))?.name || '?',
+      p2: players.find(p => p.id === Number(key.split('-')[1]))?.name || '?',
+      together: counts.together, against: counts.against
+    })).sort((a, b) => b.together - a.together || b.against - a.against);
+  }, [session, players]);
+
+  // --- ACTIES ---
   const handleStartTournament = async () => {
     const chosen = possibilities.find(p => p.playerCount === targetPlayerCount);
     if (!chosen) return;
-    if (selectedPlayerIds.size !== targetPlayerCount) { alert(`Selecteer exact ${targetPlayerCount} spelers.`); return; }
-    
+    if (selectedPlayerIds.size !== targetPlayerCount) {
+      alert(`Selecteer exact ${targetPlayerCount} spelers.`);
+      return;
+    }
     setIsGenerating(true);
     setProgressMsg("Starten...");
     try {
       const participants = players.filter(p => selectedPlayerIds.has(p.id));
       const newSession = await generateNKSchedule(
-        participants, 
-        hallNames.slice(0, chosen.hallsToUse), 
-        matchesPerPlayer, 
-        playersPerTeam, 
-        "NK Schema",
-        (msg) => setProgressMsg(msg)
+          participants, 
+          hallNames.slice(0, chosen.hallsToUse), 
+          matchesPerPlayer, 
+          playersPerTeam, 
+          "NK Schema",
+          (msg) => setProgressMsg(msg)
       );
       setSession(newSession);
     } catch (error) {
@@ -140,14 +198,13 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     setSession(newSession);
   };
 
+  // --- RENDER ---
   if (isGenerating) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-white">
         <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
         <h2 className="text-3xl font-black italic uppercase">NK Planner bezig...</h2>
-        <div className="mt-4 bg-gray-900 border border-amber-500/30 px-6 py-3 rounded-2xl shadow-xl">
-            <p className="text-amber-500 font-mono text-sm">{progressMsg}</p>
-        </div>
+        <div className="mt-4 bg-gray-900 border border-amber-500/30 px-6 py-3 rounded-2xl shadow-xl text-amber-500 font-mono text-sm">{progressMsg}</div>
       </div>
     );
   }
@@ -159,8 +216,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <div className="flex items-center gap-4 mb-8">
             <div className="p-4 bg-amber-500 rounded-2xl shadow-lg shadow-amber-500/20"><TrophyIcon className="w-8 h-8 text-white" /></div>
             <div>
-              <h2 className="text-3xl font-black text-white uppercase italic">NK Setup</h2>
-              <p className="text-amber-500/80 text-xs font-bold uppercase tracking-widest">Plan de hele dag</p>
+              <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">NK Setup</h2>
+              <p className="text-amber-500/80 text-xs font-bold uppercase">Maak een perfect schema</p>
             </div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
@@ -195,10 +252,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           {targetPlayerCount && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-gray-700 pb-4">
-                <div>
-                    <h3 className="text-xl font-black text-white uppercase italic">Selecteer {targetPlayerCount} Deelnemers</h3>
-                    <p className={`text-sm font-bold ${selectedPlayerIds.size === targetPlayerCount ? 'text-green-500' : 'text-amber-500'}`}>{selectedPlayerIds.size} geselecteerd</p>
-                </div>
+                <h3 className="text-xl font-black text-white uppercase italic">Selecteer {targetPlayerCount} Deelnemers ({selectedPlayerIds.size})</h3>
                 {selectedPlayerIds.size === targetPlayerCount && <button onClick={handleStartTournament} className="bg-green-600 text-white font-black px-8 py-3 rounded-xl shadow-lg uppercase text-sm">Genereer</button>}
               </div>
 
@@ -207,9 +261,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                   value={attendanceText}
                   onChange={(e) => setAttendanceText(e.target.value)}
                   placeholder="Plak hier de aanwezigheidslijst..."
-                  className="w-full h-24 bg-gray-800 border-gray-700 rounded-xl text-white p-3 text-xs outline-none"
+                  className="w-full h-24 bg-gray-800 border-gray-700 rounded-xl text-white p-3 text-xs outline-none focus:ring-2 ring-amber-500"
                 />
-                <button onClick={handleParseAttendance} className="mt-2 w-full bg-gray-700 text-white text-[10px] font-black py-2 rounded-lg uppercase">Verwerk Lijst</button>
+                <button onClick={handleParseAttendance} className="mt-2 w-full bg-gray-700 text-white text-[10px] font-black py-2 rounded-lg uppercase tracking-widest transition-colors hover:bg-gray-600">Verwerk Lijst</button>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-4 bg-gray-900 rounded-3xl border border-gray-700">
@@ -228,7 +282,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="space-y-6 pb-20 tracking-tight">
       <style>{`
         @media print {
-          body { background: white !important; }
+          body { background: white !important; padding: 0; }
           .no-print { display: none !important; }
           .print-area { display: block !important; width: 100%; }
           .match-card { border: 2px solid black !important; margin-bottom: 20px; page-break-inside: avoid; padding: 15px; background: white !important; }
@@ -311,7 +365,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         {activeTab === 'standings' && (
           <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden animate-fade-in">
             <table className="w-full text-left table-auto">
-              <thead className="bg-gray-900 text-gray-400 text-[9px] uppercase font-black tracking-tighter">
+              <thead className="bg-gray-900 text-gray-400 text-[9px] uppercase font-black tracking-tighter sm:tracking-widest">
                 <tr><th className="px-2 py-4 text-center w-8 text-white text-xs">#</th><th className="px-2 py-4 text-white text-xs">Deelnemer</th><th className="px-1 py-4 text-center w-8 text-white text-xs">W</th><th className="px-1 py-4 text-center w-12 text-white text-xs">PTN</th><th className="px-1 py-4 text-center w-8 text-white text-xs">DS</th><th className="px-1 py-4 text-center w-8 text-white text-xs">GV</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
@@ -327,6 +381,33 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        
+        {activeTab === 'analysis' && (
+          <div className="space-y-4 no-print animate-fade-in">
+            <div className="bg-gray-900 p-4 rounded-2xl border border-gray-700 shadow-inner">
+              <input type="text" placeholder="Zoek speler..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-gray-700 rounded-xl text-white p-3 text-sm outline-none transition-all focus:ring-2 ring-amber-500" />
+            </div>
+            <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden shadow-2xl">
+              <div className="max-h-[600px] overflow-y-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0 shadow-md">
+                    <tr><th className="px-4 py-4 text-xs">Speler 1</th><th className="px-4 py-4 text-xs">Speler 2</th><th className="px-2 py-4 text-center">Samen</th><th className="px-2 py-4 text-center">Tegen</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {coOpData.filter(d => d.p1.toLowerCase().includes(searchTerm.toLowerCase()) || d.p2.toLowerCase().includes(searchTerm.toLowerCase())).map((pair, i) => (
+                      <tr key={i} className={pair.together > 1 ? 'bg-red-500/5' : (pair.together === 0 && pair.against === 0) ? 'opacity-40' : 'hover:bg-gray-700/30 transition-colors'}>
+                        <td className="px-4 py-3 text-[11px] font-bold text-gray-200 uppercase">{pair.p1}</td>
+                        <td className="px-4 py-3 text-[11px] font-bold text-gray-200 uppercase">{pair.p2}</td>
+                        <td className="px-2 py-3 text-center"><span className={`px-2 py-0.5 rounded-full font-black text-[10px] ${pair.together === 0 ? 'bg-gray-900 text-gray-600' : pair.together > 1 ? 'bg-red-900 text-red-200 shadow-lg' : 'bg-green-900 text-green-200'}`}>{pair.together}x</span></td>
+                        <td className="px-2 py-3 text-center"><span className={`px-2 py-0.5 rounded-full font-black text-[10px] ${pair.against === 0 ? 'bg-gray-900 text-gray-600' : 'bg-purple-900 text-purple-200'}`}>{pair.against}x</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </div>
