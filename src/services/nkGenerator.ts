@@ -65,22 +65,30 @@ export const generateNKSchedule = (
         else { team1.push(pair.p2); team2.push(pair.p1); }
       });
 
-      // Keeper Swap (nooit 2 keepers in 1 team)
+      // ✅ VERBETERDE KEEPER LOGICA: Zorg dat ze in verschillende teams zitten
       const fixKeepers = () => {
         const k1 = team1.filter(p => p.isKeeper);
         const k2 = team2.filter(p => p.isKeeper);
+        
+        // Als een team meer dan 1 keeper heeft, of 1 team heeft er 2 en de ander 0
         if (k1.length > 1 || k2.length > 1) {
             const overflownTeam = k1.length > 1 ? team1 : team2;
             const otherTeam = k1.length > 1 ? team2 : team1;
+            
+            // Zoek de index van een van de keepers in het 'te volle' team
             const kIdx = overflownTeam.findIndex(p => p.isKeeper);
-            const k = overflownTeam[kIdx];
-            const p = otherTeam[kIdx];
-            overflownTeam[kIdx] = p; otherTeam[kIdx] = k;
+            
+            // Wissel deze keeper om met zijn mirror-partner uit het andere team
+            const keeper = overflownTeam[kIdx];
+            const partner = otherTeam[kIdx];
+            
+            overflownTeam[kIdx] = partner;
+            otherTeam[kIdx] = keeper;
         }
       };
       fixKeepers();
 
-      // OPTIMALISATIE LUS (Probeer 200 combinaties per wedstrijd)
+      // OPTIMALISATIE LUS
       for (let attempt = 0; attempt < 200; attempt++) {
         const pairToFlip = Math.floor(Math.random() * matchPairs.length);
         const p1 = team1[pairToFlip];
@@ -92,6 +100,7 @@ export const generateNKSchedule = (
         team1[pairToFlip] = p2; team2[pairToFlip] = p1;
         const newPenalty = calculateTotalPenalty(team1, team2, togetherHistory, againstHistory, getPairKey);
         
+        // ✅ EXTRA CHECK: De wissel mag alleen blijven als er niet 2 keepers in 1 team komen
         const keeperSafe = team1.filter(x => x.isKeeper).length <= 1 && team2.filter(x => x.isKeeper).length <= 1;
 
         if (newPenalty < currentPenalty && keeperSafe) {
@@ -103,7 +112,6 @@ export const generateNKSchedule = (
       }
 
       // Update de geschiedenis voor de volgende rondes/zalen
-      // 1. Samen gespeeld
       [team1, team2].forEach(team => {
         for (let i = 0; i < team.length; i++) {
           for (let j = i+1; j < team.length; j++) {
@@ -112,7 +120,6 @@ export const generateNKSchedule = (
           }
         }
       });
-      // 2. Tegen elkaar gespeeld
       team1.forEach(p1 => {
         team2.forEach(p2 => {
           const key = getPairKey(p1.id, p2.id);
@@ -134,7 +141,7 @@ export const generateNKSchedule = (
       });
 
       matchesRemaining--;
-    });
+    }
 
     rounds.push({ roundNumber: r, matches: roundMatches, restingPlayers: restingThisRound });
   }
@@ -146,7 +153,6 @@ export const generateNKSchedule = (
   return { competitionName, totalRounds: rounds.length, hallsCount: hallsToUse, playersPerTeam, rounds, standings, isCompleted: false };
 };
 
-// Hulpscherm voor de penalty-berekening (Samen + Tegen)
 const calculateTotalPenalty = (
   t1: Player[], 
   t2: Player[], 
@@ -155,8 +161,6 @@ const calculateTotalPenalty = (
   keyFn: any
 ) => {
   let penalty = 0;
-  
-  // Straf voor teamgenoot herhaling (zwaar gewicht)
   [t1, t2].forEach(team => {
     for (let i = 0; i < team.length; i++) {
       for (let j = i+1; j < team.length; j++) {
@@ -165,14 +169,11 @@ const calculateTotalPenalty = (
       }
     }
   });
-
-  // Straf voor tegenstander herhaling (iets lichter gewicht, maar nog steeds belangrijk)
   t1.forEach(p1 => {
     t2.forEach(p2 => {
       const count = agHist.get(keyFn(p1.id, p2.id)) || 0;
       penalty += (count * count * 500);
     });
   });
-
   return penalty;
 };
