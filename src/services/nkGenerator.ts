@@ -3,9 +3,31 @@ import { Player, NKSession, NKRound, NKMatch } from '../types';
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 /**
- * Zoekt de beste verdeling voor TWEE teams uit een groep spelers
- * waarbij voldaan wordt aan de keepers-eis en de 4.0 ondergrens.
+ * Berekent een "Sociale Strafscore" voor een sessie.
+ * Hoe vaker dezelfde spelers samen of tegen elkaar spelen, hoe hoger de score.
+ * We streven naar de LAAGSTE score voor de beste verdeling.
  */
+function calculateSocialScore(session: NKSession): number {
+  const pairCounts = new Map<string, number>();
+
+  session.rounds.forEach(r => r.matches.forEach(m => {
+    const allPlayers = [...m.team1, ...m.team2];
+    for (let i = 0; i < allPlayers.length; i++) {
+      for (let j = i + 1; j < allPlayers.length; j++) {
+        const key = [allPlayers[i].id, allPlayers[j].id].sort().join('-');
+        pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+      }
+    }
+  }));
+
+  // Kwadratische som: 2x dezelfde ontmoeting weegt zwaarder (4) dan 2x een unieke (1+1=2)
+  let score = 0;
+  pairCounts.forEach(count => {
+    score += Math.pow(count, 2);
+  });
+  return score;
+}
+
 function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff: number) {
   let bestDiff = Infinity;
   let bestSplit: { t1: Player[], t2: Player[] } | null = null;
@@ -20,7 +42,6 @@ function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff:
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
 
-      // EISEN: Max 1 keeper per team en beide teams >= 4.0
       if (k1 <= 1 && k2 <= 1 && avg1 >= 4.0 && avg2 >= 4.0) {
         if (diff < bestDiff) {
           bestDiff = diff;
@@ -41,6 +62,80 @@ function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff:
   return { split: bestSplit, diff: bestDiff };
 }
 
+/**
+ * Genereert één valide toernooi-versie.
+ */
+async function generateSingleVersion(
+  players: Player[],
+  hallNames: string[],
+  matchesPerPlayer: number,
+  playersPerTeam: number,
+  competitionName: string
+): Promise<NKSession | null> {
+  const playersPerMatch = playersPerTeam * 2;
+  const totalMatches = (players.length * matchesPerPlayer) / playersPerMatch;
+  const totalRounds = Math.ceil(totalMatches / hallNames.length);
+
+  const playedCount = new Map(players.map(p => [p.id, 0]));
+  const allRounds: NKRound[] = [];
+
+  for (let r = 1; r <= totalRounds; r++) {
+    let roundMatches: NKMatch[] = [];
+    let roundSuccess = false;
+    
+    for (let rAttempt = 0; rAttempt < 100; rAttempt++) {
+      const target = rAttempt < 50 ? 0.3 : 0.4;
+      const usedThisRound = new Set<number>();
+      const currentMatches: NKMatch[] = [];
+
+      const pool = [...players]
+        .filter(p => playedCount.get(p.id)! < matchesPerPlayer)
+        .sort(() => Math.random() - 0.5); // Randomize pool voor variatie tussen versies
+
+      const mInRound = Math.min(hallNames.length, Math.floor(pool.length / playersPerMatch));
+      
+      try {
+        const roundPool = pool.slice(0, mInRound * playersPerMatch);
+        for (let h = 0; h < mInRound; h++) {
+          const mPlayers = roundPool.slice(h * playersPerMatch, (h + 1) * playersPerMatch);
+          const { split } = getBestTeamSplit(mPlayers, playersPerTeam, target);
+          if (!split) throw new Error("Fail");
+
+          mPlayers.forEach(p => usedThisRound.add(p.id));
+          currentMatches.push({
+            id: `r${r}h${h}`, hallName: hallNames[h],
+            team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false,
+            subLow: null as any, subHigh: null as any, referee: null as any
+          });
+        }
+
+        let restingPool = players.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
+        for (let m of currentMatches) {
+          m.subLow = restingPool.shift()!;
+          m.subHigh = restingPool.pop()!;
+          const midIdx = Math.floor(restingPool.length / 2);
+          m.referee = restingPool.splice(midIdx, 1)[0];
+        }
+
+        roundMatches = currentMatches;
+        roundSuccess = true;
+        break; 
+      } catch (e) { continue; }
+    }
+
+    if (roundSuccess) {
+      roundMatches.forEach(m => [...m.team1, ...m.team2].forEach(p => playedCount.set(p.id, playedCount.get(p.id)! + 1)));
+      allRounds.push({ roundNumber: r, matches: roundMatches, restingPlayers: [] });
+    } else return null;
+  }
+
+  return {
+    competitionName, hallNames, playersPerTeam, totalRounds: allRounds.length,
+    rounds: allRounds, standings: players.map(p => ({ playerId: p.id, playerName: p.name, points: 0, goalsFor: 0, goalDifference: 0, matchesPlayed: 0 })),
+    isCompleted: false
+  };
+}
+
 export async function generateNKSchedule(
   players: Player[],
   hallNames: string[],
@@ -49,110 +144,34 @@ export async function generateNKSchedule(
   competitionName: string,
   onProgress: (msg: string) => void
 ): Promise<NKSession> {
-  const playersPerMatch = playersPerTeam * 2;
-  
-  // Groepscheck vooraf
-  const groupAvg = players.reduce((s, p) => s + p.rating, 0) / players.length;
-  if (groupAvg < 4.0) {
-    throw new Error(`Onmogelijk: De geselecteerde groep heeft een gemiddelde van ${groupAvg.toFixed(2)}. Om teams van min. 4.0 te maken moet het groepsgemiddelde ook minimaal 4.0 zijn.`);
-  }
+  const validVersions: NKSession[] = [];
+  let attempts = 0;
 
-  const totalMatches = (players.length * matchesPerPlayer) / playersPerMatch;
-  const totalRounds = Math.ceil(totalMatches / hallNames.length);
+  onProgress("Start optimalisatie...");
 
-  let attempt = 0;
-  while (attempt < 100) {
-    attempt++;
-    onProgress(`Poging ${attempt} (Mikt op balans 0.3 & Gem 4.0+)...`);
-    await delay(1);
-
-    const playedCount = new Map(players.map(p => [p.id, 0]));
-    const allRounds: NKRound[] = [];
-    let success = true;
-
-    // Backtracking / Round-loop
-    for (let r = 1; r <= totalRounds; r++) {
-      let roundMatches: NKMatch[] = [];
-      let roundSuccess = false;
-      
-      // Verhoog de balans-tolerantie langzaam als een ronde niet lukt
-      for (let rAttempt = 0; rAttempt < 150; rAttempt++) {
-        const target = rAttempt < 50 ? 0.3 : 0.3 + ((rAttempt - 50) * 0.005);
-        const usedThisRound = new Set<number>();
-        const currentMatches: NKMatch[] = [];
-
-        // Selecteer spelers die de minste wedstrijden hebben gespeeld
-        const pool = [...players]
-          .filter(p => playedCount.get(p.id)! < matchesPerPlayer)
-          .sort((a, b) => (playedCount.get(b.id)! - playedCount.get(a.id)!) || (Math.random() - 0.5))
-          .reverse();
-
-        const mInRound = Math.min(hallNames.length, Math.floor(pool.length / playersPerMatch));
-        
-        try {
-          // Punt 3: We verdelen eerst alle benodigde spelers voor deze ronde
-          const roundPool = pool.slice(0, mInRound * playersPerMatch);
-          if (roundPool.length < mInRound * playersPerMatch) throw new Error("Te weinig spelers over");
-
-          // Verdeel per zaal
-          for (let h = 0; h < mInRound; h++) {
-            const mPlayers = roundPool.slice(h * playersPerMatch, (h + 1) * playersPerMatch);
-            const { split } = getBestTeamSplit(mPlayers, playersPerTeam, target);
-            
-            if (!split) throw new Error("Geen balans of gem < 4.0 in deze set");
-
-            mPlayers.forEach(p => usedThisRound.add(p.id));
-            currentMatches.push({
-              id: `r${r}h${h}`, hallName: hallNames[h],
-              team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false,
-              subLow: null as any, subHigh: null as any, referee: null as any
-            });
-          }
-
-          // Officials toewijzen (Reserves en Scheids)
-          let restingPool = players.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
-          if (restingPool.length < currentMatches.length * 3) throw new Error("Te weinig officials");
-
-          for (let m of currentMatches) {
-            m.subLow = restingPool.shift()!;
-            m.subHigh = restingPool.pop()!;
-            const midIdx = Math.floor(restingPool.length / 2);
-            m.referee = restingPool.splice(midIdx, 1)[0];
-          }
-
-          roundMatches = currentMatches;
-          roundSuccess = true;
-          break; 
-        } catch (e) { 
-          // Als het na veel pogingen niet lukt in deze ronde, schud de pool extra
-          continue; 
-        }
-      }
-
-      if (roundSuccess) {
-        roundMatches.forEach(m => [...m.team1, ...m.team2].forEach(p => playedCount.set(p.id, playedCount.get(p.id)! + 1)));
-        allRounds.push({ 
-            roundNumber: r, 
-            matches: roundMatches, 
-            restingPlayers: players.filter(p => !roundMatches.some(m => 
-                [...m.team1, ...m.team2, m.subLow, m.subHigh, m.referee].some(x => x?.id === p.id)
-            )) 
-        });
-      } else {
-        // Punt 5: Als een ronde echt niet lukt, breek de hele poging af en probeer een nieuwe volgorde
-        success = false;
-        break;
-      }
+  while (validVersions.length < 10 && attempts < 500) {
+    attempts++;
+    const version = await generateSingleVersion(players, hallNames, matchesPerPlayer, playersPerTeam, competitionName);
+    
+    if (version) {
+      validVersions.push(version);
+      onProgress(`Versie ${validVersions.length}/10 gevonden...`);
+      await delay(10);
     }
-
-    // Controleer of iedereen precies het aantal wedstrijden heeft gehaald
-    if (success && Array.from(playedCount.values()).every(v => v === matchesPerPlayer)) {
-      return {
-        competitionName, hallNames, playersPerTeam, totalRounds: allRounds.length,
-        rounds: allRounds, standings: players.map(p => ({ playerId: p.id, playerName: p.name, points: 0, goalsFor: 0, goalDifference: 0, matchesPlayed: 0 })),
-        isCompleted: false
-      };
+    
+    if (attempts % 20 === 0) {
+      onProgress(`Zoeken naar combinaties (poging ${attempts})...`);
+      await delay(1);
     }
   }
-  throw new Error("Het lukt niet om een schema te maken waarbij elk team minimaal 4.0 gemiddeld is met deze officials. Probeer het aantal wedstrijden te verlagen of wissel spelers.");
+
+  if (validVersions.length === 0) {
+    throw new Error("Het lukt niet om een valide schema te vinden. Controleer de ratings of het aantal spelers.");
+  }
+
+  // Kies de versie met de laagste sociale strafscore (minste dubbele ontmoetingen)
+  onProgress("Beste schema selecteren...");
+  return validVersions.reduce((best, current) => 
+    calculateSocialScore(current) < calculateSocialScore(best) ? current : best
+  );
 }
