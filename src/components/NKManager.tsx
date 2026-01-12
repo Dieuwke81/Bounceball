@@ -134,7 +134,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="flex flex-col items-center justify-center min-h-[400px] text-white text-center">
       <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
       <h2 className="text-3xl font-black uppercase italic tracking-tighter">{progressMsg}</h2>
-      <p className="text-gray-500 text-xs mt-2 uppercase font-bold tracking-widest animate-pulse">Balans: 0.3 | Min Team Gem: 4.0</p>
+      <p className="text-gray-500 text-xs mt-2 uppercase font-bold tracking-widest animate-pulse">Optimalisatie: Beste van 10 versies</p>
     </div>
   );
 
