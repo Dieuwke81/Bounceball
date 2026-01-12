@@ -13,6 +13,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [highlightName, setHighlightName] = useState(''); 
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
+  const [parseFeedback, setParseFeedback] = useState<{success: number, fail: string[]} | null>(null);
   
   const [hallsCount, setHallsCount] = useState(3);
   const [hallNames, setHallNames] = useState<string[]>(['A', 'B', 'C']);
@@ -40,14 +41,27 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     const normalize = (str: string) => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
     const lines = attendanceText.split('\n');
     const newSelected = new Set<number>(selectedPlayerIds);
+    let successCount = 0;
+    let fails: string[] = [];
+
     lines.forEach(line => {
       const cleaned = line.replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].trim();
       if (!cleaned) return;
       const match = players.find(p => normalize(p.name).includes(normalize(cleaned)) || normalize(cleaned).includes(normalize(p.name)));
-      if (match) newSelected.add(match.id);
+      if (match) {
+        if (!newSelected.has(match.id)) {
+          newSelected.add(match.id);
+          successCount++;
+        }
+      } else {
+        fails.push(cleaned);
+      }
     });
+
     setSelectedPlayerIds(newSelected);
     setAttendanceText('');
+    setParseFeedback({ success: successCount, fail: fails });
+    setTimeout(() => setParseFeedback(null), 5000);
   };
 
   const possibilities = useMemo(() => {
@@ -83,6 +97,18 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       m.team2.forEach(p => { const st = stats.get(p.id)!; st.matchesPlayed++; st.points += p2; st.goalsFor += m.team2Score; st.goalDifference += (m.team2Score - m.team1Score); });
     }));
     return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
+  };
+
+  const updateMatch = (roundIdx: number, matchIdx: number, updates: Partial<any>) => {
+    if (!session) return;
+    const newSession = { ...session };
+    const newRounds = [...newSession.rounds];
+    const newMatches = [...newRounds[roundIdx].matches];
+    newMatches[matchIdx] = { ...newMatches[matchIdx], ...updates };
+    newRounds[roundIdx] = { ...newRounds[roundIdx], matches: newMatches };
+    newSession.rounds = newRounds;
+    newSession.standings = calculateStandings(newSession);
+    setSession(newSession);
   };
 
   const coOpData = useMemo(() => {
@@ -143,21 +169,30 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
             <div className="pt-4 space-y-4 animate-fade-in border-t border-gray-700 mt-4">
                <textarea value={attendanceText} onChange={e => setAttendanceText(e.target.value)} placeholder="Plak aanwezigheidslijst..." className="w-full h-24 bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs outline-none focus:ring-2 ring-amber-500" />
                <button onClick={handleParseAttendance} className="w-full py-3 bg-amber-500 text-white font-black rounded-xl uppercase text-xs">Verwerk Lijst</button>
+               {parseFeedback && (
+                 <div className="p-3 rounded-xl bg-gray-900 border border-gray-700 text-[10px] animate-bounce">
+                    <span className="text-green-500 font-bold">✅ {parseFeedback.success} toegevoegd.</span>
+                    {parseFeedback.fail.length > 0 && <span className="text-red-400 ml-2">❌ Gemist: {parseFeedback.fail.join(', ')}</span>}
+                 </div>
+               )}
                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-2">
                  {players.map(p => (
                    <button key={p.id} onClick={() => { const n = new Set(selectedPlayerIds); if (n.has(p.id)) n.delete(p.id); else if (n.size < targetPlayerCount!) n.add(p.id); setSelectedPlayerIds(n); }} className={`p-2 rounded-lg text-[10px] font-bold border transition-all ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{p.name}</button>
                  ))}
                </div>
-               {selectedPlayerIds.size === targetPlayerCount && (
-                 <button onClick={async () => {
-                   setIsGenerating(true); setProgressMsg("Initialiseren...");
-                   try {
-                     const p = players.filter(x => selectedPlayerIds.has(x.id));
-                     const s = await generateNKSchedule(p, hallNames, matchesPerPlayer, playersPerTeam, "NK", setProgressMsg);
-                     setSession(s);
-                   } catch(e:any) { alert(e.message); } finally { setIsGenerating(false); }
-                 }} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl uppercase hover:bg-green-500">Genereer Pro Schema</button>
-               )}
+               <div className="flex justify-between items-center bg-gray-900 p-4 rounded-2xl">
+                 <span className="text-xs font-black uppercase text-gray-500">Geselecteerd: {selectedPlayerIds.size} / {targetPlayerCount}</span>
+                 {selectedPlayerIds.size === targetPlayerCount && (
+                   <button onClick={async () => {
+                     setIsGenerating(true); setProgressMsg("Initialiseren...");
+                     try {
+                       const p = players.filter(x => selectedPlayerIds.has(x.id));
+                       const s = await generateNKSchedule(p, hallNames, matchesPerPlayer, playersPerTeam, "NK", setProgressMsg);
+                       setSession(s);
+                     } catch(e:any) { alert(e.message); } finally { setIsGenerating(false); }
+                   }} className="bg-green-600 text-white font-black px-6 py-3 rounded-xl shadow-xl uppercase hover:bg-green-500 transition-all scale-110">Start NK</button>
+                 )}
+               </div>
             </div>
           )}
         </div>
@@ -208,16 +243,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                           </div>
                           <div className="no-print flex flex-col items-center justify-center gap-2">
                             <div className="flex items-center gap-2">
-                              <input type="number" value={match.team1Score} onChange={e => { const s = {...session}; s.rounds[rIdx].matches[mIdx].team1Score = +e.target.value; s.rounds[rIdx].matches[mIdx].isPlayed = true; s.standings = calculateStandings(s); setSession({...s}); }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none" />
+                              <input type="number" value={match.team1Score} onChange={e => updateMatch(rIdx, mIdx, { team1Score: +e.target.value, isPlayed: true })} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none" />
                               <span className="text-gray-600 font-bold">-</span>
-                              <input type="number" value={match.team2Score} onChange={e => { const s = {...session}; s.rounds[rIdx].matches[mIdx].team2Score = +e.target.value; s.rounds[rIdx].matches[mIdx].isPlayed = true; s.standings = calculateStandings(s); setSession({...s}); }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none" />
+                              <input type="number" value={match.team2Score} onChange={e => updateMatch(rIdx, mIdx, { team2Score: +e.target.value, isPlayed: true })} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none" />
                             </div>
-                            <button onClick={() => { 
-                                const s = {...session}; 
-                                s.rounds[rIdx].matches[mIdx].isPlayed = !s.rounds[rIdx].matches[mIdx].isPlayed; 
-                                s.standings = calculateStandings(s); 
-                                setSession({...s}); 
-                            }} className={`text-[8px] font-black px-2 py-1 rounded transition-colors ${match.isPlayed ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-700 text-gray-400'}`}>
+                            <button onClick={() => updateMatch(rIdx, mIdx, { isPlayed: !match.isPlayed })} className={`text-[8px] font-black px-2 py-1 rounded transition-colors ${match.isPlayed ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-700 text-gray-400'}`}>
                                 {match.isPlayed ? 'HERSTEL' : 'GESPEELD'}
                             </button>
                           </div>
