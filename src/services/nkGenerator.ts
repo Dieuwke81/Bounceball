@@ -2,19 +2,19 @@ import { Player, NKSession, NKRound, NKMatch } from '../types';
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-// Analyse teller
+// Analyse teller om te begrijpen waarom het vastloopt
 let failureLog = {
   ratingFail: 0,
   balanceFail: 0,
   officialsFail: 0,
   poolEmptyFail: 0,
-  lastRoundStuck: 0
+  backtrackCount: 0
 };
 
 function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff: number) {
   let bestDiff = Infinity;
   let bestSplit: { t1: Player[], t2: Player[] } | null = null;
-  let ratingConstraintMet = false;
+  let foundRatingMatch = false;
 
   function combine(start: number, team1: Player[]) {
     if (team1.length === playersPerTeam) {
@@ -25,8 +25,9 @@ function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff:
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
 
+      // EIS: Minimaal 4.0 gemiddelde per team
       if (k1 <= 1 && k2 <= 1 && avg1 >= 4.0 && avg2 >= 4.0) {
-        ratingConstraintMet = true;
+        foundRatingMatch = true;
         const diff = Math.abs(avg1 - avg2);
         if (diff < bestDiff) {
           bestDiff = diff;
@@ -45,7 +46,7 @@ function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff:
 
   combine(0, []);
   
-  if (!ratingConstraintMet) failureLog.ratingFail++;
+  if (!foundRatingMatch) failureLog.ratingFail++;
   else if (!bestSplit) failureLog.balanceFail++;
 
   return { split: bestSplit };
@@ -69,24 +70,27 @@ async function generateSingleVersion(
     let roundSuccess = false;
     let roundMatches: NKMatch[] = [];
     
-    for (let rAttempt = 0; rAttempt < 50; rAttempt++) {
-      const target = rAttempt < 25 ? 0.3 : 0.4;
+    // Probeer een ronde te maken
+    for (let rAttempt = 0; rAttempt < 60; rAttempt++) {
+      // Wordt langzaam flexibeler bij elke poging
+      const target = rAttempt < 30 ? 0.3 : 0.45;
       const usedThisRound = new Set<number>();
       const currentMatches: NKMatch[] = [];
 
+      // Sorteer pool: wie het minst gespeeld heeft MOET nu spelen
       const pool = [...players]
         .filter(p => playedCount.get(p.id)! < matchesPerPlayer)
-        .sort((a, b) => (playedCount.get(a.id)! - playedCount.get(b.id)!) || (Math.random() - 0.5));
+        .sort((a, b) => (playedCount.get(b.id)! - playedCount.get(a.id)!) || (Math.random() - 0.5));
 
       const mInRound = Math.min(hallNames.length, Math.floor(pool.length / playersPerMatch));
       
       try {
         for (let h = 0; h < mInRound; h++) {
           const mPlayers = pool.filter(p => !usedThisRound.has(p.id)).slice(0, playersPerMatch);
-          if (mPlayers.length < playersPerMatch) { failureLog.poolEmptyFail++; throw new Error("Pool leeg"); }
+          if (mPlayers.length < playersPerMatch) { failureLog.poolEmptyFail++; throw new Error("Leeg"); }
 
           const { split } = getBestTeamSplit(mPlayers, playersPerTeam, target);
-          if (!split) throw new Error("Formatie mislukt");
+          if (!split) throw new Error("Rating");
 
           mPlayers.forEach(p => usedThisRound.add(p.id));
           currentMatches.push({
@@ -96,8 +100,9 @@ async function generateSingleVersion(
           });
         }
 
+        // Officials toewijzen uit de rest
         let restingPool = players.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
-        if (restingPool.length < currentMatches.length * 3) { failureLog.officialsFail++; throw new Error("Officials tekort"); }
+        if (restingPool.length < currentMatches.length * 3) { failureLog.officialsFail++; throw new Error("Officials"); }
 
         for (let m of currentMatches) {
           m.subLow = restingPool.shift()!;
@@ -115,17 +120,19 @@ async function generateSingleVersion(
       roundMatches.forEach(m => [...m.team1, ...m.team2].forEach(p => playedCount.set(p.id, playedCount.get(p.id)! + 1)));
       allRounds.push({ roundNumber: r, matches: roundMatches, restingPlayers: [] });
     } else {
+        failureLog.backtrackCount++;
         return { session: null, failedRound: r };
     }
   }
 
+  // Check of iedereen exact op het aantal matches zit
   const allReachedLimit = players.every(p => playedCount.get(p.id) === matchesPerPlayer);
   if (!allReachedLimit) return { session: null, failedRound: totalRounds };
 
   return {
     session: {
       competitionName, hallNames, playersPerTeam, totalRounds: allRounds.length,
-      rounds: allRounds, standings: players.map(p => ({ playerId: p.id, playerName: p.name, points: 0, goalsFor: 0, goalDifference: 0, matchesPlayed: 0 })),
+      rounds: allRounds, standings: [], // Memo berekent dit nu live in de UI
       isCompleted: false
     },
     failedRound: 0
@@ -142,53 +149,61 @@ export async function generateNKSchedule(
 ): Promise<NKSession> {
   const validVersions: NKSession[] = [];
   let attempts = 0;
-  failureLog = { ratingFail: 0, balanceFail: 0, officialsFail: 0, poolEmptyFail: 0, lastRoundStuck: 0 };
+  
+  // Reset logs
+  failureLog = { ratingFail: 0, balanceFail: 0, officialsFail: 0, poolEmptyFail: 0, backtrackCount: 0 };
   let roundFailureTally: {[key: number]: number} = {};
 
-  while (validVersions.length < 10 && attempts < 800) {
+  while (validVersions.length < 10 && attempts < 1000) {
     attempts++;
     const { session, failedRound } = await generateSingleVersion(players, hallNames, matchesPerPlayer, playersPerTeam, competitionName);
     
     if (session) {
       validVersions.push(session);
       onProgress(`Optimalisatie: ${validVersions.length}/10...`);
+      await delay(1);
     } else {
       roundFailureTally[failedRound] = (roundFailureTally[failedRound] || 0) + 1;
     }
     
     if (attempts % 100 === 0) {
-      onProgress(`Poging ${attempts}/800...`);
+      onProgress(`Bezig... (Poging ${attempts}/1000)`);
       await delay(1);
     }
   }
 
   if (validVersions.length === 0) {
-    const mostFailedRound = Object.keys(roundFailureTally).reduce((a, b) => roundFailureTally[+a] > roundFailureTally[+b] ? a : b);
+    const mostProblematic = Object.keys(roundFailureTally).reduce((a, b) => roundFailureTally[+a] > roundFailureTally[+b] ? a : b, "0");
+    
     throw new Error(
-      `ONMOGELIJK SCHEMA:\n\n` +
-      `Meest problematische ronde: ${mostFailedRound}\n` +
+      `MISLUKT NA 1000 POGINGEN.\n\n` +
+      `Meest lastige ronde: ${mostProblematic}\n` +
       `Oorzaken analyse:\n` +
       `- Rating onder 4.0: ${failureLog.ratingFail}x\n` +
       `- Balans > 0.3: ${failureLog.balanceFail}x\n` +
       `- Te weinig officials: ${failureLog.officialsFail}x\n\n` +
-      `Advies: Verlaag het aantal wedstrijden of zalen, of kies een ander aantal spelers.`
+      `ADVIES: Verlaag het aantal wedstrijden of zalen, of kies een ander aantal spelers.`
     );
   }
 
-  const calculateSocialScore = (s: NKSession): number => {
-    const pairCounts = new Map<string, number>();
+  // Sociale score berekenen: we willen zo min mogelijk herhalingen
+  const getSocialScore = (s: NKSession): number => {
+    const pairs = new Map<string, number>();
     s.rounds.forEach(r => r.matches.forEach(m => {
-      const all = [...m.team1, ...m.team2];
-      for (let i = 0; i < all.length; i++) 
-        for (let j = i + 1; j < all.length; j++) {
-          const key = [all[i].id, all[j].id].sort().join('-');
-          pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+      const p = [...m.team1, ...m.team2];
+      for (let i = 0; i < p.length; i++) 
+        for (let j = i + 1; j < p.length; j++) {
+          const key = [p[i].id, p[j].id].sort().join('-');
+          pairs.set(key, (pairs.get(key) || 0) + 1);
         }
     }));
     let score = 0;
-    pairCounts.forEach(c => score += Math.pow(c, 2));
+    pairs.forEach(v => score += Math.pow(v, 2));
     return score;
   };
 
-  return validVersions.reduce((best, current) => calculateSocialScore(current) < calculateSocialScore(best) ? current : best);
+  // Kies de beste van de 10
+  return validVersions.reduce((best, current) => 
+    getSocialScore(current) < getSocialScore(best) ? current : best
+  );
 }
