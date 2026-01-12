@@ -48,8 +48,8 @@ async function generateSingleVersion(players: Player[], hallNames: string[], mpp
     let roundSuccess = false;
     let roundMatches: NKMatch[] = [];
     
-    for (let rAttempt = 0; rAttempt < 50; rAttempt++) {
-      const target = rAttempt < 25 ? 0.3 : 0.45;
+    for (let rAttempt = 0; rAttempt < 60; rAttempt++) {
+      const target = rAttempt < 30 ? 0.3 : 0.45;
       const usedThisRound = new Set<number>();
       const currentMatches: NKMatch[] = [];
       const pool = [...players].filter(p => playedCount.get(p.id)! < mpp).sort((a, b) => (playedCount.get(b.id)! - playedCount.get(a.id)!) || (Math.random() - 0.5));
