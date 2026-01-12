@@ -2,36 +2,32 @@ import { Player, NKSession, NKRound, NKMatch } from '../types';
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-function calculateSocialScore(session: NKSession): number {
-  const pairCounts = new Map<string, number>();
-  session.rounds.forEach(r => r.matches.forEach(m => {
-    const allPlayers = [...m.team1, ...m.team2];
-    for (let i = 0; i < allPlayers.length; i++) {
-      for (let j = i + 1; j < allPlayers.length; j++) {
-        const key = [allPlayers[i].id, allPlayers[j].id].sort().join('-');
-        pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
-      }
-    }
-  }));
-  let score = 0;
-  pairCounts.forEach(count => { score += Math.pow(count, 2); });
-  return score;
-}
+// Analyse teller
+let failureLog = {
+  ratingFail: 0,
+  balanceFail: 0,
+  officialsFail: 0,
+  poolEmptyFail: 0,
+  lastRoundStuck: 0
+};
 
 function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff: number) {
   let bestDiff = Infinity;
   let bestSplit: { t1: Player[], t2: Player[] } | null = null;
+  let ratingConstraintMet = false;
 
   function combine(start: number, team1: Player[]) {
     if (team1.length === playersPerTeam) {
       const team2 = players.filter(p => !team1.find(t1p => t1p.id === p.id));
       const avg1 = team1.reduce((s, p) => s + p.rating, 0) / playersPerTeam;
       const avg2 = team2.reduce((s, p) => s + p.rating, 0) / playersPerTeam;
-      const diff = Math.abs(avg1 - avg2);
+
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
 
       if (k1 <= 1 && k2 <= 1 && avg1 >= 4.0 && avg2 >= 4.0) {
+        ratingConstraintMet = true;
+        const diff = Math.abs(avg1 - avg2);
         if (diff < bestDiff) {
           bestDiff = diff;
           bestSplit = { t1: [...team1], t2: [...team2] };
@@ -48,7 +44,11 @@ function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff:
   }
 
   combine(0, []);
-  return { split: bestSplit, diff: bestDiff };
+  
+  if (!ratingConstraintMet) failureLog.ratingFail++;
+  else if (!bestSplit) failureLog.balanceFail++;
+
+  return { split: bestSplit };
 }
 
 async function generateSingleVersion(
@@ -57,7 +57,7 @@ async function generateSingleVersion(
   matchesPerPlayer: number,
   playersPerTeam: number,
   competitionName: string
-): Promise<NKSession | null> {
+): Promise<{session: NKSession | null, failedRound: number}> {
   const playersPerMatch = playersPerTeam * 2;
   const totalMatchesNeeded = (players.length * matchesPerPlayer) / playersPerMatch;
   const totalRounds = Math.ceil(totalMatchesNeeded / hallNames.length);
@@ -69,8 +69,8 @@ async function generateSingleVersion(
     let roundSuccess = false;
     let roundMatches: NKMatch[] = [];
     
-    for (let rAttempt = 0; rAttempt < 150; rAttempt++) {
-      const target = rAttempt < 50 ? 0.3 : 0.4;
+    for (let rAttempt = 0; rAttempt < 50; rAttempt++) {
+      const target = rAttempt < 25 ? 0.3 : 0.4;
       const usedThisRound = new Set<number>();
       const currentMatches: NKMatch[] = [];
 
@@ -83,10 +83,10 @@ async function generateSingleVersion(
       try {
         for (let h = 0; h < mInRound; h++) {
           const mPlayers = pool.filter(p => !usedThisRound.has(p.id)).slice(0, playersPerMatch);
-          if (mPlayers.length < playersPerMatch) throw new Error("Te weinig spelers");
+          if (mPlayers.length < playersPerMatch) { failureLog.poolEmptyFail++; throw new Error("Pool leeg"); }
 
           const { split } = getBestTeamSplit(mPlayers, playersPerTeam, target);
-          if (!split) throw new Error("Geen balans");
+          if (!split) throw new Error("Formatie mislukt");
 
           mPlayers.forEach(p => usedThisRound.add(p.id));
           currentMatches.push({
@@ -97,7 +97,7 @@ async function generateSingleVersion(
         }
 
         let restingPool = players.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
-        if (restingPool.length < currentMatches.length * 3) throw new Error("Officials tekort");
+        if (restingPool.length < currentMatches.length * 3) { failureLog.officialsFail++; throw new Error("Officials tekort"); }
 
         for (let m of currentMatches) {
           m.subLow = restingPool.shift()!;
@@ -115,17 +115,20 @@ async function generateSingleVersion(
       roundMatches.forEach(m => [...m.team1, ...m.team2].forEach(p => playedCount.set(p.id, playedCount.get(p.id)! + 1)));
       allRounds.push({ roundNumber: r, matches: roundMatches, restingPlayers: [] });
     } else {
-        return null;
+        return { session: null, failedRound: r };
     }
   }
 
   const allReachedLimit = players.every(p => playedCount.get(p.id) === matchesPerPlayer);
-  if (!allReachedLimit) return null;
+  if (!allReachedLimit) return { session: null, failedRound: totalRounds };
 
   return {
-    competitionName, hallNames, playersPerTeam, totalRounds: allRounds.length,
-    rounds: allRounds, standings: players.map(p => ({ playerId: p.id, playerName: p.name, points: 0, goalsFor: 0, goalDifference: 0, matchesPlayed: 0 })),
-    isCompleted: false
+    session: {
+      competitionName, hallNames, playersPerTeam, totalRounds: allRounds.length,
+      rounds: allRounds, standings: players.map(p => ({ playerId: p.id, playerName: p.name, points: 0, goalsFor: 0, goalDifference: 0, matchesPlayed: 0 })),
+      isCompleted: false
+    },
+    failedRound: 0
   };
 }
 
@@ -139,28 +142,53 @@ export async function generateNKSchedule(
 ): Promise<NKSession> {
   const validVersions: NKSession[] = [];
   let attempts = 0;
+  failureLog = { ratingFail: 0, balanceFail: 0, officialsFail: 0, poolEmptyFail: 0, lastRoundStuck: 0 };
+  let roundFailureTally: {[key: number]: number} = {};
 
-  while (validVersions.length < 10 && attempts < 1500) {
+  while (validVersions.length < 10 && attempts < 800) {
     attempts++;
-    const version = await generateSingleVersion(players, hallNames, matchesPerPlayer, playersPerTeam, competitionName);
+    const { session, failedRound } = await generateSingleVersion(players, hallNames, matchesPerPlayer, playersPerTeam, competitionName);
     
-    if (version) {
-      validVersions.push(version);
-      onProgress(`Optimalisatie: ${validVersions.length}/10 versies gevonden...`);
-      await delay(10);
+    if (session) {
+      validVersions.push(session);
+      onProgress(`Optimalisatie: ${validVersions.length}/10...`);
+    } else {
+      roundFailureTally[failedRound] = (roundFailureTally[failedRound] || 0) + 1;
     }
     
-    if (attempts % 50 === 0) {
-      onProgress(`Berekenen... (Poging ${attempts})`);
+    if (attempts % 100 === 0) {
+      onProgress(`Poging ${attempts}/800...`);
       await delay(1);
     }
   }
 
   if (validVersions.length === 0) {
-    throw new Error("Het lukt niet om een sluitend schema te maken met deze spelers/wedstrijden. Probeer een andere optie.");
+    const mostFailedRound = Object.keys(roundFailureTally).reduce((a, b) => roundFailureTally[+a] > roundFailureTally[+b] ? a : b);
+    throw new Error(
+      `ONMOGELIJK SCHEMA:\n\n` +
+      `Meest problematische ronde: ${mostFailedRound}\n` +
+      `Oorzaken analyse:\n` +
+      `- Rating onder 4.0: ${failureLog.ratingFail}x\n` +
+      `- Balans > 0.3: ${failureLog.balanceFail}x\n` +
+      `- Te weinig officials: ${failureLog.officialsFail}x\n\n` +
+      `Advies: Verlaag het aantal wedstrijden of zalen, of kies een ander aantal spelers.`
+    );
   }
 
-  return validVersions.reduce((best, current) => 
-    calculateSocialScore(current) < calculateSocialScore(best) ? current : best
-  );
+  const calculateSocialScore = (s: NKSession): number => {
+    const pairCounts = new Map<string, number>();
+    s.rounds.forEach(r => r.matches.forEach(m => {
+      const all = [...m.team1, ...m.team2];
+      for (let i = 0; i < all.length; i++) 
+        for (let j = i + 1; j < all.length; j++) {
+          const key = [all[i].id, all[j].id].sort().join('-');
+          pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+        }
+    }));
+    let score = 0;
+    pairCounts.forEach(c => score += Math.pow(c, 2));
+    return score;
+  };
+
+  return validVersions.reduce((best, current) => calculateSocialScore(current) < calculateSocialScore(best) ? current : best);
 }
