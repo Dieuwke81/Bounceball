@@ -276,7 +276,7 @@ const optimizeTeamsSoft = (params: {
         for (let i = 0; i < ids.length; i++) {
           for (let j = i + 1; j < ids.length; j++) {
             const count = seasonPairCounts.get(pairKey(ids[i], ids[j])) || 0;
-            // ✅ Penalty verzwaard: kwadraat van het aantal keer samen gespeeld
+            // Penalty verzwaard: kwadraat van het aantal keer samen gespeeld
             pen += (count * count) * 10;
           }
         }
@@ -301,7 +301,7 @@ const optimizeTeamsSoft = (params: {
   if (teamCount < 2) return best;
 
   const teamSizes = best.map((t) => t.length);
-  // ✅ maxIters verhoogd naar 50000 voor meer hussel-pogingen
+  // maxIters verhoogd naar 50000 voor meer hussel-pogingen
   const maxIters = 50000;
   const randomInt = (max: number) => Math.floor(Math.random() * max);
 
@@ -346,7 +346,7 @@ const optimizeTeamsSoft = (params: {
 };
 
 // ============================================================================
-// ✅ Sync Ratings & Keepers: Tegenstanders op dezelfde plekken zetten
+// Sync Ratings & Keepers: Tegenstanders op dezelfde plekken zetten
 // ============================================================================
 
 const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
@@ -394,7 +394,7 @@ const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
 };
 
 // ============================================================================
-// ✅ FIX: ratings per ronde berekenen met juiste teams
+// FIX: ratings per ronde berekenen met juiste teams
 // ============================================================================
 
 const calculateRatingDeltas = (
@@ -761,7 +761,7 @@ const App: React.FC = () => {
 
     setActionInProgress('generating');
     try {
-      // ✅ Nu wordt activeHistory meegestuurd naar de motor
+      // Nu wordt activeHistory meegestuurd naar de motor
       let generated = await generateTeams(attendingPlayers, numberOfTeams, constraints, null, activeHistory);
 
       if (separateFrequentTeammates || separateTop6OnPoints) {
@@ -938,7 +938,7 @@ const App: React.FC = () => {
       if (remainingPlayers.length < numTeams)
         throw new Error(`Te weinig spelers (${remainingPlayers.length}) om de oorspronkelijke ${numTeams} teams te vullen.`);
 
-      // ✅ Nu wordt activeHistory meegestuurd naar de motor
+      // Nu wordt activeHistory meegestuurd naar de motor
       let regeneratedTeams = await generateTeams(remainingPlayers, numTeams, constraints, null, activeHistory);
 
       if (separateFrequentTeammates || separateTop6OnPoints) {
@@ -1021,7 +1021,7 @@ const App: React.FC = () => {
     setActionInProgress('generating');
     try {
       const allPlayers = teams.flat();
-      // ✅ Nu wordt activeHistory meegestuurd naar de motor
+      // Nu wordt activeHistory meegestuurd naar de motor
       let regeneratedTeams = await generateTeams(allPlayers, 2, constraints, teams, activeHistory);
 
       if (!regeneratedTeams || regeneratedTeams.length === 0) {
@@ -1166,7 +1166,7 @@ const App: React.FC = () => {
   const requireAdmin = (): boolean => {
     if (isManagementAuthenticated) return true;
 
-    const password = window.prompt('Voer het beheerderswachtwoord in om deze wedstrijd op te slaan:');
+    const password = window.prompt('Voer het beheerderswachtwoord in:');
     if (!password) return false;
 
     if (password === ADMIN_PASSWORD) {
@@ -1174,7 +1174,7 @@ const App: React.FC = () => {
       return true;
     }
 
-    alert('Onjuist wachtwoord. Wedstrijd is niet opgeslagen.');
+    alert('Onjuist wachtwoord.');
     return false;
   };
 
@@ -1331,7 +1331,11 @@ const App: React.FC = () => {
 
             <div className="mt-8 flex justify-center border-t border-gray-700/50 pt-6">
                <button
-                  onClick={() => setCurrentView('nk')}
+                  onClick={() => {
+                    if (requireAdmin()) {
+                      setCurrentView('nk');
+                    }
+                  }}
                   className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 hover:from-amber-500 hover:to-amber-700 text-white text-[10px] font-bold py-2 px-6 rounded-lg shadow-md transition-all transform hover:scale-105 uppercase tracking-wider"
                 >
                   NK Toernooi Manager
