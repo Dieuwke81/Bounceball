@@ -173,7 +173,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return Array.from(pairCounts.entries()).map(([k, v]) => ({
       p1: players.find(p => p.id === +k.split('-')[0])?.name || '',
       p2: players.find(p => p.id === +k.split('-')[1])?.name || '', ...v
-    })).sort((a, b) => b.together - a.together);
+    })).sort((a, b) => (b.together + b.against) - (a.together + a.against));
   }, [session, players]);
 
   if (isGenerating) return (
@@ -347,14 +347,15 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
             <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden max-h-[600px] overflow-y-auto uppercase">
               <table className="w-full text-left">
                 <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0 z-10">
-                  <tr><th className="p-4">Duo</th><th className="p-4 text-center">Samen</th><th className="p-4 text-center">Tegen</th></tr>
+                  <tr><th className="p-4">Duo</th><th className="p-4 text-center">Samen</th><th className="p-4 text-center">Tegen</th><th className="p-4 text-center">Totaal</th></tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
                   {coOpData.filter(d => d.p1.toLowerCase().includes(searchTerm.toLowerCase()) || d.p2.toLowerCase().includes(searchTerm.toLowerCase())).map((pair, i) => (
-                    <tr key={i} className={pair.together > 1 ? 'bg-red-500/10' : 'hover:bg-gray-700/20 transition-colors'}>
+                    <tr key={i} className={(pair.together + pair.against) > 2 ? 'bg-red-500/10' : 'hover:bg-gray-700/20 transition-colors'}>
                       <td className="p-4 text-xs font-bold">{pair.p1} + {pair.p2}</td>
-                      <td className="p-4 text-center"><span className={`px-2 py-1 rounded text-[10px] font-black ${pair.together > 1 ? 'bg-red-500 text-white shadow-lg' : 'bg-green-900 text-green-200'}`}>{pair.together}x</span></td>
+                      <td className="p-4 text-center"><span className={`px-2 py-1 rounded text-[10px] font-black ${pair.together > 1 ? 'bg-red-500/40 text-white' : 'bg-gray-900 text-gray-400'}`}>{pair.together}x</span></td>
                       <td className="p-4 text-center text-xs text-gray-400 font-bold">{pair.against}x</td>
+                      <td className="p-4 text-center"><span className={`px-2 py-1 rounded text-[10px] font-black ${(pair.together + pair.against) > 2 ? 'bg-amber-500 text-white shadow-lg' : 'bg-green-900 text-green-200'}`}>{pair.together + pair.against}x</span></td>
                     </tr>
                   ))}
                 </tbody>
