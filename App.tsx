@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Player, Match, MatchResult, Goal, GameSession, NewPlayer, Constraint } from './types';
 import Header from './components/Header';
@@ -13,6 +12,7 @@ import HistoryView from './components/HistoryView';
 import PlayerDetail from './components/PlayerDetail';
 import ManualEntry from './components/ManualEntry';
 import CompetitionManagement from './components/CompetitionManagement';
+import NKManager from './components/NKManager'; // Toegevoegd
 import { getInitialData, saveGameSession, addPlayer, updatePlayer, deletePlayer, setCompetitionName as setCompetitionNameService } from './services/googleSheetService';
 import TrophyIcon from './components/icons/TrophyIcon';
 import UsersIcon from './components/icons/UsersIcon';
@@ -24,7 +24,7 @@ import LoginScreen from './components/LoginScreen';
 import LockIcon from './components/icons/LockIcon';
 import FutbolIcon from './components/icons/FutbolIcon';
 
-type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement';
+type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement' | 'nk'; // 'nk' toegevoegd
 type Notification = { message: string; type: 'success' | 'error' };
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 
@@ -525,6 +525,17 @@ const App: React.FC = () => {
     setCurrentView('playerDetail');
   };
   
+  const requireAdmin = (): boolean => {
+    if (isManagementAuthenticated) return true;
+    const password = window.prompt('Voer het beheerderswachtwoord in:');
+    if (password === ADMIN_PASSWORD) {
+        setIsManagementAuthenticated(true);
+        return true;
+    }
+    alert('Onjuist wachtwoord.');
+    return false;
+  };
+
   const handleLogin = (password: string): boolean => {
       if (password === ADMIN_PASSWORD) {
           setIsManagementAuthenticated(true);
@@ -607,6 +618,19 @@ const App: React.FC = () => {
                <p className="text-xs text-gray-500 mt-3 text-center">
                    Voor een toernooi zijn minimaal 4 spelers nodig.
                </p>
+
+               <div className="mt-8 flex justify-center border-t border-gray-700/50 pt-6">
+                <button
+                  onClick={() => {
+                    if (requireAdmin()) {
+                      setCurrentView('nk');
+                    }
+                  }}
+                  className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 hover:from-amber-500 hover:to-amber-700 text-white text-[10px] font-bold py-2 px-6 rounded-lg shadow-md transition-all transform hover:scale-105 uppercase tracking-wider"
+                >
+                  NK Toernooi Manager
+                </button>
+              </div>
            </div>
         </div>
       </div>
@@ -645,6 +669,8 @@ const App: React.FC = () => {
     switch(currentView) {
       case 'main':
         return renderMainView();
+      case 'nk':
+        return <NKManager players={players} onClose={() => setCurrentView('main')} />;
       case 'stats':
         return isManagementAuthenticated ? (
           <Statistics history={activeHistory} players={players} onSelectPlayer={handleSelectPlayer} />
