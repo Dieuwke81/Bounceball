@@ -24,15 +24,14 @@ import LoginScreen from './components/LoginScreen';
 import LockIcon from './components/icons/LockIcon';
 import FutbolIcon from './components/icons/FutbolIcon';
 
-type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement' | 'nk'; // 'nk' toegevoegd
+type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement' | 'nk'; 
 type Notification = { message: string; type: 'success' | 'error' };
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 
 // ============================================================================
 // WACHTWOORD BEVEILIGING
-// Pas hier het wachtwoord aan voor de beveiligde tabbladen.
 // ============================================================================
-const ADMIN_PASSWORD = 'bounce';
+const ADMIN_PASSWORD = 'kemmer';
 // ============================================================================
 
 
@@ -150,12 +149,8 @@ const App: React.FC = () => {
         return;
       }
       
-      // New logic to ignore date lines but allow names with a single number.
-      // A date line like "18 november 20:30" will have multiple numbers.
-      // A name like "Player 2" will have only one.
       const numberMatches = cleanedName.match(/\d+/g);
       if (numberMatches && numberMatches.length > 1) {
-        // Contains multiple numbers, likely a date/time stamp, so ignore it.
         return;
       }
 
@@ -527,7 +522,7 @@ const App: React.FC = () => {
   
   const requireAdmin = (): boolean => {
     if (isManagementAuthenticated) return true;
-    const password = window.prompt('Voer het beheerderswachtwoord in:');
+    const password = window.prompt('Voer het beheerderswachtwoord in om toegang te krijgen:');
     if (password === ADMIN_PASSWORD) {
         setIsManagementAuthenticated(true);
         return true;
@@ -628,6 +623,7 @@ const App: React.FC = () => {
                   }}
                   className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 hover:from-amber-500 hover:to-amber-700 text-white text-[10px] font-bold py-2 px-6 rounded-lg shadow-md transition-all transform hover:scale-105 uppercase tracking-wider"
                 >
+                  <LockIcon className="w-3 h-3 text-white mr-2" />
                   NK Toernooi Manager
                 </button>
               </div>
