@@ -3,6 +3,7 @@ import { Player, NKSession, NKStandingsEntry } from '../types';
 import { generateNKSchedule } from '../services/nkGenerator';
 import TrophyIcon from './icons/TrophyIcon';
 import FutbolIcon from './icons/FutbolIcon';
+import LockIcon from './icons/LockIcon';
 
 interface NKManagerProps { players: Player[]; onClose: () => void; }
 
@@ -17,9 +18,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   
   const [hallsCount, setHallsCount] = useState(3);
   const [hallNames, setHallNames] = useState<string[]>(['A', 'B', 'C']);
-  const [matchesPerPlayer, setMatchesPerPlayer] = useState(8);
   const [playersPerTeam, setPlayersPerTeam] = useState(4);
-  const [targetPlayerCount, setTargetPlayerCount] = useState<number | null>(null);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(new Set());
   const [attendanceText, setAttendanceText] = useState('');
 
@@ -39,48 +38,28 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
   const handleParseAttendance = () => {
     const normalize = (str: string): string =>
-      str
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .replace(/\.$/, '');
+      str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\.$/, '');
 
     const lines = attendanceText.split('\n');
     const potentialNames = new Set<string>();
     const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
-    const nonNameIndicators = [
-      'afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 
-      'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper'
-    ];
+    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'helaas', 'keepen', 'keeper'];
 
     lines.forEach((line) => {
       const trimmedLine = line.trim();
       if (!trimmedLine) return;
       const lowerLine = trimmedLine.toLowerCase();
-
       if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
       if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
 
-      let cleaned = trimmedLine
-        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
-        .replace(/\[.*?\]/, '')
-        .replace(/^\s*\d+[\.\)]?\s*/, '')
-        .split(/[:\-\–]/)[0]
-        .replace(/[\(\[].*?[\)\]]/g, '')
-        .trim();
-
-      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) {
-        potentialNames.add(cleaned);
-      }
+      let cleaned = trimmedLine.replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].trim();
+      if (cleaned && cleaned.length > 1) potentialNames.add(cleaned);
     });
 
     const playerLookup = new Map<string, Player>();
     players.forEach((player) => {
-      const normalizedFullName = normalize(player.name);
-      const normalizedFirstName = normalizedFullName.split(' ')[0];
-      playerLookup.set(normalizedFullName, player);
-      if (!playerLookup.has(normalizedFirstName)) playerLookup.set(normalizedFirstName, player);
+      playerLookup.set(normalize(player.name), player);
+      playerLookup.set(normalize(player.name.split(' ')[0]), player);
     });
 
     const newSelected = new Set(selectedPlayerIds);
@@ -92,10 +71,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
       if (matchedPlayer) {
         if (!newSelected.has(matchedPlayer.id)) {
-            if (targetPlayerCount && newSelected.size < targetPlayerCount) {
-                newSelected.add(matchedPlayer.id);
-                successCount++;
-            }
+          newSelected.add(matchedPlayer.id);
+          successCount++;
         }
       } else {
         fails.push(originalName);
@@ -108,27 +85,59 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     setTimeout(() => setParseFeedback(null), 5000);
   };
 
-  const possibilities = useMemo(() => {
+  // ✅ Berekent welke wedstrijdaantallen mogelijk zijn met de huidige selectie
+  const calculatedOptions = useMemo(() => {
+    const numPlayers = selectedPlayerIds.size;
+    if (numPlayers === 0) return [];
+
     const options = [];
-    const pPerMatch = playersPerTeam * 2;
-    for (let n = pPerMatch; n <= 100; n++) {
-      if ((n * matchesPerPlayer) % pPerMatch === 0) {
-        const h = Math.min(hallsCount, Math.floor(n / pPerMatch));
-        if (h > 0) {
-          const resting = n - (h * pPerMatch);
-          const needs = h * 3;
-          let label = "Onvoldoende rust", color = "border-gray-700 opacity-50", score = 0;
-          if (resting >= needs) {
-            score = 100 - (resting - needs) * 5;
-            label = score > 90 ? "Perfect" : "Heel Goed";
-            color = score > 90 ? "border-green-500 bg-green-500/10" : "border-amber-500 bg-amber-500/10";
-          }
-          options.push({ playerCount: n, hallsToUse: h, totalRounds: Math.ceil((n*matchesPerPlayer/pPerMatch)/h), resting, needs, label, color, score });
+    const playersPerMatch = playersPerTeam * 2;
+
+    // We kijken naar mogelijke wedstrijden p.p. (van 3 tot 12)
+    for (let mpp = 3; mpp <= 12; mpp++) {
+      const totalSlots = numPlayers * mpp;
+      
+      // Check 1: Is het totaal aantal plekken deelbaar door spelers per match?
+      if (totalSlots % playersPerMatch === 0) {
+        const totalMatches = totalSlots / playersPerMatch;
+        const rounds = Math.ceil(totalMatches / hallsCount);
+        
+        // Check 2: Is er genoeg rust? (minimaal 3 officials per actieve zaal nodig)
+        const playersPlayingPerRound = Math.min(hallsCount, Math.floor(numPlayers / playersPerMatch)) * playersPerMatch;
+        const resting = numPlayers - playersPlayingPerRound;
+        const neededForOfficials = Math.min(hallsCount, Math.floor(numPlayers / playersPerMatch)) * 3;
+
+        let label = "Mogelijk";
+        let color = "border-gray-700 bg-gray-800/50";
+        let score = 50;
+
+        if (resting >= neededForOfficials) {
+          score = 100;
+          label = "Perfecte rust";
+          color = "border-green-500 bg-green-500/10";
+        } else if (resting >= 1) {
+          score = 70;
+          label = "Weinig rust";
+          color = "border-amber-500 bg-amber-500/10";
+        } else {
+          score = 10;
+          label = "Geen officials";
+          color = "border-red-500/50 bg-red-500/5";
         }
+
+        options.push({
+          matchesPerPlayer: mpp,
+          totalMatches,
+          rounds,
+          resting,
+          label,
+          color,
+          score
+        });
       }
     }
     return options.sort((a, b) => b.score - a.score);
-  }, [hallsCount, matchesPerPlayer, playersPerTeam]);
+  }, [selectedPlayerIds.size, hallsCount, playersPerTeam]);
 
   const calculateStandings = (s: NKSession): NKStandingsEntry[] => {
     const stats = new Map<number, NKStandingsEntry>();
@@ -180,71 +189,104 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="flex flex-col items-center justify-center min-h-[400px] text-white text-center">
       <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
       <h2 className="text-3xl font-black uppercase italic tracking-tighter">{progressMsg}</h2>
-      <p className="text-gray-500 text-xs mt-2 uppercase font-bold tracking-widest animate-pulse">Selectie beste sociale balans (10 versies)...</p>
+      <p className="text-gray-500 text-xs mt-2 uppercase font-bold tracking-widest animate-pulse">Sociale spreiding optimaliseren...</p>
     </div>
   );
 
-  const isHighlighted = (name: string) => highlightName && name.toLowerCase().includes(highlightName.toLowerCase());
-
   if (!session) return (
     <div className="max-w-5xl mx-auto bg-gray-800 p-8 rounded-3xl border border-amber-500/20 shadow-2xl space-y-6">
-      <div className="flex items-center gap-4">
-        <TrophyIcon className="w-10 h-10 text-amber-500" />
-        <h2 className="text-3xl font-black text-white uppercase italic">NK Setup</h2>
-      </div>
-      <div className="grid lg:grid-cols-3 gap-8 text-white">
-        <div className="bg-gray-900/50 p-6 rounded-2xl border border-gray-700 space-y-4">
-          <div><span className="text-[10px] text-gray-500 font-black uppercase">Zalen</span><input type="number" value={hallsCount} onChange={e => setHallsCount(+e.target.value)} className="w-full bg-gray-800 p-3 rounded-xl font-bold border border-gray-700" /></div>
-          <div><span className="text-[10px] text-gray-500 font-black uppercase">Wedstrijden p.p.</span><input type="number" value={matchesPerPlayer} onChange={e => setMatchesPerPlayer(+e.target.value)} className="w-full bg-gray-800 p-3 rounded-xl font-bold border border-gray-700" /></div>
-          <div className="flex gap-2">{[4, 5].map(n => <button key={n} onClick={() => setPlayersPerTeam(n)} className={`flex-1 py-3 rounded-xl font-black border-2 ${playersPerTeam === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{n} vs {n}</button>)}</div>
-          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[10px] font-bold text-amber-500 italic">
-            Configuratie: Balans &lt; 0.3 en Team Gemiddelde &ge; 4.0.
-          </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <TrophyIcon className="w-10 h-10 text-amber-500" />
+          <h2 className="text-3xl font-black text-white uppercase italic">NK Setup</h2>
         </div>
-        <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-white font-bold uppercase text-xs">Opties:</h3>
-          <div className="grid sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-            {possibilities.map(opt => (
-              <button key={opt.playerCount} onClick={() => {setTargetPlayerCount(opt.playerCount); setSelectedPlayerIds(new Set());}} className={`p-4 rounded-2xl border-2 text-left transition-all ${targetPlayerCount === opt.playerCount ? 'ring-2 ring-white' : opt.color}`}>
-                <div className="flex justify-between font-black"><div className="text-2xl">{opt.playerCount} Spelers</div><span className="text-[8px] px-2 py-1 rounded-full bg-black/30">{opt.label}</span></div>
-                <div className="mt-2 text-[9px] font-bold text-gray-400 uppercase">📅 {opt.totalRounds} Rondes | 🪑 {opt.resting} Rust</div>
+        <button onClick={onClose} className="text-gray-500 hover:text-white font-bold uppercase text-xs">Sluiten</button>
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-8 text-white">
+        {/* Kolom 1: Basis instellingen */}
+        <div className="bg-gray-900/50 p-6 rounded-2xl border border-gray-700 space-y-4">
+          <div>
+            <span className="text-[10px] text-gray-500 font-black uppercase">Aantal Zalen</span>
+            <input type="number" value={hallsCount} onChange={e => setHallsCount(Math.max(1, +e.target.value))} className="w-full bg-gray-800 p-3 rounded-xl font-bold border border-gray-700" />
+          </div>
+          <div className="flex gap-2">
+            {[4, 5].map(n => (
+              <button key={n} onClick={() => setPlayersPerTeam(n)} className={`flex-1 py-3 rounded-xl font-black border-2 ${playersPerTeam === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>
+                {n} vs {n}
               </button>
             ))}
           </div>
-          {targetPlayerCount && (
-            <div className="pt-4 space-y-4 animate-fade-in border-t border-gray-700 mt-4">
-               <textarea value={attendanceText} onChange={e => setAttendanceText(e.target.value)} placeholder="Plak aanwezigheidslijst..." className="w-full h-24 bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs outline-none focus:ring-2 ring-amber-500" />
-               <button onClick={handleParseAttendance} className="w-full py-3 bg-amber-500 text-white font-black rounded-xl uppercase text-xs">Verwerk Lijst</button>
-               {parseFeedback && (
-                 <div className="p-3 rounded-xl bg-gray-900 border border-gray-700 text-[10px] animate-bounce">
-                    <span className="text-green-500 font-bold">✅ {parseFeedback.success} toegevoegd.</span>
-                    {parseFeedback.fail.length > 0 && <span className="text-red-400 ml-2">❌ Gemist: {parseFeedback.fail.join(', ')}</span>}
-                 </div>
-               )}
-               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-2">
-                 {players.map(p => (
-                   <button key={p.id} onClick={() => { const n = new Set(selectedPlayerIds); if (n.has(p.id)) n.delete(p.id); else if (n.size < targetPlayerCount!) n.add(p.id); setSelectedPlayerIds(n); }} className={`p-2 rounded-lg text-[10px] font-bold border transition-all ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{p.name}</button>
-                 ))}
-               </div>
-               <div className="flex justify-between items-center bg-gray-900 p-4 rounded-2xl">
-                 <span className="text-xs font-black uppercase text-gray-500">Geselecteerd: {selectedPlayerIds.size} / {targetPlayerCount}</span>
-                 {selectedPlayerIds.size === targetPlayerCount && (
-                   <button onClick={async () => {
-                     setIsGenerating(true); setProgressMsg("Initialiseren...");
-                     try {
-                       const p = players.filter(x => selectedPlayerIds.has(x.id));
-                       const s = await generateNKSchedule(p, hallNames, matchesPerPlayer, playersPerTeam, "NK", setProgressMsg);
-                       setSession(s);
-                     } catch(e:any) { alert(e.message); } finally { setIsGenerating(false); }
-                   }} className="bg-green-600 text-white font-black px-6 py-3 rounded-xl shadow-xl uppercase hover:bg-green-500 transition-all scale-110">Start NK</button>
-                 )}
-               </div>
+          <div className="pt-4 border-t border-gray-700">
+            <span className="text-[10px] text-gray-500 font-black uppercase">Aanwezigheid plakkken</span>
+            <textarea value={attendanceText} onChange={e => setAttendanceText(e.target.value)} placeholder="Plak lijst uit WhatsApp..." className="w-full h-32 bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs mt-1 outline-none focus:ring-2 ring-amber-500" />
+            <button onClick={handleParseAttendance} className="w-full mt-2 py-3 bg-amber-500 text-white font-black rounded-xl uppercase text-xs">Verwerk Lijst</button>
+          </div>
+        </div>
+
+        {/* Kolom 2: Spelers selectie */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex justify-between items-end">
+            <h3 className="text-white font-bold uppercase text-xs">Geselecteerde spelers ({selectedPlayerIds.size}):</h3>
+            <button onClick={() => setSelectedPlayerIds(new Set())} className="text-[10px] text-red-500 font-bold uppercase">Wis alles</button>
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-2 bg-black/20 rounded-xl">
+            {players.map(p => (
+              <button 
+                key={p.id} 
+                onClick={() => {
+                  const n = new Set(selectedPlayerIds);
+                  if (n.has(p.id)) n.delete(p.id); else n.add(p.id);
+                  setSelectedPlayerIds(n);
+                }} 
+                className={`p-2 rounded-lg text-[10px] font-bold border transition-all truncate ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Kolom 3: De berekende opties */}
+          {selectedPlayerIds.size > 0 && (
+            <div className="pt-4 border-t border-gray-700 animate-fade-in">
+              <h3 className="text-white font-bold uppercase text-xs mb-3 text-amber-500">Beschikbare schema opties:</h3>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {calculatedOptions.length > 0 ? calculatedOptions.map(opt => (
+                  <button 
+                    key={opt.matchesPerPlayer}
+                    onClick={async () => {
+                      setIsGenerating(true); setProgressMsg("Schema berekenen...");
+                      try {
+                        const p = players.filter(x => selectedPlayerIds.has(x.id));
+                        const s = await generateNKSchedule(p, hallNames, opt.matchesPerPlayer, playersPerTeam, "NK", setProgressMsg);
+                        setSession(s);
+                      } catch(e:any) { alert(e.message); } finally { setIsGenerating(false); }
+                    }}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all hover:scale-[1.02] ${opt.color}`}
+                  >
+                    <div className="flex justify-between font-black">
+                      <div className="text-xl">{opt.matchesPerPlayer} Wedstrijden p.p.</div>
+                    </div>
+                    <div className="mt-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider">
+                      📅 {opt.rounds} rondes | 🪑 {opt.resting} rust/officials | {opt.label}
+                    </div>
+                  </button>
+                )) : (
+                  <div className="col-span-2 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-center">
+                    <p className="text-red-500 text-xs font-bold uppercase">Geen sluitend schema mogelijk met {selectedPlayerIds.size} spelers.</p>
+                    <p className="text-gray-500 text-[10px] mt-1">Voeg spelers toe of verwijder er een paar om een match te vinden.</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
       </div>
     </div>
   );
+
+  const isHighlighted = (name: string) => highlightName && name.toLowerCase().includes(highlightName.toLowerCase());
 
   return (
     <div className="space-y-6 pb-20">
