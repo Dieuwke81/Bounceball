@@ -2,7 +2,6 @@ import { Player, NKSession, NKRound, NKMatch } from '../types';
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-// Zoekt de beste teamverdeling binnen een groep van 8 of 10 spelers
 function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff: number) {
   let validSplits: { t1: Player[], t2: Player[] }[] = [];
 
@@ -16,7 +15,6 @@ function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff:
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
 
-      // EISEN: Max 1 keeper per team, beide teams gem 4.0+, balans binnen targetDiff
       if (k1 <= 1 && k2 <= 1 && avg1 >= 4.0 && avg2 >= 4.0 && diff <= targetDiff) {
         validSplits.push({ t1: [...team1], t2: [...team2] });
       }
@@ -30,10 +28,10 @@ function getBestTeamSplit(players: Player[], playersPerTeam: number, targetDiff:
   }
 
   combine(0, []);
+  // Pak een willekeurige uit de geldige splits voor meer variatie tussen toernooien
   return validSplits.length > 0 ? validSplits[Math.floor(Math.random() * validSplits.length)] : null;
 }
 
-// Berekent strafpunten voor dubbele ontmoetingen
 function calculateSocialScore(session: NKSession): number {
   const together = new Map<string, number>();
   const against = new Map<string, number>();
@@ -49,7 +47,8 @@ function calculateSocialScore(session: NKSession): number {
   }));
 
   let score = 0;
-  together.forEach(v => score += (v * v)); // Kwadraat straft herhaling zwaar af
+  // Straf herhalingen zwaar af met kwadraten
+  together.forEach(v => score += (v * v));
   against.forEach(v => score += (v * v));
   return score;
 }
@@ -71,9 +70,10 @@ async function generateSingleSchedule(
   for (let r = 1; r <= totalRounds; r++) {
     const roundMatches: NKMatch[] = [];
     const usedThisRound = new Set<number>();
+    
+    // We proberen per ronde 50 keer een geldige set wedstrijden te vinden
     let roundSuccess = false;
-
-    for (let attempt = 0; attempt < 100; attempt++) {
+    for (let attempt = 0; attempt < 50; attempt++) {
       const target = r < totalRounds - 1 ? 0.3 : 0.45;
       const currentUsed = new Set<number>();
       const currentMatches: NKMatch[] = [];
@@ -99,18 +99,15 @@ async function generateSingleSchedule(
           });
         }
 
-        // UNIEKE officials toewijzen uit de rustende spelers
-        let restingPool = players.filter(p => !currentUsed.has(p.id)).sort((a,b) => a.rating - b.rating);
-        if (restingPool.length < currentMatches.length * 3) throw new Error();
-
-        for (let m of currentMatches) {
-          m.subLow = restingPool.shift()!; // Laagste rating
-          m.subHigh = restingPool.pop()!; // Hoogste rating
-          const midIdx = Math.floor(restingPool.length / 2);
-          m.referee = restingPool.splice(midIdx, 1)[0]; // Gemiddelde rating
-        }
+        const resting = players.filter(p => !currentUsed.has(p.id)).sort((a,b) => a.rating - b.rating);
+        currentMatches.forEach((m, idx) => {
+          m.subLow = resting[idx * 3];
+          m.subHigh = resting[resting.length - 1 - (idx * 3)];
+          m.referee = resting[idx * 3 + 1];
+        });
 
         roundMatches = currentMatches;
+        roundMatches.forEach(m => [...m.team1, ...m.team2].forEach(p => currentUsed.add(p.id))); // Sync
         roundSuccess = true;
         break;
       } catch (e) { continue; }
@@ -118,16 +115,10 @@ async function generateSingleSchedule(
 
     if (!roundSuccess) return null;
 
-    roundMatches.forEach(m => {
-        [...m.team1, ...m.team2].forEach(p => {
-            playedCount.set(p.id, playedCount.get(p.id)! + 1);
-            usedThisRound.add(p.id);
-        });
-        // Ook officials markeren als gebruikt deze ronde
-        usedThisRound.add(m.subLow.id);
-        usedThisRound.add(m.subHigh.id);
-        usedThisRound.add(m.referee.id);
-    });
+    roundMatches.forEach(m => [...m.team1, ...m.team2].forEach(p => {
+        playedCount.set(p.id, playedCount.get(p.id)! + 1);
+        usedThisRound.add(p.id);
+    }));
 
     allRounds.push({ 
         roundNumber: r, 
@@ -154,21 +145,29 @@ export async function generateNKSchedule(
   const validSchedules: NKSession[] = [];
   let attempts = 0;
 
-  while (validSchedules.length < 5 && attempts < 300) {
+  onProgress("Starten met optimalisatie...");
+
+  while (validSchedules.length < 5 && attempts < 200) {
     attempts++;
-    onProgress(`Optimaliseren... Versie ${validSchedules.length + 1}/5 (Poging ${attempts})`);
     const schedule = await generateSingleSchedule(players, hallNames, matchesPerPlayer, playersPerTeam, competitionName);
+    
     if (schedule) {
       validSchedules.push(schedule);
+      onProgress(`Toernooi ${validSchedules.length}/5 gevonden...`);
       await delay(10);
     } else {
+      if (attempts % 10 === 0) onProgress(`Bezig met berekenen... (Poging ${attempts})`);
       await delay(1);
     }
   }
 
-  if (validSchedules.length === 0) throw new Error("Geen geldig schema gevonden. Controleer ratings en rust-eisen.");
+  if (validSchedules.length === 0) {
+    throw new Error("Geen schema gevonden binnen de balans-eisen.");
+  }
 
-  // Sorteer op beste sociale mix
+  // Kies het schema met de laagste social score
+  onProgress("Beste mix selecteren...");
   validSchedules.sort((a, b) => calculateSocialScore(a) - calculateSocialScore(b));
+  
   return validSchedules[0];
 }
