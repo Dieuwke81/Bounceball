@@ -93,20 +93,22 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       if (!m.isPlayed) return;
       const p1 = m.team1Score > m.team2Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
       const p2 = m.team2Score > m.team1Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
-      m.team1.forEach(p => { const st = stats.get(p.id)!; st.matchesPlayed++; st.points += p1; st.goalsFor += m.team1Score; st.goalDifference += (m.team1Score - m.team2Score); });
-      m.team2.forEach(p => { const st = stats.get(p.id)!; st.matchesPlayed++; st.points += p2; st.goalsFor += m.team2Score; st.goalDifference += (m.team2Score - m.team1Score); });
+      m.team1.forEach(p => { 
+        const st = stats.get(p.id);
+        if (st) { st.matchesPlayed++; st.points += p1; st.goalsFor += m.team1Score; st.goalDifference += (m.team1Score - m.team2Score); }
+      });
+      m.team2.forEach(p => { 
+        const st = stats.get(p.id);
+        if (st) { st.matchesPlayed++; st.points += p2; st.goalsFor += m.team2Score; st.goalDifference += (m.team2Score - m.team1Score); }
+      });
     }));
     return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
   };
 
   const updateMatch = (roundIdx: number, matchIdx: number, updates: Partial<any>) => {
     if (!session) return;
-    const newSession = { ...session };
-    const newRounds = [...newSession.rounds];
-    const newMatches = [...newRounds[roundIdx].matches];
-    newMatches[matchIdx] = { ...newMatches[matchIdx], ...updates };
-    newRounds[roundIdx] = { ...newRounds[roundIdx], matches: newMatches };
-    newSession.rounds = newRounds;
+    const newSession = JSON.parse(JSON.stringify(session));
+    newSession.rounds[roundIdx].matches[matchIdx] = { ...newSession.rounds[roundIdx].matches[matchIdx], ...updates };
     newSession.standings = calculateStandings(newSession);
     setSession(newSession);
   };
@@ -134,7 +136,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="flex flex-col items-center justify-center min-h-[400px] text-white text-center">
       <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
       <h2 className="text-3xl font-black uppercase italic tracking-tighter">{progressMsg}</h2>
-      <p className="text-gray-500 text-xs mt-2 uppercase font-bold tracking-widest animate-pulse">Optimalisatie: Beste van 10 versies</p>
+      <p className="text-gray-500 text-xs mt-2 uppercase font-bold tracking-widest animate-pulse">Sociale Balans & Match Count Check...</p>
     </div>
   );
 
