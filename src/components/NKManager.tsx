@@ -14,7 +14,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [errorAnalysis, setErrorAnalysis] = useState<string | null>(null);
-  const [parseFeedback, setParseFeedback] = useState<{success: number, fail: string[]} | null>(null);
   
   const [hallsCount, setHallsCount] = useState(3);
   const [hallNames, setHallNames] = useState<string[]>(['A', 'B', 'C']);
@@ -39,7 +38,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const handleParseAttendance = () => {
     const normalize = (str: string): string =>
       str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\.$/, '');
-
     const lines = attendanceText.split('\n');
     const potentialNames = new Set<string>();
     const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
@@ -51,7 +49,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       const lowerLine = trimmedLine.toLowerCase();
       if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
       if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
-
       let cleaned = trimmedLine.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
       if (cleaned && cleaned.length > 1) potentialNames.add(cleaned);
     });
@@ -63,26 +60,13 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     });
 
     const newSelected = new Set(selectedPlayerIds);
-    let successCount = 0;
-    let fails: string[] = [];
-
     potentialNames.forEach((originalName) => {
       const normalizedName = normalize(originalName);
       const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
-      if (matchedPlayer) {
-        if (!newSelected.has(matchedPlayer.id)) {
-          newSelected.add(matchedPlayer.id);
-          successCount++;
-        }
-      } else {
-        fails.push(originalName);
-      }
+      if (matchedPlayer) newSelected.add(matchedPlayer.id);
     });
-
     setSelectedPlayerIds(newSelected);
     setAttendanceText('');
-    setParseFeedback({ success: successCount, fail: fails });
-    setTimeout(() => setParseFeedback(null), 5000);
   };
 
   const calculatedOptions = useMemo(() => {
@@ -95,9 +79,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       if ((n * mpp) % pPerMatch === 0) {
         const totalMatches = (n * mpp) / pPerMatch;
         const rounds = Math.ceil(totalMatches / hallsCount);
-        const hUsed = Math.min(hallsCount, Math.floor(n / pPerMatch));
-        const resting = n - (hUsed * pPerMatch);
-        const needs = hUsed * 3;
+        const playingPerRound = Math.min(hallsCount, Math.floor(n / pPerMatch)) * pPerMatch;
+        const resting = n - playingPerRound;
+        const needs = Math.min(hallsCount, Math.floor(n / pPerMatch)) * 3;
 
         let label = "Mogelijk", color = "border-gray-700 bg-gray-800/50", score = 50;
         if (resting >= needs) { label = "Perfecte rust"; color = "border-green-500 bg-green-500/10"; score = 100; }
@@ -115,12 +99,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     const stats = new Map<number, NKStandingsEntry>();
     const allIds = new Set<number>();
     session.rounds.forEach(r => r.matches.forEach(m => [...m.team1, ...m.team2].forEach(p => allIds.add(p.id))));
-
     allIds.forEach(id => {
       const p = players.find(x => x.id === id);
       stats.set(id, { playerId: id, playerName: p?.name || '?', points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0 });
     });
-
     session.rounds.forEach(r => r.matches.forEach(m => {
       if (!m.isPlayed) return;
       const p1 = m.team1Score > m.team2Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
@@ -154,7 +136,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="flex flex-col items-center justify-center min-h-[400px] text-white text-center">
       <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
       <h2 className="text-3xl font-black uppercase italic tracking-tighter">{progressMsg}</h2>
-      <p className="text-gray-500 text-xs mt-2 uppercase font-bold animate-pulse">Spreiding optimaliseren...</p>
+      <p className="text-gray-500 text-xs mt-2 uppercase font-bold animate-pulse tracking-widest">Controle op keiharde match-count eis...</p>
     </div>
   );
 
@@ -169,9 +151,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       </div>
 
       {errorAnalysis && (
-        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl">
+        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl animate-shake">
           <h3 className="text-red-500 font-black uppercase text-sm">⚠️ Analyse Mislukking:</h3>
-          <p className="text-gray-300 text-xs mt-2 leading-relaxed whitespace-pre-line">{errorAnalysis}</p>
+          <p className="text-gray-300 text-[10px] mt-1 leading-relaxed whitespace-pre-line">{errorAnalysis}</p>
         </div>
       )}
 
@@ -184,8 +166,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         </div>
 
         <div className="lg:col-span-2 space-y-4">
-          <div className="flex justify-between items-end"><h3 className="text-white font-bold uppercase text-xs tracking-widest">Spelers ({selectedPlayerIds.size})</h3><button onClick={() => setSelectedPlayerIds(new Set())} className="text-[10px] text-red-500 font-bold uppercase underline">Wis alles</button></div>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-2 bg-black/20 rounded-xl custom-scrollbar">
+          <div className="flex justify-between items-end"><h3 className="text-white font-bold uppercase text-xs tracking-widest">Deelnemers ({selectedPlayerIds.size})</h3><button onClick={() => setSelectedPlayerIds(new Set())} className="text-[10px] text-red-500 font-bold uppercase underline">Wis alles</button></div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-2 bg-black/20 rounded-xl">
             {players.map(p => (
               <button key={p.id} onClick={() => { const n = new Set(selectedPlayerIds); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); setSelectedPlayerIds(n); }} className={`p-2 rounded-lg text-[10px] font-bold border transition-all truncate ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{p.name}</button>
             ))}
@@ -193,11 +175,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
           {selectedPlayerIds.size > 0 && (
             <div className="pt-4 border-t border-gray-700">
-              <h3 className="text-white font-bold uppercase text-xs mb-3 text-amber-500 tracking-widest">Beschikbare Opties:</h3>
+              <h3 className="text-white font-bold uppercase text-xs mb-3 text-amber-500 tracking-widest">Gevalideerde Opties:</h3>
               <div className="grid sm:grid-cols-2 gap-3">
                 {calculatedOptions.map(opt => (
                   <button key={opt.mpp} onClick={async () => {
-                      setIsGenerating(true); setProgressMsg("Schema berekenen..."); setErrorAnalysis(null);
+                      setIsGenerating(true); setProgressMsg("Keihard schema bouwen..."); setErrorAnalysis(null);
                       try {
                         const p = players.filter(x => selectedPlayerIds.has(x.id));
                         const s = await generateNKSchedule(p, hallNames, opt.mpp, playersPerTeam, "NK", setProgressMsg);
@@ -320,8 +302,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
         {activeTab === 'analysis' && (
           <div className="space-y-4 animate-fade-in text-white no-print">
-            <input type="text" placeholder="Samenwerkingen filteren..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl p-4 text-sm outline-none focus:border-amber-500 transition-all" />
-            <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden max-h-[600px] overflow-y-auto uppercase custom-scrollbar">
+            <input type="text" placeholder="Filter duo's..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl p-4 text-sm outline-none focus:border-amber-500" />
+            <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden max-h-[600px] overflow-y-auto uppercase">
               <table className="w-full text-left">
                 <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0 z-20">
                   <tr><th className="p-5">Duo</th><th className="p-5 text-center">Samen</th><th className="p-5 text-center">Tegen</th><th className="p-5 text-center">Totaal</th></tr>
