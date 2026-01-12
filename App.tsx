@@ -24,7 +24,7 @@ import LoginScreen from './components/LoginScreen';
 import LockIcon from './components/icons/LockIcon';
 import FutbolIcon from './components/icons/FutbolIcon';
 
-type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement' | 'nk'; 
+type View = 'main' | 'stats' | 'history' | 'playerManagement' | 'playerDetail' | 'manualEntry' | 'competitionManagement' | 'nk'; // 'nk' toegevoegd
 type Notification = { message: string; type: 'success' | 'error' };
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 
@@ -112,6 +112,29 @@ const App: React.FC = () => {
   
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
       setNotification({ message, type });
+  };
+
+  // Functie die ALTIJD om een wachtwoord vraagt
+  const handleProtectedNKAccess = () => {
+    const password = window.prompt('Voer het beheerderswachtwoord in voor NK Manager:');
+    if (password === ADMIN_PASSWORD) {
+      setIsManagementAuthenticated(true);
+      setCurrentView('nk');
+    } else {
+      alert('Onjuist wachtwoord.');
+    }
+  };
+
+  // Algemene admin check voor tabbladen (onthoudt inlog)
+  const requireAdmin = (): boolean => {
+    if (isManagementAuthenticated) return true;
+    const password = window.prompt('Voer het beheerderswachtwoord in:');
+    if (password === ADMIN_PASSWORD) {
+        setIsManagementAuthenticated(true);
+        return true;
+    }
+    alert('Onjuist wachtwoord.');
+    return false;
   };
 
 
@@ -520,17 +543,6 @@ const App: React.FC = () => {
     setCurrentView('playerDetail');
   };
   
-  const requireAdmin = (): boolean => {
-    if (isManagementAuthenticated) return true;
-    const password = window.prompt('Voer het beheerderswachtwoord in om toegang te krijgen:');
-    if (password === ADMIN_PASSWORD) {
-        setIsManagementAuthenticated(true);
-        return true;
-    }
-    alert('Onjuist wachtwoord.');
-    return false;
-  };
-
   const handleLogin = (password: string): boolean => {
       if (password === ADMIN_PASSWORD) {
           setIsManagementAuthenticated(true);
@@ -616,15 +628,11 @@ const App: React.FC = () => {
 
                <div className="mt-8 flex justify-center border-t border-gray-700/50 pt-6">
                 <button
-                  onClick={() => {
-                    if (requireAdmin()) {
-                      setCurrentView('nk');
-                    }
-                  }}
-                  className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 hover:from-amber-500 hover:to-amber-700 text-white text-[10px] font-bold py-2 px-6 rounded-lg shadow-md transition-all transform hover:scale-105 uppercase tracking-wider"
+                  onClick={handleProtectedNKAccess}
+                  className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 hover:from-amber-500 hover:to-amber-700 text-white text-[10px] font-bold py-3 px-8 rounded-lg shadow-md transition-all transform hover:scale-105 uppercase tracking-wider flex items-center"
                 >
                   <LockIcon className="w-3 h-3 text-white mr-2" />
-                  NK Toernooi Manager
+                  NK TOERNOOI MANAGER
                 </button>
               </div>
            </div>
