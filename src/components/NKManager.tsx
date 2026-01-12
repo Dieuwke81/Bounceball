@@ -38,23 +38,67 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   }, [session]);
 
   const handleParseAttendance = () => {
-    const normalize = (str: string) => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const normalize = (str: string): string =>
+      str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .replace(/\.$/, '');
+
     const lines = attendanceText.split('\n');
-    const newSelected = new Set<number>(selectedPlayerIds);
+    const potentialNames = new Set<string>();
+    const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+    const nonNameIndicators = [
+      'afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 
+      'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper'
+    ];
+
+    lines.forEach((line) => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) return;
+      const lowerLine = trimmedLine.toLowerCase();
+
+      if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
+      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
+
+      let cleaned = trimmedLine
+        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+        .replace(/\[.*?\]/, '')
+        .replace(/^\s*\d+[\.\)]?\s*/, '')
+        .split(/[:\-\–]/)[0]
+        .replace(/[\(\[].*?[\)\]]/g, '')
+        .trim();
+
+      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) {
+        potentialNames.add(cleaned);
+      }
+    });
+
+    const playerLookup = new Map<string, Player>();
+    players.forEach((player) => {
+      const normalizedFullName = normalize(player.name);
+      const normalizedFirstName = normalizedFullName.split(' ')[0];
+      playerLookup.set(normalizedFullName, player);
+      if (!playerLookup.has(normalizedFirstName)) playerLookup.set(normalizedFirstName, player);
+    });
+
+    const newSelected = new Set(selectedPlayerIds);
     let successCount = 0;
     let fails: string[] = [];
 
-    lines.forEach(line => {
-      const cleaned = line.replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].trim();
-      if (!cleaned) return;
-      const match = players.find(p => normalize(p.name).includes(normalize(cleaned)) || normalize(cleaned).includes(normalize(p.name)));
-      if (match) {
-        if (!newSelected.has(match.id)) {
-          newSelected.add(match.id);
-          successCount++;
+    potentialNames.forEach((originalName) => {
+      const normalizedName = normalize(originalName);
+      const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
+      if (matchedPlayer) {
+        if (!newSelected.has(matchedPlayer.id)) {
+            if (targetPlayerCount && newSelected.size < targetPlayerCount) {
+                newSelected.add(matchedPlayer.id);
+                successCount++;
+            }
         }
       } else {
-        fails.push(cleaned);
+        fails.push(originalName);
       }
     });
 
@@ -136,7 +180,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="flex flex-col items-center justify-center min-h-[400px] text-white text-center">
       <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
       <h2 className="text-3xl font-black uppercase italic tracking-tighter">{progressMsg}</h2>
-      <p className="text-gray-500 text-xs mt-2 uppercase font-bold tracking-widest animate-pulse">Sociale Balans & Match Count Check...</p>
+      <p className="text-gray-500 text-xs mt-2 uppercase font-bold tracking-widest animate-pulse">Selectie beste sociale balans (10 versies)...</p>
     </div>
   );
 
