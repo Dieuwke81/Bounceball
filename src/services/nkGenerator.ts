@@ -69,7 +69,7 @@ async function generateSingleVersion(
     let roundSuccess = false;
     let roundMatches: NKMatch[] = [];
     
-    for (let rAttempt = 0; rAttempt < 100; rAttempt++) {
+    for (let rAttempt = 0; rAttempt < 150; rAttempt++) {
       const target = rAttempt < 50 ? 0.3 : 0.4;
       const usedThisRound = new Set<number>();
       const currentMatches: NKMatch[] = [];
@@ -140,24 +140,24 @@ export async function generateNKSchedule(
   const validVersions: NKSession[] = [];
   let attempts = 0;
 
-  while (validVersions.length < 10 && attempts < 1000) {
+  while (validVersions.length < 10 && attempts < 1500) {
     attempts++;
     const version = await generateSingleVersion(players, hallNames, matchesPerPlayer, playersPerTeam, competitionName);
     
     if (version) {
       validVersions.push(version);
-      onProgress(`Kwaliteitscontrole: ${validVersions.length}/10 versies gevonden...`);
+      onProgress(`Optimalisatie: ${validVersions.length}/10 versies gevonden...`);
       await delay(10);
     }
     
     if (attempts % 50 === 0) {
-      onProgress(`Bezig met berekenen (Poging ${attempts})...`);
+      onProgress(`Berekenen... (Poging ${attempts})`);
       await delay(1);
     }
   }
 
   if (validVersions.length === 0) {
-    throw new Error("Het lukt niet om een schema te maken waarbij iedereen exact het gevraagde aantal wedstrijden speelt. Controleer de spelersgroep.");
+    throw new Error("Het lukt niet om een sluitend schema te maken met deze spelers/wedstrijden. Probeer een andere optie.");
   }
 
   return validVersions.reduce((best, current) => 
