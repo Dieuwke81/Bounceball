@@ -74,7 +74,6 @@ async function generateSingleVersion(
       const usedThisRound = new Set<number>();
       const currentMatches: NKMatch[] = [];
 
-      // STRIKTE SORTERING: Wie het minst gespeeld heeft MOET nu in de pool
       const pool = [...players]
         .filter(p => playedCount.get(p.id)! < matchesPerPlayer)
         .sort((a, b) => (playedCount.get(a.id)! - playedCount.get(b.id)!) || (Math.random() - 0.5));
@@ -83,7 +82,6 @@ async function generateSingleVersion(
       
       try {
         for (let h = 0; h < mInRound; h++) {
-          // Neem de eerste spelers uit de gesorteerde pool
           const mPlayers = pool.filter(p => !usedThisRound.has(p.id)).slice(0, playersPerMatch);
           if (mPlayers.length < playersPerMatch) throw new Error("Te weinig spelers");
 
@@ -98,7 +96,6 @@ async function generateSingleVersion(
           });
         }
 
-        // Officials uit de resterende groep
         let restingPool = players.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
         if (restingPool.length < currentMatches.length * 3) throw new Error("Officials tekort");
 
@@ -118,11 +115,10 @@ async function generateSingleVersion(
       roundMatches.forEach(m => [...m.team1, ...m.team2].forEach(p => playedCount.set(p.id, playedCount.get(p.id)! + 1)));
       allRounds.push({ roundNumber: r, matches: roundMatches, restingPlayers: [] });
     } else {
-        return null; // Deze versie is mislukt
+        return null;
     }
   }
 
-  // KEIHARDE CHECK: Heeft iedereen exact het aantal wedstrijden gehaald?
   const allReachedLimit = players.every(p => playedCount.get(p.id) === matchesPerPlayer);
   if (!allReachedLimit) return null;
 
@@ -161,7 +157,7 @@ export async function generateNKSchedule(
   }
 
   if (validVersions.length === 0) {
-    throw new Error("Het lukt niet om een schema te maken waarbij iedereen exact 8 wedstrijden speelt en elk team minstens 4.0 gemiddeld is. Controleer de spelersgroep.");
+    throw new Error("Het lukt niet om een schema te maken waarbij iedereen exact het gevraagde aantal wedstrijden speelt. Controleer de spelersgroep.");
   }
 
   return validVersions.reduce((best, current) => 
