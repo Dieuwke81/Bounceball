@@ -47,22 +47,29 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
   const handleParseAttendance = () => {
     const normalize = (str: string): string =>
-      str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\.$/, '');
+      str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .replace(/\.$/, '');
 
     const lines = attendanceText.split('\n');
     const potentialNames = new Set<string>();
     const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
     const nonNameIndicators = [
       'afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present',
-      'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'reserve', 'keeper',
+      'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper',
     ];
 
     lines.forEach((line) => {
       const trimmedLine = line.trim();
       if (!trimmedLine) return;
       const lowerLine = trimmedLine.toLowerCase();
+
       if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
-      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
+      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1)
+        return;
 
       let cleaned = trimmedLine
         .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
@@ -89,8 +96,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     potentialNames.forEach((originalName) => {
       const normalizedName = normalize(originalName);
       const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
-      if (matchedPlayer) newAttendingPlayerIds.add(matchedPlayer.id);
+      if (matchedPlayer) {
+        newAttendingPlayerIds.add(matchedPlayer.id);
+      }
     });
+
     setSelectedPlayerIds(newAttendingPlayerIds);
     setAttendanceText('');
   };
@@ -120,12 +130,14 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const currentStandings = useMemo(() => {
     if (!session) return [];
     const stats = new Map<number, NKStandingsEntry>();
-    const allIds = new Set<number>();
-    session.rounds.forEach(r => r.matches.forEach(m => [...m.team1, ...m.team2].forEach(p => allIds.add(p.id))));
-    allIds.forEach(id => {
+    const allParticipantIds = new Set<number>();
+    session.rounds.forEach(r => r.matches.forEach(m => [...m.team1, ...m.team2].forEach(p => allParticipantIds.add(p.id))));
+
+    allParticipantIds.forEach(id => {
       const p = players.find(x => x.id === id);
       stats.set(id, { playerId: id, playerName: p?.name || '?', points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0 });
     });
+
     session.rounds.forEach(r => r.matches.forEach(m => {
       if (!m.isPlayed) return;
       const p1 = m.team1Score > m.team2Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
@@ -142,10 +154,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     const pairsMap = new Map<string, { p1: string, p2: string, together: number, against: number }>();
     for (let i = 0; i < participantIds.length; i++) {
       for (let j = i + 1; j < participantIds.length; j++) {
-        const id1 = participantIds[i];
-        const id2 = participantIds[j];
-        const key = [id1, id2].sort().join('-');
-        pairsMap.set(key, { p1: players.find(p => p.id === id1)?.name || '?', p2: players.find(p => p.id === id2)?.name || '?', together: 0, against: 0 });
+        const key = [participantIds[i], participantIds[j]].sort().join('-');
+        pairsMap.set(key, { p1: players.find(p => p.id === participantIds[i])?.name || '?', p2: players.find(p => p.id === participantIds[j])?.name || '?', together: 0, against: 0 });
       }
     }
     session.rounds.forEach(r => r.matches.forEach(m => {
@@ -276,10 +286,23 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
   return (
     <div className="space-y-6 pb-20">
-      {/* PRINT MENU MODAL */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .print-only, .print-only * { visibility: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .print-only { position: absolute; left: 0; top: 0; width: 100%; background: white !important; }
+          body { background: white !important; color: black !important; padding: 0 !important; }
+          .match-card { border: 2px solid #000 !important; margin-bottom: 20px !important; page-break-inside: avoid; color: black !important; }
+          .page-break { page-break-after: always; }
+          .text-white { color: black !important; }
+          .bg-gray-800, .bg-gray-900 { background: white !important; }
+        }
+        .print-only { display: none; }
+      `}</style>
+
       {printMenuOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 no-print">
-          <div className="bg-gray-800 border-2 border-amber-500 rounded-3xl p-8 max-w-sm w-full space-y-6 shadow-2xl text-white">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 no-print text-white">
+          <div className="bg-gray-800 border-2 border-amber-500 rounded-3xl p-8 max-w-sm w-full space-y-6 shadow-2xl">
             <h3 className="text-2xl font-black uppercase italic text-center">Print Menu</h3>
             <div className="space-y-3">
               <button onClick={() => handlePrintAction('overview')} className="w-full py-4 bg-gray-700 hover:bg-amber-500 text-white font-bold rounded-2xl transition-all uppercase text-xs">Compleet Overzicht</button>
@@ -291,7 +314,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         </div>
       )}
 
-      {/* HEADER (SCHERM) */}
       <div className="no-print bg-gray-800 p-6 rounded-3xl border-b-8 border-amber-500 shadow-2xl text-white space-y-6">
         <h2 className="text-4xl sm:text-6xl font-black italic uppercase tracking-tighter text-center">NK Manager</h2>
         <div className="flex justify-center">
@@ -346,11 +368,14 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                                   setSession(newS);
                                 }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none focus:border-amber-500" />
                             </div>
-                            <button onClick={() => {
-                                const newS = JSON.parse(JSON.stringify(session));
-                                newS.rounds[rIdx].matches[mIdx].isPlayed = !match.isPlayed;
-                                setSession(newS);
-                            }} className={`text-[8px] font-black px-3 py-1.5 rounded-lg transition-all ${match.isPlayed ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-700 text-gray-400 hover:text-white'}`}>{match.isPlayed ? 'HERSTEL' : 'OPSLAAN'}</button>
+                            <div className="flex flex-col items-center gap-1">
+                              <button onClick={() => {
+                                  const newS = JSON.parse(JSON.stringify(session));
+                                  newS.rounds[rIdx].matches[mIdx].isPlayed = !match.isPlayed;
+                                  setSession(newS);
+                              }} className={`text-[8px] font-black px-3 py-1.5 rounded-lg transition-all ${match.isPlayed ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-700 text-gray-400 hover:text-white'}`}>{match.isPlayed ? 'HERSTEL' : 'OPSLAAN'}</button>
+                              <div className="text-[7px] text-gray-500 font-bold uppercase tracking-tighter">Verschil: {Math.abs(avg1 - avg2).toFixed(2)}</div>
+                            </div>
                           </div>
                           <div className="flex-1 space-y-1 text-right">
                             <div className="text-[9px] text-amber-400 font-black uppercase mb-2 tracking-widest">Team Geel</div>
