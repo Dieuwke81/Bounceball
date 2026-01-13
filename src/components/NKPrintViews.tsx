@@ -15,26 +15,33 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
     <div className="print-only">
       <style>{`
         @media print {
-          /* 1. Verberg ALLES behalve de print-container */
+          /* 1. Verberg ALLES van de app */
           body * { visibility: hidden; }
+          
+          /* 2. Maak alleen de print-container en ALLES daarin zichtbaar */
           .print-only, .print-only * {
             visibility: visible !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
 
-          /* 2. Positionering op papier */
+          /* 3. Positionering op papier */
           .print-only {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
             background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
 
-          body { margin: 0 !important; padding: 0 !important; }
+          /* 4. Pagina basis instellingen */
+          @page {
+            size: A4;
+            margin: 0.5cm;
+          }
 
-          /* 3. Pagina-eindes per ronde */
           .page-break {
             page-break-after: always !important;
             break-after: page !important;
@@ -47,27 +54,27 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             break-after: auto !important;
           }
 
-          /* 4. Ronde Titel Styling */
+          /* 5. Ronde Titel Styling */
           .print-header {
             display: block !important;
             text-align: center !important;
             border-bottom: 4px solid black !important;
-            margin-bottom: 15px !important;
+            margin-bottom: 10px !important;
             padding-bottom: 5px !important;
           }
 
           .print-header h1 {
-            font-size: 24pt !important;
+            font-size: 22pt !important;
             font-weight: 900 !important;
             margin: 0 !important;
             text-transform: uppercase !important;
             color: black !important;
           }
 
-          /* 5. Match Card (Groot genoeg, maar compact voor 3 per pagina) */
+          /* 6. Match Card (Compact voor 3 per pagina) */
           .match-card { 
-            border: 3px solid #000 !important; 
-            margin-bottom: 12px !important; 
+            border: 2px solid #000 !important; 
+            margin-bottom: 10px !important; 
             page-break-inside: avoid !important;
             padding: 10px 15px !important;
             background: white !important;
@@ -81,24 +88,17 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             text-transform: uppercase;
           }
 
-          /* Score invulvakken in het midden */
-          .score-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 0 20px;
-          }
-
+          /* Score invulvakken */
           .score-box {
             border: 2px solid black;
-            width: 38pt;
-            height: 38pt;
+            width: 35pt;
+            height: 35pt;
             background: white;
           }
 
           /* Kleuren */
           .color-blauw { color: #0000ff !important; } 
-          .color-geel { color: #ffcc00 !important; } /* Helder geel zonder randje */
+          .color-geel { color: #ffcc00 !important; } /* Echt geel zonder randje */
           .color-scheids { color: #db2777 !important; } 
           .color-reserve { color: #15803d !important; }
 
@@ -118,7 +118,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
         }
       `}</style>
 
-      {/* OPTIE 1: COMPLEET OVERZICHT */}
+      {/* OPTIE 1: COMPLEET OVERZICHT (3 kaarten per pagina) */}
       {activePrintType === 'overview' && session.rounds.map((round) => (
         <div key={round.roundNumber} className="page-break">
           <div className="p-4">
@@ -126,9 +126,10 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
               <h1>NK OVERZICHT - RONDE {round.roundNumber}</h1>
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-1">
               {round.matches.map(m => (
                 <div key={m.id} className="match-card">
+                  {/* HEADER VAN DE KAART: ZAAL + SCHEIDS */}
                   <div className="flex justify-between items-center mb-2 border-b-2 border-black pb-1">
                     <span className="text-xl font-black uppercase">ZAAL: {m.hallName}</span>
                     <div className="flex items-center">
@@ -147,7 +148,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                     </div>
 
                     {/* Scorevakken in het midden */}
-                    <div className="score-container">
+                    <div className="flex items-center gap-2 px-6">
                       <div className="score-box"></div>
                       <span className="font-black text-2xl">-</span>
                       <div className="score-box"></div>
@@ -162,14 +163,15 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-2 border-t-2 border-dashed border-black flex justify-around">
+                  {/* RESERVES NAAST ELKAAR */}
+                  <div className="mt-3 pt-2 border-t-2 border-dashed border-black flex justify-around">
                     <div className="flex items-center">
                         <span className="color-reserve label-small uppercase font-black">RESERVE 1:</span>
-                        <span className="player-name ml-2">{m.subHigh?.name}</span>
+                        <span className="player-name ml-2" style={{fontSize: '12pt'}}>{m.subHigh?.name}</span>
                     </div>
                     <div className="flex items-center">
                         <span className="color-reserve label-small uppercase font-black">RESERVE 2:</span>
-                        <span className="player-name ml-2">{m.subLow?.name}</span>
+                        <span className="player-name ml-2" style={{fontSize: '12pt'}}>{m.subLow?.name}</span>
                     </div>
                   </div>
                 </div>
