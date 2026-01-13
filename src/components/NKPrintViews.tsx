@@ -15,48 +15,56 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
     <div className="print-only">
       <style>{`
         @media print {
-          /* Verberg ALLES (hoofdmenu, navigatie, headers van de app) */
-          body * {
-            visibility: hidden;
-            background: none !important;
-          }
-          
-          /* Maak alleen het print-overzicht en de inhoud daarvan zichtbaar */
-          .print-only, .print-only * {
-            visibility: visible;
+          /* 1. Verberg de volledige App structuur zodat deze 0 pixels inneemt */
+          #root > *:not(.print-only), 
+          header, nav, footer, .no-print {
+            display: none !important;
           }
 
-          /* Zorg dat het overzicht strak bovenaan de pagina begint */
-          .print-only {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
+          /* 2. Reset de body voor print */
+          body {
             background: white !important;
             color: black !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          /* 3. Forceer de print-container strak bovenaan */
+          .print-only {
+            display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+          }
+
+          /* 4. Pagina-eindes beheren */
+          .page-break {
+            page-break-before: always !important;
+            display: block !important;
+            clear: both !important;
+          }
+
+          /* VOORKOM DAT DE EERSTE PAGINA LEEG IS */
+          .page-break:first-of-type {
+            page-break-before: avoid !important;
+            margin-top: 0 !important;
           }
 
           .match-card { 
             border: 2px solid #000 !important; 
             margin-bottom: 20px !important; 
-            page-break-inside: avoid; 
-          }
-
-          .page-break { 
-            page-break-after: always; 
-          }
-
-          /* Geen achtergrondkleuren van de app laten zien op papier */
-          div, table, tr, td {
-            background-color: transparent !important;
+            page-break-inside: avoid !important; 
             color: black !important;
+          }
+
+          h1, h2, h3, div, span, table, td, th {
+            color: black !important;
+            background: none !important;
             border-color: black !important;
           }
-
-          /* Forceer zwarte tekst voor de namen */
-          .text-white, .text-gray-400, .text-gray-500 {
-            color: black !important;
-          }
+          
+          table { border-collapse: collapse !important; width: 100% !important; }
         }
       `}</style>
 
