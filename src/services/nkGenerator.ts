@@ -42,7 +42,8 @@ async function generateSingleVersion(
   hallNames: string[], 
   mpp: number, 
   ppt: number, 
-  competitionName: string
+  competitionName: string,
+  manualTimes: {start: string, end: string}[]
 ): Promise<NKSession | null> {
   const ppm = ppt * 2;
   const totalMatchesNeeded = (allPlayers.length * mpp) / ppm;
@@ -105,7 +106,16 @@ async function generateSingleVersion(
     }
 
     if (success) {
-      rounds.push({ roundNumber: rIdx, matches: roundMatches, restingPlayers: [] });
+      // Tijden toevoegen aan de ronde
+      const time = manualTimes[rIdx - 1] || { start: '', end: '' };
+      rounds.push({ 
+        roundNumber: rIdx, 
+        matches: roundMatches, 
+        restingPlayers: [],
+        startTime: time.start,
+        endTime: time.end
+      } as any);
+
       const nextCounts = new Map(currentPlayedCount);
       roundMatches.forEach(m => [...m.team1, ...m.team2].forEach(p => nextCounts.set(p.id, nextCounts.get(p.id)! + 1)));
       playedCountsHistory[rIdx] = nextCounts;
@@ -125,14 +135,22 @@ async function generateSingleVersion(
   return { competitionName, hallNames, playersPerTeam: ppt, totalRounds: rounds.length, rounds, standings: [], isCompleted: false };
 }
 
-export async function generateNKSchedule(players: Player[], hallNames: string[], mpp: number, ppt: number, competitionName: string, onProgress: (msg: string) => void): Promise<NKSession> {
+export async function generateNKSchedule(
+    players: Player[], 
+    hallNames: string[], 
+    mpp: number, 
+    ppt: number, 
+    competitionName: string, 
+    onProgress: (msg: string) => void,
+    manualTimes: {start: string, end: string}[] // Nieuw
+): Promise<NKSession> {
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
 
   while (validVersions.length < 10 && totalAttempts < 500) {
     totalAttempts++;
     onProgress(`Zoeken naar beste balans: Versie ${validVersions.length}/10 gevonden...`);
-    const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName);
+    const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName, manualTimes);
     
     if (session) {
       validVersions.push(session);
@@ -145,8 +163,6 @@ export async function generateNKSchedule(players: Player[], hallNames: string[],
     throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nZelfs met backtracking kon geen 4.0+ teams maken. Probeer 1 wedstrijd minder p.p.`);
   }
 
-  // ✅ DE NIEUWE BALANS OPTIMALISATIE:
-  // We berekenen per toernooi-versie wat de uitschieter (grootste verschil) is.
   const getMaxDiff = (s: NKSession): number => {
     let max = 0;
     s.rounds.forEach(r => r.matches.forEach(m => {
@@ -159,6 +175,5 @@ export async function generateNKSchedule(players: Player[], hallNames: string[],
   };
 
   onProgress("Meest gebalanceerde schema selecteren...");
-  // Kies de versie waarbij het maximale verschil het LAAGST is.
   return validVersions.reduce((best, cur) => getMaxDiff(cur) < getMaxDiff(best) ? cur : best);
 }
