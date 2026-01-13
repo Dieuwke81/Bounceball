@@ -28,11 +28,11 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                 </div>
                 <div className="flex justify-between text-lg">
                   <div className="flex-1">
-                    <div className="font-black underline mb-1 uppercase">Team Blauw</div>
+                    <div className="font-black underline mb-1 uppercase">TEAM BLAUW</div>
                     {m.team1.map(p => <div key={p.id}>{p.name}</div>)}
                   </div>
                   <div className="flex-1 text-right">
-                    <div className="font-black underline mb-1 uppercase">Team Geel</div>
+                    <div className="font-black underline mb-1 uppercase">TEAM GEEL</div>
                     {m.team2.map(p => <div key={p.id}>{p.name}</div>)}
                   </div>
                 </div>
@@ -91,18 +91,18 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             {playerSchedules.map(ps => (
               <div key={ps.name} className="border-2 border-black p-2 text-[10px] break-inside-avoid">
                 <div className="font-black bg-black text-white p-1 mb-1 uppercase">{ps.name}</div>
-                <table className="w-full">
+                <table className="w-full text-left">
                   <thead>
-                    <tr className="border-b border-black">
-                      <th className="text-left">Ronde</th>
-                      <th className="text-left">Zaal</th>
-                      <th className="text-left">Rol</th>
+                    <tr className="border-b border-black font-black uppercase text-[8px]">
+                      <th>RD</th>
+                      <th>ZAAL</th>
+                      <th>ROL</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ps.rounds.map((r: any) => (
                       <tr key={r.round}>
-                        <td>{r.round}</td>
+                        <td className="w-6">{r.round}</td>
                         <td>{r.hall}</td>
                         <td className="font-bold">{r.role}</td>
                       </tr>
