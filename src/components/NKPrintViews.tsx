@@ -13,6 +13,53 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
   return (
     <div className="print-only">
+      <style>{`
+        @media print {
+          /* Verberg ALLES (hoofdmenu, navigatie, headers van de app) */
+          body * {
+            visibility: hidden;
+            background: none !important;
+          }
+          
+          /* Maak alleen het print-overzicht en de inhoud daarvan zichtbaar */
+          .print-only, .print-only * {
+            visibility: visible;
+          }
+
+          /* Zorg dat het overzicht strak bovenaan de pagina begint */
+          .print-only {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            background: white !important;
+            color: black !important;
+          }
+
+          .match-card { 
+            border: 2px solid #000 !important; 
+            margin-bottom: 20px !important; 
+            page-break-inside: avoid; 
+          }
+
+          .page-break { 
+            page-break-after: always; 
+          }
+
+          /* Geen achtergrondkleuren van de app laten zien op papier */
+          div, table, tr, td {
+            background-color: transparent !important;
+            color: black !important;
+            border-color: black !important;
+          }
+
+          /* Forceer zwarte tekst voor de namen */
+          .text-white, .text-gray-400, .text-gray-500 {
+            color: black !important;
+          }
+        }
+      `}</style>
+
       {/* OPTIE 1: COMPLEET OVERZICHT (RONDE PER PAGINA) */}
       {activePrintType === 'overview' && session.rounds.map((round) => (
         <div key={round.roundNumber} className="page-break p-8">
