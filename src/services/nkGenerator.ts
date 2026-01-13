@@ -131,28 +131,34 @@ export async function generateNKSchedule(players: Player[], hallNames: string[],
 
   while (validVersions.length < 10 && totalAttempts < 500) {
     totalAttempts++;
-    onProgress(`Optimaliseren: Versie ${validVersions.length}/10 gevonden...`);
+    onProgress(`Zoeken naar beste balans: Versie ${validVersions.length}/10 gevonden...`);
     const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName);
-    if (session) { validVersions.push(session); await delay(1); }
+    
+    if (session) {
+      validVersions.push(session);
+      await delay(1);
+    }
     if (totalAttempts % 20 === 0) await delay(1);
   }
 
-  if (validVersions.length === 0) throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nZelfs met backtracking kon geen 4.0+ teams maken. Probeer 1 wedstrijd minder p.p.`);
+  if (validVersions.length === 0) {
+    throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nZelfs met backtracking kon geen 4.0+ teams maken. Probeer 1 wedstrijd minder p.p.`);
+  }
 
-  const getSocialScore = (s: NKSession): number => {
-    const pairs = new Map<string, number>();
+  // ✅ DE NIEUWE BALANS OPTIMALISATIE:
+  // We berekenen per toernooi-versie wat de uitschieter (grootste verschil) is.
+  const getMaxDiff = (s: NKSession): number => {
+    let max = 0;
     s.rounds.forEach(r => r.matches.forEach(m => {
-      const p = [...m.team1, ...m.team2];
-      for (let i = 0; i < p.length; i++) 
-        for (let j = i + 1; j < p.length; j++) {
-          const key = [p[i].id, p[j].id].sort().join('-');
-          pairs.set(key, (pairs.get(key) || 0) + 1);
-        }
+      const avg1 = m.team1.reduce((acc, p) => acc + p.rating, 0) / m.team1.length;
+      const avg2 = m.team2.reduce((acc, p) => acc + p.rating, 0) / m.team2.length;
+      const diff = Math.abs(avg1 - avg2);
+      if (diff > max) max = diff;
     }));
-    let score = 0;
-    pairs.forEach(v => score += Math.pow(v, 2));
-    return score;
+    return max;
   };
 
-  return validVersions.reduce((best, cur) => getSocialScore(cur) < getSocialScore(best) ? cur : best);
+  onProgress("Meest gebalanceerde schema selecteren...");
+  // Kies de versie waarbij het maximale verschil het LAAGST is.
+  return validVersions.reduce((best, cur) => getMaxDiff(cur) < getMaxDiff(best) ? cur : best);
 }
