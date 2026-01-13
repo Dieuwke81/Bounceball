@@ -47,12 +47,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
   const handleParseAttendance = () => {
     const normalize = (str: string): string =>
-      str
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .replace(/\.$/, '');
+      str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\.$/, '');
 
     const lines = attendanceText.split('\n');
     const potentialNames = new Set<string>();
@@ -130,14 +125,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const currentStandings = useMemo(() => {
     if (!session) return [];
     const stats = new Map<number, NKStandingsEntry>();
-    const allParticipantIds = new Set<number>();
-    session.rounds.forEach(r => r.matches.forEach(m => [...m.team1, ...m.team2].forEach(p => allParticipantIds.add(p.id))));
-
-    allParticipantIds.forEach(id => {
+    const participantIds = Array.from(new Set(session.rounds.flatMap(r => r.matches.flatMap(m => [...m.team1, ...m.team2].map(p => p.id))))).sort();
+    participantIds.forEach(id => {
       const p = players.find(x => x.id === id);
       stats.set(id, { playerId: id, playerName: p?.name || '?', points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0 });
     });
-
     session.rounds.forEach(r => r.matches.forEach(m => {
       if (!m.isPlayed) return;
       const p1 = m.team1Score > m.team2Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
@@ -174,6 +166,19 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     const uniqueSorted = Array.from(new Set(totals)).filter(n => n > 0).sort((a, b) => b - a);
     return { highest: uniqueSorted[0] || 0, second: uniqueSorted[1] || 0, third: uniqueSorted[2] || 0, fourth: uniqueSorted[3] || 0 };
   }, [coOpData]);
+
+  // ✅ NIEUW: Bereken het hoogste ratingverschil in het hele toernooi
+  const maxTournamentDiff = useMemo(() => {
+    if (!session) return 0;
+    let max = 0;
+    session.rounds.forEach(r => r.matches.forEach(m => {
+        const avg1 = m.team1.reduce((s, p) => s + p.rating, 0) / m.team1.length;
+        const avg2 = m.team2.reduce((s, p) => s + p.rating, 0) / m.team2.length;
+        const diff = Math.abs(avg1 - avg2);
+        if (diff > max) max = diff;
+    }));
+    return max;
+  }, [session]);
 
   const playerSchedules = useMemo(() => {
     if (!session) return [];
@@ -324,7 +329,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           </div>
         </div>
         <div className="flex justify-center gap-4">
-          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white">Print alleen via PC</button>
+          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white">Print</button>
           <button onClick={() => { if(confirm("NK Wissen?")) { localStorage.removeItem('bounceball_nk_session'); setSession(null); } }} className="flex-1 max-w-[120px] bg-red-900/40 text-red-500 py-2.5 rounded-xl text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-800 hover:text-white transition-all">Reset</button>
         </div>
       </div>
@@ -333,6 +338,22 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         {activeTab === 'schedule' && (
           <>
             <input type="text" placeholder="Naam markeren..." value={highlightName} onChange={e => setHighlightName(e.target.value)} className="w-full bg-gray-800 p-4 rounded-2xl text-white border border-gray-700 outline-none focus:ring-2 ring-green-500 transition-all" />
+            
+            {/* ✅ NIEUW: Toon het maximale ratingverschil bovenaan de lijst */}
+            <div className="bg-gray-900/50 border-2 border-amber-500/30 p-4 rounded-2xl flex justify-between items-center shadow-lg">
+              <div>
+                <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-1">Grootste Balans-verschil</span>
+                <span className={`text-2xl font-black italic ${maxTournamentDiff > 0.4 ? 'text-red-500' : maxTournamentDiff > 0.25 ? 'text-amber-500' : 'text-green-500'}`}>
+                    {maxTournamentDiff.toFixed(2)}
+                </span>
+              </div>
+              <div className="text-right">
+                 <p className="text-[8px] text-gray-600 font-bold uppercase max-w-[150px] leading-tight">
+                    Dit is de match met het grootste rating-verschil. Lager is beter.
+                 </p>
+              </div>
+            </div>
+
             {session.rounds.map((round, rIdx) => (
               <div key={rIdx} className="space-y-4">
                 <h3 className="text-xl font-black text-amber-500 uppercase italic border-l-4 border-amber-500 pl-4 tracking-tighter">Ronde {round.roundNumber}</h3>
@@ -374,7 +395,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                                   newS.rounds[rIdx].matches[mIdx].isPlayed = !match.isPlayed;
                                   setSession(newS);
                               }} className={`text-[8px] font-black px-3 py-1.5 rounded-lg transition-all ${match.isPlayed ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-700 text-gray-400 hover:text-white'}`}>{match.isPlayed ? 'HERSTEL' : 'OPSLAAN'}</button>
-                              <div className="text-[8px] text-gray-500 font-bold uppercase tracking-tighter">Verschil: {Math.abs(avg1 - avg2).toFixed(2)}</div>
+                              <div className="text-[7px] text-gray-500 font-bold uppercase tracking-tighter">Verschil: {Math.abs(avg1 - avg2).toFixed(2)}</div>
                             </div>
                           </div>
                           <div className="flex-1 space-y-1 text-right">
