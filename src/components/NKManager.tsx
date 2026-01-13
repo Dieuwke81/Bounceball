@@ -374,7 +374,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                                   newS.rounds[rIdx].matches[mIdx].isPlayed = !match.isPlayed;
                                   setSession(newS);
                               }} className={`text-[8px] font-black px-3 py-1.5 rounded-lg transition-all ${match.isPlayed ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-700 text-gray-400 hover:text-white'}`}>{match.isPlayed ? 'HERSTEL' : 'OPSLAAN'}</button>
-                              <div className="text-[7px] text-gray-500 font-bold uppercase tracking-tighter">Verschil: {Math.abs(avg1 - avg2).toFixed(2)}</div>
+                              <div className="text-[8px] text-gray-500 font-bold uppercase tracking-tighter">Verschil: {Math.abs(avg1 - avg2).toFixed(2)}</div>
                             </div>
                           </div>
                           <div className="flex-1 space-y-1 text-right">
