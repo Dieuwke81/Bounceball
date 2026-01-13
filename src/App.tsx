@@ -607,6 +607,7 @@ const App: React.FC = () => {
       'later',
       'keepen',
       'keeper',
+      'reserve',
     ];
 
     lines.forEach((line) => {
