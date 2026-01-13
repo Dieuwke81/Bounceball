@@ -39,12 +39,12 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             display: block !important;
             text-align: center;
             border-bottom: 3px solid black;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             padding-bottom: 5px;
           }
           
           .round-header h1 {
-            font-size: 22pt !important;
+            font-size: 20pt !important;
             font-weight: 900 !important;
             margin: 0 !important;
             text-transform: uppercase;
@@ -67,11 +67,11 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           /* 5. Match Card (Overview) */
           .match-card { 
             border: 2px solid #000 !important; 
-            margin-bottom: 10px !important; 
+            margin-bottom: 8px !important; 
             page-break-inside: avoid !important;
-            padding: 10px 15px !important;
+            padding: 8px 12px !important;
             background: white !important;
-            border-radius: 10px;
+            border-radius: 8px;
           }
 
           .player-name {
@@ -79,6 +79,20 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             font-weight: bold !important;
             color: black !important;
             text-transform: uppercase;
+            line-height: 1.2;
+          }
+
+          /* Score invulvakken */
+          .score-box {
+            border: 2px solid black;
+            width: 35pt;
+            height: 35pt;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18pt;
+            font-weight: bold;
+            background: white;
           }
 
           .color-blauw { color: #0000ff !important; } 
@@ -86,7 +100,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           .color-scheids { color: #db2777 !important; } 
           .color-reserve { color: #15803d !important; }
 
-          .label-small { font-size: 9pt !important; font-weight: 900; }
+          .label-small { font-size: 8pt !important; font-weight: 900; }
 
           /* 6. Tabel Styling (Per Zaal & Speler) */
           table { 
@@ -97,12 +111,12 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
           th, td {
             border: 1px solid black !important;
-            padding: 5px !important;
+            padding: 4px !important;
           }
         }
       `}</style>
 
-      {/* OPTIE 1: COMPLEET OVERZICHT (3 zalen per pagina) */}
+      {/* OPTIE 1: COMPLEET OVERZICHT (3 zalen per pagina + invulvakken) */}
       {activePrintType === 'overview' && session.rounds.map((round) => (
         <div key={round.roundNumber} className="page-break">
           <div className="p-4">
@@ -110,40 +124,49 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
               <h1>NK OVERZICHT - RONDE {round.roundNumber}</h1>
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-1">
               {round.matches.map(m => (
                 <div key={m.id} className="match-card">
-                  <div className="flex justify-between items-center mb-2 border-b border-black pb-1">
-                    <span className="text-lg font-black uppercase">ZAAL: {m.hallName}</span>
+                  <div className="flex justify-between items-center mb-1 border-b border-black pb-1">
+                    <span className="text-lg font-black uppercase tracking-tighter">ZAAL: {m.hallName}</span>
                     <span className="text-md font-black">
                       <span className="color-scheids uppercase">SCHEIDS</span>: <span className="player-name">{m.referee?.name}</span>
                     </span>
                   </div>
                   
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center gap-2">
+                    {/* Team Blauw */}
                     <div className="flex-1">
                       <div className="label-small underline mb-1 color-blauw uppercase">TEAM BLAUW</div>
-                      <div className="space-y-0.5">
+                      <div className="space-y-0">
                         {m.team1.map(p => <div key={p.id} className="player-name">{p.name}</div>)}
                       </div>
                     </div>
+
+                    {/* Score Invulvakken */}
+                    <div className="flex items-center gap-2 px-4">
+                      <div className="score-box"></div>
+                      <span className="font-black text-xl">-</span>
+                      <div className="score-box"></div>
+                    </div>
                     
+                    {/* Team Geel */}
                     <div className="flex-1 text-right">
                       <div className="label-small underline mb-1 color-geel uppercase">TEAM GEEL</div>
-                      <div className="space-y-0.5">
+                      <div className="space-y-0">
                         {m.team2.map(p => <div key={p.id} className="player-name">{p.name}</div>)}
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-2 border-t border-dashed border-black flex justify-around">
+                  <div className="mt-2 pt-2 border-t border-dashed border-black flex justify-around">
                     <div className="flex items-center">
                         <span className="color-reserve label-small uppercase font-black">RESERVE 1:</span>
-                        <span className="player-name ml-2" style={{fontSize: '12pt'}}>{m.subHigh?.name}</span>
+                        <span className="player-name ml-2" style={{fontSize: '11pt'}}>{m.subHigh?.name}</span>
                     </div>
                     <div className="flex items-center">
                         <span className="color-reserve label-small uppercase font-black">RESERVE 2:</span>
-                        <span className="player-name ml-2" style={{fontSize: '12pt'}}>{m.subLow?.name}</span>
+                        <span className="player-name ml-2" style={{fontSize: '11pt'}}>{m.subLow?.name}</span>
                     </div>
                   </div>
                 </div>
