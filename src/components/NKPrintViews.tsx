@@ -15,130 +15,32 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
     <div className="print-only">
       <style>{`
         @media print {
-          /* 1. Verberg app-onderdelen */
           body * { visibility: hidden; }
-          .print-only, .print-only * {
-            visibility: visible !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-
-          /* 2. Pagina basis */
-          .print-only {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            background: white !important;
-          }
-
+          .print-only, .print-only * { visibility: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .print-only { position: absolute; left: 0; top: 0; width: 100%; background: white !important; }
           body { margin: 0 !important; padding: 0 !important; background: white !important; }
-
-          /* 3. Header Styling */
-          .print-header {
-            display: block !important;
-            text-align: center !important;
-            border-bottom: 4px solid black !important;
-            margin-bottom: 10px !important;
-            padding-bottom: 5px !important;
-          }
-
-          .print-header h1 {
-            font-size: 22pt !important;
-            font-weight: 900 !important;
-            margin: 0 !important;
-            text-transform: uppercase !important;
-            color: black !important;
-          }
-
-          /* 4. Pagina-eindes */
-          .page-break {
-            page-break-after: always !important;
-            break-after: page !important;
-            display: block !important;
-            width: 100%;
-          }
-
-          .page-break:last-child {
-            page-break-after: auto !important;
-            break-after: auto !important;
-          }
-
-          /* 5. Kleuren Systeem */
+          .print-header { display: block !important; text-align: center !important; border-bottom: 4px solid black !important; margin-bottom: 10px !important; padding-bottom: 5px !important; }
+          .print-header h1 { font-size: 22pt !important; font-weight: 900 !important; margin: 0 !important; text-transform: uppercase !important; color: black !important; }
+          .page-break { page-break-after: always !important; break-after: page !important; display: block !important; width: 100%; }
+          .page-break:last-child { page-break-after: auto !important; break-after: auto !important; }
           .color-blauw { color: #0000ff !important; } 
           .color-geel { color: #ffd700 !important; } 
           .color-scheids { color: #db2777 !important; } 
           .color-reserve { color: #15803d !important; }
-          
           .bg-blauw-trans { background-color: rgba(0, 0, 255, 0.08) !important; }
           .bg-geel-trans { background-color: rgba(255, 215, 0, 0.12) !important; }
           .bg-scheids-trans { background-color: rgba(219, 39, 119, 0.08) !important; }
           .bg-reserve-trans { background-color: rgba(21, 128, 61, 0.08) !important; }
-
-          /* 6. Match Card (OVERZICHT) */
-          .match-card { 
-            border: 3px solid #000 !important; 
-            margin-bottom: 10px !important; 
-            page-break-inside: avoid !important;
-            padding: 10px 15px !important;
-            background: white !important;
-            border-radius: 12px;
-          }
-
-          .hall-label {
-            font-size: 20pt !important;
-            font-weight: 900 !important;
-            text-transform: uppercase;
-            color: black !important;
-          }
-
-          .player-name {
-            font-size: 14pt !important;
-            font-weight: bold !important;
-            color: black !important;
-            text-transform: uppercase;
-          }
-
-          .score-box {
-            border: 2px solid black;
-            width: 38pt;
-            height: 38pt;
-            background: white !important;
-          }
-
+          .match-card { border: 3px solid #000 !important; margin-bottom: 10px !important; page-break-inside: avoid !important; padding: 10px 15px !important; background: white !important; border-radius: 12px; }
+          .hall-label { font-size: 20pt !important; font-weight: 900 !important; text-transform: uppercase; color: black !important; }
+          .player-name { font-size: 14pt !important; font-weight: bold !important; color: black !important; text-transform: uppercase; }
+          .score-box { border: 2px solid black; width: 38pt; height: 38pt; background: white !important; }
           .label-small { font-size: 9pt !important; font-weight: 900; }
-
-          /* 7. Tabel Styling */
-          .print-table { 
-            border-collapse: collapse !important; 
-            width: 100% !important; 
-            border: 2px solid black !important;
-            color: black !important;
-          }
-
-          .print-table th {
-            border: 2px solid black !important;
-            padding: 8px !important;
-            font-size: 10pt !important;
-            font-weight: 900 !important;
-            background: #f0f0f0 !important;
-            color: black !important;
-          }
-
-          .print-table td {
-            border: 2px solid black !important;
-            padding: 6px !important;
-            vertical-align: middle !important;
-            color: black !important;
-          }
-
-          .small-score-box {
-            border: 1.5px solid black;
-            width: 25pt;
-            height: 25pt;
-            display: inline-block;
-            background: white !important;
-          }
+          .print-table { border-collapse: collapse !important; width: 100% !important; border: 2px solid black !important; color: black !important; }
+          .print-table th { border: 2px solid black !important; padding: 8px !important; font-size: 10pt !important; font-weight: 900 !important; background: #f0f0f0 !important; color: black !important; }
+          .print-table td { border: 2px solid black !important; padding: 6px !important; vertical-align: middle !important; color: black !important; }
+          .small-score-box { border: 1.5px solid black; width: 25pt; height: 25pt; display: inline-block; background: white !important; }
+          .time-label { font-size: 14pt !important; font-weight: 900 !important; color: #444 !important; margin-left: 10px; }
         }
       `}</style>
 
@@ -147,7 +49,10 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
         <div key={round.roundNumber} className="page-break">
           <div className="p-4">
             <div className="print-header">
-              <h1>NK OVERZICHT - RONDE {round.roundNumber}</h1>
+              <h1>
+                NK OVERZICHT - RONDE {round.roundNumber} 
+                <span className="time-label">{(round as any).startTime ? `(${ (round as any).startTime } - ${ (round as any).endTime })` : ''}</span>
+              </h1>
             </div>
             <div className="space-y-2">
               {round.matches.map(m => (
@@ -203,8 +108,9 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           </div>
           <table className="print-table">
             <thead>
-              <tr className="uppercase">
-                <th className="w-10">RD</th>
+              <tr className="uppercase text-[9px]">
+                <th className="w-8">RD</th>
+                <th className="w-20">TIJD</th>
                 <th className="color-blauw text-left">TEAM BLAUW</th>
                 <th className="text-center w-28">SCORE</th>
                 <th className="color-geel text-left">TEAM GEEL</th>
@@ -216,13 +122,11 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
               {session.rounds.map(r => {
                 const m = r.matches.find(match => match.hallName.trim().toUpperCase() === hall.trim().toUpperCase());
                 if (!m) return null;
-
                 return (
                   <tr key={r.roundNumber} className="font-bold uppercase">
                     <td className="text-center text-xl bg-gray-50">{r.roundNumber}</td>
-                    <td className="text-[9pt] bg-blauw-trans">
-                      {m.team1.map(p => <div key={p.id}>{p.name}</div>)}
-                    </td>
+                    <td className="text-center text-xs">{(r as any).startTime}<br/>{(r as any).endTime}</td>
+                    <td className="text-[9pt] bg-blauw-trans">{m.team1.map(p => <div key={p.id}>{p.name}</div>)}</td>
                     <td className="text-center">
                       <div className="flex justify-center items-center gap-1">
                         <div className="small-score-box"></div>
@@ -230,12 +134,8 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                         <div className="small-score-box"></div>
                       </div>
                     </td>
-                    <td className="text-[9pt] bg-geel-trans">
-                      {m.team2.map(p => <div key={p.id}>{p.name}</div>)}
-                    </td>
-                    <td className="text-[9pt] bg-scheids-trans">
-                      {m.referee?.name}
-                    </td>
+                    <td className="text-[9pt] bg-geel-trans">{m.team2.map(p => <div key={p.id}>{p.name}</div>)}</td>
+                    <td className="text-[9pt] bg-scheids-trans">{m.referee?.name}</td>
                     <td className="text-[8pt] bg-reserve-trans">
                       <div>1: {m.subHigh?.name}</div>
                       <div>2: {m.subLow?.name}</div>
@@ -248,20 +148,20 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
         </div>
       ))}
 
-      {/* OPTIE 3: INDIVIDUELE SPELERS OVERZICHT (1 SPELER PER PAGINA) */}
+      {/* OPTIE 3: INDIVIDUELE SPELERS */}
       {activePrintType === 'players' && playerSchedules.map(ps => (
         <div key={ps.name} className="page-break p-6">
           <div className="print-header">
             <h1>PERSOONLIJK SCHEMA: {ps.name}</h1>
           </div>
-          
           <table className="print-table" style={{marginTop: '10px'}}>
             <thead>
               <tr className="bg-gray-100 uppercase text-[9pt] color-black">
                 <th className="w-12 text-center">RD</th>
+                <th className="w-24 text-center">TIJD</th>
                 <th className="w-20 text-center">ZAAL</th>
                 <th className="text-left">ROL</th>
-                <th className="w-28 text-center">PUNTEN (3, 1, 0)</th>
+                <th className="w-28 text-center">PUNTEN</th>
               </tr>
             </thead>
             <tbody>
@@ -281,36 +181,26 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                   return (
                     <tr key={r.round} className={roleClass}>
                       <td className="text-center text-xl py-2 font-black">{r.round}</td>
+                      <td className="text-center text-sm font-black">{r.startTime}</td>
                       <td className="text-center text-3xl font-black uppercase">{r.hall}</td>
                       <td className={`font-black uppercase text-lg ${roleTextColor}`}>{r.role}</td>
                       <td className="text-center">
                         {r.hall !== '-' && (r.role === "BLAUW" || r.role === "GEEL") ? (
                            <div className="border-2 border-black w-10 h-10 mx-auto bg-white"></div>
-                        ) : (
-                           <span className="text-gray-400 text-[7pt]">N.v.t.</span>
-                        )}
+                        ) : ( <span className="text-gray-400 text-[7pt]">N.v.t.</span> )}
                       </td>
                     </tr>
                   );
               })}
             </tbody>
-            {/* TOTAAL VAK ONDERAAN DE TABEL */}
             <tfoot>
                 <tr className="bg-gray-50">
-                    <td colSpan={2} className="border-none"></td>
+                    <td colSpan={3} className="border-none"></td>
                     <td className="text-right font-black text-xl py-4 pr-4 uppercase">TOTAAL:</td>
-                    <td className="text-center">
-                        <div className="border-4 border-black w-14 h-14 mx-auto bg-white"></div>
-                    </td>
+                    <td className="text-center"><div className="border-4 border-black w-14 h-14 mx-auto bg-white"></div></td>
                 </tr>
             </tfoot>
           </table>
-          
-          <div className="mt-4 text-center p-3 border-2 border-dashed border-gray-400 rounded-xl">
-             <p className="text-gray-500 font-bold uppercase text-[9px] tracking-widest">
-                Vul na elke wedstrijd je behaalde punten in in het vakje. 3 voor winst, 1 voor gelijkspel, 0 voor verlies.
-             </p>
-          </div>
         </div>
       ))}
     </div>
