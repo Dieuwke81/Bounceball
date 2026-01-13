@@ -14,7 +14,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [errorAnalysis, setErrorAnalysis] = useState<string | null>(null);
-  
   const [hallsCount, setHallsCount] = useState(3);
   const [hallNames, setHallNames] = useState<string[]>(['A', 'B', 'C']);
   const [playersPerTeam, setPlayersPerTeam] = useState(4);
@@ -50,13 +49,15 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
       if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
       let cleaned = trimmedLine.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
-      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) potentialNames.add(cleaned);
+      if (cleaned && cleaned.length > 1) potentialNames.add(cleaned);
     });
 
     const playerLookup = new Map<string, Player>();
     players.forEach((player) => {
-      playerLookup.set(normalize(player.name), player);
-      playerLookup.set(normalize(player.name.split(' ')[0]), player);
+      const normalizedFullName = normalize(player.name);
+      const normalizedFirstName = normalizedFullName.split(' ')[0];
+      playerLookup.set(normalizedFullName, player);
+      if (!playerLookup.has(normalizedFirstName)) playerLookup.set(normalizedFirstName, player);
     });
 
     const newSelected = new Set(selectedPlayerIds);
@@ -94,12 +95,14 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const currentStandings = useMemo(() => {
     if (!session) return [];
     const stats = new Map<number, NKStandingsEntry>();
-    const allIds = new Set<number>();
-    session.rounds.forEach(r => r.matches.forEach(m => [...m.team1, ...m.team2].forEach(p => allIds.add(p.id))));
-    allIds.forEach(id => {
+    const allParticipantIds = new Set<number>();
+    session.rounds.forEach(r => r.matches.forEach(m => [...m.team1, ...m.team2].forEach(p => allParticipantIds.add(p.id))));
+
+    allParticipantIds.forEach(id => {
       const p = players.find(x => x.id === id);
       stats.set(id, { playerId: id, playerName: p?.name || '?', points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0 });
     });
+
     session.rounds.forEach(r => r.matches.forEach(m => {
       if (!m.isPlayed) return;
       const p1 = m.team1Score > m.team2Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
@@ -107,7 +110,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       m.team1.forEach(p => { const st = stats.get(p.id); if (st) { st.matchesPlayed++; st.points += p1; st.goalsFor += m.team1Score; st.goalDifference += (m.team1Score - m.team2Score); }});
       m.team2.forEach(p => { const st = stats.get(p.id); if (st) { st.matchesPlayed++; st.points += p2; st.goalsFor += m.team2Score; st.goalDifference += (m.team2Score - m.team1Score); }});
     }));
-    return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
+    return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor);
   }, [session, players]);
 
   const coOpData = useMemo(() => {
@@ -133,9 +136,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="flex flex-col items-center justify-center min-h-[400px] text-white text-center">
       <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
       <h2 className="text-3xl font-black uppercase italic tracking-tighter">{progressMsg}</h2>
-      <p className="text-gray-500 text-xs mt-2 uppercase font-bold animate-pulse tracking-widest">Backtracking & Spreiding optimaliseren...</p>
+      <p className="text-gray-500 text-xs mt-2 uppercase font-bold animate-pulse">Backtracking & Spreiding optimaliseren...</p>
     </div>
   );
+
+  const isHighlighted = (name: string) => highlightName && name.toLowerCase().includes(highlightName.toLowerCase());
 
   if (!session) return (
     <div className="max-w-5xl mx-auto bg-gray-800 p-8 rounded-3xl border border-amber-500/20 shadow-2xl space-y-6">
@@ -148,9 +153,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       </div>
 
       {errorAnalysis && (
-        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl animate-shake">
+        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl">
           <h3 className="text-red-500 font-black uppercase text-sm">⚠️ Analyse Mislukking:</h3>
-          <p className="text-gray-300 text-[10px] mt-1 leading-relaxed whitespace-pre-line">{errorAnalysis}</p>
+          <p className="text-gray-300 text-xs mt-2 leading-relaxed whitespace-pre-line">{errorAnalysis}</p>
         </div>
       )}
 
@@ -159,7 +164,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <div><span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Zalen</span><input type="number" value={hallsCount} onChange={e => setHallsCount(Math.max(1, +e.target.value))} className="w-full bg-gray-800 p-3 rounded-xl font-bold border border-gray-700" /></div>
           <div className="flex gap-2">{[4, 5].map(n => <button key={n} onClick={() => setPlayersPerTeam(n)} className={`flex-1 py-3 rounded-xl font-black border-2 ${playersPerTeam === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{n} vs {n}</button>)}</div>
           <textarea value={attendanceText} onChange={e => setAttendanceText(e.target.value)} placeholder="Plak WhatsApp lijst..." className="w-full h-40 bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs outline-none" />
-          <button onClick={handleParseAttendance} className="w-full py-3 bg-amber-500 text-white font-black rounded-xl uppercase text-xs hover:bg-amber-400 transition-all">Verwerk Lijst</button>
+          <button onClick={handleParseAttendance} className="w-full py-3 bg-amber-500 text-white font-black rounded-xl uppercase text-xs">Verwerk Lijst</button>
         </div>
 
         <div className="lg:col-span-2 space-y-4">
@@ -176,7 +181,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
               <div className="grid sm:grid-cols-2 gap-3">
                 {calculatedOptions.map(opt => (
                   <button key={opt.mpp} onClick={async () => {
-                      setIsGenerating(true); setProgressMsg("Backtracking schema..."); setErrorAnalysis(null);
+                      setIsGenerating(true); setProgressMsg("Keihard schema bouwen..."); setErrorAnalysis(null);
                       try {
                         const p = players.filter(x => selectedPlayerIds.has(x.id));
                         const s = await generateNKSchedule(p, hallNames, opt.mpp, playersPerTeam, "NK", setProgressMsg);
@@ -195,8 +200,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     </div>
   );
 
-  const isHighlighted = (name: string) => highlightName && name.toLowerCase().includes(highlightName.toLowerCase());
-
   return (
     <div className="space-y-6 pb-20">
       <div className="no-print flex justify-between items-center bg-gray-800 p-4 rounded-2xl border-b-4 border-amber-500 shadow-xl text-white">
@@ -207,7 +210,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           ))}
         </div>
         <div className="flex gap-2">
-          <button onClick={() => window.print()} className="bg-gray-700 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-gray-600">Print</button>
+          <button onClick={() => window.print()} className="bg-gray-700 px-4 py-2 rounded-lg text-xs font-bold uppercase">Print</button>
           <button onClick={() => {if(confirm("NK Wissen?")) {localStorage.removeItem('bounceball_nk_session'); setSession(null);}}} className="bg-red-900/30 text-red-500 px-3 py-2 rounded-lg text-xs font-bold uppercase hover:bg-red-800">Reset</button>
         </div>
       </div>
