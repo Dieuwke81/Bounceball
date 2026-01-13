@@ -167,7 +167,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return { highest: uniqueSorted[0] || 0, second: uniqueSorted[1] || 0, third: uniqueSorted[2] || 0, fourth: uniqueSorted[3] || 0 };
   }, [coOpData]);
 
-  // ✅ NIEUW: Bereken het hoogste ratingverschil in het hele toernooi
   const maxTournamentDiff = useMemo(() => {
     if (!session) return 0;
     let max = 0;
@@ -294,13 +293,17 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       <style>{`
         @media print {
           body * { visibility: hidden; }
-          .print-only, .print-only * { visibility: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .print-only { position: absolute; left: 0; top: 0; width: 100%; background: white !important; }
+          .print-only { 
+            visibility: visible !important; 
+            display: block !important; 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            background: white !important; 
+          }
+          .print-only * { visibility: visible !important; }
           body { background: white !important; color: black !important; padding: 0 !important; }
-          .match-card { border: 2px solid #000 !important; margin-bottom: 20px !important; page-break-inside: avoid; color: black !important; }
-          .page-break { page-break-after: always; }
-          .text-white { color: black !important; }
-          .bg-gray-800, .bg-gray-900 { background: white !important; }
         }
         .print-only { display: none; }
       `}</style>
@@ -339,8 +342,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <>
             <input type="text" placeholder="Naam markeren..." value={highlightName} onChange={e => setHighlightName(e.target.value)} className="w-full bg-gray-800 p-4 rounded-2xl text-white border border-gray-700 outline-none focus:ring-2 ring-green-500 transition-all" />
             
-            {/* ✅ NIEUW: Toon het maximale ratingverschil bovenaan de lijst */}
-            <div className="bg-gray-900/50 border-2 border-amber-500/30 p-4 rounded-2xl flex justify-between items-center shadow-lg">
+            <div className="bg-gray-900/50 border-2 border-amber-500/30 p-4 rounded-2xl flex justify-between items-center shadow-lg text-white">
               <div>
                 <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-1">Grootste Balans-verschil</span>
                 <span className={`text-2xl font-black italic ${maxTournamentDiff > 0.4 ? 'text-red-500' : maxTournamentDiff > 0.25 ? 'text-amber-500' : 'text-green-500'}`}>
