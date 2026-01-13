@@ -40,29 +40,63 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     if (session) localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
   }, [session]);
 
+  // ✅ EXACT DEZELFDE PARSER LOGICA UIT APP.TSX
   const handleParseAttendance = () => {
     const normalize = (str: string): string =>
-      str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\.$/, '');
+      str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .replace(/\.$/, '');
+
     const lines = attendanceText.split('\n');
     const potentialNames = new Set<string>();
-    
+    const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+    const nonNameIndicators = [
+      'afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present',
+      'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper',
+    ];
+
     lines.forEach((line) => {
-      let cleaned = line.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
-      if (cleaned.length > 1) potentialNames.add(cleaned);
+      const trimmedLine = line.trim();
+      if (!trimmedLine) return;
+      const lowerLine = trimmedLine.toLowerCase();
+
+      if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
+      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1)
+        return;
+
+      let cleaned = trimmedLine
+        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+        .replace(/\[.*?\]/, '')
+        .replace(/^\s*\d+[\.\)]?\s*/, '')
+        .split(/[:\-\–]/)[0]
+        .replace(/[\(\[].*?[\)\]]/g, '')
+        .trim();
+
+      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) {
+        potentialNames.add(cleaned);
+      }
     });
 
     const playerLookup = new Map<string, Player>();
     players.forEach((player) => {
-      playerLookup.set(normalize(player.name), player);
-      playerLookup.set(normalize(player.name.split(' ')[0]), player);
+      const normalizedFullName = normalize(player.name);
+      const normalizedFirstName = normalizedFullName.split(' ')[0];
+      playerLookup.set(normalizedFullName, player);
+      if (!playerLookup.has(normalizedFirstName)) playerLookup.set(normalizedFirstName, player);
     });
 
     const newSelected = new Set(selectedPlayerIds);
     potentialNames.forEach((originalName) => {
       const normalizedName = normalize(originalName);
       const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
-      if (matchedPlayer) newSelected.add(matchedPlayer.id);
+      if (matchedPlayer) {
+        newSelected.add(matchedPlayer.id);
+      }
     });
+
     setSelectedPlayerIds(newSelected);
     setAttendanceText('');
   };
@@ -108,63 +142,39 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
   }, [session, players]);
 
-  // ✅ CO-OP DATA: Toont nu alle mogelijke koppels
   const coOpData = useMemo(() => {
     if (!session) return [];
-    
-    // 1. Vind alle unieke deelnemers uit het huidige NK
-    const participantIds: number[] = [];
-    const idSet = new Set<number>();
-    session.rounds.forEach(r => r.matches.forEach(m => {
-      [...m.team1, ...m.team2].forEach(p => idSet.add(p.id));
-    }));
-    participantIds.push(...Array.from(idSet));
-
-    // 2. Genereer ELK mogelijke paar (i, j)
+    const participantIds = Array.from(new Set(session.rounds.flatMap(r => r.matches.flatMap(m => [...m.team1, ...m.team2].map(p => p.id)))));
     const pairsMap = new Map<string, { p1: string, p2: string, together: number, against: number }>();
+    
     for (let i = 0; i < participantIds.length; i++) {
       for (let j = i + 1; j < participantIds.length; j++) {
-        const id1 = participantIds[i];
-        const id2 = participantIds[j];
-        const key = [id1, id2].sort().join('-');
+        const key = [participantIds[i], participantIds[j]].sort().join('-');
         pairsMap.set(key, {
-          p1: players.find(p => p.id === id1)?.name || '?',
-          p2: players.find(p => p.id === id2)?.name || '?',
-          together: 0,
-          against: 0
+          p1: players.find(p => p.id === participantIds[i])?.name || '?',
+          p2: players.find(p => p.id === participantIds[j])?.name || '?',
+          together: 0, against: 0
         });
       }
     }
 
-    // 3. Tel de werkelijke ontmoetingen uit het schema
     session.rounds.forEach(r => r.matches.forEach(m => {
-      const addCount = (paId: number, pbId: number, type: 'together' | 'against') => {
-        const key = [paId, pbId].sort().join('-');
-        const data = pairsMap.get(key);
+      const add = (id1: number, id2: number, type: 'together' | 'against') => {
+        const data = pairsMap.get([id1, id2].sort().join('-'));
         if (data) data[type]++;
       };
-
-      // Samen in Team 1
-      m.team1.forEach((p, idx) => m.team1.slice(idx + 1).forEach(p2 => addCount(p.id, p2.id, 'together')));
-      // Samen in Team 2
-      m.team2.forEach((p, idx) => m.team2.slice(idx + 1).forEach(p2 => addCount(p.id, p2.id, 'together')));
-      // Tegen elkaar
-      m.team1.forEach(p => m.team2.forEach(p2 => addCount(p.id, p2.id, 'against')));
+      m.team1.forEach((p, idx) => m.team1.slice(idx + 1).forEach(p2 => add(p.id, p2.id, 'together')));
+      m.team2.forEach((p, idx) => m.team2.slice(idx + 1).forEach(p2 => add(p.id, p2.id, 'together')));
+      m.team1.forEach(p => m.team2.forEach(p2 => add(p.id, p2.id, 'against')));
     }));
 
     return Array.from(pairsMap.values()).sort((a, b) => (b.together + b.against) - (a.together + a.against));
   }, [session, players]);
 
-  // ✅ HEATMAP RANKING
   const totalRankings = useMemo(() => {
     const totals = coOpData.map(d => d.together + d.against);
     const uniqueSorted = Array.from(new Set(totals)).filter(n => n > 0).sort((a, b) => b - a);
-    return {
-      highest: uniqueSorted[0] || 0,
-      second: uniqueSorted[1] || 0,
-      third: uniqueSorted[2] || 0,
-      fourth: uniqueSorted[3] || 0
-    };
+    return { highest: uniqueSorted[0] || 0, second: uniqueSorted[1] || 0, third: uniqueSorted[2] || 0, fourth: uniqueSorted[3] || 0 };
   }, [coOpData]);
 
   if (isGenerating) return (
@@ -188,7 +198,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       </div>
 
       {errorAnalysis && (
-        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl">
+        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl animate-shake">
           <h3 className="text-red-500 font-black uppercase text-sm">⚠️ Analyse Mislukking:</h3>
           <p className="text-gray-300 text-[10px] mt-1 leading-relaxed whitespace-pre-line">{errorAnalysis}</p>
         </div>
@@ -227,7 +237,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           </div>
           {selectedPlayerIds.size > 0 && (
             <div className="pt-4 border-t border-gray-700">
-              <h3 className="text-white font-bold uppercase text-xs mb-3 text-amber-500 tracking-widest">Opties:</h3>
+              <h3 className="text-white font-bold uppercase text-xs mb-3 text-amber-500 tracking-widest">Gevalideerde Opties:</h3>
               <div className="grid sm:grid-cols-2 gap-3">
                 {calculatedOptions.map(opt => (
                   <button key={opt.mpp} onClick={async () => {
