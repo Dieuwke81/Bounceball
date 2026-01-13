@@ -45,17 +45,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\.$/, '');
     const lines = attendanceText.split('\n');
     const potentialNames = new Set<string>();
-    const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
-    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'helaas', 'keepen', 'keeper'];
-
+    
     lines.forEach((line) => {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) return;
-      const lowerLine = trimmedLine.toLowerCase();
-      if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
-      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
-      let cleaned = trimmedLine.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
-      if (cleaned && cleaned.length > 1) potentialNames.add(cleaned);
+      let cleaned = line.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
+      if (cleaned.length > 1) potentialNames.add(cleaned);
     });
 
     const playerLookup = new Map<string, Player>();
@@ -115,33 +108,62 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
   }, [session, players]);
 
+  // ✅ CO-OP DATA: Toont nu alle mogelijke koppels
   const coOpData = useMemo(() => {
     if (!session) return [];
-    const pairCounts = new Map<string, { together: number, against: number }>();
+    
+    // 1. Vind alle unieke deelnemers uit het huidige NK
+    const participantIds: number[] = [];
+    const idSet = new Set<number>();
     session.rounds.forEach(r => r.matches.forEach(m => {
-      const add = (p1: number, p2: number, type: 'together' | 'against') => {
-        const key = [p1, p2].sort().join('-');
-        const cur = pairCounts.get(key) || { together: 0, against: 0 };
-        cur[type]++; pairCounts.set(key, cur);
-      };
-      m.team1.forEach((p, i) => m.team1.slice(i+1).forEach(p2 => add(p.id, p2.id, 'together')));
-      m.team2.forEach((p, i) => m.team2.slice(i+1).forEach(p2 => add(p.id, p2.id, 'together')));
-      m.team1.forEach(p1 => m.team2.forEach(p2 => add(p1.id, p2.id, 'against')));
+      [...m.team1, ...m.team2].forEach(p => idSet.add(p.id));
     }));
-    return Array.from(pairCounts.entries()).map(([k, v]) => ({
-      p1: players.find(p => p.id === +k.split('-')[0])?.name || '',
-      p2: players.find(p => p.id === +k.split('-')[1])?.name || '', ...v
-    })).sort((a, b) => (b.together + b.against) - (a.together + a.against));
+    participantIds.push(...Array.from(idSet));
+
+    // 2. Genereer ELK mogelijke paar (i, j)
+    const pairsMap = new Map<string, { p1: string, p2: string, together: number, against: number }>();
+    for (let i = 0; i < participantIds.length; i++) {
+      for (let j = i + 1; j < participantIds.length; j++) {
+        const id1 = participantIds[i];
+        const id2 = participantIds[j];
+        const key = [id1, id2].sort().join('-');
+        pairsMap.set(key, {
+          p1: players.find(p => p.id === id1)?.name || '?',
+          p2: players.find(p => p.id === id2)?.name || '?',
+          together: 0,
+          against: 0
+        });
+      }
+    }
+
+    // 3. Tel de werkelijke ontmoetingen uit het schema
+    session.rounds.forEach(r => r.matches.forEach(m => {
+      const addCount = (paId: number, pbId: number, type: 'together' | 'against') => {
+        const key = [paId, pbId].sort().join('-');
+        const data = pairsMap.get(key);
+        if (data) data[type]++;
+      };
+
+      // Samen in Team 1
+      m.team1.forEach((p, idx) => m.team1.slice(idx + 1).forEach(p2 => addCount(p.id, p2.id, 'together')));
+      // Samen in Team 2
+      m.team2.forEach((p, idx) => m.team2.slice(idx + 1).forEach(p2 => addCount(p.id, p2.id, 'together')));
+      // Tegen elkaar
+      m.team1.forEach(p => m.team2.forEach(p2 => addCount(p.id, p2.id, 'against')));
+    }));
+
+    return Array.from(pairsMap.values()).sort((a, b) => (b.together + b.against) - (a.together + a.against));
   }, [session, players]);
 
-  // Bereken de unieke waardes voor de Totaal heatmap
+  // ✅ HEATMAP RANKING
   const totalRankings = useMemo(() => {
     const totals = coOpData.map(d => d.together + d.against);
-    const uniqueSorted = Array.from(new Set(totals)).sort((a, b) => b - a);
+    const uniqueSorted = Array.from(new Set(totals)).filter(n => n > 0).sort((a, b) => b - a);
     return {
       highest: uniqueSorted[0] || 0,
       second: uniqueSorted[1] || 0,
-      third: uniqueSorted[2] || 0
+      third: uniqueSorted[2] || 0,
+      fourth: uniqueSorted[3] || 0
     };
   }, [coOpData]);
 
@@ -176,55 +198,40 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         <div className="bg-gray-900/50 p-6 rounded-2xl border border-gray-700 space-y-4">
           <div>
             <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Zalen</span>
-            <input 
-              type="number" 
-              value={hallsCount} 
-              onFocus={(e) => e.target.select()}
-              onChange={e => handleHallsCountChange(+e.target.value)} 
-              className="w-full bg-gray-800 p-3 rounded-xl font-bold border border-gray-700" 
-            />
+            <input type="number" value={hallsCount} onFocus={(e) => e.target.select()} onChange={e => handleHallsCountChange(+e.target.value)} className="w-full bg-gray-800 p-3 rounded-xl font-bold border border-gray-700" />
           </div>
-          
           <div className="space-y-2">
             <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Zaalnamen</span>
             <div className="grid grid-cols-1 gap-2">
               {hallNames.map((name, i) => (
-                <input 
-                  key={i}
-                  type="text"
-                  value={name}
-                  onChange={(e) => {
+                <input key={i} type="text" value={name} onChange={(e) => {
                     const newNames = [...hallNames];
                     newNames[i] = e.target.value;
                     setHallNames(newNames);
-                  }}
-                  className="bg-gray-800 p-2 rounded-lg text-xs font-bold border border-gray-700 focus:border-amber-500 outline-none"
-                  placeholder={`Zaal ${i+1}`}
+                  }} className="bg-gray-800 p-2 rounded-lg text-xs font-bold border border-gray-700 focus:border-amber-500 outline-none" placeholder={`Zaal ${i+1}`}
                 />
               ))}
             </div>
           </div>
-
           <div className="flex gap-2">{[4, 5].map(n => <button key={n} onClick={() => setPlayersPerTeam(n)} className={`flex-1 py-3 rounded-xl font-black border-2 ${playersPerTeam === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{n} vs {n}</button>)}</div>
           <textarea value={attendanceText} onChange={e => setAttendanceText(e.target.value)} placeholder="Plak WhatsApp lijst..." className="w-full h-40 bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs outline-none" />
           <button onClick={handleParseAttendance} className="w-full py-3 bg-amber-500 text-white font-black rounded-xl uppercase text-xs hover:bg-amber-400 transition-all tracking-widest">Verwerk Lijst</button>
         </div>
 
         <div className="lg:col-span-2 space-y-4">
-          <div className="flex justify-between items-end"><h3 className="text-white font-bold uppercase text-xs tracking-widest">Spelers ({selectedPlayerIds.size})</h3><button onClick={() => setSelectedPlayerIds(new Set())} className="text-[10px] text-red-500 font-bold uppercase underline">Wis alles</button></div>
+          <div className="flex justify-between items-end"><h3 className="text-white font-bold uppercase text-xs tracking-widest">Deelnemers ({selectedPlayerIds.size})</h3><button onClick={() => setSelectedPlayerIds(new Set())} className="text-[10px] text-red-500 font-bold uppercase underline">Wis alles</button></div>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-2 bg-black/20 rounded-xl">
             {players.map(p => (
               <button key={p.id} onClick={() => { const n = new Set(selectedPlayerIds); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); setSelectedPlayerIds(n); }} className={`p-2 rounded-lg text-[10px] font-bold border transition-all truncate ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{p.name}</button>
             ))}
           </div>
-
           {selectedPlayerIds.size > 0 && (
             <div className="pt-4 border-t border-gray-700">
-              <h3 className="text-white font-bold uppercase text-xs mb-3 text-amber-500 tracking-widest">Gevalideerde Opties:</h3>
+              <h3 className="text-white font-bold uppercase text-xs mb-3 text-amber-500 tracking-widest">Opties:</h3>
               <div className="grid sm:grid-cols-2 gap-3">
                 {calculatedOptions.map(opt => (
                   <button key={opt.mpp} onClick={async () => {
-                      setIsGenerating(true); setProgressMsg("Backtracking schema..."); setErrorAnalysis(null);
+                      setIsGenerating(true); setProgressMsg("Schema berekenen..."); setErrorAnalysis(null);
                       try {
                         const p = players.filter(x => selectedPlayerIds.has(x.id));
                         const s = await generateNKSchedule(p, hallNames, opt.mpp, playersPerTeam, "NK", setProgressMsg);
@@ -283,31 +290,19 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                           </div>
                           <div className="no-print flex flex-col items-center justify-center gap-3">
                             <div className="flex items-center gap-2">
-                              <input 
-                                type="number" 
-                                value={match.team1Score} 
-                                onFocus={(e) => e.target.select()}
-                                onChange={e => {
+                              <input type="number" value={match.team1Score} onFocus={(e) => e.target.select()} onChange={e => {
                                   const newS = JSON.parse(JSON.stringify(session));
                                   newS.rounds[rIdx].matches[mIdx].team1Score = +e.target.value;
                                   newS.rounds[rIdx].matches[mIdx].isPlayed = true;
                                   setSession(newS);
-                                }} 
-                                className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none focus:border-amber-500" 
-                              />
+                                }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none focus:border-amber-500" />
                               <span className="text-gray-600 font-bold">-</span>
-                              <input 
-                                type="number" 
-                                value={match.team2Score} 
-                                onFocus={(e) => e.target.select()}
-                                onChange={e => {
+                              <input type="number" value={match.team2Score} onFocus={(e) => e.target.select()} onChange={e => {
                                   const newS = JSON.parse(JSON.stringify(session));
                                   newS.rounds[rIdx].matches[mIdx].team2Score = +e.target.value;
                                   newS.rounds[rIdx].matches[mIdx].isPlayed = true;
                                   setSession(newS);
-                                }} 
-                                className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none focus:border-amber-500" 
-                              />
+                                }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none focus:border-amber-500" />
                             </div>
                             <button onClick={() => {
                                 const newS = JSON.parse(JSON.stringify(session));
@@ -366,13 +361,12 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                 <tbody className="divide-y divide-gray-700/50">
                   {coOpData.filter(d => d.p1.toLowerCase().includes(searchTerm.toLowerCase()) || d.p2.toLowerCase().includes(searchTerm.toLowerCase())).map((pair, i) => {
                     const total = pair.together + pair.against;
-                    
-                    // Heatmap logica voor de Totaal kolom
-                    let totalColor = "bg-green-500 text-white"; // Default voor 1+
+                    let totalColor = "bg-green-500 text-white"; 
                     if (total === 0) totalColor = "bg-transparent text-gray-600";
                     else if (total === totalRankings.highest) totalColor = "bg-red-500 text-white shadow-lg";
                     else if (total === totalRankings.second) totalColor = "bg-orange-500 text-white";
                     else if (total === totalRankings.third) totalColor = "bg-yellow-500 text-black font-black";
+                    else if (total === totalRankings.fourth) totalColor = "bg-yellow-200 text-black font-bold";
 
                     return (
                       <tr key={i} className="hover:bg-gray-700/20 transition-colors">
