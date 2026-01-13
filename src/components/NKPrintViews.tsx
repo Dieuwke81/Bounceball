@@ -15,56 +15,66 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
     <div className="print-only">
       <style>{`
         @media print {
-          /* 1. Reset en Verberg alles */
+          /* 1. Verberg de rest van de website */
           body * {
             visibility: hidden;
           }
-          
-          /* 2. Maak Print-onderdelen zichtbaar */
-          .print-only, .print-only * {
-            visibility: visible;
+
+          /* 2. Maak de print-container en ALLES daarin (inclusief tekst) zichtbaar */
+          .print-only, 
+          .print-only * {
+            visibility: visible !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
 
+          /* 3. Positionering op papier */
           .print-only {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
             background: white !important;
-            margin: 0 !important;
-            padding: 0 !important;
           }
 
-          /* 3. Pagina-eindes zonder lege pagina's */
+          /* 4. Pagina-eindes per ronde */
           .page-break {
             page-break-after: always !important;
             break-after: page !important;
             display: block !important;
-            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
 
-          /* Voorkom lege pagina aan het eind */
           .page-break:last-child {
             page-break-after: auto !important;
             break-after: auto !important;
           }
 
-          /* 4. Kleuren Styling */
-          .color-blauw { color: #1d4ed8 !important; } /* Blauw */
-          .color-geel { color: #b45309 !important; }  /* Donkergeel (beter leesbaar op wit) */
+          /* 5. Kleuren en Lettertypes */
+          .color-blauw { color: #0000ff !important; } /* Helder Blauw */
+          .color-geel { color: #ffff00 !important; -webkit-text-stroke: 0.5px black; } /* Echt Geel met dun randje voor leesbaarheid */
           .color-scheids { color: #db2777 !important; } /* Roze */
           .color-reserve { color: #15803d !important; } /* Groen */
 
-          /* 5. Kaart en Tabel styling */
           .match-card { 
             border: 2px solid #000 !important; 
             margin-bottom: 20px !important; 
             page-break-inside: avoid !important;
-            padding: 12px !important;
+            padding: 15px !important;
             background: white !important;
           }
+
+          /* Namen van spelers en reserves overal even groot */
+          .player-name {
+            font-size: 16pt !important;
+            font-weight: bold !important;
+            color: black !important;
+            text-transform: uppercase;
+          }
+
+          h1 { font-size: 24pt !important; }
+          .label-small { font-size: 10pt !important; font-weight: 900; }
 
           table { 
             border-collapse: collapse !important; 
@@ -74,7 +84,8 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
           th, td {
             border: 1px solid black !important;
-            padding: 6px !important;
+            padding: 8px !important;
+            font-size: 12pt !important;
           }
         }
       `}</style>
@@ -82,30 +93,43 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
       {/* OPTIE 1: COMPLEET OVERZICHT */}
       {activePrintType === 'overview' && session.rounds.map((round) => (
         <div key={round.roundNumber} className="page-break">
-          <div className="p-6">
-            <h1 className="text-3xl font-black mb-4 text-center border-b-4 border-black pb-2 uppercase">
+          <div className="p-8">
+            <h1 className="text-3xl font-black mb-6 text-center border-b-4 border-black pb-2 uppercase">
               NK OVERZICHT - RONDE {round.roundNumber}
             </h1>
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-8">
               {round.matches.map(m => (
                 <div key={m.id} className="match-card rounded-lg">
-                  <div className="flex justify-between font-black text-lg mb-2 border-b border-black pb-1">
-                    <span>ZAAL: {m.hallName}</span>
-                    <span><span className="color-scheids uppercase">Scheids</span>: {m.referee?.name}</span>
+                  <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
+                    <span className="text-xl font-black uppercase tracking-tighter">ZAAL: {m.hallName}</span>
+                    <span className="text-lg font-black"><span className="color-scheids uppercase">SCHEIDS</span>: <span className="player-name">{m.referee?.name}</span></span>
                   </div>
-                  <div className="flex justify-between text-md">
+                  
+                  <div className="flex justify-between">
                     <div className="flex-1">
-                      <div className="font-black underline mb-1 uppercase text-xs color-blauw">TEAM BLAUW</div>
-                      {m.team1.map(p => <div key={p.id} className="font-bold">{p.name}</div>)}
+                      <div className="label-small underline mb-2 color-blauw uppercase tracking-widest">TEAM BLAUW</div>
+                      <div className="space-y-1">
+                        {m.team1.map(p => <div key={p.id} className="player-name">{p.name}</div>)}
+                      </div>
                     </div>
+                    
                     <div className="flex-1 text-right">
-                      <div className="font-black underline mb-1 uppercase text-xs color-geel">TEAM GEEL</div>
-                      {m.team2.map(p => <div key={p.id} className="font-bold">{p.name}</div>)}
+                      <div className="label-small underline mb-2 color-geel uppercase tracking-widest">TEAM GEEL</div>
+                      <div className="space-y-1">
+                        {m.team2.map(p => <div key={p.id} className="player-name">{p.name}</div>)}
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-3 pt-2 border-t border-dashed border-black flex justify-around text-xs font-bold">
-                    <span><span className="color-reserve italic">Reserve</span> 1: {m.subHigh?.name}</span>
-                    <span><span className="color-reserve italic">Reserve</span> 2: {m.subLow?.name}</span>
+
+                  <div className="mt-6 pt-4 border-t-2 border-dashed border-black flex justify-around">
+                    <div className="text-center">
+                        <span className="color-reserve label-small uppercase block">RESERVE 1</span>
+                        <span className="player-name">{m.subHigh?.name}</span>
+                    </div>
+                    <div className="text-center">
+                        <span className="color-reserve label-small uppercase block">RESERVE 2</span>
+                        <span className="player-name">{m.subLow?.name}</span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -122,8 +146,8 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           </h1>
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-100 text-black uppercase text-xs">
-                <th className="p-2">RD</th>
+              <tr className="bg-gray-100 text-black uppercase">
+                <th className="p-2 w-12">RD</th>
                 <th className="p-2 color-blauw">TEAM BLAUW</th>
                 <th className="p-2">SCORE</th>
                 <th className="p-2 color-geel">TEAM GEEL</th>
@@ -136,11 +160,11 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                 if (!m) return null;
                 return (
                   <tr key={r.roundNumber} className="text-center font-bold">
-                    <td className="p-4 text-2xl">{r.roundNumber}</td>
-                    <td className="p-2 text-sm uppercase color-blauw">{m.team1.map(p => p.name).join(', ')}</td>
-                    <td className="p-2 w-20 h-10 border-2 border-black"></td>
-                    <td className="p-2 text-sm uppercase color-geel">{m.team2.map(p => p.name).join(', ')}</td>
-                    <td className="p-2 color-scheids uppercase text-sm">{m.referee?.name}</td>
+                    <td className="p-4 text-2xl border-r-4 border-black">{r.roundNumber}</td>
+                    <td className="p-2 text-sm">{m.team1.map(p => p.name).join(', ')}</td>
+                    <td className="p-2 w-24"><div className="border-2 border-black h-12 w-full"></div></td>
+                    <td className="p-2 text-sm">{m.team2.map(p => p.name).join(', ')}</td>
+                    <td className="p-2 text-sm uppercase">{m.referee?.name}</td>
                   </tr>
                 );
               })}
@@ -157,14 +181,14 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           </h1>
           <div className="grid grid-cols-2 gap-4">
             {playerSchedules.map(ps => (
-              <div key={ps.name} className="border-2 border-black p-2 text-[10px] break-inside-avoid shadow-sm">
-                <div className="font-black bg-black text-white p-1 mb-1 uppercase text-center">{ps.name}</div>
+              <div key={ps.name} className="border-2 border-black p-2 break-inside-avoid">
+                <div className="font-black bg-black text-white p-1 mb-1 uppercase text-center text-lg">{ps.name}</div>
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="border-b border-black font-black uppercase text-[8px]">
-                      <th>RD</th>
-                      <th>ZAAL</th>
-                      <th>ROL</th>
+                    <tr className="font-black uppercase text-[10px]">
+                      <th className="border-b-2 border-black">RD</th>
+                      <th className="border-b-2 border-black">ZAAL</th>
+                      <th className="border-b-2 border-black">ROL</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -177,9 +201,9 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
                         return (
                           <tr key={r.round}>
-                            <td className="w-6">{r.round}</td>
-                            <td>{r.hall}</td>
-                            <td className={`font-bold ${roleColor}`}>{r.role}</td>
+                            <td className="font-bold border-b border-gray-300">{r.round}</td>
+                            <td className="border-b border-gray-300 uppercase">{r.hall}</td>
+                            <td className={`font-black border-b border-gray-300 uppercase ${roleColor}`}>{r.role}</td>
                           </tr>
                         );
                     })}
