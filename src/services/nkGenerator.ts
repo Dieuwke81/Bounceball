@@ -106,7 +106,6 @@ async function generateSingleVersion(
     }
 
     if (success) {
-      // Tijden toevoegen aan de ronde
       const time = manualTimes[rIdx - 1] || { start: '', end: '' };
       rounds.push({ 
         roundNumber: rIdx, 
@@ -132,26 +131,28 @@ async function generateSingleVersion(
   const finalCounts = playedCountsHistory[totalRounds];
   if (!allPlayers.every(p => finalCounts.get(p.id) === mpp)) return null;
 
-  return { competitionName, hallNames, playersPerTeam: ppt, totalRounds: rounds.length, rounds, standings: [], isCompleted: false };
+  return { 
+    competitionName, hallNames, playersPerTeam: ppt, totalRounds: rounds.length, 
+    rounds, standings: [], isCompleted: false 
+  };
 }
 
 export async function generateNKSchedule(
-    players: Player[], 
-    hallNames: string[], 
-    mpp: number, 
-    ppt: number, 
-    competitionName: string, 
-    onProgress: (msg: string) => void,
-    manualTimes: {start: string, end: string}[] // Nieuw
+  players: Player[], 
+  hallNames: string[], 
+  mpp: number, 
+  ppt: number, 
+  competitionName: string, 
+  onProgress: (msg: string) => void,
+  manualTimes: {start: string, end: string}[]
 ): Promise<NKSession> {
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
 
   while (validVersions.length < 10 && totalAttempts < 500) {
     totalAttempts++;
-    onProgress(`Zoeken naar beste balans: Versie ${validVersions.length}/10 gevonden...`);
+    onProgress(`Zoeken naar balans: Versie ${validVersions.length}/10 gevonden...`);
     const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName, manualTimes);
-    
     if (session) {
       validVersions.push(session);
       await delay(1);
@@ -160,7 +161,7 @@ export async function generateNKSchedule(
   }
 
   if (validVersions.length === 0) {
-    throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nZelfs met backtracking kon geen 4.0+ teams maken. Probeer 1 wedstrijd minder p.p.`);
+    throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nBacktracking kon geen 4.0+ teams maken. Probeer 1 wedstrijd minder p.p.`);
   }
 
   const getMaxDiff = (s: NKSession): number => {
@@ -174,6 +175,5 @@ export async function generateNKSchedule(
     return max;
   };
 
-  onProgress("Meest gebalanceerde schema selecteren...");
   return validVersions.reduce((best, cur) => getMaxDiff(cur) < getMaxDiff(best) ? cur : best);
 }
