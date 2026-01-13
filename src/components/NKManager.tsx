@@ -40,30 +40,64 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     if (session) localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
   }, [session]);
 
+  // ✅ DE EXACTE PARSER UIT JOUW APP.TSX
   const handleParseAttendance = () => {
     const normalize = (str: string): string =>
-      str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\.$/, '');
+      str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .replace(/\.$/, '');
+
     const lines = attendanceText.split('\n');
     const potentialNames = new Set<string>();
-    
+    const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+    const nonNameIndicators = [
+      'afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present',
+      'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper',
+    ];
+
     lines.forEach((line) => {
-      let cleaned = line.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
-      if (cleaned.length > 1) potentialNames.add(cleaned);
+      const trimmedLine = line.trim();
+      if (!trimmedLine) return;
+      const lowerLine = trimmedLine.toLowerCase();
+
+      if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
+      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1)
+        return;
+
+      let cleaned = trimmedLine
+        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+        .replace(/\[.*?\]/, '')
+        .replace(/^\s*\d+[\.\)]?\s*/, '')
+        .split(/[:\-\–]/)[0]
+        .replace(/[\(\[].*?[\)\]]/g, '')
+        .trim();
+
+      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) {
+        potentialNames.add(cleaned);
+      }
     });
 
     const playerLookup = new Map<string, Player>();
     players.forEach((player) => {
-      playerLookup.set(normalize(player.name), player);
-      playerLookup.set(normalize(player.name.split(' ')[0]), player);
+      const normalizedFullName = normalize(player.name);
+      const normalizedFirstName = normalizedFullName.split(' ')[0];
+      playerLookup.set(normalizedFullName, player);
+      if (!playerLookup.has(normalizedFirstName)) playerLookup.set(normalizedFirstName, player);
     });
 
-    const newSelected = new Set(selectedPlayerIds);
+    const newAttendingPlayerIds = new Set(selectedPlayerIds);
     potentialNames.forEach((originalName) => {
       const normalizedName = normalize(originalName);
       const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
-      if (matchedPlayer) newSelected.add(matchedPlayer.id);
+      if (matchedPlayer) {
+        newAttendingPlayerIds.add(matchedPlayer.id);
+      }
     });
-    setSelectedPlayerIds(newSelected);
+
+    setSelectedPlayerIds(newAttendingPlayerIds);
     setAttendanceText('');
   };
 
@@ -92,12 +126,14 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const currentStandings = useMemo(() => {
     if (!session) return [];
     const stats = new Map<number, NKStandingsEntry>();
-    const allIds = new Set<number>();
-    session.rounds.forEach(r => r.matches.forEach(m => [...m.team1, ...m.team2].forEach(p => allIds.add(p.id))));
-    allIds.forEach(id => {
+    const allParticipantIds = new Set<number>();
+    session.rounds.forEach(r => r.matches.forEach(m => [...m.team1, ...m.team2].forEach(p => allParticipantIds.add(p.id))));
+
+    allParticipantIds.forEach(id => {
       const p = players.find(x => x.id === id);
       stats.set(id, { playerId: id, playerName: p?.name || '?', points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0 });
     });
+
     session.rounds.forEach(r => r.matches.forEach(m => {
       if (!m.isPlayed) return;
       const p1 = m.team1Score > m.team2Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
@@ -153,7 +189,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <TrophyIcon className="w-10 h-10 text-amber-500" />
           <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">NK Setup</h2>
         </div>
-        <button onClick={onClose} className="bg-gray-700 px-4 py-2 rounded-xl text-[10px] font-bold uppercase hover:bg-gray-600 transition-colors tracking-widest">Terug</button>
+        <button onClick={onClose} className="bg-gray-700 px-4 py-2 rounded-xl text-[10px] font-bold uppercase hover:bg-gray-600 transition-colors tracking-widest text-white">Terug</button>
       </div>
 
       {errorAnalysis && (
@@ -167,8 +203,15 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         <div className="bg-gray-900/50 p-6 rounded-2xl border border-gray-700 space-y-4">
           <div>
             <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Zalen</span>
-            <input type="number" value={hallsCount} onFocus={(e) => e.target.select()} onChange={e => handleHallsCountChange(+e.target.value)} className="w-full bg-gray-800 p-3 rounded-xl font-bold border border-gray-700" />
+            <input 
+              type="number" 
+              value={hallsCount} 
+              onFocus={(e) => e.target.select()}
+              onChange={e => handleHallsCountChange(+e.target.value)} 
+              className="w-full bg-gray-800 p-3 rounded-xl font-bold border border-gray-700" 
+            />
           </div>
+          
           <div className="space-y-2">
             <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Zaalnamen</span>
             <div className="grid grid-cols-1 gap-2">
@@ -182,6 +225,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
               ))}
             </div>
           </div>
+
           <div className="flex gap-2">{[4, 5].map(n => <button key={n} onClick={() => setPlayersPerTeam(n)} className={`flex-1 py-3 rounded-xl font-black border-2 ${playersPerTeam === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{n} vs {n}</button>)}</div>
           <textarea value={attendanceText} onChange={e => setAttendanceText(e.target.value)} placeholder="Plak WhatsApp lijst..." className="w-full h-40 bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs outline-none" />
           <button onClick={handleParseAttendance} className="w-full py-3 bg-amber-500 text-white font-black rounded-xl uppercase text-xs hover:bg-amber-400 transition-all tracking-widest">Verwerk Lijst</button>
@@ -194,9 +238,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
               <button key={p.id} onClick={() => { const n = new Set(selectedPlayerIds); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); setSelectedPlayerIds(n); }} className={`p-2 rounded-lg text-[10px] font-bold border transition-all truncate ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{p.name}</button>
             ))}
           </div>
+
           {selectedPlayerIds.size > 0 && (
             <div className="pt-4 border-t border-gray-700">
-              <h3 className="text-white font-bold uppercase text-xs mb-3 text-amber-500 tracking-widest">Opties:</h3>
+              <h3 className="text-white font-bold uppercase text-xs mb-3 text-amber-500 tracking-widest">Gevalideerde Opties:</h3>
               <div className="grid sm:grid-cols-2 gap-3">
                 {calculatedOptions.map(opt => (
                   <button key={opt.mpp} onClick={async () => {
@@ -221,14 +266,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
   return (
     <div className="space-y-6 pb-20">
-      {/* NIEUWE HEADER LAYOUT */}
       <div className="no-print bg-gray-800 p-6 rounded-3xl border-b-8 border-amber-500 shadow-2xl text-white space-y-6">
-        {/* RIJ 1: TITEL GROOT */}
         <h2 className="text-4xl sm:text-6xl font-black italic uppercase tracking-tighter text-center">
           NK Manager
         </h2>
 
-        {/* RIJ 2: TABS */}
         <div className="flex justify-center">
           <div className="flex bg-gray-900 p-1.5 rounded-2xl gap-1 w-full max-w-md">
             {(['schedule', 'standings', 'analysis'] as const).map(t => (
@@ -245,25 +287,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           </div>
         </div>
 
-        {/* RIJ 3: ACTIE KNOPPEN */}
         <div className="flex justify-center gap-4">
-          <button
-            onClick={() => window.print()}
-            className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors"
-          >
-            Print
-          </button>
-          <button
-            onClick={() => {
-              if (confirm("NK Wissen?")) {
-                localStorage.removeItem('bounceball_nk_session');
-                setSession(null);
-              }
-            }}
-            className="flex-1 max-w-[120px] bg-red-900/40 text-red-500 py-2.5 rounded-xl text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-800 hover:text-white transition-all"
-          >
-            Reset
-          </button>
+          <button onClick={() => window.print()} className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors">Print</button>
+          <button onClick={() => { if(confirm("NK Wissen?")) { localStorage.removeItem('bounceball_nk_session'); setSession(null); } }} className="flex-1 max-w-[120px] bg-red-900/40 text-red-500 py-2.5 rounded-xl text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-800 hover:text-white transition-all">Reset</button>
         </div>
       </div>
 
