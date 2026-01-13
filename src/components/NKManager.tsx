@@ -61,19 +61,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       const trimmedLine = line.trim();
       if (!trimmedLine) return;
       const lowerLine = trimmedLine.toLowerCase();
-
       if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
       if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1)
         return;
-
-      let cleaned = trimmedLine
-        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
-        .replace(/\[.*?\]/, '')
-        .replace(/^\s*\d+[\.\)]?\s*/, '')
-        .split(/[:\-\–]/)[0]
-        .replace(/[\(\[].*?[\)\]]/g, '')
-        .trim();
-
+      let cleaned = trimmedLine.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
       if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) {
         potentialNames.add(cleaned);
       }
@@ -91,11 +82,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     potentialNames.forEach((originalName) => {
       const normalizedName = normalize(originalName);
       const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
-      if (matchedPlayer) {
-        newAttendingPlayerIds.add(matchedPlayer.id);
-      }
+      if (matchedPlayer) newAttendingPlayerIds.add(matchedPlayer.id);
     });
-
     setSelectedPlayerIds(newAttendingPlayerIds);
     setAttendanceText('');
   };
@@ -146,8 +134,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     const pairsMap = new Map<string, { p1: string, p2: string, together: number, against: number }>();
     for (let i = 0; i < participantIds.length; i++) {
       for (let j = i + 1; j < participantIds.length; j++) {
-        const key = [participantIds[i], participantIds[j]].sort().join('-');
-        pairsMap.set(key, { p1: players.find(p => p.id === participantIds[i])?.name || '?', p2: players.find(p => p.id === participantIds[j])?.name || '?', together: 0, against: 0 });
+        const id1 = participantIds[i];
+        const id2 = participantIds[j];
+        const key = [id1, id2].sort().join('-');
+        pairsMap.set(key, { p1: players.find(p => p.id === id1)?.name || '?', p2: players.find(p => p.id === id2)?.name || '?', together: 0, against: 0 });
       }
     }
     session.rounds.forEach(r => r.matches.forEach(m => {
@@ -269,7 +259,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
               <div className="grid sm:grid-cols-2 gap-3">
                 {calculatedOptions.map(opt => (
                   <button key={opt.mpp} onClick={async () => {
-                      setIsGenerating(true); setProgressMsg("Schema berekenen..."); setErrorAnalysis(null);
+                      setIsGenerating(true); setProgressMsg("Balans optimaliseren..."); setErrorAnalysis(null);
                       try {
                         const p = players.filter(x => selectedPlayerIds.has(x.id));
                         const s = await generateNKSchedule(p, hallNames, opt.mpp, playersPerTeam, "NK", setProgressMsg);
@@ -293,17 +283,13 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       <style>{`
         @media print {
           body * { visibility: hidden; }
-          .print-only { 
-            visibility: visible !important; 
-            display: block !important; 
-            position: absolute; 
-            left: 0; 
-            top: 0; 
-            width: 100%; 
-            background: white !important; 
-          }
-          .print-only * { visibility: visible !important; }
+          .print-only, .print-only * { visibility: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .print-only { position: absolute; left: 0; top: 0; width: 100%; background: white !important; }
           body { background: white !important; color: black !important; padding: 0 !important; }
+          .match-card { border: 2px solid #000 !important; margin-bottom: 20px !important; page-break-inside: avoid; color: black !important; }
+          .page-break { page-break-after: always; }
+          .text-white { color: black !important; }
+          .bg-gray-800, .bg-gray-900 { background: white !important; }
         }
         .print-only { display: none; }
       `}</style>
@@ -344,14 +330,14 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
             
             <div className="bg-gray-900/50 border-2 border-amber-500/30 p-4 rounded-2xl flex justify-between items-center shadow-lg text-white">
               <div>
-                <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-1">Grootste Balans-verschil</span>
+                <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-1">Grootste Balans-verschil (Beste van 10)</span>
                 <span className={`text-2xl font-black italic ${maxTournamentDiff > 0.4 ? 'text-red-500' : maxTournamentDiff > 0.25 ? 'text-amber-500' : 'text-green-500'}`}>
                     {maxTournamentDiff.toFixed(2)}
                 </span>
               </div>
               <div className="text-right">
                  <p className="text-[8px] text-gray-600 font-bold uppercase max-w-[150px] leading-tight">
-                    Dit is de match met het grootste rating-verschil. Lager is beter.
+                    De generator heeft de meest gebalanceerde versie gekozen.
                  </p>
               </div>
             </div>
