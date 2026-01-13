@@ -54,7 +54,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
     const nonNameIndicators = [
       'afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present',
-      'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper',
+      'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'reserve', 'keeper',
     ];
 
     lines.forEach((line) => {
@@ -302,7 +302,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           </div>
         </div>
         <div className="flex justify-center gap-4">
-          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white">Print</button>
+          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white">Print alleen via PC</button>
           <button onClick={() => { if(confirm("NK Wissen?")) { localStorage.removeItem('bounceball_nk_session'); setSession(null); } }} className="flex-1 max-w-[120px] bg-red-900/40 text-red-500 py-2.5 rounded-xl text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-800 hover:text-white transition-all">Reset</button>
         </div>
       </div>
