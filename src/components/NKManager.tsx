@@ -218,7 +218,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         <button onClick={onClose} className="bg-gray-700 px-4 py-2 rounded-xl text-[10px] font-bold uppercase hover:bg-gray-600 transition-colors tracking-widest text-white">Terug</button>
       </div>
       {errorAnalysis && (
-        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl animate-shake">
+        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl animate-shake text-white">
           <h3 className="text-red-500 font-black uppercase text-sm">⚠️ Analyse Mislukking:</h3>
           <p className="text-gray-300 text-[10px] mt-1 leading-relaxed whitespace-pre-line">{errorAnalysis}</p>
         </div>
@@ -237,13 +237,13 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                     const newNames = [...hallNames];
                     newNames[i] = e.target.value;
                     setHallNames(newNames);
-                  }} className="bg-gray-800 p-2 rounded-lg text-xs font-bold border border-gray-700 focus:border-amber-500 outline-none" placeholder={`Zaal ${i+1}`}
+                  }} className="bg-gray-800 p-2 rounded-lg text-xs font-bold border border-gray-700 focus:border-amber-500 outline-none text-white" placeholder={`Zaal ${i+1}`}
                 />
               ))}
             </div>
           </div>
           <div className="flex gap-2">{[4, 5].map(n => <button key={n} onClick={() => setPlayersPerTeam(n)} className={`flex-1 py-3 rounded-xl font-black border-2 ${playersPerTeam === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{n} vs {n}</button>)}</div>
-          <textarea value={attendanceText} onChange={e => setAttendanceText(e.target.value)} placeholder="Plak WhatsApp lijst..." className="w-full h-40 bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs outline-none" />
+          <textarea value={attendanceText} onChange={e => setAttendanceText(e.target.value)} placeholder="Plak WhatsApp lijst..." className="w-full h-40 bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs outline-none text-white" />
           <button onClick={handleParseAttendance} className="w-full py-3 bg-amber-500 text-white font-black rounded-xl uppercase text-xs hover:bg-amber-400 transition-all tracking-widest shadow-lg">Verwerk Lijst</button>
         </div>
         <div className="lg:col-span-2 space-y-4">
@@ -265,7 +265,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                         const s = await generateNKSchedule(p, hallNames, opt.mpp, playersPerTeam, "NK", setProgressMsg);
                         setSession(s);
                       } catch(e:any) { setErrorAnalysis(e.message); } finally { setIsGenerating(false); }
-                    }} className={`p-4 rounded-2xl border-2 text-left transition-all hover:scale-[1.02] ${opt.color}`}>
+                    }} className={`p-4 rounded-2xl border-2 text-left transition-all hover:scale-[1.02] ${opt.color} text-white`}>
                     <div className="text-xl font-black tracking-tighter">{opt.mpp} Wedstrijden p.p.</div>
                     <div className="mt-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider">{opt.rounds} rondes | {opt.resting} rust | {opt.label}</div>
                   </button>
@@ -282,14 +282,20 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="space-y-6 pb-20">
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          .print-only, .print-only * { visibility: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .print-only { position: absolute; left: 0; top: 0; width: 100%; background: white !important; }
+          /* Verberg alles behalve de print-view */
+          body > #root > div:not(.print-only), .no-print, nav, header {
+            display: none !important;
+          }
           body { background: white !important; color: black !important; padding: 0 !important; }
-          .match-card { border: 2px solid #000 !important; margin-bottom: 20px !important; page-break-inside: avoid; color: black !important; }
-          .page-break { page-break-after: always; }
-          .text-white { color: black !important; }
-          .bg-gray-800, .bg-gray-900 { background: white !important; }
+          .print-only { 
+            visibility: visible !important; 
+            display: block !important; 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+          }
+          .print-only * { visibility: visible !important; }
         }
         .print-only { display: none; }
       `}</style>
@@ -318,7 +324,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           </div>
         </div>
         <div className="flex justify-center gap-4">
-          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white">Print alleen op PC</button>
+          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white">Print</button>
           <button onClick={() => { if(confirm("NK Wissen?")) { localStorage.removeItem('bounceball_nk_session'); setSession(null); } }} className="flex-1 max-w-[120px] bg-red-900/40 text-red-500 py-2.5 rounded-xl text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-800 hover:text-white transition-all">Reset</button>
         </div>
       </div>
@@ -336,16 +342,16 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                 </span>
               </div>
               <div className="text-right">
-                 <p className="text-[8px] text-gray-600 font-bold uppercase max-w-[150px] leading-tight">
+                 <p className="text-[8px] text-gray-600 font-bold uppercase max-w-[150px] leading-tight text-white">
                     De generator heeft de meest gebalanceerde versie gekozen.
                  </p>
               </div>
             </div>
 
             {session.rounds.map((round, rIdx) => (
-              <div key={rIdx} className="space-y-4">
+              <div key={rIdx} className="space-y-4 text-white">
                 <h3 className="text-xl font-black text-amber-500 uppercase italic border-l-4 border-amber-500 pl-4 tracking-tighter">Ronde {round.roundNumber}</h3>
-                <div className="grid lg:grid-cols-2 gap-6 text-white">
+                <div className="grid lg:grid-cols-2 gap-6">
                   {round.matches.map((match, mIdx) => {
                     const avg1 = match.team1.reduce((s, p) => s + p.rating, 0) / match.team1.length;
                     const avg2 = match.team2.reduce((s, p) => s + p.rating, 0) / match.team2.length;
