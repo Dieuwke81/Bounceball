@@ -26,7 +26,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(new Set());
   const [attendanceText, setAttendanceText] = useState('');
 
-  // Tijd-schema state voor setup
   const [selectedOption, setSelectedOption] = useState<any | null>(null);
   const [manualTimes, setManualTimes] = useState<{start: string, end: string}[]>([]);
 
@@ -93,10 +92,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     for (let mpp = 3; mpp <= 12; mpp++) {
       if ((n * mpp) % pPerMatch === 0) {
         const totalMatches = (n * mpp) / pPerMatch;
-        const hUsed = Math.min(hallsCount, Math.floor(n / pPerMatch));
-        const rounds = Math.ceil(totalMatches / hUsed);
-        const resting = n - (hUsed * pPerMatch);
-        const needs = hUsed * 3;
+        const rounds = Math.ceil(totalMatches / hallsCount);
+        const playingPerRound = Math.min(hallsCount, Math.floor(n / pPerMatch)) * pPerMatch;
+        const resting = n - playingPerRound;
+        const needs = Math.min(hallsCount, Math.floor(n / pPerMatch)) * 3;
         let label = "Mogelijk", color = "border-gray-700 bg-gray-800/50", score = 50;
         if (resting >= needs) { label = "Perfecte rust"; color = "border-green-500 bg-green-500/10"; score = 100; }
         else if (resting >= 1) { label = "Weinig rust"; color = "border-amber-500 bg-amber-500/10"; score = 70; }
@@ -107,11 +106,13 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return options.sort((a, b) => b.score - a.score);
   }, [selectedPlayerIds.size, hallsCount, playersPerTeam]);
 
+  // ✅ HERSTELD: LIVE BEREKENING STAND
   const currentStandings = useMemo(() => {
     if (!session) return [];
     const stats = new Map<number, NKStandingsEntry>();
-    const participantIds = Array.from(new Set(session.rounds.flatMap(r => r.matches.flatMap(m => [...m.team1, ...m.team2].map(p => p.id))))).sort();
-    participantIds.forEach(id => {
+    const allIds = new Set<number>();
+    session.rounds.forEach(r => r.matches.forEach(m => [...m.team1, ...m.team2].forEach(p => allIds.add(p.id))));
+    allIds.forEach(id => {
       const p = players.find(x => x.id === id);
       stats.set(id, { playerId: id, playerName: p?.name || '?', points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0 });
     });
@@ -125,6 +126,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
   }, [session, players]);
 
+  // ✅ HERSTELD: LIVE BEREKENING CO-OP
   const coOpData = useMemo(() => {
     if (!session) return [];
     const participantIds = Array.from(new Set(session.rounds.flatMap(r => r.matches.flatMap(m => [...m.team1, ...m.team2].map(p => p.id))))).sort();
@@ -254,8 +256,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
               <button key={p.id} onClick={() => { const n = new Set(selectedPlayerIds); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); setSelectedPlayerIds(n); }} className={`p-2 rounded-lg text-[10px] font-bold border transition-all truncate ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{p.name}</button>
             ))}
           </div>
-          
-          {/* OPTIES & TIJDSCHEMA */}
           {selectedPlayerIds.size > 0 && (
             <div className="pt-4 border-t border-gray-700 space-y-4">
               <h3 className="text-white font-bold uppercase text-xs mb-3 text-amber-500 tracking-widest">1. Kies Toernooivorm:</h3>
@@ -267,15 +267,14 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                   </button>
                 ))}
               </div>
-
               {selectedOption && (
-                <div className="bg-gray-900/50 p-6 rounded-3xl border-2 border-amber-500/30 animate-fade-in space-y-4">
+                <div className="bg-gray-900/50 p-6 rounded-3xl border-2 border-amber-500/30 animate-fade-in space-y-4 text-white">
                   <h3 className="text-white font-bold uppercase text-xs text-amber-500 tracking-widest">2. Voer Tijdschema in (Handmatig):</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-64 overflow-y-auto p-2 custom-scrollbar">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-64 overflow-y-auto p-2 custom-scrollbar text-white">
                     {manualTimes.map((time, idx) => (
-                      <div key={idx} className="bg-gray-800 p-3 rounded-xl border border-gray-700">
+                      <div key={idx} className="bg-gray-800 p-3 rounded-xl border border-gray-700 text-white">
                         <div className="text-[10px] text-gray-500 font-black mb-2 uppercase">Ronde {idx + 1}</div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 text-white">
                           <input type="text" value={time.start} placeholder="10:00" onChange={e => updateManualTime(idx, 'start', e.target.value)} className="w-full bg-gray-900 text-[10px] p-1.5 rounded border border-gray-700 text-white text-center" />
                           <span className="text-gray-600">-</span>
                           <input type="text" value={time.end} placeholder="10:20" onChange={e => updateManualTime(idx, 'end', e.target.value)} className="w-full bg-gray-900 text-[10px] p-1.5 rounded border border-gray-700 text-white text-center" />
@@ -304,10 +303,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="space-y-6 pb-20">
       <style>{`
         @media print {
-          body > #root > div:not(.print-only), .no-print, nav, header { display: none !important; }
-          body { background: white !important; color: black !important; padding: 0 !important; }
-          .print-only { visibility: visible !important; display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
-          .print-only * { visibility: visible !important; }
+          /* DEZE FIX ZORGT DAT DE PRINTS NIET BLANCO ZIJN */
+          body * { visibility: hidden; }
+          .print-only, .print-only * { visibility: visible !important; }
+          .print-only { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
         }
         .print-only { display: none; }
       `}</style>
@@ -336,7 +335,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           </div>
         </div>
         <div className="flex justify-center gap-4">
-          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white">Print alleen via PC</button>
+          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white text-center">Print alleen via PC</button>
           <button onClick={() => { if(confirm("NK Wissen?")) { localStorage.removeItem('bounceball_nk_session'); setSession(null); } }} className="flex-1 max-w-[120px] bg-red-900/40 text-red-500 py-2.5 rounded-xl text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-800 hover:text-white transition-all">Reset</button>
         </div>
       </div>
@@ -353,12 +352,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                 </span>
               </div>
             </div>
-
             {session.rounds.map((round, rIdx) => (
               <div key={rIdx} className="space-y-4 text-white">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 text-white">
                     <h3 className="text-xl font-black text-amber-500 uppercase italic border-l-4 border-amber-500 pl-4 tracking-tighter">Ronde {round.roundNumber}</h3>
-                    {/* TIJD WEERGAVE OP SCHERM */}
                     {(round as any).startTime && (
                         <span className="bg-gray-800 px-3 py-1 rounded-lg border border-gray-700 text-xs font-black text-gray-400">
                             {(round as any).startTime} - {(round as any).endTime}
@@ -375,7 +372,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                           <span>📍 ZAAL {match.hallName}</span>
                           <span className={`px-2 py-0.5 rounded transition-all ${isHighlighted(match.referee?.name || '') ? 'bg-green-500 text-white font-black scale-110 shadow-lg' : 'text-pink-400'}`}>Ref: {match.referee?.name}</span>
                         </div>
-                        <div className="p-5 flex justify-between items-stretch gap-4">
+                        <div className="p-5 flex justify-between items-stretch gap-4 text-white">
                           <div className="flex-1 space-y-1">
                             <div className="text-[9px] text-blue-400 font-black uppercase mb-2 tracking-widest">Team Blauw</div>
                             {match.team1.map(p => <div key={p.id} className={`text-sm uppercase font-bold transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md' : ''}`}>{p.name}</div>)}
@@ -424,7 +421,59 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
             ))}
           </>
         )}
-        {/* STANDINGS & ANALYSIS BLIJVEN ONGEWIJZIGD */}
+
+        {activeTab === 'standings' && (
+          <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden text-white animate-fade-in">
+            <table className="w-full text-left">
+              <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black tracking-widest">
+                <tr><th className="p-5 w-12 text-center">#</th><th className="p-5">Speler</th><th className="p-5 text-center">W</th><th className="p-5 text-center">DS</th><th className="p-5 text-center">PTN</th></tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700/50 uppercase">
+                {currentStandings.map((entry, idx) => (
+                  <tr key={entry.playerId} className={`transition-colors ${idx < 3 ? 'bg-amber-500/5' : 'hover:bg-gray-700/30'}`}>
+                    <td className="p-5 text-center font-black text-amber-500">{idx + 1}</td>
+                    <td className="p-5 font-bold text-sm tracking-tight">{entry.playerName}</td>
+                    <td className="p-5 text-center text-gray-400 font-mono text-xs">{entry.matchesPlayed}</td>
+                    <td className={`p-5 text-center font-black font-mono text-xs ${entry.goalDifference > 0 ? 'text-green-500' : entry.goalDifference < 0 ? 'text-red-500' : 'text-gray-500'}`}>{entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}</td>
+                    <td className="p-5 text-center"><span className="bg-gray-900 text-amber-400 px-4 py-1.5 rounded-full font-black text-sm shadow-inner border border-amber-500/20">{entry.points}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'analysis' && (
+          <div className="space-y-4 animate-fade-in text-white no-print">
+            <input type="text" placeholder="Duo's filteren..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl p-4 text-sm outline-none focus:border-amber-500 transition-all text-white" />
+            <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden max-h-[600px] overflow-y-auto uppercase custom-scrollbar text-white">
+              <table className="w-full text-left">
+                <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0 z-20">
+                  <tr><th className="p-5">Duo</th><th className="p-5 text-center">Samen</th><th className="p-5 text-center">Tegen</th><th className="p-5 text-center">Totaal</th></tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700/50">
+                  {coOpData.filter(d => d.p1.toLowerCase().includes(searchTerm.toLowerCase()) || d.p2.toLowerCase().includes(searchTerm.toLowerCase())).map((pair, i) => {
+                    const total = pair.together + pair.against;
+                    let totalColor = "bg-green-500 text-white"; 
+                    if (total === 0) totalColor = "bg-transparent text-gray-600";
+                    else if (total === totalRankings.highest) totalColor = "bg-red-500 text-white shadow-lg";
+                    else if (total === totalRankings.second) totalColor = "bg-orange-500 text-white";
+                    else if (total === totalRankings.third) totalColor = "bg-yellow-500 text-black font-black";
+                    else if (total === totalRankings.fourth) totalColor = "bg-yellow-200 text-black font-bold";
+                    return (
+                      <tr key={i} className="hover:bg-gray-700/20 transition-colors">
+                        <td className="p-5 text-xs font-bold tracking-tight">{pair.p1} + {pair.p2}</td>
+                        <td className="p-5 text-center text-xs text-gray-400 font-mono">{pair.together}x</td>
+                        <td className="p-5 text-center text-xs text-gray-400 font-mono">{pair.against}x</td>
+                        <td className="p-5 text-center"><span className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${totalColor}`}>{total}x</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {session && (
