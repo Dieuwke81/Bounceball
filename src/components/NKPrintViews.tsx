@@ -64,12 +64,17 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             break-after: auto !important;
           }
 
-          /* 5. Kleuren - NU GEGARANDEERD ZICHTBAAR */
-          .color-black { color: black !important; }
+          /* 5. Kleuren Systeem */
           .color-blauw { color: #0000ff !important; } 
           .color-geel { color: #ffd700 !important; } 
           .color-scheids { color: #db2777 !important; } 
           .color-reserve { color: #15803d !important; }
+          
+          /* Kolom achtergronden (doorzichtig) */
+          .bg-blauw-trans { background-color: rgba(0, 0, 255, 0.08) !important; }
+          .bg-geel-trans { background-color: rgba(255, 215, 0, 0.12) !important; }
+          .bg-scheids-trans { background-color: rgba(219, 39, 119, 0.08) !important; }
+          .bg-reserve-trans { background-color: rgba(21, 128, 61, 0.08) !important; }
 
           /* 6. Match Card (OVERVIEW - NIET VERANDERD) */
           .match-card { 
@@ -99,7 +104,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             border: 2px solid black;
             width: 38pt;
             height: 38pt;
-            background: white;
+            background: white !important;
           }
 
           .label-small { font-size: 9pt !important; font-weight: 900; }
@@ -116,9 +121,9 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             border: 2px solid black !important;
             padding: 8px !important;
             font-size: 10pt !important;
-            background: #f0f0f0 !important;
-            color: black !important; /* RD en SCORE nu zwart */
             font-weight: 900 !important;
+            background: #f0f0f0 !important;
+            color: black !important;
           }
 
           .print-table td {
@@ -138,7 +143,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
         }
       `}</style>
 
-      {/* OPTIE 1: COMPLEET OVERZICHT (NIET VERANDERD) */}
+      {/* OPTIE 1: COMPLEET OVERZICHT */}
       {activePrintType === 'overview' && session.rounds.map((round) => (
         <div key={round.roundNumber} className="page-break">
           <div className="p-4">
@@ -164,7 +169,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                     </div>
                     <div className="flex items-center gap-3 px-6">
                       <div className="score-box"></div>
-                      <span className="font-black text-2xl color-black">-</span>
+                      <span className="font-black text-2xl" style={{color: 'black'}}>-</span>
                       <div className="score-box"></div>
                     </div>
                     <div className="flex-1 text-right">
@@ -191,7 +196,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
         </div>
       ))}
 
-      {/* OPTIE 2: PER ZAAL (FIXED DATA & COLORS) */}
+      {/* OPTIE 2: PER ZAAL */}
       {activePrintType === 'halls' && session.hallNames.map(hall => (
         <div key={hall} className="page-break p-8">
           <div className="print-header">
@@ -200,9 +205,9 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           <table className="print-table">
             <thead>
               <tr className="uppercase">
-                <th className="w-10 color-black">RD</th>
+                <th className="w-10">RD</th>
                 <th className="color-blauw text-left">TEAM BLAUW</th>
-                <th className="color-black text-center w-28">SCORE</th>
+                <th className="text-center w-28">SCORE</th>
                 <th className="color-geel text-left">TEAM GEEL</th>
                 <th className="color-scheids text-left">SCHEIDS</th>
                 <th className="color-reserve text-left">RESERVES</th>
@@ -210,30 +215,29 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             </thead>
             <tbody>
               {session.rounds.map(r => {
-                // Gebruik een robuuste check voor de zaalnaam
                 const m = r.matches.find(match => match.hallName.trim().toUpperCase() === hall.trim().toUpperCase());
                 if (!m) return null;
 
                 return (
-                  <tr key={r.roundNumber} className="font-bold uppercase color-black">
-                    <td className="text-center text-xl bg-gray-50 color-black">{r.roundNumber}</td>
-                    <td className="text-[9pt] color-black">
+                  <tr key={r.roundNumber} className="font-bold uppercase">
+                    <td className="text-center text-xl bg-gray-50">{r.roundNumber}</td>
+                    <td className="text-[9pt] bg-blauw-trans">
                       {m.team1.map(p => <div key={p.id}>{p.name}</div>)}
                     </td>
                     <td className="text-center">
                       <div className="flex justify-center items-center gap-1">
                         <div className="small-score-box"></div>
-                        <span className="color-black">-</span>
+                        <span style={{color: 'black'}}>-</span>
                         <div className="small-score-box"></div>
                       </div>
                     </td>
-                    <td className="text-[9pt] color-black">
+                    <td className="text-[9pt] bg-geel-trans">
                       {m.team2.map(p => <div key={p.id}>{p.name}</div>)}
                     </td>
-                    <td className="text-[9pt] color-scheids">
+                    <td className="text-[9pt] bg-scheids-trans">
                       {m.referee?.name}
                     </td>
-                    <td className="text-[8pt] color-reserve">
+                    <td className="text-[8pt] bg-reserve-trans">
                       <div>1: {m.subHigh?.name}</div>
                       <div>2: {m.subLow?.name}</div>
                     </td>
@@ -257,24 +261,31 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                 <div className="font-black bg-black text-white p-1 mb-1 uppercase text-center text-md">{ps.name}</div>
                 <table className="w-full text-left" style={{borderCollapse: 'collapse'}}>
                   <thead>
-                    <tr className="font-black uppercase text-[7pt] bg-gray-100 color-black">
-                      <th className="p-0.5 text-center w-8 border border-black color-black">RD</th>
-                      <th className="p-0.5 border border-black color-black">ZAAL</th>
-                      <th className="p-0.5 border border-black color-black">ROL</th>
+                    <tr className="font-black uppercase text-[7pt] bg-gray-100">
+                      <th className="p-0.5 text-center w-8 border border-black">RD</th>
+                      <th className="p-0.5 border border-black">ZAAL</th>
+                      <th className="p-0.5 border border-black">ROL</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ps.rounds.map((r: any) => {
-                        let roleColor = "color-black";
-                        if (r.role === "BLAUW") roleColor = "color-blauw";
-                        if (r.role === "GEEL") roleColor = "color-geel";
-                        if (r.role === "REF") roleColor = "color-scheids";
-                        if (r.role === "RES") roleColor = "color-reserve";
+                        let roleClass = "";
+                        if (r.role === "BLAUW") roleClass = "bg-blauw-trans";
+                        if (r.role === "GEEL") roleClass = "bg-geel-trans";
+                        if (r.role === "REF") roleClass = "bg-scheids-trans";
+                        if (r.role === "RES") roleClass = "bg-reserve-trans";
+                        
+                        let roleTextColor = "";
+                        if (r.role === "BLAUW") roleTextColor = "color-blauw";
+                        if (r.role === "GEEL") roleTextColor = "color-geel";
+                        if (r.role === "REF") roleTextColor = "color-scheids";
+                        if (r.role === "RES") roleTextColor = "color-reserve";
+
                         return (
-                          <tr key={r.round} className="color-black">
-                            <td className="font-bold text-center py-0.5 border border-black color-black">{r.round}</td>
-                            <td className="uppercase text-[8pt] py-0.5 border border-black color-black">{r.hall}</td>
-                            <td className={`font-black uppercase text-[8pt] py-0.5 border border-black ${roleColor}`}>{r.role}</td>
+                          <tr key={r.round} className={roleClass}>
+                            <td className="font-bold text-center py-0.5 border border-black" style={{color: 'black'}}>{r.round}</td>
+                            <td className="uppercase text-[8pt] py-0.5 border border-black" style={{color: 'black'}}>{r.hall}</td>
+                            <td className={`font-black uppercase text-[8pt] py-0.5 border border-black ${roleTextColor}`}>{r.role}</td>
                           </tr>
                         );
                     })}
