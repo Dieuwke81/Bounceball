@@ -62,9 +62,16 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       if (!trimmedLine) return;
       const lowerLine = trimmedLine.toLowerCase();
       if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
-      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1)
-        return;
-      let cleaned = trimmedLine.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
+      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
+
+      let cleaned = trimmedLine
+        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+        .replace(/\[.*?\]/, '')
+        .replace(/^\s*\d+[\.\)]?\s*/, '')
+        .split(/[:\-\–]/)[0]
+        .replace(/[\(\[].*?[\)\]]/g, '')
+        .trim();
+
       if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) {
         potentialNames.add(cleaned);
       }
@@ -218,7 +225,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         <button onClick={onClose} className="bg-gray-700 px-4 py-2 rounded-xl text-[10px] font-bold uppercase hover:bg-gray-600 transition-colors tracking-widest text-white">Terug</button>
       </div>
       {errorAnalysis && (
-        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl animate-shake text-white">
+        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl animate-shake">
           <h3 className="text-red-500 font-black uppercase text-sm">⚠️ Analyse Mislukking:</h3>
           <p className="text-gray-300 text-[10px] mt-1 leading-relaxed whitespace-pre-line">{errorAnalysis}</p>
         </div>
@@ -237,13 +244,13 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                     const newNames = [...hallNames];
                     newNames[i] = e.target.value;
                     setHallNames(newNames);
-                  }} className="bg-gray-800 p-2 rounded-lg text-xs font-bold border border-gray-700 focus:border-amber-500 outline-none text-white" placeholder={`Zaal ${i+1}`}
+                  }} className="bg-gray-800 p-2 rounded-lg text-xs font-bold border border-gray-700 focus:border-amber-500 outline-none" placeholder={`Zaal ${i+1}`}
                 />
               ))}
             </div>
           </div>
           <div className="flex gap-2">{[4, 5].map(n => <button key={n} onClick={() => setPlayersPerTeam(n)} className={`flex-1 py-3 rounded-xl font-black border-2 ${playersPerTeam === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{n} vs {n}</button>)}</div>
-          <textarea value={attendanceText} onChange={e => setAttendanceText(e.target.value)} placeholder="Plak WhatsApp lijst..." className="w-full h-40 bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs outline-none text-white" />
+          <textarea value={attendanceText} onChange={e => setAttendanceText(e.target.value)} placeholder="Plak WhatsApp lijst..." className="w-full h-40 bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs outline-none" />
           <button onClick={handleParseAttendance} className="w-full py-3 bg-amber-500 text-white font-black rounded-xl uppercase text-xs hover:bg-amber-400 transition-all tracking-widest shadow-lg">Verwerk Lijst</button>
         </div>
         <div className="lg:col-span-2 space-y-4">
@@ -265,8 +272,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                         const s = await generateNKSchedule(p, hallNames, opt.mpp, playersPerTeam, "NK", setProgressMsg);
                         setSession(s);
                       } catch(e:any) { setErrorAnalysis(e.message); } finally { setIsGenerating(false); }
-                    }} className={`p-4 rounded-2xl border-2 text-left transition-all hover:scale-[1.02] ${opt.color} text-white`}>
-                    <div className="text-xl font-black tracking-tighter">{opt.mpp} Wedstrijden p.p.</div>
+                    }} className={`p-4 rounded-2xl border-2 text-left transition-all hover:scale-[1.02] ${opt.color}`}>
+                    <div className="text-xl font-black tracking-tighter text-white">{opt.mpp} Wedstrijden p.p.</div>
                     <div className="mt-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider">{opt.rounds} rondes | {opt.resting} rust | {opt.label}</div>
                   </button>
                 ))}
@@ -282,11 +289,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="space-y-6 pb-20">
       <style>{`
         @media print {
-          /* Verberg alles behalve de print-view */
-          body > #root > div:not(.print-only), .no-print, nav, header {
-            display: none !important;
-          }
-          body { background: white !important; color: black !important; padding: 0 !important; }
+          body * { visibility: hidden; }
           .print-only { 
             visibility: visible !important; 
             display: block !important; 
@@ -294,8 +297,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
             left: 0; 
             top: 0; 
             width: 100%; 
+            background: white !important; 
           }
           .print-only * { visibility: visible !important; }
+          body { background: white !important; color: black !important; padding: 0 !important; }
         }
         .print-only { display: none; }
       `}</style>
@@ -324,7 +329,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           </div>
         </div>
         <div className="flex justify-center gap-4">
-          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white">Print</button>
+          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[150px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white">Print alleen via PC</button>
           <button onClick={() => { if(confirm("NK Wissen?")) { localStorage.removeItem('bounceball_nk_session'); setSession(null); } }} className="flex-1 max-w-[120px] bg-red-900/40 text-red-500 py-2.5 rounded-xl text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-800 hover:text-white transition-all">Reset</button>
         </div>
       </div>
