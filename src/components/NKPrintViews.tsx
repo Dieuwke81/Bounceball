@@ -70,13 +70,12 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           .color-scheids { color: #db2777 !important; } 
           .color-reserve { color: #15803d !important; }
           
-          /* Kolom achtergronden (doorzichtig) */
           .bg-blauw-trans { background-color: rgba(0, 0, 255, 0.08) !important; }
           .bg-geel-trans { background-color: rgba(255, 215, 0, 0.12) !important; }
           .bg-scheids-trans { background-color: rgba(219, 39, 119, 0.08) !important; }
           .bg-reserve-trans { background-color: rgba(21, 128, 61, 0.08) !important; }
 
-          /* 6. Match Card (OVERVIEW - NIET VERANDERD) */
+          /* 6. Match Card (OVERZICHT) */
           .match-card { 
             border: 3px solid #000 !important; 
             margin-bottom: 10px !important; 
@@ -109,7 +108,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
           .label-small { font-size: 9pt !important; font-weight: 900; }
 
-          /* 7. Tabel Styling (PER ZAAL) */
+          /* 7. Tabel Styling */
           .print-table { 
             border-collapse: collapse !important; 
             width: 100% !important; 
@@ -249,53 +248,60 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
         </div>
       ))}
 
-      {/* OPTIE 3: INDIVIDUELE SPELERS OVERZICHT */}
-      {activePrintType === 'players' && (
-        <div className="p-4">
+      {/* OPTIE 3: INDIVIDUELE SPELERS OVERZICHT (1 SPELER PER PAGINA) */}
+      {activePrintType === 'players' && playerSchedules.map(ps => (
+        <div key={ps.name} className="page-break p-10">
           <div className="print-header">
-            <h1>INDIVIDUEEL SPELERS SCHEMA</h1>
+            <h1>PERSOONLIJK SCHEMA: {ps.name}</h1>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {playerSchedules.map(ps => (
-              <div key={ps.name} className="border-2 border-black p-1 break-inside-avoid">
-                <div className="font-black bg-black text-white p-1 mb-1 uppercase text-center text-md">{ps.name}</div>
-                <table className="w-full text-left" style={{borderCollapse: 'collapse'}}>
-                  <thead>
-                    <tr className="font-black uppercase text-[7pt] bg-gray-100">
-                      <th className="p-0.5 text-center w-8 border border-black">RD</th>
-                      <th className="p-0.5 border border-black">ZAAL</th>
-                      <th className="p-0.5 border border-black">ROL</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ps.rounds.map((r: any) => {
-                        let roleClass = "";
-                        if (r.role === "BLAUW") roleClass = "bg-blauw-trans";
-                        if (r.role === "GEEL") roleClass = "bg-geel-trans";
-                        if (r.role === "REF") roleClass = "bg-scheids-trans";
-                        if (r.role === "RES") roleClass = "bg-reserve-trans";
-                        
-                        let roleTextColor = "";
-                        if (r.role === "BLAUW") roleTextColor = "color-blauw";
-                        if (r.role === "GEEL") roleTextColor = "color-geel";
-                        if (r.role === "REF") roleTextColor = "color-scheids";
-                        if (r.role === "RES") roleTextColor = "color-reserve";
+          
+          <table className="print-table" style={{marginTop: '20px'}}>
+            <thead>
+              <tr className="bg-gray-100 uppercase text-sm color-black">
+                <th className="w-16 text-center">RD</th>
+                <th className="w-24 text-center">ZAAL</th>
+                <th className="text-left">ROL</th>
+                <th className="w-32 text-center">PUNTEN (3, 1, 0)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ps.rounds.map((r: any) => {
+                  let roleClass = "";
+                  if (r.role === "BLAUW") roleClass = "bg-blauw-trans";
+                  if (r.role === "GEEL") roleClass = "bg-geel-trans";
+                  if (r.role === "REF") roleClass = "bg-scheids-trans";
+                  if (r.role === "RES") roleClass = "bg-reserve-trans";
+                  
+                  let roleTextColor = "";
+                  if (r.role === "BLAUW") roleTextColor = "color-blauw";
+                  if (r.role === "GEEL") roleTextColor = "color-geel";
+                  if (r.role === "REF") roleTextColor = "color-scheids";
+                  if (r.role === "RES") roleTextColor = "color-reserve";
 
-                        return (
-                          <tr key={r.round} className={roleClass}>
-                            <td className="font-bold text-center py-0.5 border border-black" style={{color: 'black'}}>{r.round}</td>
-                            <td className="uppercase text-[8pt] py-0.5 border border-black" style={{color: 'black'}}>{r.hall}</td>
-                            <td className={`font-black uppercase text-[8pt] py-0.5 border border-black ${roleTextColor}`}>{r.role}</td>
-                          </tr>
-                        );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ))}
+                  return (
+                    <tr key={r.round} className={roleClass}>
+                      <td className="text-center text-2xl py-4 font-black">{r.round}</td>
+                      <td className="text-center text-4xl font-black uppercase">{r.hall}</td>
+                      <td className={`font-black uppercase text-xl ${roleTextColor}`}>{r.role}</td>
+                      <td className="text-center">
+                        {/* Invulvak voor punten */}
+                        {r.hall !== '-' && (r.role === "BLAUW" || r.role === "GEEL") ? (
+                           <div className="border-4 border-black w-16 h-16 mx-auto bg-white"></div>
+                        ) : (
+                           <span className="text-gray-400 text-[8pt]">N.v.t.</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+              })}
+            </tbody>
+          </table>
+          
+          <div className="mt-10 text-center p-6 border-2 border-dashed border-gray-400 rounded-xl">
+             <p className="text-gray-500 font-bold uppercase text-xs">Vul na elke wedstrijd je behaalde punten in in het vakje.</p>
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 };
