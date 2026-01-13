@@ -45,7 +45,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     if (session) localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
   }, [session]);
 
-  // ✅ DE EXACTE PARSER UIT JOUW APP.TSX
   const handleParseAttendance = () => {
     const normalize = (str: string): string =>
       str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\.$/, '');
@@ -62,10 +61,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       const trimmedLine = line.trim();
       if (!trimmedLine) return;
       const lowerLine = trimmedLine.toLowerCase();
-
       if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
-      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1)
-        return;
+      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
 
       let cleaned = trimmedLine
         .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
@@ -139,7 +136,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
   }, [session, players]);
 
-  // ✅ CO-OP DATA: Toont alle koppels
   const coOpData = useMemo(() => {
     if (!session) return [];
     const participantIds = Array.from(new Set(session.rounds.flatMap(r => r.matches.flatMap(m => [...m.team1, ...m.team2].map(p => p.id))))).sort();
@@ -163,14 +159,12 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     return Array.from(pairsMap.values()).sort((a, b) => (b.together + b.against) - (a.together + a.against));
   }, [session, players]);
 
-  // ✅ HEATMAP RANKING
   const totalRankings = useMemo(() => {
     const totals = coOpData.map(d => d.together + d.against);
     const uniqueSorted = Array.from(new Set(totals)).filter(n => n > 0).sort((a, b) => b - a);
     return { highest: uniqueSorted[0] || 0, second: uniqueSorted[1] || 0, third: uniqueSorted[2] || 0, fourth: uniqueSorted[3] || 0 };
   }, [coOpData]);
 
-  // ✅ PLAYER SCHEDULES VOOR PRINT
   const playerSchedules = useMemo(() => {
     if (!session) return [];
     const participantIds = Array.from(new Set(session.rounds.flatMap(r => r.matches.flatMap(m => [...m.team1, ...m.team2].map(p => p.id))))).sort((a, b) => {
@@ -282,24 +276,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
   return (
     <div className="space-y-6 pb-20">
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          .print-only { display: block !important; }
-          body { background: white !important; color: black !important; padding: 0 !important; }
-          .match-card { border: 2px solid #000 !important; margin-bottom: 20px !important; page-break-inside: avoid; color: black !important; }
-          .page-break { page-break-after: always; }
-          .text-white { color: black !important; }
-          .bg-gray-800, .bg-gray-900 { background: white !important; }
-        }
-        .print-only { display: none; }
-      `}</style>
-
       {/* PRINT MENU MODAL */}
       {printMenuOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 no-print">
-          <div className="bg-gray-800 border-2 border-amber-500 rounded-3xl p-8 max-w-sm w-full space-y-6 shadow-2xl">
-            <h3 className="text-2xl font-black text-white uppercase italic text-center">Print Menu</h3>
+          <div className="bg-gray-800 border-2 border-amber-500 rounded-3xl p-8 max-w-sm w-full space-y-6 shadow-2xl text-white">
+            <h3 className="text-2xl font-black uppercase italic text-center">Print Menu</h3>
             <div className="space-y-3">
               <button onClick={() => handlePrintAction('overview')} className="w-full py-4 bg-gray-700 hover:bg-amber-500 text-white font-bold rounded-2xl transition-all uppercase text-xs">Compleet Overzicht</button>
               <button onClick={() => handlePrintAction('halls')} className="w-full py-4 bg-gray-700 hover:bg-amber-500 text-white font-bold rounded-2xl transition-all uppercase text-xs">Per Zaal</button>
@@ -310,7 +291,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         </div>
       )}
 
-      {/* ✅ DE NIEUWE HEADER LAYOUT */}
+      {/* HEADER (SCHERM) */}
       <div className="no-print bg-gray-800 p-6 rounded-3xl border-b-8 border-amber-500 shadow-2xl text-white space-y-6">
         <h2 className="text-4xl sm:text-6xl font-black italic uppercase tracking-tighter text-center">NK Manager</h2>
         <div className="flex justify-center">
@@ -321,7 +302,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           </div>
         </div>
         <div className="flex justify-center gap-4">
-          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors">Print</button>
+          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white">Print</button>
           <button onClick={() => { if(confirm("NK Wissen?")) { localStorage.removeItem('bounceball_nk_session'); setSession(null); } }} className="flex-1 max-w-[120px] bg-red-900/40 text-red-500 py-2.5 rounded-xl text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-800 hover:text-white transition-all">Reset</button>
         </div>
       </div>
@@ -329,11 +310,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       <div className="no-print space-y-8">
         {activeTab === 'schedule' && (
           <>
-            <input type="text" placeholder="Naam markeren..." value={highlightName} onChange={e => setHighlightName(e.target.value)} className="no-print w-full bg-gray-800 p-4 rounded-2xl text-white border border-gray-700 outline-none focus:ring-2 ring-green-500 transition-all" />
+            <input type="text" placeholder="Naam markeren..." value={highlightName} onChange={e => setHighlightName(e.target.value)} className="w-full bg-gray-800 p-4 rounded-2xl text-white border border-gray-700 outline-none focus:ring-2 ring-green-500 transition-all" />
             {session.rounds.map((round, rIdx) => (
               <div key={rIdx} className="space-y-4">
                 <h3 className="text-xl font-black text-amber-500 uppercase italic border-l-4 border-amber-500 pl-4 tracking-tighter">Ronde {round.roundNumber}</h3>
-                <div className="grid lg:grid-cols-2 gap-6">
+                <div className="grid lg:grid-cols-2 gap-6 text-white">
                   {round.matches.map((match, mIdx) => {
                     const avg1 = match.team1.reduce((s, p) => s + p.rating, 0) / match.team1.length;
                     const avg2 = match.team2.reduce((s, p) => s + p.rating, 0) / match.team2.length;
@@ -343,7 +324,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                           <span>📍 ZAAL {match.hallName}</span>
                           <span className={`px-2 py-0.5 rounded transition-all ${isHighlighted(match.referee?.name || '') ? 'bg-green-500 text-white font-black scale-110 shadow-lg' : 'text-pink-400'}`}>Ref: {match.referee?.name}</span>
                         </div>
-                        <div className="p-5 flex justify-between items-stretch gap-4 text-white">
+                        <div className="p-5 flex justify-between items-stretch gap-4">
                           <div className="flex-1 space-y-1">
                             <div className="text-[9px] text-blue-400 font-black uppercase mb-2 tracking-widest">Team Blauw</div>
                             {match.team1.map(p => <div key={p.id} className={`text-sm uppercase font-bold transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md' : ''}`}>{p.name}</div>)}
