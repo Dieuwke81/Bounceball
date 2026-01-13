@@ -308,7 +308,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           
           <div className="mt-4 text-center p-3 border-2 border-dashed border-gray-400 rounded-xl">
              <p className="text-gray-500 font-bold uppercase text-[9px] tracking-widest">
-                Vul na elke wedstrijd je behaalde punten in in het vakje.
+                Vul na elke wedstrijd je behaalde punten in in het vakje. 3 voor winst, 1 voor gelijkspel, 0 voor verlies.
              </p>
           </div>
         </div>
