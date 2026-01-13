@@ -2,9 +2,12 @@ import { Player, NKSession, NKRound, NKMatch } from '../types';
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
+let failureLog = { ratingFail: 0, balanceFail: 0, officialsFail: 0, poolEmptyFail: 0 };
+
 function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number) {
   let bestDiff = Infinity;
   let bestSplit: { t1: Player[], t2: Player[] } | null = null;
+  let foundRatingMatch = false;
 
   function combine(start: number, team1: Player[]) {
     if (team1.length === ppt) {
@@ -14,8 +17,8 @@ function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number) {
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
 
-      // EIS: Beide teams minimaal 4.0 en max 1 keeper
       if (avg1 >= 4.0 && avg2 >= 4.0 && k1 <= 1 && k2 <= 1) {
+        foundRatingMatch = true;
         const diff = Math.abs(avg1 - avg2);
         if (diff < bestDiff) {
           bestDiff = diff;
@@ -33,6 +36,7 @@ function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number) {
   }
 
   combine(0, []);
+  if (!foundRatingMatch) failureLog.ratingFail++;
   return bestSplit;
 }
 
@@ -52,7 +56,7 @@ async function generateSingleVersion(
   let roundAttempts = new Array(totalRounds + 1).fill(0);
   
   let rIdx = 1;
-  const maxGlobalTime = Date.now() + 4000; // Max 4 sec per poging
+  const maxGlobalTime = Date.now() + 5000; 
 
   while (rIdx <= totalRounds) {
     if (Date.now() > maxGlobalTime) return null;
@@ -61,23 +65,17 @@ async function generateSingleVersion(
     let roundMatches: NKMatch[] = [];
     let success = false;
 
-    // Probeer een ronde te maken (60 pogingen per ronde)
-    for (let attempt = 0; attempt < 60; attempt++) {
+    for (let attempt = 0; attempt < 50; attempt++) {
       const usedThisRound = new Set<number>();
       const matches: NKMatch[] = [];
-      const target = attempt < 30 ? 0.3 : 0.6; // Wordt soepeler met balans, NOOIT met rating
+      const target = attempt < 25 ? 0.3 : 0.6;
 
-      // Prioriteit: Spelers die het meest "achterlopen" op hun mpp
       const pool = [...allPlayers]
         .filter(p => currentPlayedCount.get(p.id)! < mpp)
-        .sort((a, b) => {
-          const diffA = mpp - currentPlayedCount.get(a.id)!;
-          const diffB = mpp - currentPlayedCount.get(b.id)!;
-          return diffB - diffA || Math.random() - 0.5;
-        });
+        .sort((a, b) => (mpp - currentPlayedCount.get(a.id)!) - (mpp - currentPlayedCount.get(b.id)!) || Math.random() - 0.5)
+        .reverse();
 
       const mInRound = Math.min(hallNames.length, Math.floor(pool.length / ppm));
-      let roundFailed = false;
 
       try {
         for (let h = 0; h < mInRound; h++) {
@@ -95,7 +93,6 @@ async function generateSingleVersion(
           });
         }
 
-        // Officials: Spelers die NIET spelen in deze ronde
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
         if (resting.length < matches.length * 3) throw new Error();
 
@@ -107,9 +104,7 @@ async function generateSingleVersion(
         roundMatches = matches;
         success = true;
         break;
-      } catch (e) {
-        roundFailed = true;
-      }
+      } catch (e) { }
     }
 
     if (success) {
@@ -119,16 +114,14 @@ async function generateSingleVersion(
       playedCountsHistory[rIdx] = nextCounts;
       rIdx++;
     } else {
-      // BACKTRACK: Gaat niet alleen 1 ronde terug, maar reset ook de pogingen teller
       if (rIdx === 1) return null;
       rounds.pop();
       rIdx--;
       roundAttempts[rIdx]++;
-      if (roundAttempts[rIdx] > 20) return null; // Te vaak vastgelopen op dit pad
+      if (roundAttempts[rIdx] > 15) return null; 
     }
   }
 
-  // Laatste check: Iedereen exact op mpp?
   const finalCounts = playedCountsHistory[totalRounds];
   if (!allPlayers.every(p => finalCounts.get(p.id) === mpp)) return null;
 
@@ -141,24 +134,24 @@ async function generateSingleVersion(
 export async function generateNKSchedule(players: Player[], hallNames: string[], mpp: number, ppt: number, competitionName: string, onProgress: (msg: string) => void): Promise<NKSession> {
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
+  failureLog = { ratingFail: 0, balanceFail: 0, officialsFail: 0, poolEmptyFail: 0 };
 
-  while (validVersions.length < 5 && totalAttempts < 400) {
+  while (validVersions.length < 10 && totalAttempts < 500) {
     totalAttempts++;
-    onProgress(`Bouwen & Controleren (Versie ${validVersions.length + 1}/5)...`);
+    onProgress(`Optimaliseren: Versie ${validVersions.length}/10 gevonden...`);
     const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName);
     
     if (session) {
       validVersions.push(session);
       await delay(1);
     }
-    if (totalAttempts % 10 === 0) await delay(1);
+    if (totalAttempts % 20 === 0) await delay(1);
   }
 
   if (validVersions.length === 0) {
-    throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nMet ${players.length} spelers en ${ppt}vs${ppt} is het wiskundig niet gelukt om iedereen ${mpp} keer te laten spelen met een 4.0+ rating per team.\n\nAdvies: Probeer 1 wedstrijd minder p.p.`);
+    throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nBacktracking kon geen 4.0+ teams maken voor alle rondes. Probeer 1 wedstrijd minder p.p.`);
   }
 
-  // Kies de versie met de beste sociale spreiding
   const getSocialScore = (s: NKSession): number => {
     const pairs = new Map<string, number>();
     s.rounds.forEach(r => r.matches.forEach(m => {
