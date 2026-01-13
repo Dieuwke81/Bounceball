@@ -50,7 +50,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
       if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
       let cleaned = trimmedLine.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
-      if (cleaned && cleaned.length > 1) potentialNames.add(cleaned);
+      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) potentialNames.add(cleaned);
     });
 
     const playerLookup = new Map<string, Player>();
@@ -74,7 +74,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     if (n === 0) return [];
     const options = [];
     const pPerMatch = playersPerTeam * 2;
-
     for (let mpp = 3; mpp <= 12; mpp++) {
       if ((n * mpp) % pPerMatch === 0) {
         const totalMatches = (n * mpp) / pPerMatch;
@@ -82,12 +81,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         const playingPerRound = Math.min(hallsCount, Math.floor(n / pPerMatch)) * pPerMatch;
         const resting = n - playingPerRound;
         const needs = Math.min(hallsCount, Math.floor(n / pPerMatch)) * 3;
-
         let label = "Mogelijk", color = "border-gray-700 bg-gray-800/50", score = 50;
         if (resting >= needs) { label = "Perfecte rust"; color = "border-green-500 bg-green-500/10"; score = 100; }
         else if (resting >= 1) { label = "Weinig rust"; color = "border-amber-500 bg-amber-500/10"; score = 70; }
         else { label = "Geen officials"; color = "border-red-500/50 bg-red-500/5"; score = 10; }
-
         options.push({ mpp, totalMatches, rounds, resting, label, color, score });
       }
     }
@@ -110,7 +107,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       m.team1.forEach(p => { const st = stats.get(p.id); if (st) { st.matchesPlayed++; st.points += p1; st.goalsFor += m.team1Score; st.goalDifference += (m.team1Score - m.team2Score); }});
       m.team2.forEach(p => { const st = stats.get(p.id); if (st) { st.matchesPlayed++; st.points += p2; st.goalsFor += m.team2Score; st.goalDifference += (m.team2Score - m.team1Score); }});
     }));
-    return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor);
+    return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
   }, [session, players]);
 
   const coOpData = useMemo(() => {
@@ -136,7 +133,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="flex flex-col items-center justify-center min-h-[400px] text-white text-center">
       <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
       <h2 className="text-3xl font-black uppercase italic tracking-tighter">{progressMsg}</h2>
-      <p className="text-gray-500 text-xs mt-2 uppercase font-bold animate-pulse tracking-widest">Controle op keiharde match-count eis...</p>
+      <p className="text-gray-500 text-xs mt-2 uppercase font-bold animate-pulse tracking-widest">Backtracking & Spreiding optimaliseren...</p>
     </div>
   );
 
@@ -179,7 +176,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
               <div className="grid sm:grid-cols-2 gap-3">
                 {calculatedOptions.map(opt => (
                   <button key={opt.mpp} onClick={async () => {
-                      setIsGenerating(true); setProgressMsg("Keihard schema bouwen..."); setErrorAnalysis(null);
+                      setIsGenerating(true); setProgressMsg("Backtracking schema..."); setErrorAnalysis(null);
                       try {
                         const p = players.filter(x => selectedPlayerIds.has(x.id));
                         const s = await generateNKSchedule(p, hallNames, opt.mpp, playersPerTeam, "NK", setProgressMsg);
@@ -227,7 +224,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                     const avg1 = match.team1.reduce((s, p) => s + p.rating, 0) / match.team1.length;
                     const avg2 = match.team2.reduce((s, p) => s + p.rating, 0) / match.team2.length;
                     return (
-                      <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border-2 ${match.isPlayed ? 'border-green-500/50 shadow-lg' : 'border-gray-700'} overflow-hidden`}>
+                      <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border-2 ${match.isPlayed ? 'border-green-500/50 shadow-lg shadow-green-500/5' : 'border-gray-700'} overflow-hidden`}>
                         <div className="bg-gray-900/50 p-3 flex justify-between text-[10px] font-black uppercase text-gray-500 tracking-widest">
                           <span>📍 ZAAL {match.hallName}</span>
                           <span className={`px-2 py-0.5 rounded ${isHighlighted(match.referee?.name || '') ? 'bg-amber-500 text-white' : 'text-pink-400'}`}>Ref: {match.referee?.name}</span>
@@ -245,14 +242,14 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                                 newS.rounds[rIdx].matches[mIdx].team1Score = +e.target.value;
                                 newS.rounds[rIdx].matches[mIdx].isPlayed = true;
                                 setSession(newS);
-                              }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none" />
+                              }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none focus:border-amber-500" />
                               <span className="text-gray-600 font-bold">-</span>
                               <input type="number" value={match.team2Score} onChange={e => {
                                 const newS = JSON.parse(JSON.stringify(session));
                                 newS.rounds[rIdx].matches[mIdx].team2Score = +e.target.value;
                                 newS.rounds[rIdx].matches[mIdx].isPlayed = true;
                                 setSession(newS);
-                              }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none" />
+                              }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none focus:border-amber-500" />
                             </div>
                             <button onClick={() => {
                                 const newS = JSON.parse(JSON.stringify(session));
@@ -302,8 +299,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
         {activeTab === 'analysis' && (
           <div className="space-y-4 animate-fade-in text-white no-print">
-            <input type="text" placeholder="Filter duo's..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl p-4 text-sm outline-none focus:border-amber-500" />
-            <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden max-h-[600px] overflow-y-auto uppercase">
+            <input type="text" placeholder="Samenwerkingen filteren..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl p-4 text-sm outline-none focus:border-amber-500 transition-all" />
+            <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden max-h-[600px] overflow-y-auto uppercase custom-scrollbar">
               <table className="w-full text-left">
                 <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0 z-20">
                   <tr><th className="p-5">Duo</th><th className="p-5 text-center">Samen</th><th className="p-5 text-center">Tegen</th><th className="p-5 text-center">Totaal</th></tr>
