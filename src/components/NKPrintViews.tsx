@@ -250,18 +250,18 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
       {/* OPTIE 3: INDIVIDUELE SPELERS OVERZICHT (1 SPELER PER PAGINA) */}
       {activePrintType === 'players' && playerSchedules.map(ps => (
-        <div key={ps.name} className="page-break p-10">
+        <div key={ps.name} className="page-break p-6">
           <div className="print-header">
             <h1>PERSOONLIJK SCHEMA: {ps.name}</h1>
           </div>
           
-          <table className="print-table" style={{marginTop: '20px'}}>
+          <table className="print-table" style={{marginTop: '10px'}}>
             <thead>
-              <tr className="bg-gray-100 uppercase text-sm color-black">
-                <th className="w-16 text-center">RD</th>
-                <th className="w-24 text-center">ZAAL</th>
+              <tr className="bg-gray-100 uppercase text-[9pt] color-black">
+                <th className="w-12 text-center">RD</th>
+                <th className="w-20 text-center">ZAAL</th>
                 <th className="text-left">ROL</th>
-                <th className="w-32 text-center">PUNTEN (3, 1, 0)</th>
+                <th className="w-28 text-center">PUNTEN (3, 1, 0)</th>
               </tr>
             </thead>
             <tbody>
@@ -280,25 +280,36 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
                   return (
                     <tr key={r.round} className={roleClass}>
-                      <td className="text-center text-2xl py-4 font-black">{r.round}</td>
-                      <td className="text-center text-4xl font-black uppercase">{r.hall}</td>
-                      <td className={`font-black uppercase text-xl ${roleTextColor}`}>{r.role}</td>
+                      <td className="text-center text-xl py-2 font-black">{r.round}</td>
+                      <td className="text-center text-3xl font-black uppercase">{r.hall}</td>
+                      <td className={`font-black uppercase text-lg ${roleTextColor}`}>{r.role}</td>
                       <td className="text-center">
-                        {/* Invulvak voor punten */}
                         {r.hall !== '-' && (r.role === "BLAUW" || r.role === "GEEL") ? (
-                           <div className="border-4 border-black w-16 h-16 mx-auto bg-white"></div>
+                           <div className="border-2 border-black w-10 h-10 mx-auto bg-white"></div>
                         ) : (
-                           <span className="text-gray-400 text-[8pt]">N.v.t.</span>
+                           <span className="text-gray-400 text-[7pt]">N.v.t.</span>
                         )}
                       </td>
                     </tr>
                   );
               })}
             </tbody>
+            {/* TOTAAL VAK ONDERAAN DE TABEL */}
+            <tfoot>
+                <tr className="bg-gray-50">
+                    <td colSpan={2} className="border-none"></td>
+                    <td className="text-right font-black text-xl py-4 pr-4 uppercase">TOTAAL:</td>
+                    <td className="text-center">
+                        <div className="border-4 border-black w-14 h-14 mx-auto bg-white"></div>
+                    </td>
+                </tr>
+            </tfoot>
           </table>
           
-          <div className="mt-10 text-center p-6 border-2 border-dashed border-gray-400 rounded-xl">
-             <p className="text-gray-500 font-bold uppercase text-xs">Vul na elke wedstrijd je behaalde punten in in het vakje.</p>
+          <div className="mt-4 text-center p-3 border-2 border-dashed border-gray-400 rounded-xl">
+             <p className="text-gray-500 font-bold uppercase text-[9px] tracking-widest">
+                Vul na elke wedstrijd je behaalde punten in in het vakje.
+             </p>
           </div>
         </div>
       ))}
