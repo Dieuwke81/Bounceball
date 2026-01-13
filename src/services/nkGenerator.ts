@@ -2,8 +2,6 @@ import { Player, NKSession, NKRound, NKMatch } from '../types';
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-let failureLog = { ratingFail: 0, balanceFail: 0, officialsFail: 0, poolEmptyFail: 0 };
-
 function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number) {
   let bestDiff = Infinity;
   let bestSplit: { t1: Player[], t2: Player[] } | null = null;
@@ -36,7 +34,6 @@ function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number) {
   }
 
   combine(0, []);
-  if (!foundRatingMatch) failureLog.ratingFail++;
   return bestSplit;
 }
 
@@ -125,32 +122,22 @@ async function generateSingleVersion(
   const finalCounts = playedCountsHistory[totalRounds];
   if (!allPlayers.every(p => finalCounts.get(p.id) === mpp)) return null;
 
-  return {
-    competitionName, hallNames, playersPerTeam: ppt, totalRounds: rounds.length,
-    rounds, standings: [], isCompleted: false
-  };
+  return { competitionName, hallNames, playersPerTeam: ppt, totalRounds: rounds.length, rounds, standings: [], isCompleted: false };
 }
 
 export async function generateNKSchedule(players: Player[], hallNames: string[], mpp: number, ppt: number, competitionName: string, onProgress: (msg: string) => void): Promise<NKSession> {
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
-  failureLog = { ratingFail: 0, balanceFail: 0, officialsFail: 0, poolEmptyFail: 0 };
 
   while (validVersions.length < 10 && totalAttempts < 500) {
     totalAttempts++;
     onProgress(`Optimaliseren: Versie ${validVersions.length}/10 gevonden...`);
     const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName);
-    
-    if (session) {
-      validVersions.push(session);
-      await delay(1);
-    }
+    if (session) { validVersions.push(session); await delay(1); }
     if (totalAttempts % 20 === 0) await delay(1);
   }
 
-  if (validVersions.length === 0) {
-    throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nBacktracking kon geen 4.0+ teams maken voor alle rondes. Probeer 1 wedstrijd minder p.p.`);
-  }
+  if (validVersions.length === 0) throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nZelfs met backtracking kon geen 4.0+ teams maken. Probeer 1 wedstrijd minder p.p.`);
 
   const getSocialScore = (s: NKSession): number => {
     const pairs = new Map<string, number>();
