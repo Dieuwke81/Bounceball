@@ -40,63 +40,29 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     if (session) localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
   }, [session]);
 
-  // ✅ EXACT DEZELFDE PARSER LOGICA UIT APP.TSX
   const handleParseAttendance = () => {
     const normalize = (str: string): string =>
-      str
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .replace(/\.$/, '');
-
+      str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\.$/, '');
     const lines = attendanceText.split('\n');
     const potentialNames = new Set<string>();
-    const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
-    const nonNameIndicators = [
-      'afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present',
-      'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper',
-    ];
-
+    
     lines.forEach((line) => {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) return;
-      const lowerLine = trimmedLine.toLowerCase();
-
-      if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
-      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1)
-        return;
-
-      let cleaned = trimmedLine
-        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
-        .replace(/\[.*?\]/, '')
-        .replace(/^\s*\d+[\.\)]?\s*/, '')
-        .split(/[:\-\–]/)[0]
-        .replace(/[\(\[].*?[\)\]]/g, '')
-        .trim();
-
-      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) {
-        potentialNames.add(cleaned);
-      }
+      let cleaned = line.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
+      if (cleaned.length > 1) potentialNames.add(cleaned);
     });
 
     const playerLookup = new Map<string, Player>();
     players.forEach((player) => {
-      const normalizedFullName = normalize(player.name);
-      const normalizedFirstName = normalizedFullName.split(' ')[0];
-      playerLookup.set(normalizedFullName, player);
-      if (!playerLookup.has(normalizedFirstName)) playerLookup.set(normalizedFirstName, player);
+      playerLookup.set(normalize(player.name), player);
+      playerLookup.set(normalize(player.name.split(' ')[0]), player);
     });
 
     const newSelected = new Set(selectedPlayerIds);
     potentialNames.forEach((originalName) => {
       const normalizedName = normalize(originalName);
       const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
-      if (matchedPlayer) {
-        newSelected.add(matchedPlayer.id);
-      }
+      if (matchedPlayer) newSelected.add(matchedPlayer.id);
     });
-
     setSelectedPlayerIds(newSelected);
     setAttendanceText('');
   };
@@ -146,18 +112,12 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     if (!session) return [];
     const participantIds = Array.from(new Set(session.rounds.flatMap(r => r.matches.flatMap(m => [...m.team1, ...m.team2].map(p => p.id)))));
     const pairsMap = new Map<string, { p1: string, p2: string, together: number, against: number }>();
-    
     for (let i = 0; i < participantIds.length; i++) {
       for (let j = i + 1; j < participantIds.length; j++) {
         const key = [participantIds[i], participantIds[j]].sort().join('-');
-        pairsMap.set(key, {
-          p1: players.find(p => p.id === participantIds[i])?.name || '?',
-          p2: players.find(p => p.id === participantIds[j])?.name || '?',
-          together: 0, against: 0
-        });
+        pairsMap.set(key, { p1: players.find(p => p.id === participantIds[i])?.name || '?', p2: players.find(p => p.id === participantIds[j])?.name || '?', together: 0, against: 0 });
       }
     }
-
     session.rounds.forEach(r => r.matches.forEach(m => {
       const add = (id1: number, id2: number, type: 'together' | 'against') => {
         const data = pairsMap.get([id1, id2].sort().join('-'));
@@ -167,7 +127,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       m.team2.forEach((p, idx) => m.team2.slice(idx + 1).forEach(p2 => add(p.id, p2.id, 'together')));
       m.team1.forEach(p => m.team2.forEach(p2 => add(p.id, p2.id, 'against')));
     }));
-
     return Array.from(pairsMap.values()).sort((a, b) => (b.together + b.against) - (a.together + a.against));
   }, [session, players]);
 
@@ -198,7 +157,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       </div>
 
       {errorAnalysis && (
-        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl animate-shake">
+        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl">
           <h3 className="text-red-500 font-black uppercase text-sm">⚠️ Analyse Mislukking:</h3>
           <p className="text-gray-300 text-[10px] mt-1 leading-relaxed whitespace-pre-line">{errorAnalysis}</p>
         </div>
@@ -237,7 +196,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           </div>
           {selectedPlayerIds.size > 0 && (
             <div className="pt-4 border-t border-gray-700">
-              <h3 className="text-white font-bold uppercase text-xs mb-3 text-amber-500 tracking-widest">Gevalideerde Opties:</h3>
+              <h3 className="text-white font-bold uppercase text-xs mb-3 text-amber-500 tracking-widest">Opties:</h3>
               <div className="grid sm:grid-cols-2 gap-3">
                 {calculatedOptions.map(opt => (
                   <button key={opt.mpp} onClick={async () => {
@@ -262,16 +221,49 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
 
   return (
     <div className="space-y-6 pb-20">
-      <div className="no-print flex justify-between items-center bg-gray-800 p-4 rounded-2xl border-b-4 border-amber-500 shadow-xl text-white">
-        <h2 className="text-xl font-black italic uppercase tracking-tighter">NK Manager</h2>
-        <div className="flex bg-gray-900 p-1 rounded-xl gap-1">
-          {(['schedule', 'standings', 'analysis'] as const).map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold text-[10px] uppercase transition-all ${activeTab === t ? 'bg-amber-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>{t === 'schedule' ? 'Schema' : t === 'standings' ? 'Stand' : 'Check'}</button>
-          ))}
+      {/* NIEUWE HEADER LAYOUT */}
+      <div className="no-print bg-gray-800 p-6 rounded-3xl border-b-8 border-amber-500 shadow-2xl text-white space-y-6">
+        {/* RIJ 1: TITEL GROOT */}
+        <h2 className="text-4xl sm:text-6xl font-black italic uppercase tracking-tighter text-center">
+          NK Manager
+        </h2>
+
+        {/* RIJ 2: TABS */}
+        <div className="flex justify-center">
+          <div className="flex bg-gray-900 p-1.5 rounded-2xl gap-1 w-full max-w-md">
+            {(['schedule', 'standings', 'analysis'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setActiveTab(t)}
+                className={`flex-1 py-3 rounded-xl font-black text-xs uppercase transition-all ${
+                  activeTab === t ? 'bg-amber-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                {t === 'schedule' ? 'Schema' : t === 'standings' ? 'Stand' : 'Check'}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => window.print()} className="bg-gray-700 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-gray-600 transition-colors">Print</button>
-          <button onClick={() => {if(confirm("NK Wissen?")) {localStorage.removeItem('bounceball_nk_session'); setSession(null);}}} className="bg-red-900/30 text-red-500 px-3 py-2 rounded-lg text-xs font-bold uppercase hover:bg-red-800 transition-colors">Reset</button>
+
+        {/* RIJ 3: ACTIE KNOPPEN */}
+        <div className="flex justify-center gap-4">
+          <button
+            onClick={() => window.print()}
+            className="flex-1 max-w-[120px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors"
+          >
+            Print
+          </button>
+          <button
+            onClick={() => {
+              if (confirm("NK Wissen?")) {
+                localStorage.removeItem('bounceball_nk_session');
+                setSession(null);
+              }
+            }}
+            className="flex-1 max-w-[120px] bg-red-900/40 text-red-500 py-2.5 rounded-xl text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-800 hover:text-white transition-all"
+          >
+            Reset
+          </button>
         </div>
       </div>
 
