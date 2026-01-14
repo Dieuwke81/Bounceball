@@ -14,6 +14,7 @@ function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number, mi
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
 
+      // KEIHARDE EIS: Gebruik de minRating uit de setup
       if (avg1 >= minRating && avg2 >= minRating && k1 <= 1 && k2 <= 1) {
         const diff = Math.abs(avg1 - avg2);
         if (diff < bestDiff) {
@@ -104,8 +105,7 @@ export async function generateNKSchedule(
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
 
-  // ✅ Nu ingesteld op 250 versies
-  while (validVersions.length < 250 && totalAttempts < 2000) {
+  while (validVersions.length < 250 && totalAttempts < 1500) {
     totalAttempts++;
     if (totalAttempts % 10 === 0) {
         onProgress(`Optimaliseren: Versie ${validVersions.length}/250 gevonden...`);
@@ -144,6 +144,6 @@ export async function generateNKSchedule(
 
   const sortedByBalance = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b));
   const top5Balanced = sortedByBalance.slice(0, 5);
-  onProgress("Sociale winnaar kiezen uit de top van de balans...");
+  onProgress("Sociale winnaar kiezen uit top 5 balans...");
   return top5Balanced.reduce((best, cur) => getSocialScore(cur) < getSocialScore(best) ? cur : best);
 }
