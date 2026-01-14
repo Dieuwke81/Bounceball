@@ -110,9 +110,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         const needs = hallsCount * 3;
         
         let label = "Mogelijk", color = "border-gray-700 bg-gray-800/50", score = 50;
-        if (resting >= needs) { label = "Perfecte rust"; color = "border-green-500 bg-green-500/10"; score = 100; }
-        else if (resting >= 1) { label = "Weinig rust"; color = "border-amber-500 bg-amber-500/10"; score = 70; }
-        else { label = "Geen officials"; color = "border-red-500/50 bg-red-500/5"; score = 10; }
+        if (resting >= needs) { label = "Genoeg reserves/scheidsrechters"; color = "border-green-500 bg-green-500/10"; score = 100; }
+        else if (resting >= 1) { label = "Te weinig reserves/scheidsrechtes"; color = "border-amber-500 bg-amber-500/10"; score = 70; }
+        else { label = "Geen reserves/scheidsrechters"; color = "border-red-500/50 bg-red-500/5"; score = 10; }
 
         options.push({ mpp, totalMatches, rounds, resting, label, color, score });
       }
