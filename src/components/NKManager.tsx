@@ -86,29 +86,43 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     potentialNames.forEach((originalName) => {
       const normalizedName = normalize(originalName);
       const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
-      if (matchedPlayer) newAttendingPlayerIds.add(matchedPlayer.id);
+      if (matchedPlayer) {
+        newAttendingPlayerIds.add(matchedPlayer.id);
+      }
     });
     setSelectedPlayerIds(newAttendingPlayerIds);
     setAttendanceText('');
   };
 
+  // ✅ HERSTELDE BEREKENING: Slimme zalen, Correcte rondes, No Infinity
   const calculatedOptions = useMemo(() => {
     const n = selectedPlayerIds.size;
-    if (n === 0) return [];
-    const options = [];
     const pPerMatch = playersPerTeam * 2;
+    
+    // Infinity-fix: Toon pas opties als er genoeg mensen zijn voor 1 wedstrijd
+    if (n < pPerMatch) return [];
+
+    const options = [];
+    
+    // Slimme Zalen-check: Hoeveel zalen kunnen we écht vullen?
+    const hUsed = Math.min(hallsCount, Math.floor(n / pPerMatch));
+
     for (let mpp = 3; mpp <= 12; mpp++) {
       if ((n * mpp) % pPerMatch === 0) {
         const totalMatches = (n * mpp) / pPerMatch;
-        const hUsed = Math.min(hallsCount, Math.floor(n / pPerMatch));
+        
+        // Correcte Rondes: Deel door zalen die écht gebruikt worden
         const rounds = Math.ceil(totalMatches / hUsed);
+        
         const resting = n - (hUsed * pPerMatch);
         const needs = hUsed * 3;
+        
         let label = "Mogelijk", color = "border-gray-700 bg-gray-800/50", score = 50;
         if (resting >= needs) { label = "Perfecte rust"; color = "border-green-500 bg-green-500/10"; score = 100; }
         else if (resting >= 1) { label = "Weinig rust"; color = "border-amber-500 bg-amber-500/10"; score = 70; }
         else { label = "Geen officials"; color = "border-red-500/50 bg-red-500/5"; score = 10; }
-        options.push({ mpp, totalMatches, rounds, resting, label, color, score });
+
+        options.push({ mpp, totalMatches, rounds, resting, label, color, score, hUsed });
       }
     }
     return options.sort((a, b) => b.score - a.score);
@@ -214,7 +228,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="flex flex-col items-center justify-center min-h-[400px] text-white text-center">
       <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
       <h2 className="text-3xl font-black uppercase italic tracking-tighter">{progressMsg}</h2>
-      {/* ✅ UI Tekst aangepast naar 250 */}
       <p className="text-gray-500 text-xs mt-2 uppercase font-bold animate-pulse tracking-widest text-center">Balans & Spreiding optimaliseren (Beste van 250 versies)...</p>
     </div>
   );
@@ -232,7 +245,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       </div>
       {errorAnalysis && (
         <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-2xl animate-shake text-white">
-          <h3 className="text-red-500 font-black uppercase text-sm">⚠️ Analyse Mislukking:</h3>
+          <h3 className="text-red-500 font-black uppercase text-sm text-white">⚠️ Analyse Mislukking:</h3>
           <p className="text-gray-300 text-[10px] mt-1 leading-relaxed whitespace-pre-line text-white">{errorAnalysis}</p>
         </div>
       )}
@@ -240,7 +253,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
         <div className="bg-gray-900/50 p-6 rounded-2xl border border-gray-700 space-y-4 text-white font-black">
           <div><span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Zalen</span><input type="number" value={hallsCount} onFocus={(e) => e.target.select()} onChange={e => handleHallsCountChange(+e.target.value)} className="w-full bg-gray-800 p-3 rounded-xl font-bold border border-gray-700 focus:border-amber-500 outline-none text-white font-black" /></div>
           <div className="space-y-2 text-white font-black">
-            <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Zaalnamen</span>
+            <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest text-white">Zaalnamen</span>
             <div className="grid grid-cols-1 gap-2 text-white font-black">
               {hallNames.map((name, i) => (
                 <input key={i} type="text" value={name} onChange={(e) => {
@@ -256,7 +269,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <button onClick={handleParseAttendance} className="w-full py-3 bg-amber-500 text-white font-black rounded-xl uppercase text-xs hover:bg-amber-400 transition-all tracking-widest shadow-lg">Verwerk Lijst</button>
         </div>
         <div className="lg:col-span-2 space-y-4 text-white font-black">
-          <div className="flex justify-between items-end text-white font-black"><h3 className="text-white font-bold uppercase text-xs tracking-widest">Deelnemers ({selectedPlayerIds.size})</h3><button onClick={() => setSelectedPlayerIds(new Set())} className="text-[10px] text-red-500 font-bold uppercase underline">Wis alles</button></div>
+          <div className="flex justify-between items-end text-white font-black"><h3 className="text-white font-bold uppercase text-xs tracking-widest text-white">Deelnemers ({selectedPlayerIds.size})</h3><button onClick={() => setSelectedPlayerIds(new Set())} className="text-[10px] text-red-500 font-bold uppercase underline">Wis alles</button></div>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-2 bg-black/20 rounded-xl custom-scrollbar text-white font-black">
             {players.map(p => (
               <button key={p.id} onClick={() => { const n = new Set(selectedPlayerIds); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); setSelectedPlayerIds(n); }} className={`p-2 rounded-lg text-[10px] font-bold border transition-all truncate ${selectedPlayerIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{p.name}</button>
@@ -269,6 +282,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                 {calculatedOptions.map(opt => (
                   <button key={opt.mpp} onClick={() => handleSelectOption(opt)} className={`p-4 rounded-2xl border-2 text-left transition-all ${selectedOption?.mpp === opt.mpp ? 'border-amber-500 bg-amber-500/20' : 'border-gray-700 bg-gray-800/40 hover:scale-[1.02]'} text-white font-black`}>
                     <div className="text-xl font-black tracking-tighter text-white">{opt.mpp} Wedstrijden p.p.</div>
+                    {/* ✅ Correcte ronde-weergave op basis van hUsed */}
                     <div className="mt-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider">{opt.rounds} rondes | {opt.resting} rust | {opt.label}</div>
                   </button>
                 ))}
@@ -279,7 +293,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-64 overflow-y-auto p-2 custom-scrollbar text-white">
                     {manualTimes.map((time, idx) => (
                       <div key={idx} className="bg-gray-800 p-3 rounded-xl border border-gray-700 text-white text-center">
-                        <div className="text-[10px] text-gray-500 font-black mb-2 uppercase">Ronde {idx + 1}</div>
+                        <div className="text-[10px] text-gray-500 font-black mb-2 uppercase text-white">Ronde {idx + 1}</div>
                         <div className="flex items-center gap-1 text-white font-black">
                           <input type="text" value={time.start} placeholder="10:00" onChange={e => updateManualTime(idx, 'start', e.target.value)} className="w-full bg-gray-900 text-[10px] p-1.5 rounded border border-gray-700 text-white text-center" />
                           <span className="text-gray-600 font-black">-</span>
@@ -367,14 +381,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                     <span className={`text-3xl font-black italic tracking-tighter ${maxTournamentDiff > 0.4 ? 'text-red-500' : maxTournamentDiff > 0.25 ? 'text-amber-500' : 'text-green-500'}`}>
                       {maxTournamentDiff.toFixed(2)}
                     </span>
-                    {/* ✅ Tekst aangepast naar 250 */}
                     <span className="text-[9px] font-bold text-gray-600 uppercase tracking-tight text-white">(Beste van 250)</span>
                   </div>
-                </div>
-                <div className="hidden sm:block text-right max-w-[220px] text-white font-black">
-                  <p className="text-[9px] font-bold text-gray-400 uppercase leading-tight italic text-white font-black">
-                    De generator heeft de meest gebalanceerde versie geselecteerd voor dit NK.
-                  </p>
                 </div>
               </div>
             </div>
