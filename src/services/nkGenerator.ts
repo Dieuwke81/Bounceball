@@ -151,7 +151,7 @@ export async function generateNKSchedule(
 
   while (validVersions.length < 250 && totalAttempts < 500) {
     totalAttempts++;
-    onProgress(`Zoeken naar balans: Versie ${validVersions.length}/10 gevonden...`);
+    onProgress(`Zoeken naar balans: Versie ${validVersions.length}/250 gevonden...`);
     const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName, manualTimes);
     if (session) {
       validVersions.push(session);
