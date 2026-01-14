@@ -51,28 +51,19 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const handleParseAttendance = () => {
     const normalize = (str: string): string =>
       str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\.$/, '');
-
     const lines = attendanceText.split('\n');
     const potentialNames = new Set<string>();
     const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
-    const nonNameIndicators = [
-      'afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present',
-      'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'reserve', 'keeper', 'niet',
-      'graag',
-      'team',
-    ];
+    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'reserve', 'keeper'];
 
     lines.forEach((line) => {
       const trimmedLine = line.trim();
       if (!trimmedLine) return;
       const lowerLine = trimmedLine.toLowerCase();
       if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
-      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1)
-        return;
+      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
       let cleaned = trimmedLine.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
-      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) {
-        potentialNames.add(cleaned);
-      }
+      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) potentialNames.add(cleaned);
     });
 
     const playerLookup = new Map<string, Player>();
@@ -118,8 +109,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
   const currentStandings = useMemo(() => {
     if (!session) return [];
     const stats = new Map<number, NKStandingsEntry>();
-    const participantIds = Array.from(new Set(session.rounds.flatMap(r => r.matches.flatMap(m => [...m.team1, ...m.team2].map(p => p.id))))).sort();
-    participantIds.forEach(id => {
+    const allParticipantIds = new Set<number>();
+    session.rounds.forEach(r => r.matches.forEach(m => [...m.team1, ...m.team2].forEach(p => allParticipantIds.add(p.id))));
+    allParticipantIds.forEach(id => {
       const p = players.find(x => x.id === id);
       stats.set(id, { playerId: id, playerName: p?.name || '?', points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0 });
     });
@@ -144,9 +136,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       }
     }
     session.rounds.forEach(r => r.matches.forEach(m => {
-      const add = (id1: number, id2: number, type: 'together' | 'against') => {
-        const d = pairsMap.get([id1, id2].sort().join('-')); if (d) d[type]++;
-      };
+      const add = (id1: number, id2: number, type: 'together' | 'against') => { const d = pairsMap.get([id1, id2].sort().join('-')); if (d) d[type]++; };
       m.team1.forEach((p, idx) => m.team1.slice(idx + 1).forEach(p2 => add(p.id, p2.id, 'together')));
       m.team2.forEach((p, idx) => m.team2.slice(idx + 1).forEach(p2 => add(p.id, p2.id, 'together')));
       m.team1.forEach(p => m.team2.forEach(p2 => add(p.id, p2.id, 'against')));
@@ -215,7 +205,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     <div className="flex flex-col items-center justify-center min-h-[400px] text-white text-center">
       <FutbolIcon className="w-20 h-20 text-amber-500 animate-bounce mb-6" />
       <h2 className="text-3xl font-black uppercase italic tracking-tighter">{progressMsg}</h2>
-      <p className="text-gray-500 text-xs mt-2 uppercase font-bold animate-pulse tracking-widest">Spreiding optimaliseren...</p>
+      {/* ✅ Tekst aangepast naar 250 */}
+      <p className="text-gray-500 text-xs mt-2 uppercase font-bold animate-pulse tracking-widest">Balans & Spreiding optimaliseren (Top van 250 versies)...</p>
     </div>
   );
 
@@ -276,7 +267,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                 ))}
               </div>
               {selectedOption && (
-                <div className="bg-gray-900/50 p-6 rounded-3xl border-2 border-amber-500/30 animate-fade-in space-y-4 text-white">
+                <div className="bg-gray-900/50 p-6 rounded-3xl border-2 border-amber-500/30 animate-fade-in space-y-4">
                   <h3 className="text-white font-bold uppercase text-xs text-amber-500 tracking-widest text-white">2. Voer Tijdschema in (Handmatig):</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-64 overflow-y-auto p-2 custom-scrollbar text-white">
                     {manualTimes.map((time, idx) => (
@@ -312,15 +303,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
       <style>{`
         @media print {
           body * { visibility: hidden; }
-          .print-only { 
-            visibility: visible !important; 
-            display: block !important; 
-            position: absolute; 
-            left: 0; 
-            top: 0; 
-            width: 100%; 
-            background: white !important; 
-          }
+          .print-only { visibility: visible !important; display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: white !important; }
           .print-only * { visibility: visible !important; }
           body { background: white !important; color: black !important; padding: 0 !important; }
         }
@@ -361,7 +344,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <>
             <input type="text" placeholder="Naam markeren..." value={highlightName} onChange={e => setHighlightName(e.target.value)} className="w-full bg-gray-800 p-4 rounded-2xl text-white border border-gray-700 outline-none focus:ring-2 ring-green-500 transition-all" />
             
-            {/* ✅ VERBETERDE BALANS HEADER - TrophyIcon verwijderd */}
+            {/* ✅ HEADER AANGEPAST NAAR 250 */}
             <div className="bg-gray-800/80 border-l-4 border-amber-500 p-4 rounded-r-2xl flex items-center gap-6 shadow-xl mb-4 text-white">
               <div className="flex-1 flex justify-between items-center text-white">
                 <div>
@@ -370,7 +353,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                     <span className={`text-3xl font-black italic tracking-tighter ${maxTournamentDiff > 0.4 ? 'text-red-500' : maxTournamentDiff > 0.25 ? 'text-amber-500' : 'text-green-500'}`}>
                       {maxTournamentDiff.toFixed(2)}
                     </span>
-                    <span className="text-[9px] font-bold text-gray-600 uppercase tracking-tight">(Beste van 250 pogingen)</span>
+                    <span className="text-[9px] font-bold text-gray-600 uppercase tracking-tight">(Beste van 250)</span>
                   </div>
                 </div>
                 <div className="hidden sm:block text-right max-w-[220px] text-white">
@@ -408,7 +391,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                             <div className="text-[9px] text-gray-500 mt-2 font-black">GEM: {avg1.toFixed(2)}</div>
                           </div>
                           <div className="flex flex-col items-center justify-center gap-3">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 text-white font-black">
                               <input type="number" value={match.team1Score} onFocus={(e) => e.target.select()} onChange={e => {
                                   const newS = JSON.parse(JSON.stringify(session));
                                   newS.rounds[rIdx].matches[mIdx].team1Score = +e.target.value;
@@ -429,13 +412,14 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                                   newS.rounds[rIdx].matches[mIdx].isPlayed = !match.isPlayed;
                                   setSession(newS);
                               }} className={`text-[8px] font-black px-3 py-1.5 rounded-lg transition-all ${match.isPlayed ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-700 text-gray-400 hover:text-white'}`}>{match.isPlayed ? 'HERSTEL' : 'OPSLAAN'}</button>
+                              {/* ✅ Rating verschil tekstgrootte behouden op 8px */}
                               <div className="text-[8px] text-gray-500 font-bold uppercase tracking-tighter">Verschil: {Math.abs(avg1 - avg2).toFixed(2)}</div>
                             </div>
                           </div>
                           <div className="flex-1 space-y-1 text-right text-white">
-                            <div className="text-[9px] text-amber-400 font-black uppercase mb-2 tracking-widest">Team Geel</div>
+                            <div className="text-[9px] text-amber-400 font-black uppercase mb-2 tracking-widest text-right">Team Geel</div>
                             {match.team2.map(p => <div key={p.id} className={`text-sm uppercase font-bold transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md' : ''}`}>{p.name}</div>)}
-                            <div className="text-[9px] text-gray-500 mt-2 font-black">GEM: {avg2.toFixed(2)}</div>
+                            <div className="text-[9px] text-gray-500 mt-2 font-black text-right">GEM: {avg2.toFixed(2)}</div>
                           </div>
                         </div>
                         <div className="p-2.5 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-8 text-[9px] font-black uppercase text-white">
@@ -476,11 +460,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
           <div className="space-y-4 animate-fade-in text-white no-print">
             <input type="text" placeholder="Duo's filteren..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl p-4 text-sm outline-none focus:border-amber-500 transition-all text-white" />
             <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden max-h-[600px] overflow-y-auto uppercase custom-scrollbar text-white">
-              <table className="w-full text-left">
+              <table className="w-full text-left text-white">
                 <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0 z-20">
                   <tr><th className="p-5">Duo</th><th className="p-5 text-center">Samen</th><th className="p-5 text-center">Tegen</th><th className="p-5 text-center">Totaal</th></tr>
                 </thead>
-                <tbody className="divide-y divide-gray-700/50">
+                <tbody className="divide-y divide-gray-700/50 text-white">
                   {coOpData.filter(d => d.p1.toLowerCase().includes(searchTerm.toLowerCase()) || d.p2.toLowerCase().includes(searchTerm.toLowerCase())).map((pair, i) => {
                     const total = pair.together + pair.against;
                     let totalColor = "bg-green-500 text-white"; 
