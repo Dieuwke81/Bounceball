@@ -160,7 +160,7 @@ export async function generateNKSchedule(
   }
 
   if (validVersions.length === 0) {
-    throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nZelfs met backtracking kon geen 4.0+ teams maken. Probeer 1 wedstrijd minder p.p.`);
+    throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nKon geen 4.0+ teams maken.`);
   }
 
   // Helper: Bereken grootste ratingverschil in een sessie
