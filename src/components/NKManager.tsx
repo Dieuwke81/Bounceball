@@ -54,7 +54,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
     const lines = attendanceText.split('\n');
     const potentialNames = new Set<string>();
     const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
-    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'reserve', 'keeper'];
+    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'reserve', 'keeper', 'team', 'niet', 'nee', 'graag',];
 
     lines.forEach((line) => {
       const trimmedLine = line.trim();
