@@ -608,6 +608,9 @@ const App: React.FC = () => {
       'keepen',
       'keeper',
       'reserve',
+      'niet',
+      'graag',
+      'team',
     ];
 
     lines.forEach((line) => {
