@@ -131,39 +131,39 @@ async function generateSingleVersion(
   const finalCounts = playedCountsHistory[totalRounds];
   if (!allPlayers.every(p => finalCounts.get(p.id) === mpp)) return null;
 
-  return { 
-    competitionName, hallNames, playersPerTeam: ppt, totalRounds: rounds.length, 
-    rounds, standings: [], isCompleted: false 
-  };
+  return { competitionName, hallNames, playersPerTeam: ppt, totalRounds: rounds.length, rounds, standings: [], isCompleted: false };
 }
 
 export async function generateNKSchedule(
-  players: Player[], 
-  hallNames: string[], 
-  mpp: number, 
-  ppt: number, 
-  competitionName: string, 
-  onProgress: (msg: string) => void,
-  manualTimes: {start: string, end: string}[]
+    players: Player[], 
+    hallNames: string[], 
+    mpp: number, 
+    ppt: number, 
+    competitionName: string, 
+    onProgress: (msg: string) => void,
+    manualTimes: {start: string, end: string}[]
 ): Promise<NKSession> {
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
 
-  while (validVersions.length < 250 && totalAttempts < 500) {
+  // We proberen 250 versies te vinden
+  while (validVersions.length < 250 && totalAttempts < 1500) {
     totalAttempts++;
-    onProgress(`Zoeken naar balans: Versie ${validVersions.length}/250 gevonden...`);
+    if (totalAttempts % 10 === 0) {
+        onProgress(`Optimaliseren: Versie ${validVersions.length}/250 gevonden...`);
+        await delay(1);
+    }
     const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName, manualTimes);
     if (session) {
       validVersions.push(session);
-      await delay(1);
     }
-    if (totalAttempts % 20 === 0) await delay(1);
   }
 
   if (validVersions.length === 0) {
-    throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nBacktracking kon geen 4.0+ teams maken. Probeer 1 wedstrijd minder p.p.`);
+    throw new Error(`KEIHARDE EIS NIET HAALBAAR:\nZelfs met backtracking kon geen 4.0+ teams maken. Probeer 1 wedstrijd minder p.p.`);
   }
 
+  // Helper: Bereken grootste ratingverschil in een sessie
   const getMaxDiff = (s: NKSession): number => {
     let max = 0;
     s.rounds.forEach(r => r.matches.forEach(m => {
@@ -175,5 +175,31 @@ export async function generateNKSchedule(
     return max;
   };
 
-  return validVersions.reduce((best, cur) => getMaxDiff(cur) < getMaxDiff(best) ? cur : best);
+  // Helper: Bereken sociale score (samen + tegen elkaar)
+  const getSocialScore = (s: NKSession): number => {
+    const pairs = new Map<string, number>();
+    s.rounds.forEach(r => r.matches.forEach(m => {
+      const p = [...m.team1, ...m.team2];
+      for (let i = 0; i < p.length; i++) {
+        for (let j = i + 1; j < p.length; j++) {
+          const key = [p[i].id, p[j].id].sort().join('-');
+          pairs.set(key, (pairs.get(key) || 0) + 1);
+        }
+      }
+    }));
+    let score = 0;
+    pairs.forEach(v => score += Math.pow(v, 2)); // Kwadraat straft dubbele ontmoetingen zwaarder af
+    return score;
+  };
+
+  // ✅ HET TWEE-STAPS PROCES:
+  // 1. Sorteer op Balans (laagste MaxDiff eerst)
+  const sortedByBalance = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b));
+  
+  // 2. Pak de top 5 meest gebalanceerde versies
+  const top5Balanced = sortedByBalance.slice(0, 5);
+  
+  // 3. Kies uit die 5 de versie met de laagste sociale strafscore
+  onProgress("Beste sociale spreiding uit de top 5 balans-versies kiezen...");
+  return top5Balanced.reduce((best, cur) => getSocialScore(cur) < getSocialScore(best) ? cur : best);
 }
