@@ -378,7 +378,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
             
             <div className="bg-gray-900/50 border-2 border-amber-500/30 p-4 rounded-2xl flex justify-between items-center shadow-lg text-white">
               <div>
-                <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-1">Grootste Balans-verschil (Beste van 10)</span>
+                <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-1">Grootste Balans-verschil (Beste van 50)</span>
                 <span className={`text-2xl font-black italic ${maxTournamentDiff > 0.4 ? 'text-red-500' : maxTournamentDiff > 0.25 ? 'text-amber-500' : 'text-green-500'}`}>
                     {maxTournamentDiff.toFixed(2)}
                 </span>
