@@ -272,7 +272,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, onClose }) => {
                 {calculatedOptions.map(opt => (
                   <button key={opt.mpp} onClick={() => handleSelectOption(opt)} className={`p-4 rounded-2xl border-2 text-left transition-all ${selectedOption?.mpp === opt.mpp ? 'border-amber-500 bg-amber-500/20' : 'border-gray-700 bg-gray-800/40 hover:scale-[1.02]'} text-white font-black`}>
                     <div className="text-xl font-black tracking-tighter text-white">{opt.mpp} Wedstrijden p.p.</div>
-                    <div className="mt-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider">{opt.rounds} rondes | {opt.resting} rust | {opt.label}</div>
+                    <div className="mt-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider">{opt.rounds} rondes | {opt.resting} niet actieve spelers | {opt.label}</div>
                   </button>
                 ))}
               </div>
