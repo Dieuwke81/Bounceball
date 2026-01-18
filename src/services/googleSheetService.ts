@@ -1,15 +1,10 @@
-
 import { getScriptUrl } from './configService';
 import type { GameSession, NewPlayer, Player, RatingLogEntry, Trophy } from '../types';
 
-// ==============================
-// Response helpers
-// ==============================
+// ... (Response helpers en Parsing helpers blijven exact hetzelfde)
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
     const errorText = await response.text();
-
-    // Typical "HTML instead of JSON" cases (auth / permissions)
     if (
       errorText &&
       (errorText.includes('<!DOCTYPE html>') ||
@@ -20,7 +15,6 @@ const handleResponse = async (response: Response) => {
         `Fout ${response.status}: Apps Script gaf HTML terug i.p.v. JSON. Controleer deployment (Web app) + toegang op "Iedereen".`
       );
     }
-
     try {
       const errorJson = JSON.parse(errorText);
       throw new Error(errorJson.message || `Serverfout ${response.status}: Geen details.`);
@@ -28,10 +22,8 @@ const handleResponse = async (response: Response) => {
       throw new Error(`Serverfout ${response.status}: ${errorText || 'Geen details.'}`);
     }
   }
-
   const text = await response.text();
   if (!text) return { status: 'success' };
-
   try {
     return JSON.parse(text);
   } catch {
@@ -46,18 +38,15 @@ const handleResponse = async (response: Response) => {
 
 const postToAction = async (action: string, data: object): Promise<any> => {
   const scriptUrl = getScriptUrl();
-
   try {
     const response = await fetch(scriptUrl, {
       method: 'POST',
       mode: 'cors',
       body: JSON.stringify({ action, data }),
       headers: {
-        // Apps Script is vaak het stabielst met text/plain
         'Content-Type': 'text/plain;charset=UTF-8',
       },
     });
-
     return handleResponse(response);
   } catch (error) {
     console.error(`[postToAction Error] Action: "${action}"`, error);
@@ -70,42 +59,29 @@ const postToAction = async (action: string, data: object): Promise<any> => {
   }
 };
 
-// ==============================
-// Robust parsing helpers
-// ==============================
 const tryParseJson = (v: any) => {
   let cur = v;
-
   for (let attempt = 0; attempt < 3; attempt++) {
     if (typeof cur !== 'string') return cur;
-
     let s = cur.trim();
     if (!s) return cur;
-
-    // looks like JSON
     if (s.startsWith('{') || s.startsWith('[')) {
       try {
         cur = JSON.parse(s);
-        continue; // may still be nested-string JSON
+        continue;
       } catch {
         return cur;
       }
     }
-
-    // strip wrapping quotes
     const wrapDouble = s.startsWith('"') && s.endsWith('"') && s.length >= 2;
     const wrapSingle = s.startsWith("'") && s.endsWith("'") && s.length >= 2;
     if (wrapDouble || wrapSingle) {
       cur = s.slice(1, -1).trim();
       continue;
     }
-
-    // find first { or [
     const idxObj = s.indexOf('{');
     const idxArr = s.indexOf('[');
-    const idx =
-      idxArr === -1 ? idxObj : idxObj === -1 ? idxArr : Math.min(idxArr, idxObj);
-
+    const idx = idxArr === -1 ? idxObj : idxObj === -1 ? idxArr : Math.min(idxArr, idxObj);
     if (idx > 0) {
       const candidate = s.slice(idx).trim();
       if (candidate.startsWith('{') || candidate.startsWith('[')) {
@@ -113,37 +89,19 @@ const tryParseJson = (v: any) => {
         continue;
       }
     }
-
     return cur;
   }
-
   return cur;
 };
 
 const parseRatingLogs = (logs: any[]): RatingLogEntry[] => {
   if (!Array.isArray(logs)) return [];
-
   return logs
     .map((log) => {
-      const rawRating =
-        log.rating !== undefined ? log.rating : log.Rating !== undefined ? log.Rating : undefined;
-
-      const rawPlayerId =
-        log.playerId !== undefined
-          ? log.playerId
-          : log.SpelerID !== undefined
-            ? log.SpelerID
-            : log.playerid !== undefined
-              ? log.playerid
-              : undefined;
-
-      const rawDate =
-        log.date !== undefined ? log.date : log.Datum !== undefined ? log.Datum : undefined;
-
-      if (rawRating === undefined || rawPlayerId === undefined || rawDate === undefined) {
-        return null;
-      }
-
+      const rawRating = log.rating !== undefined ? log.rating : log.Rating !== undefined ? log.Rating : undefined;
+      const rawPlayerId = log.playerId !== undefined ? log.playerId : log.SpelerID !== undefined ? log.SpelerID : log.playerid !== undefined ? log.playerid : undefined;
+      const rawDate = log.date !== undefined ? log.date : log.Datum !== undefined ? log.Datum : undefined;
+      if (rawRating === undefined || rawPlayerId === undefined || rawDate === undefined) return null;
       const ratingStr = String(rawRating).replace(',', '.');
       return {
         date: String(rawDate),
@@ -154,10 +112,6 @@ const parseRatingLogs = (logs: any[]): RatingLogEntry[] => {
     .filter((x): x is RatingLogEntry => !!x && !isNaN(x.playerId) && !isNaN(x.rating));
 };
 
-// ==============================
-// ✅ ID IS SOURCE OF TRUTH
-// History normalize + rehydrate
-// ==============================
 type RawTeamMember = number | { id?: any; playerId?: any; name?: any } | any;
 
 const extractId = (m: RawTeamMember): number | null => {
@@ -177,9 +131,7 @@ const extractId = (m: RawTeamMember): number | null => {
 
 const toIdTeams = (teamsAny: any): number[][] => {
   const t = tryParseJson(teamsAny);
-
   if (!Array.isArray(t)) return [];
-
   return t
     .map((team: any) => {
       const arr = tryParseJson(team);
@@ -196,7 +148,6 @@ const rehydrateTeams = (idTeams: number[][], playerById: Map<number, Player>): P
     teamIds.map((id) => {
       const p = playerById.get(id);
       if (p) return p;
-
       return {
         id,
         name: `#${id} (verwijderd)`,
@@ -211,28 +162,16 @@ const rehydrateTeams = (idTeams: number[][], playerById: Map<number, Player>): P
 const normalizeHistory = (rawHistory: any): GameSession[] => {
   const h = tryParseJson(rawHistory);
   if (!Array.isArray(h)) return [];
-
   return h
     .map((row: any) => {
       const obj = tryParseJson(row);
       if (!obj || typeof obj !== 'object') return null;
-
       const date = obj.date ?? obj.Datum ?? obj.datum ?? '';
       const teams = tryParseJson(obj.teams ?? obj.Teams ?? []);
       const round1Results = tryParseJson(obj.round1Results ?? obj.round1results ?? obj.Ronde1 ?? []);
       const round2Results = tryParseJson(obj.round2Results ?? obj.round2results ?? obj.Ronde2 ?? []);
-
-      const r2t =
-        obj.round2Teams ??
-        obj.round2teams ??
-        obj.round2_teams ??
-        obj.Round2Teams ??
-        obj.Round2teams ??
-        obj.Ronde2Teams ??
-        undefined;
-
+      const r2t = obj.round2Teams ?? obj.round2teams ?? obj.round2_teams ?? obj.Round2Teams ?? obj.Round2teams ?? obj.Ronde2Teams ?? undefined;
       const round2Teams = r2t !== undefined ? tryParseJson(r2t) : undefined;
-
       const session: GameSession = {
         date: String(date),
         teams: Array.isArray(teams) ? (teams as any) : [],
@@ -242,7 +181,6 @@ const normalizeHistory = (rawHistory: any): GameSession[] => {
           ? { round2Teams: Array.isArray(round2Teams) ? (round2Teams as any) : undefined }
           : {}),
       };
-
       return session;
     })
     .filter((s: GameSession | null): s is GameSession => !!s && !!s.date);
@@ -250,15 +188,12 @@ const normalizeHistory = (rawHistory: any): GameSession[] => {
 
 const rehydrateHistoryById = (history: GameSession[], players: Player[]): GameSession[] => {
   const playerById = new Map(players.map((p) => [p.id, p]));
-
   return history.map((s) => {
     const r1IdTeams = toIdTeams(s.teams);
     const r1Teams = rehydrateTeams(r1IdTeams, playerById);
-
     const hasR2 = s.round2Teams !== undefined && s.round2Teams !== null;
     const r2IdTeams = hasR2 ? toIdTeams(s.round2Teams) : [];
     const r2Teams = hasR2 ? rehydrateTeams(r2IdTeams, playerById) : undefined;
-
     return {
       ...s,
       teams: r1Teams,
@@ -272,11 +207,12 @@ const rehydrateHistoryById = (history: GameSession[], players: Player[]): GameSe
 // ==============================
 export const getInitialData = async (): Promise<{
   players: Player[];
+  introPlayers: Player[]; // ✅ NIEUW
   history: GameSession[];
   competitionName: string;
   ratingLogs: RatingLogEntry[];
   trophies: Trophy[];
-  seasonStartDate?: string; // ✅ NIEUW
+  seasonStartDate?: string;
 }> => {
   const scriptUrl = getScriptUrl();
   if (!scriptUrl || !scriptUrl.includes('/exec')) {
@@ -304,105 +240,90 @@ export const getInitialData = async (): Promise<{
     throw new Error((data as any).message || 'Onbekende serverfout.');
   }
 
-  if (!Array.isArray((data as any).players)) {
-    throw new Error('Verbinding geslaagd, maar er kwam geen spelerslijst terug.');
-  }
+  // Helper om spelers te mappen (voor hergebruik)
+  const mapPlayers = (rawList: any[]): Player[] => {
+    if (!Array.isArray(rawList)) return [];
+    return rawList
+      .filter((p: any) => p && p.id != null && String(p.name || '').trim() !== '')
+      .map((p: any) => {
+        const sr = p.startRating !== undefined && p.startRating !== null && String(p.startRating).trim() !== ''
+            ? Number(String(p.startRating).replace(',', '.'))
+            : undefined;
 
-  const validPlayers: Player[] = (data as any).players
-    .filter((p: any) => p && p.id != null && String(p.name || '').trim() !== '')
-    .map((p: any) => {
-      const sr =
-        p.startRating !== undefined && p.startRating !== null && String(p.startRating).trim() !== ''
-          ? Number(String(p.startRating).replace(',', '.'))
-          : undefined;
+        return {
+          id: Number(p.id),
+          name: String(p.name),
+          rating: Number(p.rating ?? 1),
+          startRating: Number.isFinite(sr) ? sr : undefined,
+          isKeeper: p.isKeeper === true,
+          isFixedMember: p.isFixedMember === true,
+          photoBase64: p.photoBase64 ? String(p.photoBase64) : '',
+          excelId: p.excelId ?? p.excelID ?? undefined,
+        };
+      });
+  };
 
-      return {
-        id: Number(p.id),
-        name: String(p.name),
-        rating: Number(p.rating ?? 1),
-        startRating: Number.isFinite(sr) ? sr : undefined, // ✅ NEW
-        isKeeper: p.isKeeper === true,
-        isFixedMember: p.isFixedMember === true,
-        photoBase64: p.photoBase64 ? String(p.photoBase64) : '',
-        excelId: p.excelId ?? p.excelID ?? undefined,
-      };
-    });
+  const validPlayers = mapPlayers((data as any).players);
+  const introPlayers = mapPlayers((data as any).introPlayers); // ✅ Mapt IntroductieToernooi tabblad
 
   const normalizedHistory = normalizeHistory((data as any).history);
   const rehydratedHistory = rehydrateHistoryById(normalizedHistory, validPlayers);
 
   return {
     players: validPlayers,
+    introPlayers: introPlayers, // ✅ Geeft introPlayers terug
     history: rehydratedHistory,
     competitionName: typeof (data as any).competitionName === 'string' ? (data as any).competitionName : '',
     ratingLogs: parseRatingLogs((data as any).ratingLogs),
     trophies: Array.isArray((data as any).trophies) ? (data as any).trophies : [],
-    seasonStartDate:
-      typeof (data as any).seasonStartDate === 'string' ? (data as any).seasonStartDate : undefined,
+    seasonStartDate: typeof (data as any).seasonStartDate === 'string' ? (data as any).seasonStartDate : undefined,
   };
 };
 
+// ... (Rest van de functies blijven ongewijzigd)
 export const runDiagnostics = async (): Promise<any> => {
   const scriptUrl = getScriptUrl();
   if (!scriptUrl || !scriptUrl.includes('/exec')) {
     throw new Error('De geconfigureerde SCRIPT_URL is ongeldig.');
   }
-
   const url = new URL(scriptUrl);
   url.searchParams.append('action', 'runDiagnostics');
   url.searchParams.append('t', String(Date.now()));
-
   const response = await fetch(url.toString(), {
     method: 'GET',
     mode: 'cors',
     cache: 'no-cache',
   });
-
   const result = await handleResponse(response);
   if (result?.status === 'error') throw new Error(result.message || 'Diagnostiek fout.');
   return result;
 };
-
-// ✅ session carries round2Teams when present
 export const saveGameSession = (session: GameSession, updatedRatings: { id: number; rating: number }[]) => {
   return postToAction('saveSession', { session, updatedRatings });
 };
-
-// --- Player management ---
 export const addPlayer = (player: NewPlayer): Promise<{ newId: number }> => {
   return postToAction('addPlayer', { ...player, photoBase64: player.photoBase64 || '' });
 };
-
 export const updatePlayer = (player: Player) => {
   return postToAction('updatePlayer', { ...player, photoBase64: player.photoBase64 || '' });
 };
-
 export const deletePlayer = (id: number) => {
   return postToAction('deletePlayer', { id });
 };
-
-// --- Competition name ---
 export const setCompetitionName = (name: string) => {
   return postToAction('setCompetitionName', { name });
 };
-
-// ✅ NIEUW: seizoen startdatum
 export const setSeasonStartDate = (seasonStartDate: string) => {
   return postToAction('setSeasonStartDate', { seasonStartDate });
 };
-
-// ✅ NIEUW: bulk startRatings opslaan
 export const bulkUpdateStartRatings = (
   startRatings: { id: number; startRating: number | string }[]
 ) => {
   return postToAction('bulkUpdateStartRatings', { startRatings });
 };
-
-// --- Trophy management ---
 export const addTrophy = (trophy: Omit<Trophy, 'id'>) => {
   return postToAction('addTrophy', trophy);
 };
-
 export const deleteTrophy = (id: string) => {
   return postToAction('deleteTrophy', { id });
 };
