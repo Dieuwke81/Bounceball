@@ -249,13 +249,13 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
           onClick={() => { setPlayerSource('database'); setSelectedPlayerIds(new Set()); }}
           className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${playerSource === 'database' ? 'bg-amber-500 text-white shadow-lg' : 'text-gray-500'}`}
         >
-          Hoofdlijst
+          NK
         </button>
         <button 
           onClick={() => { setPlayerSource('intro'); setSelectedPlayerIds(new Set()); }}
           className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${playerSource === 'intro' ? 'bg-amber-500 text-white shadow-lg' : 'text-gray-500'}`}
         >
-          Introductie Lijst
+          Introductie toernooi
         </button>
       </div>
 
