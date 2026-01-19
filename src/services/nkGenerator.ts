@@ -2,7 +2,7 @@ import { Player, NKSession, NKRound, NKMatch } from '../types';
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number, minRating: number) {
+function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number, minRating: number, isIntro: boolean) {
   let bestDiff = Infinity;
   let bestSplit: { t1: Player[], t2: Player[] } | null = null;
 
@@ -11,10 +11,13 @@ function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number, mi
       const team2 = players.filter(p => !team1.find(t1p => t1p.id === p.id));
       const avg1 = team1.reduce((s, p) => s + p.rating, 0) / ppt;
       const avg2 = team2.reduce((s, p) => s + p.rating, 0) / ppt;
+      
+      // Keeper check: Alleen uitvoeren als het GEEN introductie toernooi is
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
+      const keepersOk = isIntro ? true : (k1 <= 1 && k2 <= 1);
 
-      if (avg1 >= minRating && avg2 >= minRating && k1 <= 1 && k2 <= 1) {
+      if (avg1 >= minRating && avg2 >= minRating && keepersOk) {
         const diff = Math.abs(avg1 - avg2);
         if (diff < bestDiff) {
           bestDiff = diff;
@@ -42,7 +45,8 @@ async function generateSingleVersion(
   ppt: number, 
   competitionName: string,
   manualTimes: {start: string, end: string}[],
-  minRating: number
+  minRating: number,
+  isIntro: boolean
 ): Promise<NKSession | null> {
   const ppm = ppt * 2;
   const totalRounds = Math.ceil((allPlayers.length * mpp / ppm) / hallNames.length);
@@ -59,7 +63,6 @@ async function generateSingleVersion(
     const currentPlayedCount = playedCountsHistory[rIdx - 1];
     let success = false;
     let roundMatches: NKMatch[] = [];
-    const isIntro = minRating >= 6.0;
 
     for (let attempt = 0; attempt < 50; attempt++) {
       const usedThisRound = new Set<number>();
@@ -73,7 +76,7 @@ async function generateSingleVersion(
       try {
         for (let h = 0; h < mInRound; h++) {
           const mPlayers = pool.filter(p => !usedThisRound.has(p.id)).slice(0, ppm);
-          const split = getBestTeamSplit(mPlayers, ppt, target, minRating);
+          const split = getBestTeamSplit(mPlayers, ppt, target, minRating, isIntro);
           if (!split) throw new Error();
           mPlayers.forEach(p => usedThisRound.add(p.id));
           matches.push({ id: `r${rIdx}h${h}`, hallName: hallNames[h], team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false, subLow: null as any, subHigh: null as any, referee: null as any });
@@ -101,7 +104,7 @@ async function generateSingleVersion(
 }
 
 export async function generateNKSchedule(
-    players: Player[], hallNames: string[], mpp: number, ppt: number, competitionName: string, onProgress: (msg: string) => void, manualTimes: {start: string, end: string}[], minTeamRating: number
+    players: Player[], hallNames: string[], mpp: number, ppt: number, competitionName: string, onProgress: (msg: string) => void, manualTimes: {start: string, end: string}[], minTeamRating: number, isIntro: boolean
 ): Promise<NKSession> {
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
@@ -112,7 +115,7 @@ export async function generateNKSchedule(
         onProgress(`Optimaliseren: Versie ${validVersions.length}/250 gevonden...`);
         await delay(1);
     }
-    const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName, manualTimes, minTeamRating);
+    const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName, manualTimes, minTeamRating, isIntro);
     if (session) validVersions.push(session);
   }
 
