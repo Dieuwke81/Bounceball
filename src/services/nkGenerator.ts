@@ -12,7 +12,6 @@ function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number, mi
       const avg1 = team1.reduce((s, p) => s + p.rating, 0) / ppt;
       const avg2 = team2.reduce((s, p) => s + p.rating, 0) / ppt;
       
-      // Keeper check: Alleen uitvoeren als het GEEN introductie toernooi is
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
       const keepersOk = isIntro ? true : (k1 <= 1 && k2 <= 1);
@@ -35,6 +34,12 @@ function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number, mi
   }
 
   combine(0, []);
+
+  // STRIKTE CHECK VOOR INTRO: Als het verschil niet 0 is (met kleine floating point marge), keur het split af.
+  if (isIntro && bestDiff > 0.00001) {
+    return null;
+  }
+
   return bestSplit;
 }
 
@@ -67,7 +72,9 @@ async function generateSingleVersion(
     for (let attempt = 0; attempt < 50; attempt++) {
       const usedThisRound = new Set<number>();
       const matches: NKMatch[] = [];
-      const target = isIntro ? (attempt < 40 ? 0.001 : 0.02) : (attempt < 25 ? 0.3 : 0.6);
+      // Target op exact 0 zetten voor intro
+      const target = isIntro ? 0 : (attempt < 25 ? 0.3 : 0.6);
+      
       const pool = [...allPlayers].filter(p => currentPlayedCount.get(p.id)! < mpp)
         .sort((a, b) => (mpp - currentPlayedCount.get(a.id)!) - (mpp - currentPlayedCount.get(b.id)!) || Math.random() - 0.5)
         .reverse();
@@ -119,7 +126,7 @@ export async function generateNKSchedule(
     if (session) validVersions.push(session);
   }
 
-  if (validVersions.length === 0) throw new Error("Geen schema gevonden die voldoet aan de eisen.");
+  if (validVersions.length === 0) throw new Error("Geen schema gevonden die voldoet aan de eisen (is een verschil van 0 wel mogelijk met deze spelers?).");
 
   const getMaxDiff = (s: NKSession): number => {
     let max = 0;
