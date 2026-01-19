@@ -1334,7 +1334,7 @@ const App: React.FC = () => {
                   }}
                   className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 hover:from-amber-500 hover:to-amber-700 text-white text-[10px] font-bold py-2 px-6 rounded-lg shadow-md transition-all transform hover:scale-105 uppercase tracking-wider"
                 >
-                  NK Toernooi Manager
+                  NK/Introductie Toernooi Manager
                 </button>
             </div>
           </div>
