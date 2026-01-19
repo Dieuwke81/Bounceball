@@ -46,10 +46,11 @@ async function generateSingleVersion(
 ): Promise<NKSession | null> {
   const ppm = ppt * 2;
   const totalRounds = Math.ceil((allPlayers.length * mpp / ppm) / hallNames.length);
-
-  let rounds: NKRound[] = [];
-  let playedCountsHistory: (Map<number, number>)[] = [new Map(allPlayers.map(p => [p.id, 0]))];
-  let roundAttempts = new Array(totalRounds + 1).fill(0);
+  const playedCount = new Map(allPlayers.map(p => [p.id, 0]));
+  const rounds: NKRound[] = [];
+  const playedCountsHistory: (Map<number, number>)[] = [new Map(playedCount)];
+  const roundAttempts = new Array(totalRounds + 1).fill(0);
+  
   let rIdx = 1;
   const maxGlobalTime = Date.now() + 5000; 
 
@@ -105,7 +106,7 @@ export async function generateNKSchedule(
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
 
-  while (validVersions.length < 250 && totalAttempts < 1500) {
+  while (validVersions.length < 250 && totalAttempts < 2000) {
     totalAttempts++;
     if (totalAttempts % 10 === 0) {
         onProgress(`Optimaliseren: Versie ${validVersions.length}/250 gevonden...`);
@@ -115,7 +116,7 @@ export async function generateNKSchedule(
     if (session) validVersions.push(session);
   }
 
-  if (validVersions.length === 0) throw new Error("Geen schema gevonden die voldoet aan de rating-eis.");
+  if (validVersions.length === 0) throw new Error("Geen schema gevonden die voldoet aan de eisen.");
 
   const getMaxDiff = (s: NKSession): number => {
     let max = 0;
