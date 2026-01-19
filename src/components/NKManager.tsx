@@ -35,6 +35,25 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
   const [selectedOption, setSelectedOption] = useState<any | null>(null);
   const [manualTimes, setManualTimes] = useState<{start: string, end: string}[]>([]);
 
+  // 1. Laden van opgeslagen data bij opstarten
+  useEffect(() => {
+    const savedSession = localStorage.getItem('bounceball_nk_session');
+    if (savedSession) setSession(JSON.parse(savedSession));
+
+    const savedSource = localStorage.getItem('bounceball_nk_player_source');
+    if (savedSource === 'intro' || savedSource === 'database') {
+      setPlayerSource(savedSource as 'database' | 'intro');
+    }
+  }, []);
+
+  // 2. Opslaan van data bij wijzigingen
+  useEffect(() => {
+    if (session) {
+      localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
+    }
+    localStorage.setItem('bounceball_nk_player_source', playerSource);
+  }, [session, playerSource]);
+
   const activePlayerPool = useMemo(() => {
     return playerSource === 'database' ? players : introPlayers;
   }, [playerSource, players, introPlayers]);
@@ -62,15 +81,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
       return names.slice(0, newCount);
     });
   };
-
-  useEffect(() => {
-    const saved = localStorage.getItem('bounceball_nk_session');
-    if (saved) setSession(JSON.parse(saved));
-  }, []);
-
-  useEffect(() => {
-    if (session) localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
-  }, [session]);
 
   const handleParseAttendance = () => {
     const normalize = (str: string): string =>
@@ -375,27 +385,27 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
         </div>
       )}
 
-      <div className="no-print bg-gray-800 p-6 rounded-3xl border-b-8 border-amber-500 shadow-2xl text-white space-y-6 font-black text-white font-black">
+      <div className="no-print bg-gray-800 p-6 rounded-3xl border-b-8 border-amber-500 shadow-2xl text-white space-y-6 font-black">
         <h2 className="text-4xl sm:text-6xl font-black italic uppercase tracking-tighter text-center">NK Manager</h2>
-        <div className="flex justify-center text-white font-black">
-          <div className="flex bg-gray-900 p-1.5 rounded-2xl gap-1 w-full max-w-md text-white font-black">
+        <div className="flex justify-center">
+          <div className="flex bg-gray-900 p-1.5 rounded-2xl gap-1 w-full max-w-md">
             {(['schedule', 'standings', 'analysis'] as const).map(t => (
               <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 py-3 rounded-xl font-black text-xs uppercase transition-all ${activeTab === t ? 'bg-amber-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>{t === 'schedule' ? 'Schema' : t === 'standings' ? 'Stand' : 'Check'}</button>
             ))}
           </div>
         </div>
-        <div className="flex justify-center gap-4 text-white font-black font-black">
-          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[200px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white text-center font-black">Print alleen via PC</button>
-          <button onClick={() => { if(confirm("NK Wissen?")) { localStorage.removeItem('bounceball_nk_session'); setSession(null); } }} className="flex-1 max-w-[120px] bg-red-900/40 text-red-500 py-2.5 rounded-xl text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-800 hover:text-white transition-all font-black">Reset</button>
+        <div className="flex justify-center gap-4">
+          <button onClick={() => setPrintMenuOpen(true)} className="flex-1 max-w-[200px] bg-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-gray-600 transition-colors text-white text-center">Print alleen via PC</button>
+          <button onClick={() => { if(confirm("NK Wissen?")) { localStorage.removeItem('bounceball_nk_session'); localStorage.removeItem('bounceball_nk_player_source'); setSession(null); } }} className="flex-1 max-w-[120px] bg-red-900/40 text-red-500 py-2.5 rounded-xl text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-800 hover:text-white transition-all">Reset</button>
         </div>
       </div>
 
-      <div className="no-print space-y-8 text-white font-black font-black">
+      <div className="no-print space-y-8 text-white font-black">
         {activeTab === 'schedule' && (
           <>
             <input type="text" placeholder="Naam markeren..." value={highlightName} onChange={e => setHighlightName(e.target.value)} className="w-full bg-gray-800 p-4 rounded-2xl text-white border border-gray-700 outline-none focus:ring-2 ring-green-500 transition-all font-black uppercase" />
             
-            <div className="bg-gray-800/80 border-l-4 border-amber-500 p-4 rounded-r-2xl flex items-center gap-6 shadow-xl mb-4 text-white font-black">
+            <div className="bg-gray-800/80 border-l-4 border-amber-500 p-4 rounded-r-2xl flex items-center gap-6 shadow-xl mb-4">
               <div className="flex-1 flex justify-between items-center text-white">
                 <div>
                   <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none font-black text-white">Maximale rating verschil</p>
