@@ -14,7 +14,7 @@ function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number, mi
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
 
-      // KEIHARDE EIS: Gebruik de minRating uit de setup
+      // KEIHARDE EIS: minRating (standaard 4.0 of 6.25)
       if (avg1 >= minRating && avg2 >= minRating && k1 <= 1 && k2 <= 1) {
         const diff = Math.abs(avg1 - avg2);
         if (diff < bestDiff) {
@@ -60,10 +60,18 @@ async function generateSingleVersion(
     let success = false;
     let roundMatches: NKMatch[] = [];
 
+    // Detecteer of dit het Introductie Toernooi is
+    const isIntro = minRating >= 6.0;
+
     for (let attempt = 0; attempt < 50; attempt++) {
       const usedThisRound = new Set<number>();
       const matches: NKMatch[] = [];
-      const target = attempt < 25 ? 0.3 : 0.6;
+      
+      // ✅ ZEER STRIKTE BALANS VOOR INTRODUCTIE (Mikt op 0.00)
+      const target = isIntro 
+        ? (attempt < 40 ? 0.001 : 0.02) 
+        : (attempt < 25 ? 0.3 : 0.6);
+
       const pool = [...allPlayers].filter(p => currentPlayedCount.get(p.id)! < mpp)
         .sort((a, b) => (mpp - currentPlayedCount.get(a.id)!) - (mpp - currentPlayedCount.get(b.id)!) || Math.random() - 0.5)
         .reverse();
@@ -105,7 +113,8 @@ export async function generateNKSchedule(
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
 
-  while (validVersions.length < 250 && totalAttempts < 1500) {
+  // ✅ Zoekt door tot 250 valide versies zijn gevonden
+  while (validVersions.length < 250 && totalAttempts < 2000) {
     totalAttempts++;
     if (totalAttempts % 10 === 0) {
         onProgress(`Optimaliseren: Versie ${validVersions.length}/250 gevonden...`);
@@ -142,8 +151,9 @@ export async function generateNKSchedule(
     return score;
   };
 
+  // ✅ Selecteer top 5 op balans, kies daaruit de beste sociale spreiding
   const sortedByBalance = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b));
   const top5Balanced = sortedByBalance.slice(0, 5);
-  onProgress("Sociale winnaar kiezen uit top 5 balans...");
+  onProgress("Beste sociale verdeling kiezen uit de top 5 balans...");
   return top5Balanced.reduce((best, cur) => getSocialScore(cur) < getSocialScore(best) ? cur : best);
 }
