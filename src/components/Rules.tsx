@@ -123,7 +123,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="Er zijn geen lijnen aan de zijkanten of achterkant, dus de bal blijft altijd in het spel. De enige uitzondering is als de bal op of achter het doel komt (dan is het keeperbal)."
+            text="Er zijn geen lijnen aan de zijkanten of achterkant, dus de bal blijft altijd in het spel. De enige uitzonderingen zijn als de bal op of achter het doel komt en als de bal door het zijnet gaat (dan is het keeperbal)."
             query={query}
           />
           <Line
