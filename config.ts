@@ -13,4 +13,4 @@ export const SPREADSHEET_ID = '1I_0c8p8r9Ep2VVQdFdeL0IsyTM7w18QGI-Hj40dMxt4';
 //    KOPIEER DE **WEB APP URL** DIE JE DAN KRIGT EN PLAK DEZE HIERONDER.
 //    DIT IS NIET DE 'IMPLEMENTATIE-ID'. DE URL EINDIGT OP '/exec'.
 //    ================================================================================
-export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzM-FqxSWN-jmSti9TnQELEfCfeiOdhOtjaRJhRNBSE2a56_xp9_1aizo1FgUgJdASa/exec';
+export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_7RDo_gDDuN0TjH3bREWXTO2sIaBMwoy6Hsic9e8OkfJeYIRSS8Aot6NUKpgI1X9b/exec';
