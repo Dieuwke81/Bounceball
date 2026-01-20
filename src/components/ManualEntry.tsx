@@ -1,4 +1,3 @@
-
 /**  MANUAL ENTRY - 3 MODES RONDE 2 (AUTO / HANDMATIG PAREN / NIEUWE TEAMS) + LOCALSTORAGE  */
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Player, Goal, Match, MatchResult } from '../types';
@@ -162,7 +161,7 @@ const MatchInput = ({
     goalScorers[`${matchIndex}-${side}`] || [];
 
   const score = (side: 'team1' | 'team2') =>
-    getGoals(side).reduce((s, g) => s + g.count, 0);
+    getGoals(side).reduce((s, g) => s + Number(g.count), 0);
 
   return (
     <div className="bg-gray-700 rounded-lg p-4 text-white">
@@ -316,7 +315,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
       d?.goalScorers &&
       typeof d.goalScorers === 'object' &&
       Object.values(d.goalScorers).some((arr: any) =>
-        Array.isArray(arr) && arr.some((g) => (g?.count || 0) > 0)
+        Array.isArray(arr) && arr.some((g) => (Number(g?.count) || 0) > 0)
       );
 
     const roundVal = Number(d?.round ?? 0);
@@ -474,8 +473,8 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
     }));
 
     results.forEach((r) => {
-      const s1 = r.team1Goals.reduce((s, g) => s + g.count, 0);
-      const s2 = r.team2Goals.reduce((s, g) => s + g.count, 0);
+      const s1 = r.team1Goals.reduce((s, g) => s + Number(g.count), 0);
+      const s2 = r.team2Goals.reduce((s, g) => s + Number(g.count), 0);
 
       const T1 = stats.find((x) => x.teamIndex === r.team1Index)!;
       const T2 = stats.find((x) => x.teamIndex === r.team2Index)!;
@@ -899,8 +898,8 @@ const ManualEntry: React.FC<ManualEntryProps> = ({
             <h3 className="text-gray-400 text-xl font-bold mb-4">Resultaten Ronde 1</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {round1Results.map((res, i) => {
-                const score1 = res.team1Goals.reduce((s, g) => s + g.count, 0);
-                const score2 = res.team2Goals.reduce((s, g) => s + g.count, 0);
+                const score1 = res.team1Goals.reduce((s, g) => s + Number(g.count), 0);
+                const score2 = res.team2Goals.reduce((s, g) => s + Number(g.count), 0);
 
                 const color1 = getBaseColor(res.team1Index);
                 const color2 = getBaseColor(res.team2Index);
