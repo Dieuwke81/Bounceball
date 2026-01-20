@@ -209,8 +209,8 @@ const computeSeasonStandingsByPlayer = (seasonHistory: GameSession[]) => {
     const t1 = teamsForRound?.[match.team1Index] || [];
     const t2 = teamsForRound?.[match.team2Index] || [];
 
-    const s1 = (match.team1Goals || []).reduce((sum, g) => sum + g.count, 0);
-    const s2 = (match.team2Goals || []).reduce((sum, g) => sum + g.count, 0);
+    const s1 = (match.team1Goals || []).reduce((sum, g) => sum + Number(g.count), 0);
+    const s2 = (match.team2Goals || []).reduce((sum, g) => sum + Number(g.count), 0);
 
     // tiebreak inputs: GF = team goals for; GD = team goals diff
     t1.forEach((p) => {
@@ -409,8 +409,8 @@ const calculateRatingDeltas = (
       const team2 = teamsForRound[match.team2Index];
       if (!team1 || !team2) return;
 
-      const team1Score = match.team1Goals.reduce((sum, g) => sum + g.count, 0);
-      const team2Score = match.team2Goals.reduce((sum, g) => sum + g.count, 0);
+      const team1Score = (match.team1Goals || []).reduce((sum, g) => sum + Number(g.count), 0);
+      const team2Score = (match.team2Goals || []).reduce((sum, g) => sum + Number(g.count), 0);
 
       if (team1Score > team2Score) {
         team1.forEach((p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) + ratingDelta));
@@ -430,7 +430,7 @@ const calculateRatingDeltas = (
 
 const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
-  const [introPlayers, setIntroPlayers] = useState<Player[]>([]); // ✅ NIEUW
+  const [introPlayers, setIntroPlayers] = useState<Player[]>([]); 
   const [history, setHistory] = useState<GameSession[]>([]);
   const [ratingLogs, setRatingLogs] = useState<RatingLogEntry[]>([]);
   const [trophies, setTrophies] = useState<Trophy[]>([]);
@@ -537,7 +537,7 @@ const App: React.FC = () => {
 
       setSeasonStartDate(data.seasonStartDate || '');
       setPlayers(data.players);
-      setIntroPlayers((data as any).introPlayers || []); // ✅ NIEUW: Introductie spelers laden
+      setIntroPlayers((data as any).introPlayers || []); 
       setHistory(data.history);
       setCompetitionName(data.competitionName || null);
       setRatingLogs(data.ratingLogs || []);
@@ -812,18 +812,13 @@ const App: React.FC = () => {
   };
 
   const handleSaveSession = async (sessionData: GameSession) => {
-    const ratingChanges = calculateRatingDeltas({
-      teams: sessionData.teams,
-      round1Results: sessionData.round1Results,
-      round2Results: sessionData.round2Results,
-      round2Teams: sessionData.round2Teams,
-    });
+    const ratingChanges = calculateRatingDeltas(sessionData);
 
     const updatedRatings = players
       .filter((p) => ratingChanges[p.id] !== undefined)
       .map((p) => ({
         id: p.id,
-        rating: parseFloat((p.rating + ratingChanges[p.id]).toFixed(2)),
+        rating: parseFloat((Number(p.rating) + ratingChanges[p.id]).toFixed(2)),
       }));
 
     try {
@@ -859,8 +854,8 @@ const App: React.FC = () => {
     teams.forEach((_, index) => teamPoints.push({ teamIndex: index, points: 0, goalDifference: 0, goalsFor: 0 }));
 
     results.forEach((result) => {
-      const team1Score = result.team1Goals.reduce((sum, g) => sum + g.count, 0);
-      const team2Score = result.team2Goals.reduce((sum, g) => sum + g.count, 0);
+      const team1Score = result.team1Goals.reduce((sum, g) => sum + Number(g.count), 0);
+      const team2Score = result.team2Goals.reduce((sum, g) => sum + Number(g.count), 0);
 
       const team1 = teamPoints.find((t) => t.teamIndex === result.team1Index)!;
       const team2 = teamPoints.find((t) => t.teamIndex === result.team2Index)!;
@@ -1054,29 +1049,55 @@ const App: React.FC = () => {
 
   const handleSaveDoubleHeader = async (match2Result: MatchResult) => {
     if (!requireAdmin()) return;
-
     setActionInProgress('savingDouble');
+
     if (!originalTeams || !teams2) {
       showNotification('Team data ontbreekt.', 'error');
       setActionInProgress(null);
       return;
     }
 
-    await handleSaveSession({
+    const session1: GameSession = {
       date: new Date().toISOString(),
       teams: originalTeams,
       round1Results,
       round2Results: [],
-    });
+    };
 
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    await handleSaveSession({
+    const session2: GameSession = {
       date: new Date().toISOString(),
       teams: teams2,
       round1Results: [match2Result],
       round2Results: [],
-    });
+    };
+
+    const deltas1 = calculateRatingDeltas(session1);
+    const deltas2 = calculateRatingDeltas(session2);
+
+    const allUpdatedRatings = players
+      .map(p => {
+        const d1 = deltas1[p.id] || 0;
+        const d2 = deltas2[p.id] || 0;
+        if (d1 === 0 && d2 === 0) return null;
+        return {
+          id: p.id,
+          rating: parseFloat((Number(p.rating) + d1 + d2).toFixed(2))
+        };
+      })
+      .filter((r): r is {id: number, rating: number} => r !== null);
+
+    try {
+      await saveGameSession(session1, allUpdatedRatings);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      await saveGameSession(session2, allUpdatedRatings);
+      
+      showNotification('Beide wedstrijden succesvol opgeslagen!', 'success');
+      fetchData();
+      resetGameState();
+      setAttendingPlayerIds(new Set());
+    } catch (e: any) {
+      showNotification(`Fout bij opslaan: ${e.message}`, 'error');
+    }
 
     setActionInProgress(null);
   };
@@ -1467,7 +1488,7 @@ const App: React.FC = () => {
         return (
           <NKManager 
             players={players} 
-            introPlayers={introPlayers} // ✅ PROPS BIJGEWERKT
+            introPlayers={introPlayers} 
             onClose={() => setCurrentView('main')} 
           />
         );
