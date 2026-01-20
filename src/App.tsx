@@ -134,7 +134,7 @@ const hasValidKeeperDistribution = (teams: Player[][]) => {
 
 const calcTeamAvg = (team: Player[]) => {
   if (!team.length) return 0;
-  const total = team.reduce((s, p) => s + p.rating, 0);
+  const total = team.reduce((s, p) => s + Number(p.rating), 0);
   return total / team.length;
 };
 
@@ -145,7 +145,7 @@ const calcSpread = (teams: Player[][]) => {
 };
 
 // ============================================================================
-// Season: samen gespeeld (pair frequency) + standings
+// Season: samen gespeeld (pair frequency)
 // ============================================================================
 
 type PairKey = string; 
@@ -166,15 +166,13 @@ const computeSeasonPairCounts = (seasonHistory: GameSession[]) => {
     for (const match of session.round1Results || []) {
       const t1 = session.teams?.[match.team1Index] || [];
       const t2 = session.teams?.[match.team2Index] || [];
-      addPairsFromTeam(t1);
-      addPairsFromTeam(t2);
+      addPairsFromTeam(t1); addPairsFromTeam(t2);
     }
     const teamsR2 = session.round2Teams ?? session.teams;
     for (const match of session.round2Results || []) {
       const t1 = teamsR2?.[match.team1Index] || [];
       const t2 = teamsR2?.[match.team2Index] || [];
-      addPairsFromTeam(t1);
-      addPairsFromTeam(t2);
+      addPairsFromTeam(t1); addPairsFromTeam(t2);
     }
   }
   return counts;
@@ -193,24 +191,11 @@ const computeSeasonStandingsByPlayer = (seasonHistory: GameSession[]) => {
     const t2 = teamsForRound?.[match.team2Index] || [];
     const s1 = (match.team1Goals || []).reduce((sum, g) => sum + Number(g.count), 0);
     const s2 = (match.team2Goals || []).reduce((sum, g) => sum + Number(g.count), 0);
-    t1.forEach((p) => {
-      const row = ensure(p.id);
-      row.gf += s1;
-      row.gd += s1 - s2;
-    });
-    t2.forEach((p) => {
-      const row = ensure(p.id);
-      row.gf += s2;
-      row.gd += s2 - s1;
-    });
-    if (s1 > s2) {
-      t1.forEach((p) => (ensure(p.id).pts += 3));
-    } else if (s2 > s1) {
-      t2.forEach((p) => (ensure(p.id).pts += 3));
-    } else {
-      t1.forEach((p) => (ensure(p.id).pts += 1));
-      t2.forEach((p) => (ensure(p.id).pts += 1));
-    }
+    t1.forEach((p) => { const row = ensure(p.id); row.gf += s1; row.gd += s1 - s2; });
+    t2.forEach((p) => { const row = ensure(p.id); row.gf += s2; row.gd += s2 - s1; });
+    if (s1 > s2) { t1.forEach((p) => (ensure(p.id).pts += 3)); }
+    else if (s2 > s1) { t2.forEach((p) => (ensure(p.id).pts += 3)); }
+    else { t1.forEach((p) => (ensure(p.id).pts += 1)); t2.forEach((p) => (ensure(p.id).pts += 1)); }
   };
   for (const session of seasonHistory) {
     for (const match of session.round1Results || []) applyMatch(session.teams, match);
@@ -230,7 +215,7 @@ const optimizeTeamsSoft = (params: {
   attendingIds: Set<number>;
   seasonPairCounts: Map<PairKey, number>;
   separateFrequent: boolean;
-  pairInfrequent: boolean; // NIEUW
+  pairInfrequent: boolean;
   separateTop6: boolean;
   top6Ids: Set<number>;
 }) => {
@@ -238,7 +223,7 @@ const optimizeTeamsSoft = (params: {
   if (!separateFrequent && !separateTop6 && !pairInfrequent) return teams;
 
   const baseSpread = calcSpread(teams);
-  const SPREAD_TOLERANCE = 0.01;
+  const SPREAD_TOLERANCE = 0.05; 
   const cloneTeams = (t: Player[][]) => t.map((team) => [...team]);
 
   const penalty = (t: Player[][]) => {
@@ -248,13 +233,17 @@ const optimizeTeamsSoft = (params: {
       for (let i = 0; i < ids.length; i++) {
         for (let j = i + 1; j < ids.length; j++) {
           const count = seasonPairCounts.get(pairKey(ids[i], ids[j])) || 0;
-          if (separateFrequent) pen += (count * count) * 15;
-          if (pairInfrequent) pen += (count * 12); // Bestraf duo's die al vaak samen waren
+          if (separateFrequent) {
+            pen += (count * count) * 150;
+          }
+          if (pairInfrequent) {
+            pen += (count * 25);
+          }
         }
       }
       if (separateTop6) {
         const topCount = ids.reduce((s, id) => s + (top6Ids.has(id) ? 1 : 0), 0);
-        if (topCount >= 2) pen += (topCount - 1) * (topCount - 1) * 60;
+        if (topCount >= 2) pen += (topCount - 1) * 500;
       }
     }
     return pen;
@@ -269,7 +258,7 @@ const optimizeTeamsSoft = (params: {
   if (teamCount < 2) return best;
 
   const teamSizes = best.map((t) => t.length);
-  const maxIters = 50000;
+  const maxIters = 60000; 
   const randomInt = (max: number) => Math.floor(Math.random() * max);
 
   for (let iter = 0; iter < maxIters; iter++) {
@@ -277,23 +266,21 @@ const optimizeTeamsSoft = (params: {
     let b = randomInt(teamCount);
     if (b === a) b = (b + 1) % teamCount;
     if (teamSizes[a] === 0 || teamSizes[b] === 0) continue;
+    
     const ia = randomInt(teamSizes[a]);
     const ib = randomInt(teamSizes[b]);
     const cand = cloneTeams(best);
-    const pa = cand[a][ia];
-    const pb = cand[b][ib];
-    cand[a][ia] = pb;
-    cand[b][ib] = pa;
+    const pa = cand[a][ia]; const pb = cand[b][ib];
+    cand[a][ia] = pb; cand[b][ib] = pa;
 
     if (!hasValidKeeperDistribution(cand)) continue;
     if (!isCompositionValid(cand, constraints)) continue;
 
     const candSpread = calcSpread(cand);
-    if (candSpread > baseSpread + SPREAD_TOLERANCE) continue;
+    if (candSpread > Math.max(baseSpread, 0.1) + SPREAD_TOLERANCE) continue;
+
     const candPenalty = penalty(cand);
-    const spreadBetter = candSpread < bestSpread - 1e-6;
-    const spreadSameEnough = Math.abs(candSpread - bestSpread) <= 1e-6;
-    if (spreadBetter || (spreadSameEnough && candPenalty < bestPenalty)) {
+    if (candPenalty < bestPenalty) {
       best = cand; bestSpread = candSpread; bestPenalty = candPenalty;
       if (bestPenalty === 0) break;
     }
@@ -379,9 +366,10 @@ const App: React.FC = () => {
   const [seasonStartDate, setSeasonStartDate] = useState<string>('');
 
   const [separateFrequentTeammates, setSeparateFrequentTeammates] = useState<boolean>(false);
-  const [pairInfrequentTeammates, setPairInfrequentTeammates] = useState<boolean>(false); // NIEUW
+  const [pairInfrequentTeammates, setPairInfrequentTeammates] = useState<boolean>(false); 
   const [separateTop6OnPoints, setSeparateTop6OnPoints] = useState<boolean>(false);
   const [showFrequentPairs, setShowFrequentPairs] = useState<boolean>(true);
+  const [showInfrequentPairs, setShowInfrequentPairs] = useState<boolean>(false); // NIEUW
   const [syncOpponentRatings, setSyncOpponentRatings] = useState<boolean>(false);
 
   useEffect(() => {
@@ -389,13 +377,13 @@ const App: React.FC = () => {
       const stateToSave = {
         attendingPlayerIds: Array.from(attendingPlayerIds),
         teams, originalTeams, teams2, currentRound, round1Results, round2Pairings, goalScorers, gameMode, constraints,
-        separateFrequentTeammates, pairInfrequentTeammates, separateTop6OnPoints, showFrequentPairs, syncOpponentRatings,
+        separateFrequentTeammates, pairInfrequentTeammates, separateTop6OnPoints, showFrequentPairs, showInfrequentPairs, syncOpponentRatings,
       };
       localStorage.setItem(UNSAVED_GAME_KEY, JSON.stringify(stateToSave));
     }
   }, [
     attendingPlayerIds, teams, originalTeams, teams2, currentRound, round1Results, round2Pairings, goalScorers, gameMode, 
-    constraints, separateFrequentTeammates, pairInfrequentTeammates, separateTop6OnPoints, showFrequentPairs, syncOpponentRatings,
+    constraints, separateFrequentTeammates, pairInfrequentTeammates, separateTop6OnPoints, showFrequentPairs, showInfrequentPairs, syncOpponentRatings,
   ]);
 
   useEffect(() => {
@@ -415,9 +403,10 @@ const App: React.FC = () => {
           setGameMode(savedGame.gameMode || null);
           setConstraints(savedGame.constraints || []);
           setSeparateFrequentTeammates(!!savedGame.separateFrequentTeammates);
-          setPairInfrequentTeammates(!!savedGame.pairInfrequentTeammates); // NIEUW
+          setPairInfrequentTeammates(!!savedGame.pairInfrequentTeammates);
           setSeparateTop6OnPoints(!!savedGame.separateTop6OnPoints);
           setShowFrequentPairs(savedGame.showFrequentPairs !== false);
+          setShowInfrequentPairs(!!savedGame.showInfrequentPairs); // NIEUW
           setSyncOpponentRatings(!!savedGame.syncOpponentRatings);
         } else { localStorage.removeItem(UNSAVED_GAME_KEY); }
       } catch (e) { localStorage.removeItem(UNSAVED_GAME_KEY); }
@@ -466,7 +455,6 @@ const App: React.FC = () => {
       const lowerLine = trimmedLine.toLowerCase();
       if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
       if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
-
       let cleaned = trimmedLine.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
       if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) potentialNames.add(cleaned);
     });
@@ -479,25 +467,18 @@ const App: React.FC = () => {
       if (!playerLookup.has(normalizedFirstName)) playerLookup.set(normalizedFirstName, player);
     });
 
-    const newAttendingPlayerIds = new Set(attendingPlayerIds);
-    const newlyFoundPlayers: string[] = [];
-    const notFoundOriginalNames: string[] = [];
-
-    potentialNames.forEach((originalName) => {
-      const normalizedName = normalize(originalName);
-      const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
-      if (matchedPlayer) {
-        if (!newAttendingPlayerIds.has(matchedPlayer.id)) newlyFoundPlayers.push(matchedPlayer.name);
-        newAttendingPlayerIds.add(matchedPlayer.id);
-      } else { notFoundOriginalNames.push(originalName); }
+    const newSet = new Set(attendingPlayerIds);
+    const added: string[] = []; const missed: string[] = [];
+    potentialNames.forEach((name) => {
+      const matched = playerLookup.get(normalize(name)) || playerLookup.get(normalize(name).split(' ')[0]);
+      if (matched) { if (!newSet.has(matched.id)) added.push(matched.name); newSet.add(matched.id); }
+      else missed.push(name);
     });
-
-    setAttendingPlayerIds(newAttendingPlayerIds);
-    if (newlyFoundPlayers.length > 0 || notFoundOriginalNames.length > 0) {
-      let message = ''; let type: 'success' | 'error' = 'success';
-      if (newlyFoundPlayers.length > 0) message += `${newlyFoundPlayers.length} speler(s) toegevoegd: ${newlyFoundPlayers.join(', ')}.`;
-      if (notFoundOriginalNames.length > 0) { message += `${message ? '\n' : ''}Niet herkend: ${notFoundOriginalNames.join(', ')}.`; type = 'error'; }
-      showNotification(message, type);
+    setAttendingPlayerIds(newSet);
+    if (added.length > 0 || missed.length > 0) {
+      let msg = ''; if (added.length) msg += `${added.length} speler(s) toegevoegd: ${added.join(', ')}.`;
+      if (missed.length) msg += `${msg ? '\n' : ''}Niet herkend: ${missed.join(', ')}.`;
+      showNotification(msg, missed.length ? 'error' : 'success');
     } else if (potentialNames.size > 0) { showNotification('Alle spelers waren al aangemeld.', 'success'); }
   };
 
@@ -530,6 +511,21 @@ const App: React.FC = () => {
     }).filter((x): x is any => !!x).sort((x, y) => y.count - x.count).slice(0, 12);
   }, [seasonPairCounts, players, attendingPlayerIds]);
 
+  const infrequentPairsForUI = useMemo(() => {
+    const idToPlayer = new Map(players.map((p) => [p.id, p]));
+    const attendingArray = attendingPlayers.map(p => p.id);
+    const pairs: any[] = [];
+    for (let i = 0; i < attendingArray.length; i++) {
+      for (let j = i + 1; j < attendingArray.length; j++) {
+        const a = attendingArray[i];
+        const b = attendingArray[j];
+        const count = seasonPairCounts.get(pairKey(a, b)) || 0;
+        pairs.push({ a, b, count, aName: idToPlayer.get(a)?.name, bName: idToPlayer.get(b)?.name });
+      }
+    }
+    return pairs.sort((x, y) => x.count - y.count).slice(0, 12);
+  }, [seasonPairCounts, players, attendingPlayers]);
+
   const handleGenerateTeams = async (mode: GameMode) => {
     resetGameState(); setGameMode(mode);
     let numberOfTeams = (mode === 'simple' || mode === 'doubleHeader') ? 2 : (attendingPlayers.length >= 24 ? 6 : (attendingPlayers.length >= 16 ? 4 : 2));
@@ -540,7 +536,7 @@ const App: React.FC = () => {
       let generated = await generateTeams(attendingPlayers, numberOfTeams, constraints, null, activeHistory);
       generated = optimizeTeamsSoft({
         teams: generated, constraints, attendingIds: new Set(attendingPlayers.map(p => p.id)), seasonPairCounts,
-        separateFrequent: separateFrequentTeammates, pairInfrequent: pairInfrequentTeammates, // NIEUW
+        separateFrequent: separateFrequentTeammates, pairInfrequent: pairInfrequentTeammates,
         separateTop6: separateTop6OnPoints, top6Ids,
       });
       if (syncOpponentRatings) generated = syncRatingsBetweenOpponents(generated);
@@ -551,10 +547,10 @@ const App: React.FC = () => {
   const handleGoalChange = (matchIndex: number, teamIdentifier: 'team1' | 'team2', playerId: number, count: number) => {
     const key = `${matchIndex}-${teamIdentifier}`;
     setGoalScorers((prev) => {
-      const newGoals = [...(prev[key] || [])]; const idx = newGoals.findIndex((g) => g.playerId === playerId);
-      if (count > 0) { if (idx > -1) newGoals[idx] = { ...newGoals[idx], count }; else newGoals.push({ playerId, count }); }
-      else if (idx > -1) newGoals.splice(idx, 1);
-      return { ...prev, [key]: newGoals };
+      const list = [...(prev[key] || [])]; const idx = list.findIndex((g) => g.playerId === playerId);
+      if (count > 0) { if (idx > -1) list[idx] = { ...list[idx], count }; else list.push({ playerId, count }); }
+      else if (idx > -1) list.splice(idx, 1);
+      return { ...prev, [key]: list };
     });
   };
 
@@ -598,7 +594,7 @@ const App: React.FC = () => {
       let regeneratedTeams = await generateTeams(attendingPlayers, originalTeams.length, constraints, null, activeHistory);
       regeneratedTeams = optimizeTeamsSoft({
         teams: regeneratedTeams, constraints, attendingIds: new Set(attendingPlayers.map(p => p.id)), seasonPairCounts,
-        separateFrequent: separateFrequentTeammates, pairInfrequent: pairInfrequentTeammates, // NIEUW
+        separateFrequent: separateFrequentTeammates, pairInfrequent: pairInfrequentTeammates,
         separateTop6: separateTop6OnPoints, top6Ids
       });
       if (syncOpponentRatings) regeneratedTeams = syncRatingsBetweenOpponents(regeneratedTeams);
@@ -626,7 +622,7 @@ const App: React.FC = () => {
       let regeneratedTeams = await generateTeams(teams.flat(), 2, constraints, teams, activeHistory);
       regeneratedTeams = optimizeTeamsSoft({
         teams: regeneratedTeams, constraints, attendingIds: new Set(teams.flat().map(p => p.id)), seasonPairCounts,
-        separateFrequent: separateFrequentTeammates, pairInfrequent: pairInfrequentTeammates, // NIEUW
+        separateFrequent: separateFrequentTeammates, pairInfrequent: pairInfrequentTeammates,
         separateTop6: separateTop6OnPoints, top6Ids
       });
       if (syncOpponentRatings) regeneratedTeams = syncRatingsBetweenOpponents(regeneratedTeams);
@@ -699,18 +695,40 @@ const App: React.FC = () => {
             <input type="checkbox" checked={syncOpponentRatings} onChange={(e) => setSyncOpponentRatings(e.target.checked)} className="w-5 h-5" />
           </label>
 
-          <label className="flex items-center justify-between gap-3 px-1 py-2">
-            <div className="text-xs text-gray-400">Toon “vaak samen” lijst</div>
-            <input type="checkbox" checked={showFrequentPairs} onChange={(e) => setShowFrequentPairs(e.target.checked)} className="w-4 h-4" />
-          </label>
+          <div className="border-t border-gray-700 my-4 pt-2">
+            <label className="flex items-center justify-between gap-3 px-1 py-1">
+              <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Lijst: Vaak samen</div>
+              <input type="checkbox" checked={showFrequentPairs} onChange={(e) => setShowFrequentPairs(e.target.checked)} className="w-4 h-4" />
+            </label>
+
+            <label className="flex items-center justify-between gap-3 px-1 py-1">
+              <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Lijst: Zelden samen</div>
+              <input type="checkbox" checked={showInfrequentPairs} onChange={(e) => setShowInfrequentPairs(e.target.checked)} className="w-4 h-4" />
+            </label>
+          </div>
 
           {showFrequentPairs && (
             <div className="mt-3 bg-gray-900/40 rounded-lg p-3">
+              <div className="text-[10px] text-gray-500 font-black uppercase mb-2">Vaak samen:</div>
               {frequentPairsForUI.length === 0 ? <p className="text-xs text-gray-500">Nog geen data.</p> : 
                 frequentPairsForUI.map((p: any) => (
-                  <div key={`${p.a}-${p.b}`} className="flex justify-between text-sm bg-gray-800/40 rounded px-2 py-1 mb-1">
+                  <div key={`${p.a}-${p.b}`} className="flex justify-between text-sm bg-red-900/20 rounded px-2 py-1 mb-1 border border-red-900/30">
                     <span className="truncate text-gray-200">{p.aName} & {p.bName}</span>
-                    <span className="text-xs font-mono bg-gray-700 px-2 rounded-full">{p.count}x</span>
+                    <span className="text-xs font-mono bg-red-900 text-red-100 px-2 rounded-full">{p.count}x</span>
+                  </div>
+                ))
+              }
+            </div>
+          )}
+
+          {showInfrequentPairs && (
+            <div className="mt-3 bg-gray-900/40 rounded-lg p-3">
+              <div className="text-[10px] text-gray-500 font-black uppercase mb-2">Zelden samen:</div>
+              {infrequentPairsForUI.length === 0 ? <p className="text-xs text-gray-500">Nog geen data.</p> : 
+                infrequentPairsForUI.map((p: any) => (
+                  <div key={`${p.a}-${p.b}`} className="flex justify-between text-sm bg-green-900/20 rounded px-2 py-1 mb-1 border border-green-900/30">
+                    <span className="truncate text-gray-200">{p.aName} & {p.bName}</span>
+                    <span className="text-xs font-mono bg-green-900 text-green-100 px-2 rounded-full">{p.count}x</span>
                   </div>
                 ))
               }
@@ -722,20 +740,20 @@ const App: React.FC = () => {
       <div className="lg:col-span-2">
         <div className="bg-gray-800 rounded-xl shadow-lg p-6">
           <h2 className="text-2xl font-bold text-white mb-4">Start Wedstrijd</h2>
-          <div className="flex items-center mb-4"><UsersIcon className="w-5 h-5 text-gray-400 mr-2" /><span className="text-lg font-semibold text-white">{attendingPlayers.length} spelers</span></div>
+          <div className="flex items-center mb-4"><UsersIcon className="w-5 h-5 text-gray-400 mr-2" /><span className="text-lg font-semibold text-white">{attendingPlayers.length} spelers aanwezig</span></div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button onClick={() => handleGenerateTeams('simple')} disabled={actionInProgress==='generating'||attendingPlayers.length<2} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg">1 Wedstrijd</button>
-            <button onClick={() => handleGenerateTeams('tournament')} disabled={actionInProgress==='generating'||attendingPlayers.length<4} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Toernooi</button>
-            <button onClick={() => handleGenerateTeams('doubleHeader')} disabled={actionInProgress==='generating'||attendingPlayers.length<2} className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg">2 Wedstrijden</button>
+            <button onClick={() => handleGenerateTeams('simple')} disabled={actionInProgress==='generating'||attendingPlayers.length<2} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg transform hover:scale-105 transition-all">1 Wedstrijd</button>
+            <button onClick={() => handleGenerateTeams('tournament')} disabled={actionInProgress==='generating'||attendingPlayers.length<4} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transform hover:scale-105 transition-all">Toernooi</button>
+            <button onClick={() => handleGenerateTeams('doubleHeader')} disabled={actionInProgress==='generating'||attendingPlayers.length<2} className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg transform hover:scale-105 transition-all">2 Wedstrijden</button>
           </div>
           <div className="mt-8 flex justify-center border-t border-gray-700/50 pt-6">
-            <button onClick={() => { if(requireAdmin()) setCurrentView('nk'); }} className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 text-white text-[10px] font-bold py-2 px-6 rounded-lg uppercase tracking-wider">NK/Intro Manager</button>
+            <button onClick={() => { if(requireAdmin()) setCurrentView('nk'); }} className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 text-white text-[10px] font-bold py-2 px-6 rounded-lg uppercase tracking-wider transform hover:scale-105 transition-all">NK/Intro Manager</button>
           </div>
         </div>
         {actionInProgress === 'generating' ? (
           <div className="mt-8 flex justify-center p-8 bg-gray-800 rounded-xl flex-col items-center">
             <FutbolIcon className="w-16 h-16 text-cyan-400 animate-bounce" />
-            <p className="mt-4 text-white font-semibold">AI zoekt balans...</p>
+            <p className="mt-4 text-white font-semibold animate-pulse">AI zoekt balans...</p>
           </div>
         ) : (
           <TeamDisplay teams={teams} teams2={teams2} gameMode={gameMode} currentRound={currentRound} round1Results={round1Results} round2Pairings={round2Pairings} goalScorers={goalScorers} onGoalChange={handleGoalChange} onSaveRound1={handleSaveRound1} onSaveFinalResults={handleSaveFinalResults} onSaveSimpleMatch={handleSaveSimpleMatch} onStartSecondDoubleHeaderMatch={handleStartSecondDoubleHeaderMatch} onSaveDoubleHeader={handleSaveDoubleHeader} onRegenerateTeams={handleRegenerateTeamsForR2} actionInProgress={actionInProgress} />
@@ -754,7 +772,7 @@ const App: React.FC = () => {
     </button>
   );
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><p className="animate-pulse">Gegevens laden...</p></div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center text-white"><p className="animate-pulse text-xl">Laden...</p></div>;
   if (error || players.length === 0) return <SetupGuide error={error || "Geen spelers gevonden."} onRetry={fetchData} />;
 
   return (
