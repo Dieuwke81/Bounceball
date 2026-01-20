@@ -48,6 +48,7 @@ import LockIcon from './components/icons/LockIcon';
 import FutbolIcon from './components/icons/FutbolIcon';
 import SetupGuide from './components/SetupGuide';
 
+// NIEUW
 import Rules from './components/Rules';
 import BookOpenIcon from './components/icons/BookOpenIcon';
 
@@ -61,7 +62,7 @@ type View =
   | 'manualEntry'
   | 'competitionManagement'
   | 'trophyRoom'
-  | 'nk'; 
+  | 'nk';
 
 type Notification = { message: string; type: 'success' | 'error' };
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
@@ -76,16 +77,13 @@ const UNSAVED_GAME_KEY = 'bounceball_unsaved_game';
 const areTeamCompositionsIdentical = (teamsA: Player[][], teamsB: Player[][]): boolean => {
   if (teamsA.length !== teamsB.length) return false;
   if (teamsA.length === 0) return true;
-
   const getCanonicalTeam = (team: Player[]) =>
     JSON.stringify(team.map((p) => p.id).sort((a, b) => a - b));
-
   const mapA = new Map<string, number>();
   for (const team of teamsA) {
     const canonical = getCanonicalTeam(team);
     mapA.set(canonical, (mapA.get(canonical) || 0) + 1);
   }
-
   for (const team of teamsB) {
     const canonical = getCanonicalTeam(team);
     const countInA = mapA.get(canonical);
@@ -97,19 +95,15 @@ const areTeamCompositionsIdentical = (teamsA: Player[][], teamsB: Player[][]): b
 
 const isCompositionValid = (teams: Player[][], constraints: Constraint[]): boolean => {
   if (!constraints || constraints.length === 0) return true;
-
   const playerTeamMap = new Map<number, number>();
   teams.forEach((team, index) => {
     team.forEach((player) => playerTeamMap.set(player.id, index));
   });
-
   for (const constraint of constraints) {
     const [p1Id, p2Id] = constraint.playerIds;
     const team1Index = playerTeamMap.get(p1Id);
     if (team1Index === undefined) continue;
-
     const team2Index = p2Id !== undefined ? playerTeamMap.get(p2Id) : undefined;
-
     switch (constraint.type) {
       case 'together':
         if (team2Index === undefined || team1Index !== team2Index) return false;
@@ -128,7 +122,6 @@ const isCompositionValid = (teams: Player[][], constraints: Constraint[]): boole
         break;
     }
   }
-
   return true;
 };
 
@@ -152,16 +145,14 @@ const calcSpread = (teams: Player[][]) => {
 };
 
 // ============================================================================
-// Season: samen gespeeld (pair frequency)
+// Season: samen gespeeld (pair frequency) + standings
 // ============================================================================
 
 type PairKey = string; 
-
 const pairKey = (a: number, b: number): PairKey => (a < b ? `${a}-${b}` : `${b}-${a}`);
 
 const computeSeasonPairCounts = (seasonHistory: GameSession[]) => {
   const counts = new Map<PairKey, number>();
-
   const addPairsFromTeam = (team: Player[]) => {
     const ids = team.map((p) => p.id);
     for (let i = 0; i < ids.length; i++) {
@@ -171,7 +162,6 @@ const computeSeasonPairCounts = (seasonHistory: GameSession[]) => {
       }
     }
   };
-
   for (const session of seasonHistory) {
     for (const match of session.round1Results || []) {
       const t1 = session.teams?.[match.team1Index] || [];
@@ -240,12 +230,11 @@ const optimizeTeamsSoft = (params: {
   attendingIds: Set<number>;
   seasonPairCounts: Map<PairKey, number>;
   separateFrequent: boolean;
-  pairInfrequent: boolean; // NIEUWE PARAMETER
+  pairInfrequent: boolean; // NIEUW
   separateTop6: boolean;
   top6Ids: Set<number>;
 }) => {
   const { teams, constraints, attendingIds, seasonPairCounts, separateFrequent, pairInfrequent, separateTop6, top6Ids } = params;
-
   if (!separateFrequent && !separateTop6 && !pairInfrequent) return teams;
 
   const baseSpread = calcSpread(teams);
@@ -256,24 +245,13 @@ const optimizeTeamsSoft = (params: {
     let pen = 0;
     for (const team of t) {
       const ids = team.map((p) => p.id).filter((id) => attendingIds.has(id));
-      
       for (let i = 0; i < ids.length; i++) {
         for (let j = i + 1; j < ids.length; j++) {
           const count = seasonPairCounts.get(pairKey(ids[i], ids[j])) || 0;
-          
-          if (separateFrequent) {
-            // Bestraf mensen die vaak samen spelen (exponentieel)
-            pen += (count * count) * 15;
-          }
-          
-          if (pairInfrequent) {
-            // Bestraf duo's die AL WEL samen hebben gespeeld
-            // Hierdoor worden duo's met count 0 (nieuwe duo's) automatisch aantrekkelijker
-            pen += (count * 10);
-          }
+          if (separateFrequent) pen += (count * count) * 15;
+          if (pairInfrequent) pen += (count * 12); // Bestraf duo's die al vaak samen waren
         }
       }
-
       if (separateTop6) {
         const topCount = ids.reduce((s, id) => s + (top6Ids.has(id) ? 1 : 0), 0);
         if (topCount >= 2) pen += (topCount - 1) * (topCount - 1) * 60;
@@ -285,7 +263,6 @@ const optimizeTeamsSoft = (params: {
   let best = cloneTeams(teams);
   let bestSpread = baseSpread;
   let bestPenalty = penalty(best);
-
   if (bestPenalty === 0) return best;
 
   const teamCount = best.length;
@@ -302,7 +279,6 @@ const optimizeTeamsSoft = (params: {
     if (teamSizes[a] === 0 || teamSizes[b] === 0) continue;
     const ia = randomInt(teamSizes[a]);
     const ib = randomInt(teamSizes[b]);
-
     const cand = cloneTeams(best);
     const pa = cand[a][ia];
     const pb = cand[b][ib];
@@ -314,15 +290,11 @@ const optimizeTeamsSoft = (params: {
 
     const candSpread = calcSpread(cand);
     if (candSpread > baseSpread + SPREAD_TOLERANCE) continue;
-
     const candPenalty = penalty(cand);
     const spreadBetter = candSpread < bestSpread - 1e-6;
     const spreadSameEnough = Math.abs(candSpread - bestSpread) <= 1e-6;
-
     if (spreadBetter || (spreadSameEnough && candPenalty < bestPenalty)) {
-      best = cand;
-      bestSpread = candSpread;
-      bestPenalty = candPenalty;
+      best = cand; bestSpread = candSpread; bestPenalty = candPenalty;
       if (bestPenalty === 0) break;
     }
   }
@@ -333,23 +305,16 @@ const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
   const result = [...teams.map((t) => [...t])];
   for (let i = 0; i < result.length; i += 2) {
     if (!result[i + 1]) break;
-    const teamA = result[i];
-    const teamB = result[i + 1];
-    const keepersA = teamA.filter(p => p.isKeeper);
-    const othersA = teamA.filter(p => !p.isKeeper);
-    const keepersB = teamB.filter(p => p.isKeeper);
-    const othersB = teamB.filter(p => !p.isKeeper);
+    const teamA = result[i]; const teamB = result[i + 1];
+    const keepersA = teamA.filter(p => p.isKeeper); const othersA = teamA.filter(p => !p.isKeeper);
+    const keepersB = teamB.filter(p => p.isKeeper); const othersB = teamB.filter(p => !p.isKeeper);
     const slots: { a: Player | null, b: Player | null }[] = [];
     const numKeeperPairs = Math.min(keepersA.length, keepersB.length);
-    for (let k = 0; k < numKeeperPairs; k++) {
-      slots.push({ a: keepersA.shift()!, b: keepersB.shift()! });
-    }
+    for (let k = 0; k < numKeeperPairs; k++) slots.push({ a: keepersA.shift()!, b: keepersB.shift()! });
     const remainingA = [...keepersA, ...othersA].sort((a, b) => b.rating - a.rating);
     const remainingB = [...keepersB, ...othersB].sort((a, b) => b.rating - a.rating);
     const maxRemaining = Math.max(remainingA.length, remainingB.length);
-    for (let r = 0; r < maxRemaining; r++) {
-      slots.push({ a: remainingA[r] || null, b: remainingB[r] || null });
-    }
+    for (let r = 0; r < maxRemaining; r++) slots.push({ a: remainingA[r] || null, b: remainingB[r] || null });
     for (let j = slots.length - 1; j > 0; j--) {
       const k = Math.floor(Math.random() * (j + 1));
       [slots[j], slots[k]] = [slots[k], slots[j]];
@@ -423,28 +388,14 @@ const App: React.FC = () => {
     if (gameMode) {
       const stateToSave = {
         attendingPlayerIds: Array.from(attendingPlayerIds),
-        teams,
-        originalTeams,
-        teams2,
-        currentRound,
-        round1Results,
-        round2Pairings,
-        goalScorers,
-        gameMode,
-        constraints,
-        separateFrequentTeammates,
-        pairInfrequentTeammates, // NIEUW
-        separateTop6OnPoints,
-        showFrequentPairs,
-        syncOpponentRatings,
+        teams, originalTeams, teams2, currentRound, round1Results, round2Pairings, goalScorers, gameMode, constraints,
+        separateFrequentTeammates, pairInfrequentTeammates, separateTop6OnPoints, showFrequentPairs, syncOpponentRatings,
       };
       localStorage.setItem(UNSAVED_GAME_KEY, JSON.stringify(stateToSave));
     }
   }, [
-    attendingPlayerIds, teams, originalTeams, teams2, currentRound,
-    round1Results, round2Pairings, goalScorers, gameMode, constraints,
-    separateFrequentTeammates, pairInfrequentTeammates, separateTop6OnPoints,
-    showFrequentPairs, syncOpponentRatings,
+    attendingPlayerIds, teams, originalTeams, teams2, currentRound, round1Results, round2Pairings, goalScorers, gameMode, 
+    constraints, separateFrequentTeammates, pairInfrequentTeammates, separateTop6OnPoints, showFrequentPairs, syncOpponentRatings,
   ]);
 
   useEffect(() => {
@@ -452,7 +403,7 @@ const App: React.FC = () => {
     if (savedGameJSON) {
       try {
         const savedGame = JSON.parse(savedGameJSON);
-        if (window.confirm('Er is een niet-opgeslagen wedstrijd gevonden. Wil je doorgaan?')) {
+        if (window.confirm('Er is een niet-opgeslagen wedstrijd gevonden. Wil je doorgaan waar je was gebleven?')) {
           setAttendingPlayerIds(new Set(savedGame.attendingPlayerIds || []));
           setTeams(savedGame.teams || []);
           setOriginalTeams(savedGame.originalTeams || null);
@@ -468,72 +419,86 @@ const App: React.FC = () => {
           setSeparateTop6OnPoints(!!savedGame.separateTop6OnPoints);
           setShowFrequentPairs(savedGame.showFrequentPairs !== false);
           setSyncOpponentRatings(!!savedGame.syncOpponentRatings);
-        } else {
-          localStorage.removeItem(UNSAVED_GAME_KEY);
-        }
-      } catch (e) {
-        localStorage.removeItem(UNSAVED_GAME_KEY);
-      }
+        } else { localStorage.removeItem(UNSAVED_GAME_KEY); }
+      } catch (e) { localStorage.removeItem(UNSAVED_GAME_KEY); }
     }
   }, []);
 
   const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+    setIsLoading(true); setError(null);
     try {
       const data = await getInitialData();
-      setSeasonStartDate(data.seasonStartDate || '');
-      setPlayers(data.players);
-      setIntroPlayers(data.introPlayers || []);
-      setHistory(data.history);
-      setCompetitionName(data.competitionName || null);
-      setRatingLogs(data.ratingLogs || []);
-      setTrophies(data.trophies || []);
-    } catch (e: any) {
-      setError(e.message || 'Laden mislukt.');
-    } finally {
-      setIsLoading(false);
-    }
+      setSeasonStartDate(data.seasonStartDate || ''); setPlayers(data.players); setIntroPlayers((data as any).introPlayers || []);
+      setHistory(data.history); setCompetitionName(data.competitionName || null); setRatingLogs(data.ratingLogs || []); setTrophies(data.trophies || []);
+    } catch (e: any) { setError(e.message || 'Laden mislukt.'); } finally { setIsLoading(false); }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
-    setNotification({ message, type });
-  };
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => { setNotification({ message, type }); };
 
   const handlePlayerToggle = (playerId: number) => {
     setAttendingPlayerIds((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(playerId)) newSet.delete(playerId);
-      else newSet.add(playerId);
+      if (newSet.has(playerId)) newSet.delete(playerId); else newSet.add(playerId);
       return newSet;
     });
   };
 
   const handleParseAttendance = (text: string) => {
-    const normalizeName = (str: string): string =>
+    const normalize = (str: string): string =>
       str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\.$/, '');
+
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
+    const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper', 'reserve', 'niet', 'graag', 'team'];
+
     lines.forEach((line) => {
-      const trimmed = line.trim();
-      if (!trimmed) return;
-      let cleaned = trimmed.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
-      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned)) potentialNames.add(cleaned);
+      const trimmedLine = line.trim(); if (!trimmedLine) return;
+      const lowerLine = trimmedLine.toLowerCase();
+      if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
+      if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
+
+      let cleaned = trimmedLine.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
+      if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) potentialNames.add(cleaned);
     });
+
     const playerLookup = new Map<string, Player>();
     players.forEach((player) => {
-      const full = normalizeName(player.name);
-      playerLookup.set(full, player);
-      playerLookup.set(full.split(' ')[0], player);
+      const normalizedFullName = normalize(player.name);
+      const normalizedFirstName = normalizedFullName.split(' ')[0];
+      playerLookup.set(normalizedFullName, player);
+      if (!playerLookup.has(normalizedFirstName)) playerLookup.set(normalizedFirstName, player);
     });
-    const newIds = new Set(attendingPlayerIds);
-    potentialNames.forEach((name) => {
-      const matched = playerLookup.get(normalizeName(name));
-      if (matched) newIds.add(matched.id);
+
+    const newAttendingPlayerIds = new Set(attendingPlayerIds);
+    const newlyFoundPlayers: string[] = [];
+    const notFoundOriginalNames: string[] = [];
+
+    potentialNames.forEach((originalName) => {
+      const normalizedName = normalize(originalName);
+      const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
+      if (matchedPlayer) {
+        if (!newAttendingPlayerIds.has(matchedPlayer.id)) newlyFoundPlayers.push(matchedPlayer.name);
+        newAttendingPlayerIds.add(matchedPlayer.id);
+      } else { notFoundOriginalNames.push(originalName); }
     });
-    setAttendingPlayerIds(newIds);
+
+    setAttendingPlayerIds(newAttendingPlayerIds);
+    if (newlyFoundPlayers.length > 0 || notFoundOriginalNames.length > 0) {
+      let message = ''; let type: 'success' | 'error' = 'success';
+      if (newlyFoundPlayers.length > 0) message += `${newlyFoundPlayers.length} speler(s) toegevoegd: ${newlyFoundPlayers.join(', ')}.`;
+      if (notFoundOriginalNames.length > 0) { message += `${message ? '\n' : ''}Niet herkend: ${notFoundOriginalNames.join(', ')}.`; type = 'error'; }
+      showNotification(message, type);
+    } else if (potentialNames.size > 0) { showNotification('Alle spelers waren al aangemeld.', 'success'); }
   };
 
   const resetGameState = () => {
@@ -549,148 +514,131 @@ const App: React.FC = () => {
 
   const top6Ids = useMemo(() => {
     const standings = computeSeasonStandingsByPlayer(activeHistory);
-    return new Set(attendingPlayers
-      .map(p => ({ id: p.id, ...standings.get(p.id) || { pts: 0, gf: 0, gd: 0 } }))
-      .sort((a, b) => b.pts - a.pts || b.gf - a.gf || b.gd - a.gd)
-      .slice(0, 6).map(x => x.id));
+    return new Set(attendingPlayers.map((p) => ({ id: p.id, ...standings.get(p.id) || { pts: 0, gf: 0, gd: 0 } }))
+      .sort((a, b) => b.pts - a.pts || b.gf - a.gf || b.gd - a.gd || a.id - b.id)
+      .slice(0, 6).map((x) => x.id));
   }, [activeHistory, attendingPlayers]);
 
   const frequentPairsForUI = useMemo(() => {
-    const idToPlayer = new Map(players.map(p => [p.id, p]));
-    return Array.from(seasonPairCounts.entries())
-      .map(([k, count]) => {
-        const [a, b] = k.split('-').map(Number);
-        if (!attendingPlayerIds.has(a) || !attendingPlayerIds.has(b)) return null;
-        return { a, b, count, aName: idToPlayer.get(a)?.name, bName: idToPlayer.get(b)?.name };
-      })
-      .filter((x): x is any => !!x).sort((x, y) => y.count - x.count).slice(0, 12);
+    const idToPlayer = new Map(players.map((p) => [p.id, p]));
+    return Array.from(seasonPairCounts.entries()).map(([k, count]) => {
+      const [aStr, bStr] = k.split('-'); const a = Number(aStr); const b = Number(bStr);
+      if (!attendingPlayerIds.has(a) || !attendingPlayerIds.has(b)) return null;
+      const pa = idToPlayer.get(a); const pb = idToPlayer.get(b);
+      if (!pa || !pb) return null;
+      return { a, b, count, aName: pa.name, bName: pb.name };
+    }).filter((x): x is any => !!x).sort((x, y) => y.count - x.count).slice(0, 12);
   }, [seasonPairCounts, players, attendingPlayerIds]);
 
   const handleGenerateTeams = async (mode: GameMode) => {
-    resetGameState();
-    setGameMode(mode);
-    let n = (mode === 'simple' || mode === 'doubleHeader') ? 2 : (attendingPlayers.length >= 24 ? 6 : (attendingPlayers.length >= 16 ? 4 : 2));
-    if (attendingPlayers.length < n) return showNotification(`Niet genoeg spelers.`, 'error');
+    resetGameState(); setGameMode(mode);
+    let numberOfTeams = (mode === 'simple' || mode === 'doubleHeader') ? 2 : (attendingPlayers.length >= 24 ? 6 : (attendingPlayers.length >= 16 ? 4 : 2));
+    if (attendingPlayers.length < numberOfTeams) return showNotification(`Niet genoeg spelers voor ${numberOfTeams} teams.`, 'error');
 
     setActionInProgress('generating');
     try {
-      let generated = await generateTeams(attendingPlayers, n, constraints, null, activeHistory);
+      let generated = await generateTeams(attendingPlayers, numberOfTeams, constraints, null, activeHistory);
       generated = optimizeTeamsSoft({
-        teams: generated, constraints, attendingIds: new Set(attendingPlayers.map(p => p.id)),
-        seasonPairCounts, separateFrequent: separateFrequentTeammates, 
-        pairInfrequent: pairInfrequentTeammates, // NIEUW
-        separateTop6: separateTop6OnPoints, top6Ids
+        teams: generated, constraints, attendingIds: new Set(attendingPlayers.map(p => p.id)), seasonPairCounts,
+        separateFrequent: separateFrequentTeammates, pairInfrequent: pairInfrequentTeammates, // NIEUW
+        separateTop6: separateTop6OnPoints, top6Ids,
       });
       if (syncOpponentRatings) generated = syncRatingsBetweenOpponents(generated);
       setTeams(generated); setOriginalTeams(JSON.parse(JSON.stringify(generated))); setCurrentRound(1);
-    } catch (e: any) { showNotification(e.message, 'error'); resetGameState(); }
-    finally { setActionInProgress(null); }
+    } catch (e: any) { showNotification(e.message, 'error'); resetGameState(); } finally { setActionInProgress(null); }
   };
 
-  const handleGoalChange = (matchIdx: number, team: 'team1' | 'team2', pid: number, count: number) => {
-    const key = `${matchIdx}-${team}`;
-    setGoalScorers(prev => {
-      const list = [...(prev[key] || [])];
-      const idx = list.findIndex(g => g.playerId === pid);
-      if (count > 0) {
-        if (idx > -1) list[idx] = { ...list[idx], count };
-        else list.push({ playerId: pid, count });
-      } else if (idx > -1) list.splice(idx, 1);
-      return { ...prev, [key]: list };
+  const handleGoalChange = (matchIndex: number, teamIdentifier: 'team1' | 'team2', playerId: number, count: number) => {
+    const key = `${matchIndex}-${teamIdentifier}`;
+    setGoalScorers((prev) => {
+      const newGoals = [...(prev[key] || [])]; const idx = newGoals.findIndex((g) => g.playerId === playerId);
+      if (count > 0) { if (idx > -1) newGoals[idx] = { ...newGoals[idx], count }; else newGoals.push({ playerId, count }); }
+      else if (idx > -1) newGoals.splice(idx, 1);
+      return { ...prev, [key]: newGoals };
     });
   };
 
   const handleSaveSession = async (sessionData: GameSession) => {
-    const deltas = calculateRatingDeltas(sessionData);
-    const updates = players.filter(p => deltas[p.id] !== undefined)
-      .map(p => ({ id: p.id, rating: parseFloat((Number(p.rating) + deltas[p.id]).toFixed(2)) }));
+    const ratingChanges = calculateRatingDeltas(sessionData);
+    const updatedRatings = players.filter((p) => ratingChanges[p.id] !== undefined)
+      .map((p) => ({ id: p.id, rating: parseFloat((Number(p.rating) + ratingChanges[p.id]).toFixed(2)) }));
     try {
-      await saveGameSession(sessionData, updates);
-      showNotification('Opgeslagen!', 'success');
-      setPlayers(prev => prev.map(p => { const u = updates.find(x => x.id === p.id); return u ? { ...p, rating: u.rating } : p; }));
-      setHistory(prev => [sessionData, ...prev]);
-      resetGameState(); setAttendingPlayerIds(new Set());
+      await saveGameSession(sessionData, updatedRatings); showNotification('Sessie opgeslagen!', 'success');
+      setPlayers((prev) => prev.map((p) => { const u = updatedRatings.find((x) => x.id === p.id); return u ? { ...p, rating: u.rating } : p; }));
+      setHistory((prev) => [sessionData, ...prev]); resetGameState(); setAttendingPlayerIds(new Set());
     } catch (e: any) { showNotification(`Fout: ${e.message}`, 'error'); }
   };
 
   const handleSaveRound1 = (matches: Match[]) => {
     const results = matches.map((m, i) => ({ ...m, team1Goals: goalScorers[`${i}-team1`] || [], team2Goals: goalScorers[`${i}-team2`] || [] }));
     setRound1Results(results);
-    const stats = teams.map((_, i) => ({ idx: i, pts: 0, gd: 0, gf: 0 }));
-    results.forEach(r => {
+    const teamPoints = teams.map((_, i) => ({ teamIndex: i, points: 0, goalDifference: 0, goalsFor: 0 }));
+    results.forEach((r) => {
       const s1 = r.team1Goals.reduce((s, g) => s + Number(g.count), 0);
       const s2 = r.team2Goals.reduce((s, g) => s + Number(g.count), 0);
-      const t1 = stats[r.team1Index]; const t2 = stats[r.team2Index];
-      t1.gd += s1 - s2; t1.gf += s1; t2.gd += s2 - s1; t2.gf += s2;
-      if (s1 > s2) t1.pts += 3; else if (s2 > s1) t2.pts += 3; else { t1.pts++; t2.pts++; }
+      const t1 = teamPoints.find((t) => t.teamIndex === r.team1Index)!;
+      const t2 = teamPoints.find((t) => t.teamIndex === r.team2Index)!;
+      t1.goalDifference += s1 - s2; t1.goalsFor += s1; t2.goalDifference += s2 - s1; t2.goalsFor += s2;
+      if (s1 > s2) t1.points += 3; else if (s2 > s1) t2.points += 3; else { t1.points += 1; t2.points += 1; }
     });
-    stats.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
-    const pairings: Match[] = [];
-    const avail = [...stats];
+    teamPoints.sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor);
+    const newPairings: Match[] = []; const avail = [...teamPoints];
     while (avail.length) {
-      const a = avail.shift()!;
-      let bIdx = avail.findIndex(x => !results.some(r => (r.team1Index === a.idx && r.team2Index === x.idx) || (r.team1Index === x.idx && r.team2Index === a.idx)));
-      const b = avail.splice(bIdx === -1 ? 0 : bIdx, 1)[0];
-      if (b) pairings.push({ team1Index: a.idx, team2Index: b.idx });
+      const tA = avail.shift()!;
+      let bIdx = avail.findIndex(tB => !results.some(m => (m.team1Index === tA.teamIndex && m.team2Index === tB.teamIndex) || (m.team1Index === tB.teamIndex && m.team2Index === tA.teamIndex)));
+      if (bIdx === -1) bIdx = 0;
+      const tB = avail.splice(bIdx, 1)[0]; if (tB) newPairings.push({ team1Index: tA.teamIndex, team2Index: tB.teamIndex });
     }
-    setRound2Pairings(pairings); setGoalScorers({}); setCurrentRound(2);
+    setRound2Pairings(newPairings); setGoalScorers({}); setCurrentRound(2);
   };
 
   const handleRegenerateTeamsForR2 = async () => {
-    if (!originalTeams) return;
-    setActionInProgress('regeneratingTeams');
+    if (!originalTeams) return; setActionInProgress('regeneratingTeams');
     try {
-      let regened = await generateTeams(attendingPlayers, originalTeams.length, constraints, null, activeHistory);
-      regened = optimizeTeamsSoft({
-        teams: regened, constraints, attendingIds: new Set(attendingPlayers.map(p => p.id)),
-        seasonPairCounts, separateFrequent: separateFrequentTeammates, 
-        pairInfrequent: pairInfrequentTeammates, // NIEUW
+      let regeneratedTeams = await generateTeams(attendingPlayers, originalTeams.length, constraints, null, activeHistory);
+      regeneratedTeams = optimizeTeamsSoft({
+        teams: regeneratedTeams, constraints, attendingIds: new Set(attendingPlayers.map(p => p.id)), seasonPairCounts,
+        separateFrequent: separateFrequentTeammates, pairInfrequent: pairInfrequentTeammates, // NIEUW
         separateTop6: separateTop6OnPoints, top6Ids
       });
-      if (syncOpponentRatings) regened = syncRatingsBetweenOpponents(regened);
-      setTeams(regened); setRound2Pairings(Array.from({ length: regened.length / 2 }, (_, i) => ({ team1Index: i * 2, team2Index: i * 2 + 1 })));
+      if (syncOpponentRatings) regeneratedTeams = syncRatingsBetweenOpponents(regeneratedTeams);
+      setTeams(regeneratedTeams); setRound2Pairings(Array.from({ length: regeneratedTeams.length / 2 }, (_, i) => ({ team1Index: i * 2, team2Index: i * 2 + 1 })));
       setGoalScorers({});
-    } catch (e: any) { showNotification(e.message, 'error'); }
-    finally { setActionInProgress(null); }
+    } catch (e: any) { showNotification(e.message, 'error'); } finally { setActionInProgress(null); }
   };
 
-  const handleSaveFinalResults = async (m: Match[]) => {
-    if (!requireAdmin()) return;
-    setActionInProgress('savingFinal');
-    const r2 = m.map((x, i) => ({ ...x, team1Goals: goalScorers[`${i}-team1`] || [], team2Goals: goalScorers[`${i}-team2`] || [] }));
+  const handleSaveFinalResults = async (matches: Match[]) => {
+    if (!requireAdmin()) return; setActionInProgress('savingFinal');
+    const r2 = matches.map((m, i) => ({ ...m, team1Goals: goalScorers[`${i}-team1`] || [], team2Goals: goalScorers[`${i}-team2`] || [] }));
     await handleSaveSession({ date: new Date().toISOString(), teams, round1Results, round2Results: r2 });
     setActionInProgress(null);
   };
 
-  const handleSaveSimpleMatch = async (m: Match) => {
-    if (!requireAdmin()) return;
-    setActionInProgress('savingSimple');
-    await handleSaveSession({ date: new Date().toISOString(), teams, round1Results: [{ ...m, team1Goals: goalScorers['0-team1'] || [], team2Goals: goalScorers['0-team2'] || [] }], round2Results: [] });
+  const handleSaveSimpleMatch = async (match: Match) => {
+    if (!requireAdmin()) return; setActionInProgress('savingSimple');
+    await handleSaveSession({ date: new Date().toISOString(), teams, round1Results: [{ ...match, team1Goals: goalScorers['0-team1'] || [], team2Goals: goalScorers['0-team2'] || [] }], round2Results: [] });
     setActionInProgress(null);
   };
 
-  const handleStartSecondDoubleHeaderMatch = async (m1: MatchResult) => {
+  const handleStartSecondDoubleHeaderMatch = async (match1Result: MatchResult) => {
     setActionInProgress('generating');
     try {
-      let regened = await generateTeams(teams.flat(), 2, constraints, teams, activeHistory);
-      regened = optimizeTeamsSoft({
-        teams: regened, constraints, attendingIds: new Set(teams.flat().map(p => p.id)),
-        seasonPairCounts, separateFrequent: separateFrequentTeammates, 
-        pairInfrequent: pairInfrequentTeammates, // NIEUW
+      let regeneratedTeams = await generateTeams(teams.flat(), 2, constraints, teams, activeHistory);
+      regeneratedTeams = optimizeTeamsSoft({
+        teams: regeneratedTeams, constraints, attendingIds: new Set(teams.flat().map(p => p.id)), seasonPairCounts,
+        separateFrequent: separateFrequentTeammates, pairInfrequent: pairInfrequentTeammates, // NIEUW
         separateTop6: separateTop6OnPoints, top6Ids
       });
-      if (syncOpponentRatings) regened = syncRatingsBetweenOpponents(regened);
-      setTeams2(regened); setRound1Results([m1]); setGoalScorers({}); setCurrentRound(2);
-    } catch (e: any) { showNotification(e.message, 'error'); }
-    finally { setActionInProgress(null); }
+      if (syncOpponentRatings) regeneratedTeams = syncRatingsBetweenOpponents(regeneratedTeams);
+      setTeams2(regeneratedTeams); setRound1Results([match1Result]); setGoalScorers({}); setCurrentRound(2);
+    } catch (e: any) { showNotification(e.message, 'error'); } finally { setActionInProgress(null); }
   };
 
-  const handleSaveDoubleHeader = async (m2: MatchResult) => {
-    if (!requireAdmin()) return;
-    setActionInProgress('savingDouble');
+  const handleSaveDoubleHeader = async (match2Result: MatchResult) => {
+    if (!requireAdmin()) return; setActionInProgress('savingDouble');
     if (!originalTeams || !teams2) return setActionInProgress(null);
     const s1 = { date: new Date().toISOString(), teams: originalTeams, round1Results, round2Results: [] };
-    const s2 = { date: new Date().toISOString(), teams: teams2, round1Results: [m2], round2Results: [] };
+    const s2 = { date: new Date().toISOString(), teams: teams2, round1Results: [match2Result], round2Results: [] };
     const d1 = calculateRatingDeltas(s1); const d2 = calculateRatingDeltas(s2);
     const updates = players.map(p => {
       const v = (d1[p.id] || 0) + (d2[p.id] || 0);
@@ -698,7 +646,7 @@ const App: React.FC = () => {
     }).filter((x): x is any => !!x);
     try {
       await saveGameSession(s1, updates); await new Promise(r => setTimeout(r, 2000)); await saveGameSession(s2, updates);
-      showNotification('Dubbel opgeslagen!', 'success'); fetchData(); resetGameState(); setAttendingPlayerIds(new Set());
+      showNotification('Beide opgeslagen!', 'success'); fetchData(); resetGameState(); setAttendingPlayerIds(new Set());
     } catch (e: any) { showNotification(`Fout: ${e.message}`, 'error'); }
     setActionInProgress(null);
   };
@@ -721,22 +669,22 @@ const App: React.FC = () => {
       <div className="lg:col-span-1 space-y-8">
         <AttendanceParser onParse={handleParseAttendance} />
         <PlayerList players={players} attendingPlayerIds={attendingPlayerIds} onPlayerToggle={handlePlayerToggle} />
+        
         <div className="bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-700/50">
           <h3 className="text-white font-bold text-lg mb-3">Team-voorkeuren</h3>
           
           <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
             <div className="text-sm">
-              <div className="font-semibold text-gray-100">Haal vaak-samen duo's uit elkaar</div>
-              <div className="text-xs text-gray-400">Forceert variatie.</div>
+              <div className="font-semibold text-gray-100">Haal vaak-samen spelers uit elkaar</div>
+              <div className="text-xs text-gray-400">Vergroot variatie in teams.</div>
             </div>
             <input type="checkbox" checked={separateFrequentTeammates} onChange={(e) => setSeparateFrequentTeammates(e.target.checked)} className="w-5 h-5" />
           </label>
 
-          {/* NIEUWE TOGGLE */}
           <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
             <div className="text-sm">
               <div className="font-semibold text-gray-100">Plaats nieuwe duo's bij elkaar</div>
-              <div className="text-xs text-gray-400">Favoriseert onbekende duo's.</div>
+              <div className="text-xs text-gray-400">Favoriseert onbekende combinaties.</div>
             </div>
             <input type="checkbox" checked={pairInfrequentTeammates} onChange={(e) => setPairInfrequentTeammates(e.target.checked)} className="w-5 h-5" />
           </label>
@@ -747,19 +695,38 @@ const App: React.FC = () => {
           </label>
 
           <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
-            <div className="text-sm"><div className="font-semibold text-gray-100">Sync ratings</div></div>
+            <div className="text-sm"><div className="font-semibold text-gray-100">Sync ratings tegenstanders</div></div>
             <input type="checkbox" checked={syncOpponentRatings} onChange={(e) => setSyncOpponentRatings(e.target.checked)} className="w-5 h-5" />
           </label>
+
+          <label className="flex items-center justify-between gap-3 px-1 py-2">
+            <div className="text-xs text-gray-400">Toon “vaak samen” lijst</div>
+            <input type="checkbox" checked={showFrequentPairs} onChange={(e) => setShowFrequentPairs(e.target.checked)} className="w-4 h-4" />
+          </label>
+
+          {showFrequentPairs && (
+            <div className="mt-3 bg-gray-900/40 rounded-lg p-3">
+              {frequentPairsForUI.length === 0 ? <p className="text-xs text-gray-500">Nog geen data.</p> : 
+                frequentPairsForUI.map((p: any) => (
+                  <div key={`${p.a}-${p.b}`} className="flex justify-between text-sm bg-gray-800/40 rounded px-2 py-1 mb-1">
+                    <span className="truncate text-gray-200">{p.aName} & {p.bName}</span>
+                    <span className="text-xs font-mono bg-gray-700 px-2 rounded-full">{p.count}x</span>
+                  </div>
+                ))
+              }
+            </div>
+          )}
         </div>
         <TeamConstraints attendingPlayers={attendingPlayers} constraints={constraints} onAddConstraint={handleAddConstraint} onRemoveConstraint={handleRemoveConstraint} />
       </div>
       <div className="lg:col-span-2">
         <div className="bg-gray-800 rounded-xl shadow-lg p-6">
           <h2 className="text-2xl font-bold text-white mb-4">Start Wedstrijd</h2>
+          <div className="flex items-center mb-4"><UsersIcon className="w-5 h-5 text-gray-400 mr-2" /><span className="text-lg font-semibold text-white">{attendingPlayers.length} spelers</span></div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button onClick={() => handleGenerateTeams('simple')} disabled={actionInProgress==='generating'} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg">1 Wedstrijd</button>
-            <button onClick={() => handleGenerateTeams('tournament')} disabled={actionInProgress==='generating'} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Toernooi</button>
-            <button onClick={() => handleGenerateTeams('doubleHeader')} disabled={actionInProgress==='generating'} className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg">2 Wedstrijden</button>
+            <button onClick={() => handleGenerateTeams('simple')} disabled={actionInProgress==='generating'||attendingPlayers.length<2} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg">1 Wedstrijd</button>
+            <button onClick={() => handleGenerateTeams('tournament')} disabled={actionInProgress==='generating'||attendingPlayers.length<4} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Toernooi</button>
+            <button onClick={() => handleGenerateTeams('doubleHeader')} disabled={actionInProgress==='generating'||attendingPlayers.length<2} className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg">2 Wedstrijden</button>
           </div>
           <div className="mt-8 flex justify-center border-t border-gray-700/50 pt-6">
             <button onClick={() => { if(requireAdmin()) setCurrentView('nk'); }} className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 text-white text-[10px] font-bold py-2 px-6 rounded-lg uppercase tracking-wider">NK/Intro Manager</button>
@@ -768,7 +735,7 @@ const App: React.FC = () => {
         {actionInProgress === 'generating' ? (
           <div className="mt-8 flex justify-center p-8 bg-gray-800 rounded-xl flex-col items-center">
             <FutbolIcon className="w-16 h-16 text-cyan-400 animate-bounce" />
-            <p className="mt-4 text-white font-semibold">Teams worden gemaakt...</p>
+            <p className="mt-4 text-white font-semibold">AI zoekt balans...</p>
           </div>
         ) : (
           <TeamDisplay teams={teams} teams2={teams2} gameMode={gameMode} currentRound={currentRound} round1Results={round1Results} round2Pairings={round2Pairings} goalScorers={goalScorers} onGoalChange={handleGoalChange} onSaveRound1={handleSaveRound1} onSaveFinalResults={handleSaveFinalResults} onSaveSimpleMatch={handleSaveSimpleMatch} onStartSecondDoubleHeaderMatch={handleStartSecondDoubleHeaderMatch} onSaveDoubleHeader={handleSaveDoubleHeader} onRegenerateTeams={handleRegenerateTeamsForR2} actionInProgress={actionInProgress} />
@@ -778,7 +745,7 @@ const App: React.FC = () => {
   );
 
   const NavItem = ({ view, label, icon, isProtected, colorClass }: any) => (
-    <button onClick={() => { if (view === 'main') setViewingArchive(null); setCurrentView(view); }} className={`group flex flex-col items-center p-2 rounded-xl transition-all ${currentView === view ? 'opacity-100' : 'opacity-70'}`}>
+    <button onClick={() => { if (view === 'main') setViewingArchive(null); setCurrentView(view); }} className={`group flex flex-col items-center p-2 rounded-xl transition-all ${currentView === view ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`}>
       <div className={`relative p-3 rounded-2xl shadow-lg mb-1 ${colorClass}`}>
         {isProtected && <LockIcon className="w-3 h-3 text-white absolute top-0 right-0 -mt-1 -mr-1" />}
         <div className="text-white">{icon}</div>
@@ -787,14 +754,14 @@ const App: React.FC = () => {
     </button>
   );
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center text-white"><p className="animate-pulse">Gegevens laden...</p></div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><p className="animate-pulse">Gegevens laden...</p></div>;
   if (error || players.length === 0) return <SetupGuide error={error || "Geen spelers gevonden."} onRetry={fetchData} />;
 
   return (
     <div className="min-h-screen text-white pb-8">
       <div className="container mx-auto p-4 md:p-6">
         <Header competitionName={competitionName} />
-        {notification && <div className={`fixed top-5 right-5 z-50 p-4 rounded-lg shadow-lg ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>{notification.message}</div>}
+        {notification && <div className={`fixed top-5 right-5 z-50 p-4 rounded-lg shadow-lg max-w-sm animate-fade-in-out whitespace-pre-line ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>{notification.message}</div>}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-8 shadow-xl border border-gray-700/50">
           <div className="grid grid-cols-4 gap-x-6 gap-y-6 justify-items-center">
             <NavItem view="main" label="Wedstrijd" icon={<FutbolIcon className="w-6 h-6" />} colorClass="bg-gradient-to-br from-red-400 to-red-700" />
