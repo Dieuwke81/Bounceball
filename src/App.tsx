@@ -514,7 +514,7 @@ const App: React.FC = () => {
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
     const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
-    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper', 'reserve', 'niet', 'graag', 'team'];
+    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper', 'reserve', 'niet', 'graag', 'team', 'maandag', 'dinsdag', 'uari'];
 
     lines.forEach((line) => {
       const trimmedLine = line.trim(); if (!trimmedLine) return;
@@ -901,7 +901,21 @@ const App: React.FC = () => {
     </button>
   );
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center text-white"><p className="animate-pulse text-xl">Laden...</p></div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-white">
+        <div className="text-center">
+          <img
+            src="https://i.postimg.cc/XJy7yfJ2/bounceball.png"
+            alt="Laden..."
+            className="w-32 h-auto mx-auto mb-6 animate-bounce"
+          />
+          <p className="text-xl font-semibold animate-pulse">Gegevens laden...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (error || players.length === 0) return <SetupGuide error={error || "Geen spelers gevonden."} onRetry={fetchData} />;
 
   return (
