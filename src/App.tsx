@@ -77,13 +77,16 @@ const UNSAVED_GAME_KEY = 'bounceball_unsaved_game';
 const areTeamCompositionsIdentical = (teamsA: Player[][], teamsB: Player[][]): boolean => {
   if (teamsA.length !== teamsB.length) return false;
   if (teamsA.length === 0) return true;
+
   const getCanonicalTeam = (team: Player[]) =>
     JSON.stringify(team.map((p) => p.id).sort((a, b) => a - b));
+
   const mapA = new Map<string, number>();
   for (const team of teamsA) {
     const canonical = getCanonicalTeam(team);
     mapA.set(canonical, (mapA.get(canonical) || 0) + 1);
   }
+
   for (const team of teamsB) {
     const canonical = getCanonicalTeam(team);
     const countInA = mapA.get(canonical);
@@ -95,15 +98,19 @@ const areTeamCompositionsIdentical = (teamsA: Player[][], teamsB: Player[][]): b
 
 const isCompositionValid = (teams: Player[][], constraints: Constraint[]): boolean => {
   if (!constraints || constraints.length === 0) return true;
+
   const playerTeamMap = new Map<number, number>();
   teams.forEach((team, index) => {
     team.forEach((player) => playerTeamMap.set(player.id, index));
   });
+
   for (const constraint of constraints) {
     const [p1Id, p2Id] = constraint.playerIds;
     const team1Index = playerTeamMap.get(p1Id);
     if (team1Index === undefined) continue;
+
     const team2Index = p2Id !== undefined ? playerTeamMap.get(p2Id) : undefined;
+
     switch (constraint.type) {
       case 'together':
         if (team2Index === undefined || team1Index !== team2Index) return false;
@@ -122,6 +129,7 @@ const isCompositionValid = (teams: Player[][], constraints: Constraint[]): boole
         break;
     }
   }
+
   return true;
 };
 
@@ -145,14 +153,16 @@ const calcSpread = (teams: Player[][]) => {
 };
 
 // ============================================================================
-// Season: samen gespeeld (pair frequency)
+// Season: samen gespeeld (pair frequency) + standings
 // ============================================================================
 
 type PairKey = string; 
+
 const pairKey = (a: number, b: number): PairKey => (a < b ? `${a}-${b}` : `${b}-${a}`);
 
 const computeSeasonPairCounts = (seasonHistory: GameSession[]) => {
   const counts = new Map<PairKey, number>();
+
   const addPairsFromTeam = (team: Player[]) => {
     const ids = team.map((p) => p.id);
     for (let i = 0; i < ids.length; i++) {
@@ -162,17 +172,20 @@ const computeSeasonPairCounts = (seasonHistory: GameSession[]) => {
       }
     }
   };
+
   for (const session of seasonHistory) {
     for (const match of session.round1Results || []) {
       const t1 = session.teams?.[match.team1Index] || [];
       const t2 = session.teams?.[match.team2Index] || [];
-      addPairsFromTeam(t1); addPairsFromTeam(t2);
+      addPairsFromTeam(t1);
+      addPairsFromTeam(t2);
     }
     const teamsR2 = session.round2Teams ?? session.teams;
     for (const match of session.round2Results || []) {
       const t1 = teamsR2?.[match.team1Index] || [];
       const t2 = teamsR2?.[match.team2Index] || [];
-      addPairsFromTeam(t1); addPairsFromTeam(t2);
+      addPairsFromTeam(t1);
+      addPairsFromTeam(t2);
     }
   }
   return counts;
@@ -182,26 +195,46 @@ type PlayerStanding = { pts: number; gf: number; gd: number };
 
 const computeSeasonStandingsByPlayer = (seasonHistory: GameSession[]) => {
   const table = new Map<number, PlayerStanding>();
+
   const ensure = (id: number) => {
     if (!table.has(id)) table.set(id, { pts: 0, gf: 0, gd: 0 });
     return table.get(id)!;
   };
+
   const applyMatch = (teamsForRound: Player[][] | undefined, match: MatchResult) => {
     const t1 = teamsForRound?.[match.team1Index] || [];
     const t2 = teamsForRound?.[match.team2Index] || [];
+
     const s1 = (match.team1Goals || []).reduce((sum, g) => sum + Number(g.count), 0);
     const s2 = (match.team2Goals || []).reduce((sum, g) => sum + Number(g.count), 0);
-    t1.forEach((p) => { const row = ensure(p.id); row.gf += s1; row.gd += s1 - s2; });
-    t2.forEach((p) => { const row = ensure(p.id); row.gf += s2; row.gd += s2 - s1; });
-    if (s1 > s2) { t1.forEach((p) => (ensure(p.id).pts += 3)); }
-    else if (s2 > s1) { t2.forEach((p) => (ensure(p.id).pts += 3)); }
-    else { t1.forEach((p) => (ensure(p.id).pts += 1)); t2.forEach((p) => (ensure(p.id).pts += 1)); }
+
+    t1.forEach((p) => {
+      const row = ensure(p.id);
+      row.gf += s1;
+      row.gd += s1 - s2;
+    });
+    t2.forEach((p) => {
+      const row = ensure(p.id);
+      row.gf += s2;
+      row.gd += s2 - s1;
+    });
+
+    if (s1 > s2) {
+      t1.forEach((p) => (ensure(p.id).pts += 3));
+    } else if (s2 > s1) {
+      t2.forEach((p) => (ensure(p.id).pts += 3));
+    } else {
+      t1.forEach((p) => (ensure(p.id).pts += 1));
+      t2.forEach((p) => (ensure(p.id).pts += 1));
+    }
   };
+
   for (const session of seasonHistory) {
     for (const match of session.round1Results || []) applyMatch(session.teams, match);
     const teamsR2 = session.round2Teams ?? session.teams;
     for (const match of session.round2Results || []) applyMatch(teamsR2, match);
   }
+
   return table;
 };
 
@@ -220,6 +253,7 @@ const optimizeTeamsSoft = (params: {
   top6Ids: Set<number>;
 }) => {
   const { teams, constraints, attendingIds, seasonPairCounts, separateFrequent, pairInfrequent, separateTop6, top6Ids } = params;
+
   if (!separateFrequent && !separateTop6 && !pairInfrequent) return teams;
 
   const baseSpread = calcSpread(teams);
@@ -233,6 +267,7 @@ const optimizeTeamsSoft = (params: {
       for (let i = 0; i < ids.length; i++) {
         for (let j = i + 1; j < ids.length; j++) {
           const count = seasonPairCounts.get(pairKey(ids[i], ids[j])) || 0;
+          
           if (separateFrequent) {
             pen += (count * count) * 150;
           }
@@ -252,6 +287,7 @@ const optimizeTeamsSoft = (params: {
   let best = cloneTeams(teams);
   let bestSpread = baseSpread;
   let bestPenalty = penalty(best);
+
   if (bestPenalty === 0) return best;
 
   const teamCount = best.length;
@@ -265,13 +301,17 @@ const optimizeTeamsSoft = (params: {
     const a = randomInt(teamCount);
     let b = randomInt(teamCount);
     if (b === a) b = (b + 1) % teamCount;
+
     if (teamSizes[a] === 0 || teamSizes[b] === 0) continue;
-    
+
     const ia = randomInt(teamSizes[a]);
     const ib = randomInt(teamSizes[b]);
+
     const cand = cloneTeams(best);
-    const pa = cand[a][ia]; const pb = cand[b][ib];
-    cand[a][ia] = pb; cand[b][ib] = pa;
+    const pa = cand[a][ia];
+    const pb = cand[b][ib];
+    cand[a][ia] = pb;
+    cand[b][ib] = pa;
 
     if (!hasValidKeeperDistribution(cand)) continue;
     if (!isCompositionValid(cand, constraints)) continue;
@@ -281,7 +321,9 @@ const optimizeTeamsSoft = (params: {
 
     const candPenalty = penalty(cand);
     if (candPenalty < bestPenalty) {
-      best = cand; bestSpread = candSpread; bestPenalty = candPenalty;
+      best = cand;
+      bestSpread = candSpread;
+      bestPenalty = candPenalty;
       if (bestPenalty === 0) break;
     }
   }
@@ -292,20 +334,34 @@ const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
   const result = [...teams.map((t) => [...t])];
   for (let i = 0; i < result.length; i += 2) {
     if (!result[i + 1]) break;
-    const teamA = result[i]; const teamB = result[i + 1];
-    const keepersA = teamA.filter(p => p.isKeeper); const othersA = teamA.filter(p => !p.isKeeper);
-    const keepersB = teamB.filter(p => p.isKeeper); const othersB = teamB.filter(p => !p.isKeeper);
+    const teamA = result[i];
+    const teamB = result[i + 1];
+
+    const keepersA = teamA.filter(p => p.isKeeper);
+    const othersA = teamA.filter(p => !p.isKeeper);
+    const keepersB = teamB.filter(p => p.isKeeper);
+    const othersB = teamB.filter(p => !p.isKeeper);
+
     const slots: { a: Player | null, b: Player | null }[] = [];
+
     const numKeeperPairs = Math.min(keepersA.length, keepersB.length);
-    for (let k = 0; k < numKeeperPairs; k++) slots.push({ a: keepersA.shift()!, b: keepersB.shift()! });
+    for (let k = 0; k < numKeeperPairs; k++) {
+      slots.push({ a: keepersA.shift()!, b: keepersB.shift()! });
+    }
+
     const remainingA = [...keepersA, ...othersA].sort((a, b) => b.rating - a.rating);
     const remainingB = [...keepersB, ...othersB].sort((a, b) => b.rating - a.rating);
+
     const maxRemaining = Math.max(remainingA.length, remainingB.length);
-    for (let r = 0; r < maxRemaining; r++) slots.push({ a: remainingA[r] || null, b: remainingB[r] || null });
+    for (let r = 0; r < maxRemaining; r++) {
+      slots.push({ a: remainingA[r] || null, b: remainingB[r] || null });
+    }
+
     for (let j = slots.length - 1; j > 0; j--) {
       const k = Math.floor(Math.random() * (j + 1));
       [slots[j], slots[k]] = [slots[k], slots[j]];
     }
+
     result[i] = slots.map(s => s.a).filter((p): p is Player => p !== null);
     result[i + 1] = slots.map(s => s.b).filter((p): p is Player => p !== null);
   }
@@ -317,13 +373,16 @@ const calculateRatingDeltas = (
 ): { [key: number]: number } => {
   const ratingChanges: { [key: number]: number } = {};
   const ratingDelta = 0.1;
+
   const applyResults = (results: MatchResult[], teamsForRound: Player[][]) => {
     results.forEach((match) => {
       const team1 = teamsForRound[match.team1Index];
       const team2 = teamsForRound[match.team2Index];
       if (!team1 || !team2) return;
+
       const team1Score = (match.team1Goals || []).reduce((sum, g) => sum + Number(g.count), 0);
       const team2Score = (match.team2Goals || []).reduce((sum, g) => sum + Number(g.count), 0);
+
       if (team1Score > team2Score) {
         team1.forEach((p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) + ratingDelta));
         team2.forEach((p) => (ratingChanges[p.id] = (ratingChanges[p.id] || 0) - ratingDelta));
@@ -333,8 +392,10 @@ const calculateRatingDeltas = (
       }
     });
   };
+
   applyResults(session.round1Results, session.teams);
   applyResults(session.round2Results, session.round2Teams ?? session.teams);
+
   return ratingChanges;
 };
 
@@ -369,7 +430,7 @@ const App: React.FC = () => {
   const [pairInfrequentTeammates, setPairInfrequentTeammates] = useState<boolean>(false); 
   const [separateTop6OnPoints, setSeparateTop6OnPoints] = useState<boolean>(false);
   const [showFrequentPairs, setShowFrequentPairs] = useState<boolean>(true);
-  const [showInfrequentPairs, setShowInfrequentPairs] = useState<boolean>(false); // NIEUW
+  const [showInfrequentPairs, setShowInfrequentPairs] = useState<boolean>(false); 
   const [syncOpponentRatings, setSyncOpponentRatings] = useState<boolean>(false);
 
   useEffect(() => {
@@ -406,7 +467,7 @@ const App: React.FC = () => {
           setPairInfrequentTeammates(!!savedGame.pairInfrequentTeammates);
           setSeparateTop6OnPoints(!!savedGame.separateTop6OnPoints);
           setShowFrequentPairs(savedGame.showFrequentPairs !== false);
-          setShowInfrequentPairs(!!savedGame.showInfrequentPairs); // NIEUW
+          setShowInfrequentPairs(!!savedGame.showInfrequentPairs);
           setSyncOpponentRatings(!!savedGame.syncOpponentRatings);
         } else { localStorage.removeItem(UNSAVED_GAME_KEY); }
       } catch (e) { localStorage.removeItem(UNSAVED_GAME_KEY); }
@@ -417,8 +478,13 @@ const App: React.FC = () => {
     setIsLoading(true); setError(null);
     try {
       const data = await getInitialData();
-      setSeasonStartDate(data.seasonStartDate || ''); setPlayers(data.players); setIntroPlayers((data as any).introPlayers || []);
-      setHistory(data.history); setCompetitionName(data.competitionName || null); setRatingLogs(data.ratingLogs || []); setTrophies(data.trophies || []);
+      setSeasonStartDate(data.seasonStartDate || ''); 
+      setPlayers(data.players); 
+      setIntroPlayers((data as any).introPlayers || []);
+      setHistory(data.history); 
+      setCompetitionName(data.competitionName || null); 
+      setRatingLogs(data.ratingLogs || []); 
+      setTrophies(data.trophies || []);
     } catch (e: any) { setError(e.message || 'Laden mislukt.'); } finally { setIsLoading(false); }
   }, []);
 
@@ -455,6 +521,7 @@ const App: React.FC = () => {
       const lowerLine = trimmedLine.toLowerCase();
       if (nonNameIndicators.some((word) => lowerLine.includes(word)) && lowerLine.length > 20) return;
       if (monthNames.some((month) => lowerLine.includes(month)) && (lowerLine.match(/\d/g) || []).length > 1) return;
+
       let cleaned = trimmedLine.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').replace(/\[.*?\]/, '').replace(/^\s*\d+[\.\)]?\s*/, '').split(/[:\-\–]/)[0].replace(/[\(\[].*?[\)\]]/g, '').trim();
       if (cleaned && cleaned.length > 1 && /[a-zA-Z]/.test(cleaned) && cleaned.length < 30) potentialNames.add(cleaned);
     });
@@ -467,19 +534,26 @@ const App: React.FC = () => {
       if (!playerLookup.has(normalizedFirstName)) playerLookup.set(normalizedFirstName, player);
     });
 
-    const newSet = new Set(attendingPlayerIds);
-    const added: string[] = []; const missed: string[] = [];
-    potentialNames.forEach((name) => {
-      const matched = playerLookup.get(normalize(name)) || playerLookup.get(normalize(name).split(' ')[0]);
-      if (matched) { if (!newSet.has(matched.id)) added.push(matched.name); newSet.add(matched.id); }
-      else missed.push(name);
+    const newAttendingPlayerIds = new Set(attendingPlayerIds);
+    const newlyFoundPlayers: string[] = [];
+    const notFoundOriginalNames: string[] = [];
+
+    potentialNames.forEach((originalName) => {
+      const normalizedName = normalize(originalName);
+      const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
+      if (matchedPlayer) {
+        if (!newAttendingPlayerIds.has(matchedPlayer.id)) newlyFoundPlayers.push(matchedPlayer.name);
+        newAttendingPlayerIds.add(matchedPlayer.id);
+      } else { notFoundOriginalNames.push(originalName); }
     });
-    setAttendingPlayerIds(newSet);
-    if (added.length > 0 || missed.length > 0) {
-      let msg = ''; if (added.length) msg += `${added.length} speler(s) toegevoegd: ${added.join(', ')}.`;
-      if (missed.length) msg += `${msg ? '\n' : ''}Niet herkend: ${missed.join(', ')}.`;
-      showNotification(msg, missed.length ? 'error' : 'success');
-    } else if (potentialNames.size > 0) { showNotification('Alle spelers waren al aangemeld.', 'success'); }
+
+    setAttendingPlayerIds(newAttendingPlayerIds);
+    if (newlyFoundPlayers.length > 0 || notFoundOriginalNames.length > 0) {
+      let message = ''; let type: 'success' | 'error' = 'success';
+      if (newlyFoundPlayers.length > 0) message += `${newlyFoundPlayers.length} speler(s) toegevoegd: ${newlyFoundPlayers.join(', ')}.`;
+      if (notFoundOriginalNames.length > 0) { message += `${message ? '\n' : ''}Niet herkend: ${notFoundOriginalNames.join(', ')}.`; type = 'error'; }
+      showNotification(message, type);
+    } else if (potentialNames.size > 0) { showNotification('Alle spelers uit de lijst waren al aangemeld.', 'success'); }
   };
 
   const resetGameState = () => {
@@ -547,8 +621,12 @@ const App: React.FC = () => {
   const handleGoalChange = (matchIndex: number, teamIdentifier: 'team1' | 'team2', playerId: number, count: number) => {
     const key = `${matchIndex}-${teamIdentifier}`;
     setGoalScorers((prev) => {
-      const list = [...(prev[key] || [])]; const idx = list.findIndex((g) => g.playerId === playerId);
-      if (count > 0) { if (idx > -1) list[idx] = { ...list[idx], count }; else list.push({ playerId, count }); }
+      const list = [...(prev[key] || [])]; 
+      const idx = list.findIndex((g) => g.playerId === playerId);
+      if (count > 0) { 
+        if (idx > -1) list[idx] = { ...list[idx], count }; 
+        else list.push({ playerId: playerId, count }); 
+      }
       else if (idx > -1) list.splice(idx, 1);
       return { ...prev, [key]: list };
     });
@@ -660,6 +738,8 @@ const App: React.FC = () => {
   const handleSaveManualEntry = async (d: any) => { if (requireAdmin()) { setActionInProgress('savingManual'); await handleSaveSession(d); setActionInProgress(null); } };
   const handleSetCompetitionName = async (n: string) => { try { await setCompetitionNameService(n); setCompetitionName(n); } catch (e: any) { showNotification(e.message, 'error'); } };
 
+  const selectedPlayer = players.find((p) => p.id === selectedPlayerId);
+
   const renderMainView = () => (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
       <div className="lg:col-span-1 space-y-8">
@@ -762,6 +842,55 @@ const App: React.FC = () => {
     </div>
   );
 
+  const renderContent = () => {
+    switch (currentView) {
+      case 'main':
+        return renderMainView();
+      case 'rules':
+        return <Rules />;
+      case 'stats':
+        return isManagementAuthenticated ? (
+          <Statistics history={activeHistory} players={players} onSelectPlayer={handleSelectPlayer} competitionName={competitionName || "Statistieken"} />
+        ) : (
+          <LoginScreen onLogin={handleLogin} />
+        );
+      case 'history':
+        return (
+          <HistoryView history={activeHistory} players={players} isAuthenticated={isManagementAuthenticated} onDeleteSession={() => {}} />
+        );
+      case 'playerManagement':
+        return isManagementAuthenticated ? (
+          <PlayerManagement players={players} onAdd={handleAddPlayer} onUpdate={handleUpdatePlayer} onDelete={handleDeletePlayer} isLoading={!!actionInProgress} />
+        ) : (
+          <LoginScreen onLogin={handleLogin} />
+        );
+      case 'playerDetail':
+        return selectedPlayer ? (
+          <PlayerDetail player={selectedPlayer} history={activeHistory} players={players} ratingLogs={ratingLogs} trophies={trophies} seasonStartDate={seasonStartDate} competitionName={competitionName} onBack={() => setCurrentView('stats')} />
+        ) : (
+          <div className="text-center p-8 bg-gray-800 rounded-xl"><p>Speler niet gevonden.</p><button onClick={() => setCurrentView('stats')} className="mt-4 text-cyan-400 underline">Terug naar stats</button></div>
+        );
+      case 'manualEntry':
+        return <ManualEntry allPlayers={players} onSave={handleSaveManualEntry} isLoading={actionInProgress === 'savingManual'} />;
+      case 'competitionManagement':
+        return isManagementAuthenticated ? (
+          <CompetitionManagement currentHistory={history} players={players} seasonStartDate={seasonStartDate} onViewArchive={setViewingArchive} onRefresh={fetchData} currentCompetitionName={competitionName} onSetCompetitionName={handleSetCompetitionName} />
+        ) : (
+          <LoginScreen onLogin={handleLogin} />
+        );
+      case 'trophyRoom':
+        return (
+          <TrophyRoom trophies={trophies} players={players} isAuthenticated={isManagementAuthenticated} onAddTrophy={handleAddTrophy} onDeleteTrophy={handleDeleteTrophy} />
+        );
+      case 'nk':
+        return (
+          <NKManager players={players} introPlayers={introPlayers} onClose={() => setCurrentView('main')} />
+        );
+      default:
+        return renderMainView();
+    }
+  };
+
   const NavItem = ({ view, label, icon, isProtected, colorClass }: any) => (
     <button onClick={() => { if (view === 'main') setViewingArchive(null); setCurrentView(view); }} className={`group flex flex-col items-center p-2 rounded-xl transition-all ${currentView === view ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`}>
       <div className={`relative p-3 rounded-2xl shadow-lg mb-1 ${colorClass}`}>
@@ -793,16 +922,7 @@ const App: React.FC = () => {
           </div>
         </div>
         <main>
-          {currentView === 'main' && renderMainView()}
-          {currentView === 'rules' && <Rules />}
-          {currentView === 'stats' && (isManagementAuthenticated ? <Statistics history={activeHistory} players={players} onSelectPlayer={handleSelectPlayer} competitionName={competitionName || "Statistieken"} /> : <LoginScreen onLogin={handleLogin} />)}
-          {currentView === 'history' && <HistoryView history={activeHistory} players={players} isAuthenticated={isManagementAuthenticated} onDeleteSession={() => {}} />}
-          {currentView === 'playerManagement' && (isManagementAuthenticated ? <PlayerManagement players={players} onAdd={handleAddPlayer} onUpdate={handleUpdatePlayer} onDelete={handleDeletePlayer} isLoading={!!actionInProgress} /> : <LoginScreen onLogin={handleLogin} />)}
-          {currentView === 'playerDetail' && selectedPlayer && <PlayerDetail player={selectedPlayer} history={activeHistory} players={players} ratingLogs={ratingLogs} trophies={trophies} seasonStartDate={seasonStartDate} competitionName={competitionName} onBack={() => setCurrentView('stats')} />}
-          {currentView === 'manualEntry' && <ManualEntry allPlayers={players} onSave={handleSaveManualEntry} isLoading={actionInProgress === 'savingManual'} />}
-          {currentView === 'competitionManagement' && (isManagementAuthenticated ? <CompetitionManagement currentHistory={history} players={players} seasonStartDate={seasonStartDate} onViewArchive={setViewingArchive} onRefresh={fetchData} currentCompetitionName={competitionName} onSetCompetitionName={handleSetCompetitionName} /> : <LoginScreen onLogin={handleLogin} />)}
-          {currentView === 'trophyRoom' && <TrophyRoom trophies={trophies} players={players} isAuthenticated={isManagementAuthenticated} onAddTrophy={handleAddTrophy} onDeleteTrophy={handleDeleteTrophy} />}
-          {currentView === 'nk' && <NKManager players={players} introPlayers={introPlayers} onClose={() => setCurrentView('main')} />}
+          {renderContent()}
         </main>
       </div>
     </div>
