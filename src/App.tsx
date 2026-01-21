@@ -570,7 +570,7 @@ const App: React.FC = () => {
   const top6Ids = useMemo(() => {
     const standings = computeSeasonStandingsByPlayer(activeHistory);
     return new Set(attendingPlayers.map((p) => ({ id: p.id, ...standings.get(p.id) || { pts: 0, gf: 0, gd: 0 } }))
-      .sort((a, b) => b.pts - a.pts || b.gf - a.gf || b.gd - a.gd || a.id - b.id)
+      .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.id - b.id)
       .slice(0, 6).map((x) => x.id));
   }, [activeHistory, attendingPlayers]);
 
