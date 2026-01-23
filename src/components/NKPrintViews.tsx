@@ -34,6 +34,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           .match-card { border: 3px solid #000 !important; margin-bottom: 10px !important; page-break-inside: avoid !important; padding: 10px 15px !important; background: white !important; border-radius: 12px; }
           .hall-label { font-size: 20pt !important; font-weight: 900 !important; text-transform: uppercase; color: black !important; }
           .player-name { font-size: 14pt !important; font-weight: bold !important; color: black !important; text-transform: uppercase; }
+          .strike-name { text-decoration: line-through !important; opacity: 0.4 !important; color: #666 !important; }
           .score-box { border: 2px solid black; width: 38pt; height: 38pt; background: white !important; }
           .label-small { font-size: 9pt !important; font-weight: 900; }
           .print-table { border-collapse: collapse !important; width: 100% !important; border: 2px solid black !important; color: black !important; }
@@ -55,46 +56,62 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
               </h1>
             </div>
             <div className="space-y-2">
-              {round.matches.map(m => (
-                <div key={m.id} className="match-card">
-                  <div className="flex justify-between items-center mb-2 border-b-2 border-black pb-1">
-                    <span className="hall-label">ZAAL: {m.hallName}</span>
-                    <div className="flex items-center">
-                      <span className="color-scheids label-small uppercase mr-2">SCHEIDS:</span>
-                      <span className="player-name">{m.referee?.name}</span>
+              {round.matches.map(m => {
+                const isFixed = (session as any).isFixedTeams;
+                return (
+                  <div key={m.id} className="match-card">
+                    <div className="flex justify-between items-center mb-2 border-b-2 border-black pb-1">
+                      <span className="hall-label">ZAAL: {m.hallName}</span>
+                      {!isFixed ? (
+                        <div className="flex items-center">
+                          <span className="color-scheids label-small uppercase mr-2">SCHEIDS:</span>
+                          <span className="player-name">{m.referee?.name}</span>
+                        </div>
+                      ) : (
+                        <span className="label-small uppercase font-black color-blauw">Vaste Teams</span>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1">
-                      <div className="label-small underline mb-1 color-blauw uppercase tracking-widest">TEAM BLAUW</div>
-                      <div className="space-y-0.5">
-                        {m.team1.map(p => <div key={p.id} className="player-name">{p.name}</div>)}
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <div className="label-small underline mb-1 color-blauw uppercase tracking-widest">{(m as any).team1Name || 'TEAM BLAUW'}</div>
+                        <div className="space-y-0.5">
+                          {m.team1.map(p => {
+                            const isReserve = (m as any).t1ReserveId === p.id;
+                            return <div key={p.id} className={`player-name ${isReserve ? 'strike-name' : ''}`}>{p.name}</div>;
+                          })}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 px-6">
+                        <div className="score-box"></div>
+                        <span className="font-black text-2xl" style={{color: 'black'}}>-</span>
+                        <div className="score-box"></div>
+                      </div>
+                      <div className="flex-1 text-right">
+                        <div className="label-small underline mb-1 color-geel uppercase tracking-widest">{(m as any).team2Name || 'TEAM GEEL'}</div>
+                        <div className="space-y-0.5">
+                          {m.team2.map(p => {
+                            const isReserve = (m as any).t2ReserveId === p.id;
+                            return <div key={p.id} className={`player-name ${isReserve ? 'strike-name' : ''}`}>{p.name}</div>;
+                          })}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 px-6">
-                      <div className="score-box"></div>
-                      <span className="font-black text-2xl" style={{color: 'black'}}>-</span>
-                      <div className="score-box"></div>
-                    </div>
-                    <div className="flex-1 text-right">
-                      <div className="label-small underline mb-1 color-geel uppercase tracking-widest">TEAM GEEL</div>
-                      <div className="space-y-0.5">
-                        {m.team2.map(p => <div key={p.id} className="player-name">{p.name}</div>)}
+                    
+                    {!isFixed && (
+                      <div className="mt-4 pt-2 border-t-2 border-dashed border-black flex justify-around">
+                        <div className="flex items-center">
+                            <span className="color-reserve label-small uppercase font-black">RESERVE 1:</span>
+                            <span className="player-name ml-2" style={{fontSize: '12pt'}}>{m.subHigh?.name}</span>
+                        </div>
+                        <div className="flex items-center">
+                            <span className="color-reserve label-small uppercase font-black">RESERVE 2:</span>
+                            <span className="player-name ml-2" style={{fontSize: '12pt'}}>{m.subLow?.name}</span>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
-                  <div className="mt-4 pt-2 border-t-2 border-dashed border-black flex justify-around">
-                    <div className="flex items-center">
-                        <span className="color-reserve label-small uppercase font-black">RESERVE 1:</span>
-                        <span className="player-name ml-2" style={{fontSize: '12pt'}}>{m.subHigh?.name}</span>
-                    </div>
-                    <div className="flex items-center">
-                        <span className="color-reserve label-small uppercase font-black">RESERVE 2:</span>
-                        <span className="player-name ml-2" style={{fontSize: '12pt'}}>{m.subLow?.name}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -122,11 +139,18 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
               {session.rounds.map(r => {
                 const m = r.matches.find(match => match.hallName.trim().toUpperCase() === hall.trim().toUpperCase());
                 if (!m) return null;
+                const isFixed = (session as any).isFixedTeams;
+
                 return (
                   <tr key={r.roundNumber} className="font-bold uppercase">
                     <td className="text-center text-xl bg-gray-50">{r.roundNumber}</td>
                     <td className="text-center text-xs">{(r as any).startTime}<br/>{(r as any).endTime}</td>
-                    <td className="text-[9pt] bg-blauw-trans">{m.team1.map(p => <div key={p.id}>{p.name}</div>)}</td>
+                    <td className="text-[9pt] bg-blauw-trans">
+                      <div className="label-small mb-1 opacity-50">{(m as any).team1Name}</div>
+                      {m.team1.map(p => (
+                        <div key={p.id} className={(m as any).t1ReserveId === p.id ? 'strike-name' : ''}>{p.name}</div>
+                      ))}
+                    </td>
                     <td className="text-center">
                       <div className="flex justify-center items-center gap-1">
                         <div className="small-score-box"></div>
@@ -134,11 +158,20 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                         <div className="small-score-box"></div>
                       </div>
                     </td>
-                    <td className="text-[9pt] bg-geel-trans">{m.team2.map(p => <div key={p.id}>{p.name}</div>)}</td>
-                    <td className="text-[9pt] bg-scheids-trans">{m.referee?.name}</td>
+                    <td className="text-[9pt] bg-geel-trans">
+                      <div className="label-small mb-1 opacity-50">{(m as any).team2Name}</div>
+                      {m.team2.map(p => (
+                        <div key={p.id} className={(m as any).t2ReserveId === p.id ? 'strike-name' : ''}>{p.name}</div>
+                      ))}
+                    </td>
+                    <td className="text-[9pt] bg-scheids-trans">{!isFixed ? m.referee?.name : '-'}</td>
                     <td className="text-[8pt] bg-reserve-trans">
-                      <div>1: {m.subHigh?.name}</div>
-                      <div>2: {m.subLow?.name}</div>
+                      {!isFixed ? (
+                        <>
+                          <div>1: {m.subHigh?.name}</div>
+                          <div>2: {m.subLow?.name}</div>
+                        </>
+                      ) : '-'}
                     </td>
                   </tr>
                 );
