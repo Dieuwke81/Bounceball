@@ -38,16 +38,16 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
   const [selectedOption, setSelectedOption] = useState<any | null>(null);
   const [manualTimes, setManualTimes] = useState<{start: string, end: string}[]>([]);
 
-  // 1. Laden van opgeslagen data bij opstarten
   useEffect(() => {
     const savedSession = localStorage.getItem('bounceball_nk_session');
     if (savedSession) setSession(JSON.parse(savedSession));
 
     const savedSource = localStorage.getItem('bounceball_nk_player_source');
-    if (savedSource) setPlayerSource(savedSource as any);
+    if (savedSource === 'intro' || savedSource === 'database') {
+      setPlayerSource(savedSource as 'database' | 'intro');
+    }
   }, []);
 
-  // 2. Opslaan van data bij wijzigingen
   useEffect(() => {
     if (session) {
       localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
@@ -59,7 +59,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
     return playerSource === 'database' ? players : introPlayers;
   }, [playerSource, players, introPlayers]);
 
-  // ORIGINELE KLEURENLOGICA VOOR INTRODUCTIE
   const ratingColors = useMemo(() => {
     if (playerSource !== 'intro') return new Map();
     const uniqueRatings = Array.from(new Set(activePlayerPool.map(p => p.rating))).sort((a, b) => b - a);
@@ -263,7 +262,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
   };
 
   const handleStartFixedNK = async () => {
-    setIsGenerating(true); setProgressMsg("Optimaliseren (Best of 10.000)...");
+    setIsGenerating(true); setProgressMsg("Optimaliseren (Best of 50.000)...");
     try {
       const p = activePlayerPool.filter(x => selectedPlayerIds.has(x.id));
       const s = await generateFixedNKSchedule(p, hallNames, playersPerTeam, "NK Vaste Teams", manualTimes);
@@ -421,7 +420,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                         const numTeams = selectedPlayerIds.size / playersPerTeam;
                         const roundsCount = numTeams % 2 === 0 ? numTeams - 1 : numTeams;
                         setManualTimes(Array.from({ length: roundsCount }, () => ({ start: '', end: '' })));
-                    }} className="mt-4 bg-amber-500 text-white px-8 py-3 rounded-2xl text-xs font-black uppercase shadow-lg hover:scale-105 transition-all">Bevestig Deelnemers</button>
+                    }} className="mt-4 bg-amber-500 text-white px-8 py-3 rounded-2xl text-xs font-black uppercase shadow-lg hover:scale-105 transition-all font-black">Bevestig Deelnemers</button>
                 )}
                </div>
                {manualTimes.length > 0 && (
@@ -490,16 +489,16 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
         </div>
       </div>
 
-      <div className="no-print space-y-8 text-white font-black">
+      <div className="no-print space-y-8 text-white font-black font-black">
         {activeTab === 'schedule' && (
           <>
             <input type="text" placeholder="Naam markeren..." value={highlightName} onChange={e => setHighlightName(e.target.value)} className="w-full bg-gray-800 p-4 rounded-2xl text-white border border-gray-700 outline-none focus:ring-2 ring-green-500 transition-all font-black uppercase" />
             
             {(session as any).isFixedTeams && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 animate-fade-in font-black">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 animate-fade-in font-black font-black">
                     {(session as any).fixedTeams.map((team: any, i: number) => (
-                        <div key={i} className="bg-gray-800 p-3 rounded-2xl border border-gray-700 shadow-lg">
-                            <div className="flex justify-between items-center mb-1">
+                        <div key={i} className="bg-gray-800 p-3 rounded-2xl border border-gray-700 shadow-lg font-black font-black">
+                            <div className="flex justify-between items-center mb-1 font-black">
                                 <input 
                                     type="text" 
                                     value={team.name} 
@@ -517,7 +516,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
             )}
 
             {! (session as any).isFixedTeams && (
-                <div className="bg-gray-800/80 border-l-4 border-amber-500 p-4 rounded-r-2xl flex items-center gap-6 shadow-xl mb-4 text-white font-black">
+                <div className="bg-gray-800/80 border-l-4 border-amber-500 p-4 rounded-r-2xl flex items-center gap-6 shadow-xl mb-4 text-white font-black font-black">
                 <div className="flex-1 flex justify-between items-center text-white">
                     <div>
                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none font-black text-white">Maximale rating verschil</p>
@@ -533,7 +532,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
             )}
 
             {session.rounds.map((round, rIdx) => (
-              <div key={rIdx} className="space-y-4 text-white font-black">
+              <div key={rIdx} className="space-y-4 text-white font-black font-black">
                 <div className="flex items-center gap-4 text-white font-black">
                     <h3 className="text-xl font-black text-amber-500 uppercase italic border-l-4 border-amber-500 pl-4 tracking-tighter text-white">Ronde {round.roundNumber}</h3>
                     {(round as any).startTime && (
@@ -542,25 +541,25 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                         </span>
                     )}
                 </div>
-                <div className="grid lg:grid-cols-2 gap-6 text-white font-black">
+                <div className="grid lg:grid-cols-2 gap-6 text-white font-black font-black">
                   {round.matches.map((match, mIdx) => {
                     const avg1 = match.team1.reduce((s, p) => s + p.rating, 0) / match.team1.length;
                     const avg2 = match.team2.reduce((s, p) => s + p.rating, 0) / match.team2.length;
                     const isFixed = (session as any).isFixedTeams;
 
                     return (
-                      <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border-2 ${match.isPlayed ? 'border-green-500/50 shadow-lg shadow-green-500/5' : 'border-gray-700'} overflow-hidden text-white font-black`}>
-                        <div className="bg-gray-900/50 p-3 flex justify-between text-[10px] font-black uppercase text-gray-500 tracking-widest text-white">
+                      <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border-2 ${match.isPlayed ? 'border-green-500/50 shadow-lg shadow-green-500/5' : 'border-gray-700'} overflow-hidden text-white font-black font-black`}>
+                        <div className="bg-gray-900/50 p-3 flex justify-between text-[10px] font-black uppercase text-gray-500 tracking-widest text-white font-black font-black">
                           <span>📍 ZAAL <span className="text-red-500 text-sm ml-1 font-black uppercase text-white">{match.hallName}</span></span>
                           {isFixed ? (
-                             <span className="text-cyan-400 font-black">Vaste Teams</span>
+                             <span className="text-cyan-400 font-black font-black">Vaste Teams</span>
                           ) : (
-                             <span className={`px-2 py-0.5 rounded transition-all ${isHighlighted(match.referee?.name || '') ? 'bg-green-500 text-white font-black scale-110 shadow-lg font-black' : 'text-pink-400'}`}>Ref: {match.referee?.name}</span>
+                             <span className={`px-2 py-0.5 rounded transition-all ${isHighlighted(match.referee?.name || '') ? 'bg-green-500 text-white font-black scale-110 shadow-lg font-black' : 'text-pink-400 font-black'}`}>Ref: {match.referee?.name}</span>
                           )}
                         </div>
-                        <div className="p-5 flex justify-between items-stretch gap-4 text-white font-black">
+                        <div className="p-5 flex justify-between items-stretch gap-4 text-white font-black font-black">
                           <div className="flex-1 space-y-1 text-left text-white font-black">
-                            <div className="text-[9px] text-blue-400 font-black uppercase mb-2 tracking-widest text-white">{(match as any).team1Name || 'Team Blauw'}</div>
+                            <div className="text-[9px] text-blue-400 font-black uppercase mb-2 tracking-widest text-white font-black font-black font-black">{(match as any).team1Name || 'Team Blauw'}</div>
                             {match.team1.map(p => {
                                 const rColor = ratingColors.get(p.rating);
                                 return (
@@ -569,25 +568,25 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                                     </div>
                                 );
                             })}
-                            <div className="text-[9px] text-gray-500 mt-2 font-black">GEM: {avg1.toFixed(2)}</div>
+                            <div className="text-[9px] text-gray-500 mt-2 font-black font-black font-black font-black">GEM: {avg1.toFixed(2)}</div>
                           </div>
-                          <div className="flex flex-col items-center justify-center gap-3 text-white font-black">
-                            <div className="flex items-center gap-2 text-white font-black">
+                          <div className="flex flex-col items-center justify-center gap-3 text-white font-black font-black">
+                            <div className="flex items-center gap-2 text-white font-black font-black">
                               <input type="number" value={match.team1Score} onFocus={(e) => e.target.select()} onChange={e => {
                                   const newS = JSON.parse(JSON.stringify(session));
                                   newS.rounds[rIdx].matches[mIdx].team1Score = +e.target.value;
                                   newS.rounds[rIdx].matches[mIdx].isPlayed = true;
                                   setSession(newS);
-                                }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none focus:border-amber-500" />
-                              <span className="text-gray-600 font-black">-</span>
+                                }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border border-gray-700 text-white outline-none focus:border-amber-500 font-black" />
+                              <span className="text-gray-600 font-black font-black">-</span>
                               <input type="number" value={match.team2Score} onFocus={(e) => e.target.select()} onChange={e => {
                                   const newS = JSON.parse(JSON.stringify(session));
                                   newS.rounds[rIdx].matches[mIdx].team2Score = +e.target.value;
                                   newS.rounds[rIdx].matches[mIdx].isPlayed = true;
                                   setSession(newS);
-                                }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border-2 border-gray-700 text-white outline-none focus:border-amber-500" />
+                                }} className="w-12 h-12 bg-gray-900 text-center rounded-xl font-black text-xl border border-gray-700 text-white outline-none focus:border-amber-500 font-black" />
                             </div>
-                            <div className="flex flex-col items-center gap-1 text-white font-black">
+                            <div className="flex flex-col items-center gap-1 text-white font-black font-black font-black font-black">
                               <button onClick={() => {
                                   const newS = JSON.parse(JSON.stringify(session));
                                   newS.rounds[rIdx].matches[mIdx].isPlayed = true;
@@ -599,12 +598,12 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                                   newS.rounds[rIdx].matches[mIdx].team1Score = 0;
                                   newS.rounds[rIdx].matches[mIdx].team2Score = 0;
                                   setSession(newS);
-                              }} className="text-[8px] text-red-500 font-black mt-1 uppercase font-black">Reset</button>
-                              <div className="text-[8px] text-gray-500 font-bold uppercase tracking-tighter mt-1 font-black">Verschil: {Math.abs(avg1 - avg2).toFixed(2)}</div>
+                              }} className="text-[8px] text-red-500 font-black mt-1 uppercase font-black font-black font-black">Reset</button>
+                              <div className="text-[8px] text-gray-500 font-bold uppercase tracking-tighter mt-1 font-black font-black">Verschil: {Math.abs(avg1 - avg2).toFixed(2)}</div>
                             </div>
                           </div>
-                          <div className="flex-1 space-y-1 text-right text-white font-black">
-                            <div className="text-[9px] text-amber-400 font-black uppercase mb-2 tracking-widest text-white">{(match as any).team2Name || 'Team Geel'}</div>
+                          <div className="flex-1 space-y-1 text-right text-white font-black font-black font-black">
+                            <div className="text-[9px] text-amber-400 font-black uppercase mb-2 tracking-widest text-white font-black font-black">{(match as any).team2Name || 'Team Geel'}</div>
                             {match.team2.map(p => {
                                 const rColor = ratingColors.get(p.rating);
                                 return (
@@ -613,11 +612,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                                     </div>
                                 );
                             })}
-                            <div className="text-[9px] text-gray-500 mt-2 font-black">GEM: {avg2.toFixed(2)}</div>
+                            <div className="text-[9px] text-gray-500 mt-2 font-black font-black font-black font-black">GEM: {avg2.toFixed(2)}</div>
                           </div>
                         </div>
                         {!isFixed && (
-                            <div className="p-2.5 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-8 text-[9px] font-black uppercase text-white">
+                            <div className="p-2.5 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-8 text-[9px] font-black uppercase text-white font-black font-black font-black">
                             <span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subHigh?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subHigh?.name || '') ? 'bg-green-500 text-white font-black' : 'text-pink-400/70'}`}>Res 1: {match.subHigh?.name}</span>
                             <span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subLow?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subLow?.name || '') ? 'bg-green-500 text-white font-black' : 'text-pink-400/70'}`}>Res 2: {match.subLow?.name}</span>
                             </div>
@@ -632,21 +631,21 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
         )}
 
         {activeTab === 'standings' && (
-          <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden text-white animate-fade-in font-black text-center">
-            <table className="w-full text-left font-black text-white uppercase font-black">
-              <thead className="bg-gray-900 text-gray-400 text-[10px] font-black tracking-widest uppercase">
-                <tr><th className="p-5 w-12 text-center text-white font-black uppercase">#</th><th className="p-5 text-white font-black uppercase text-left">{(session as any).isFixedTeams ? 'Team' : 'Speler'}</th><th className="p-5 text-center text-white font-black uppercase">W</th><th className="p-5 text-center text-white font-black uppercase">DS</th><th className="p-5 text-center text-white font-black uppercase">PTN</th></tr>
+          <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden text-white animate-fade-in font-black text-center font-black">
+            <table className="w-full text-left font-black text-white uppercase font-black font-black">
+              <thead className="bg-gray-900 text-gray-400 text-[10px] font-black tracking-widest uppercase font-black font-black font-black">
+                <tr><th className="p-5 w-12 text-center text-white font-black uppercase">#</th><th className="p-5 text-white font-black uppercase text-left">{(session as any).isFixedTeams ? 'Team' : 'Speler'}</th><th className="p-5 text-center text-white font-black uppercase font-black">W</th><th className="p-5 text-center text-white font-black uppercase font-black">DS</th><th className="p-5 text-center text-white font-black uppercase font-black">PTN</th></tr>
               </thead>
-              <tbody className="divide-y divide-gray-700/50 uppercase text-white font-black">
+              <tbody className="divide-y divide-gray-700/50 uppercase text-white font-black font-black">
                 {currentStandings.map((entry, idx) => (
-                  <tr key={idx} className={`transition-colors ${idx < 3 ? 'bg-amber-500/5' : 'hover:bg-gray-700/30'} text-white font-black`}>
-                    <td className="p-5 text-center font-black text-amber-500 uppercase font-black">{idx + 1}</td>
-                    <td className="p-5 font-bold text-sm tracking-tight text-white font-black uppercase text-left">{(entry as any).name || (entry as any).playerName}</td>
+                  <tr key={idx} className={`transition-colors ${idx < 3 ? 'bg-amber-500/5' : 'hover:bg-gray-700/30'} text-white font-black font-black`}>
+                    <td className="p-5 text-center font-black text-amber-500 uppercase font-black font-black">{idx + 1}</td>
+                    <td className="p-5 font-bold text-sm tracking-tight text-white font-black uppercase text-left font-black">{(entry as any).name || (entry as any).playerName}</td>
                     <td className="p-5 text-center text-gray-400 font-mono text-xs text-white font-black uppercase font-black">
                       {(entry as any).matchesPlayed}
                     </td>
                     <td className={`p-5 text-center font-black font-mono text-xs ${entry.goalDifference > 0 ? 'text-green-500' : entry.goalDifference < 0 ? 'text-red-500' : 'text-gray-500'}`}>{entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}</td>
-                    <td className="p-5 text-center font-black"><span className="bg-gray-900 text-amber-400 px-4 py-1.5 rounded-full font-black text-sm shadow-inner border border-amber-500/20 font-black">{entry.points}</span></td>
+                    <td className="p-5 text-center font-black font-black"><span className="bg-gray-900 text-amber-400 px-4 py-1.5 rounded-full font-black text-sm shadow-inner border border-amber-500/20 font-black">{entry.points}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -655,14 +654,14 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
         )}
 
         {activeTab === 'analysis' && (
-          <div className="space-y-4 animate-fade-in text-white no-print font-black">
-            <input type="text" placeholder="Duo's filteren..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl p-4 text-sm outline-none focus:border-amber-500 transition-all text-white font-black uppercase font-black" />
-            <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden max-h-[600px] overflow-y-auto uppercase custom-scrollbar text-white text-center font-black">
-              <table className="w-full text-left text-white font-black uppercase text-center font-black">
-                <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0 z-20 text-white font-black uppercase">
-                  <tr><th className="p-5 text-white font-black uppercase text-left">Duo</th><th className="p-5 text-center text-white font-black uppercase">Samen</th><th className="p-5 text-center text-white font-black uppercase">Tegen</th><th className="p-5 text-center text-white font-black uppercase">Totaal</th></tr>
+          <div className="space-y-4 animate-fade-in text-white no-print font-black font-black font-black font-black font-black font-black">
+            <input type="text" placeholder="Duo's filteren..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl p-4 text-sm outline-none focus:border-amber-500 transition-all text-white font-black uppercase font-black font-black font-black" />
+            <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden max-h-[600px] overflow-y-auto uppercase custom-scrollbar text-white text-center font-black font-black font-black">
+              <table className="w-full text-left text-white font-black uppercase text-center font-black font-black font-black font-black">
+                <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0 z-20 text-white font-black uppercase font-black font-black font-black font-black font-black">
+                  <tr><th className="p-5 text-white font-black uppercase text-left">Duo</th><th className="p-5 text-center text-white font-black uppercase font-black">Samen</th><th className="p-5 text-center text-white font-black uppercase font-black">Tegen</th><th className="p-5 text-center text-white font-black uppercase font-black">Totaal</th></tr>
                 </thead>
-                <tbody className="divide-y divide-gray-700/50 text-white font-black uppercase font-black">
+                <tbody className="divide-y divide-gray-700/50 text-white font-black uppercase font-black font-black font-black font-black font-black">
                   {coOpData.filter(d => d.p1.toLowerCase().includes(searchTerm.toLowerCase()) || d.p2.toLowerCase().includes(searchTerm.toLowerCase())).map((pair, i) => {
                     const total = pair.together + pair.against;
                     let totalColor = "bg-green-500 text-white"; 
@@ -672,11 +671,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                     else if (total === totalRankings.third) totalColor = "bg-yellow-500 text-black font-black";
                     else if (total === totalRankings.fourth) totalColor = "bg-yellow-200 text-black font-bold";
                     return (
-                      <tr key={i} className="hover:bg-gray-700/20 transition-colors text-white font-black uppercase">
-                        <td className="p-5 text-xs font-bold tracking-tight text-left uppercase text-white font-black">{pair.p1} + {pair.p2}</td>
-                        <td className="p-5 text-center text-xs text-gray-400 font-mono text-white font-black uppercase">{pair.together}x</td>
-                        <td className="p-5 text-center text-xs text-gray-400 font-mono text-white font-black uppercase">{pair.against}x</td>
-                        <td className="p-5 text-center"><span className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${totalColor}`}>{total}x</span></td>
+                      <tr key={i} className="hover:bg-gray-700/20 transition-colors text-white font-black uppercase font-black font-black font-black font-black font-black">
+                        <td className="p-5 text-xs font-bold tracking-tight text-left uppercase text-white font-black font-black">{pair.p1} + {pair.p2}</td>
+                        <td className="p-5 text-center text-xs text-gray-400 font-mono text-white font-black uppercase font-black font-black font-black">{pair.together}x</td>
+                        <td className="p-5 text-center text-xs text-gray-400 font-mono text-white font-black uppercase font-black font-black font-black">{pair.against}x</td>
+                        <td className="p-5 text-center font-black font-black font-black font-black font-black font-black font-black"><span className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${totalColor}`}>{total}x</span></td>
                       </tr>
                     );
                   })}
