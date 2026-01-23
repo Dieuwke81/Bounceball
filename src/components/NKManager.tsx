@@ -35,7 +35,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
   const [selectedOption, setSelectedOption] = useState<any | null>(null);
   const [manualTimes, setManualTimes] = useState<{start: string, end: string}[]>([]);
 
-  // 1. Laden van opgeslagen data bij opstarten
   useEffect(() => {
     const savedSession = localStorage.getItem('bounceball_nk_session');
     if (savedSession) setSession(JSON.parse(savedSession));
@@ -46,7 +45,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
     }
   }, []);
 
-  // 2. Opslaan van data bij wijzigingen
   useEffect(() => {
     if (session) {
       localStorage.setItem('bounceball_nk_session', JSON.stringify(session));
@@ -145,11 +143,15 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
   const currentStandings = useMemo(() => {
     if (!session) return [];
     const stats = new Map<number, NKStandingsEntry>();
-    const participantIds = Array.from(new Set(session.rounds.flatMap(r => r.matches.flatMap(m => [...m.team1, ...m.team2].map(p => p.id))))).sort();
-    participantIds.forEach(id => {
-      const p = activePlayerPool.find(x => x.id === id);
-      stats.set(id, { playerId: id, playerName: p?.name || '?', points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0 });
-    });
+    
+    session.rounds.forEach(r => r.matches.forEach(m => {
+      [...m.team1, ...m.team2].forEach(p => {
+        if (!stats.has(p.id)) {
+          stats.set(p.id, { playerId: p.id, playerName: p.name || '?', points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0 });
+        }
+      });
+    }));
+
     session.rounds.forEach(r => r.matches.forEach(m => {
       if (!m.isPlayed) return;
       const p1 = m.team1Score > m.team2Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
@@ -158,7 +160,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
       m.team2.forEach(p => { const st = stats.get(p.id); if (st) { st.matchesPlayed++; st.points += p2; st.goalsFor += m.team2Score; st.goalDifference += (m.team2Score - m.team1Score); }});
     }));
     return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
-  }, [session, activePlayerPool]);
+  }, [session]);
 
   const coOpData = useMemo(() => {
     if (!session) return [];
@@ -476,10 +478,17 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                             <div className="flex flex-col items-center gap-1 text-white font-black">
                               <button onClick={() => {
                                   const newS = JSON.parse(JSON.stringify(session));
-                                  newS.rounds[rIdx].matches[mIdx].isPlayed = !match.isPlayed;
+                                  newS.rounds[rIdx].matches[mIdx].isPlayed = true;
                                   setSession(newS);
-                              }} className={`text-[8px] font-black px-3 py-1.5 rounded-lg transition-all ${match.isPlayed ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-700 text-gray-400 hover:text-white'}`}>{match.isPlayed ? 'HERSTEL' : 'OPSLAAN'}</button>
-                              <div className="text-[8px] text-gray-500 font-bold uppercase tracking-tighter">Verschil: {Math.abs(avg1 - avg2).toFixed(2)}</div>
+                              }} className={`text-[8px] font-black px-3 py-1.5 rounded-lg transition-all ${match.isPlayed ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-700 text-gray-400 hover:text-white'}`}>{match.isPlayed ? 'VERWERKT' : 'OPSLAAN'}</button>
+                              <button onClick={() => {
+                                  const newS = JSON.parse(JSON.stringify(session));
+                                  newS.rounds[rIdx].matches[mIdx].isPlayed = false;
+                                  newS.rounds[rIdx].matches[mIdx].team1Score = 0;
+                                  newS.rounds[rIdx].matches[mIdx].team2Score = 0;
+                                  setSession(newS);
+                              }} className="text-[8px] text-red-500 font-black mt-1 uppercase">Reset</button>
+                              <div className="text-[8px] text-gray-500 font-bold uppercase tracking-tighter mt-1">Verschil: {Math.abs(avg1 - avg2).toFixed(2)}</div>
                             </div>
                           </div>
                           <div className="flex-1 space-y-1 text-right text-white font-black">
