@@ -3,12 +3,13 @@ import { NKSession } from '../types';
 
 interface NKPrintViewsProps {
   session: NKSession;
-  activePrintType: 'overview' | 'halls' | 'players' | null;
+  activePrintType: 'overview' | 'halls' | 'players' | 'standings' | null;
   hallNames: string[];
   playerSchedules: any[];
+  currentStandings: any[];
 }
 
-const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, hallNames, playerSchedules }) => {
+const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, hallNames, playerSchedules, currentStandings }) => {
   if (!activePrintType) return null;
 
   return (
@@ -96,7 +97,6 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                         </div>
                       </div>
                     </div>
-                    
                     {!isFixed && (
                       <div className="mt-4 pt-2 border-t-2 border-dashed border-black flex justify-around">
                         <div className="flex items-center">
@@ -140,39 +140,21 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                 const m = r.matches.find(match => match.hallName.trim().toUpperCase() === hall.trim().toUpperCase());
                 if (!m) return null;
                 const isFixed = (session as any).isFixedTeams;
-
                 return (
                   <tr key={r.roundNumber} className="font-bold uppercase">
                     <td className="text-center text-xl bg-gray-50">{r.roundNumber}</td>
                     <td className="text-center text-xs">{(r as any).startTime}<br/>{(r as any).endTime}</td>
                     <td className="text-[9pt] bg-blauw-trans">
                       <div className="label-small mb-1 opacity-50">{(m as any).team1Name}</div>
-                      {m.team1.map(p => (
-                        <div key={p.id} className={(m as any).t1ReserveId === p.id ? 'strike-name' : ''}>{p.name}</div>
-                      ))}
+                      {m.team1.map(p => ( <div key={p.id} className={(m as any).t1ReserveId === p.id ? 'strike-name' : ''}>{p.name}</div> ))}
                     </td>
-                    <td className="text-center">
-                      <div className="flex justify-center items-center gap-1">
-                        <div className="small-score-box"></div>
-                        <span style={{color: 'black'}}>-</span>
-                        <div className="small-score-box"></div>
-                      </div>
-                    </td>
+                    <td className="text-center"><div className="flex justify-center items-center gap-1"><div className="small-score-box"></div><span style={{color: 'black'}}>-</span><div className="small-score-box"></div></div></td>
                     <td className="text-[9pt] bg-geel-trans">
                       <div className="label-small mb-1 opacity-50">{(m as any).team2Name}</div>
-                      {m.team2.map(p => (
-                        <div key={p.id} className={(m as any).t2ReserveId === p.id ? 'strike-name' : ''}>{p.name}</div>
-                      ))}
+                      {m.team2.map(p => ( <div key={p.id} className={(m as any).t2ReserveId === p.id ? 'strike-name' : ''}>{p.name}</div> ))}
                     </td>
                     <td className="text-[9pt] bg-scheids-trans">{!isFixed ? m.referee?.name : '-'}</td>
-                    <td className="text-[8pt] bg-reserve-trans">
-                      {!isFixed ? (
-                        <>
-                          <div>1: {m.subHigh?.name}</div>
-                          <div>2: {m.subLow?.name}</div>
-                        </>
-                      ) : '-'}
-                    </td>
+                    <td className="text-[8pt] bg-reserve-trans">{!isFixed ? (<><div>1: {m.subHigh?.name}</div><div>2: {m.subLow?.name}</div></>) : '-'}</td>
                   </tr>
                 );
               })}
@@ -184,58 +166,52 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
       {/* OPTIE 3: INDIVIDUELE SPELERS */}
       {activePrintType === 'players' && playerSchedules.map(ps => (
         <div key={ps.name} className="page-break p-6">
-          <div className="print-header">
-            <h1>PERSOONLIJK SCHEMA: {ps.name}</h1>
-          </div>
+          <div className="print-header"><h1>PERSOONLIJK SCHEMA: {ps.name}</h1></div>
           <table className="print-table" style={{marginTop: '10px'}}>
-            <thead>
-              <tr className="bg-gray-100 uppercase text-[9pt] color-black">
-                <th className="w-12 text-center">RD</th>
-                <th className="w-24 text-center">TIJD</th>
-                <th className="w-20 text-center">ZAAL</th>
-                <th className="text-left">ROL</th>
-                <th className="w-28 text-center">PUNTEN</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ps.rounds.map((r: any) => {
-                  let roleClass = "";
-                  if (r.role === "BLAUW") roleClass = "bg-blauw-trans";
-                  if (r.role === "GEEL") roleClass = "bg-geel-trans";
-                  if (r.role === "REF") roleClass = "bg-scheids-trans";
-                  if (r.role === "RES") roleClass = "bg-reserve-trans";
-                  
-                  let roleTextColor = "";
-                  if (r.role === "BLAUW") roleTextColor = "color-blauw";
-                  if (r.role === "GEEL") roleTextColor = "color-geel";
-                  if (r.role === "REF") roleTextColor = "color-scheids";
-                  if (r.role === "RES") roleTextColor = "color-reserve";
-
-                  return (
-                    <tr key={r.round} className={roleClass}>
-                      <td className="text-center text-xl py-2 font-black">{r.round}</td>
-                      <td className="text-center text-sm font-black">{r.startTime}</td>
-                      <td className="text-center text-3xl font-black uppercase">{r.hall}</td>
-                      <td className={`font-black uppercase text-lg ${roleTextColor}`}>{r.role}</td>
-                      <td className="text-center">
-                        {r.hall !== '-' && (r.role === "BLAUW" || r.role === "GEEL") ? (
-                           <div className="border-2 border-black w-10 h-10 mx-auto bg-white"></div>
-                        ) : ( <span className="text-gray-400 text-[7pt]">N.v.t.</span> )}
-                      </td>
-                    </tr>
-                  );
-              })}
-            </tbody>
-            <tfoot>
-                <tr className="bg-gray-50">
-                    <td colSpan={3} className="border-none"></td>
-                    <td className="text-right font-black text-xl py-4 pr-4 uppercase">TOTAAL:</td>
-                    <td className="text-center"><div className="border-4 border-black w-14 h-14 mx-auto bg-white"></div></td>
-                </tr>
-            </tfoot>
+            <thead><tr className="bg-gray-100 uppercase text-[9pt] color-black"><th className="w-12 text-center">RD</th><th className="w-24 text-center">TIJD</th><th className="w-20 text-center">ZAAL</th><th className="text-left">ROL</th><th className="w-28 text-center">PUNTEN</th></tr></thead>
+            <tbody>{ps.rounds.map((r: any) => {
+                  let roleClass = ""; if (r.role === "BLAUW") roleClass = "bg-blauw-trans"; if (r.role === "GEEL") roleClass = "bg-geel-trans"; if (r.role === "REF") roleClass = "bg-scheids-trans"; if (r.role === "RES") roleClass = "bg-reserve-trans";
+                  let roleTextColor = ""; if (r.role === "BLAUW") roleTextColor = "color-blauw"; if (r.role === "GEEL") roleTextColor = "color-geel"; if (r.role === "REF") roleTextColor = "color-scheids"; if (r.role === "RES") roleTextColor = "color-reserve";
+                  return (<tr key={r.round} className={roleClass}><td className="text-center text-xl py-2 font-black">{r.round}</td><td className="text-center text-sm font-black">{r.startTime}</td><td className="text-center text-3xl font-black uppercase">{r.hall}</td><td className={`font-black uppercase text-lg ${roleTextColor}`}>{r.role}</td><td className="text-center">{r.hall !== '-' && (r.role === "BLAUW" || r.role === "GEEL") ? ( <div className="border-2 border-black w-10 h-10 mx-auto bg-white"></div> ) : ( <span className="text-gray-400 text-[7pt]">N.v.t.</span> )}</td></tr>);
+              })}</tbody>
+            <tfoot><tr><td colSpan={3} className="border-none"></td><td className="text-right font-black text-xl py-4 pr-4 uppercase">TOTAAL:</td><td className="text-center"><div className="border-4 border-black w-14 h-14 mx-auto bg-white"></div></td></tr></tfoot>
           </table>
         </div>
       ))}
+
+      {/* NIEUWE OPTIE: STAND PRINTEN */}
+      {activePrintType === 'standings' && (
+        <div className="page-break p-12">
+          <div className="print-header">
+            <h1>HUIDIGE STAND: {session.competitionName}</h1>
+          </div>
+          <table className="print-table" style={{marginTop: '20px'}}>
+            <thead>
+              <tr className="uppercase">
+                <th className="w-16 text-center">#</th>
+                <th className="text-left">{(session as any).isFixedTeams ? 'TEAM NAAM' : 'SPELER NAAM'}</th>
+                <th className="w-24 text-center">GESPEELD</th>
+                <th className="w-24 text-center">SALDO</th>
+                <th className="w-24 text-center">PUNTEN</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentStandings.map((entry, idx) => (
+                <tr key={idx} className="font-black uppercase">
+                  <td className="text-center text-2xl py-4">{idx + 1}</td>
+                  <td className="text-xl pl-4">{(entry as any).name || (entry as any).playerName}</td>
+                  <td className="text-center text-lg">{(entry as any).matchesPlayed}</td>
+                  <td className="text-center text-lg">{entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}</td>
+                  <td className="text-center text-2xl bg-gray-100">{entry.points}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-20 text-center text-gray-400 text-xs uppercase font-bold italic">
+            Gegenereerd via Bounceball NK Manager • {new Date().toLocaleDateString('nl-NL')}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
