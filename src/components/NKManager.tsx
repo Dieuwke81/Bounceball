@@ -552,9 +552,19 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                 </div>
                 <div className="grid lg:grid-cols-2 gap-6 text-white font-black font-black">
                   {round.matches.map((match, mIdx) => {
-                    const avg1 = match.team1.reduce((s, p) => s + p.rating, 0) / match.team1.length;
-                    const avg2 = match.team2.reduce((s, p) => s + p.rating, 0) / match.team2.length;
                     const isFixed = (session as any).isFixedTeams;
+
+                    // NIEUWE LOGICA VOOR REBERVE BEREKENING IN MATCH-CARD
+                    let team1Active = match.team1;
+                    let team2Active = match.team2;
+
+                    if (isFixed) {
+                        if ((match as any).t1ReserveId) team1Active = match.team1.filter(p => p.id !== (match as any).t1ReserveId);
+                        if ((match as any).t2ReserveId) team2Active = match.team2.filter(p => p.id !== (match as any).t2ReserveId);
+                    }
+
+                    const avg1 = team1Active.reduce((s, p) => s + p.rating, 0) / team1Active.length;
+                    const avg2 = team2Active.reduce((s, p) => s + p.rating, 0) / team2Active.length;
 
                     return (
                       <div key={match.id} className={`match-card bg-gray-800 rounded-2xl border-2 ${match.isPlayed ? 'border-green-500/50 shadow-lg shadow-green-500/5' : 'border-gray-700'} overflow-hidden text-white font-black font-black`}>
@@ -575,8 +585,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                                 return (
                                     <div 
                                         key={p.id} 
-                                        onClick={() => (session as any).isFixedTeams && handleToggleReserve(rIdx, mIdx, 1, p.id)}
-                                        className={`text-sm uppercase font-bold border-l-2 pl-2 ${playerSource === 'intro' ? (rColor?.border || 'border-transparent') : 'border-transparent'} transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md' : ''} ${(session as any).isFixedTeams ? 'cursor-pointer hover:text-amber-500' : ''} ${isReserve ? 'line-through opacity-40 grayscale' : ''}`}
+                                        onClick={() => isFixed && handleToggleReserve(rIdx, mIdx, 1, p.id)}
+                                        className={`text-sm uppercase font-bold border-l-2 pl-2 ${playerSource === 'intro' ? (rColor?.border || 'border-transparent') : 'border-transparent'} transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md' : ''} ${isFixed ? 'cursor-pointer hover:text-amber-500' : ''} ${isReserve ? 'line-through opacity-40 grayscale' : ''}`}
                                     >
                                         {p.name}
                                     </div>
@@ -624,8 +634,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                                 return (
                                     <div 
                                         key={p.id} 
-                                        onClick={() => (session as any).isFixedTeams && handleToggleReserve(rIdx, mIdx, 2, p.id)}
-                                        className={`text-sm uppercase font-bold border-r-2 pr-2 ${playerSource === 'intro' ? (rColor?.border || 'border-transparent') : 'border-transparent'} transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md' : ''} ${(session as any).isFixedTeams ? 'cursor-pointer hover:text-amber-500' : ''} ${isReserve ? 'line-through opacity-40 grayscale' : ''}`}
+                                        onClick={() => isFixed && handleToggleReserve(rIdx, mIdx, 2, p.id)}
+                                        className={`text-sm uppercase font-bold border-r-2 pr-2 ${playerSource === 'intro' ? (rColor?.border || 'border-transparent') : 'border-transparent'} transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md' : ''} ${isFixed ? 'cursor-pointer hover:text-amber-500' : ''} ${isReserve ? 'line-through opacity-40 grayscale' : ''}`}
                                     >
                                         {p.name}
                                     </div>
