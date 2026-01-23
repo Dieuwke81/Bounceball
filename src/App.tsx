@@ -827,7 +827,7 @@ const App: React.FC = () => {
             <button onClick={() => handleGenerateTeams('doubleHeader')} disabled={actionInProgress==='generating'||attendingPlayers.length<2} className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg transform hover:scale-105 transition-all">2 Wedstrijden</button>
           </div>
           <div className="mt-8 flex justify-center border-t border-gray-700/50 pt-6">
-            <button onClick={() => { if(requireAdmin()) setCurrentView('nk'); }} className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 text-white text-[10px] font-bold py-2 px-6 rounded-lg uppercase tracking-wider transform hover:scale-105 transition-all">NK/Intro Manager</button>
+            <button onClick={() => { if(requireAdmin()) setCurrentView('nk'); }} className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 text-white text-[10px] font-bold py-2 px-6 rounded-lg uppercase tracking-wider transform hover:scale-105 transition-all">NK/Introductie Manager</button>
           </div>
         </div>
         {actionInProgress === 'generating' ? (
