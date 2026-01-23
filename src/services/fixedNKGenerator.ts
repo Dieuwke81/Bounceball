@@ -25,7 +25,7 @@ function generateBestRandomTeams(players: Player[], teamSize: number): Player[][
   const numTeams = players.length / teamSize;
 
   // VERHOOGD NAAR 50.000 VOOR OPTIMALE BALANS
-  for (let i = 0; i < 100000; i++) {
+  for (let i = 0; i < 500000; i++) {
     const shuffled = [...players].sort(() => Math.random() - 0.5);
     const candidateTeams: Player[][] = [];
     
