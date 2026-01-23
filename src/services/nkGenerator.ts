@@ -34,12 +34,7 @@ function getBestTeamSplit(players: Player[], ppt: number, targetDiff: number, mi
   }
 
   combine(0, []);
-
-  // STRIKTE CHECK VOOR INTRO: Als het verschil niet 0 is (met kleine floating point marge), keur het split af.
-  if (isIntro && bestDiff > 0.00001) {
-    return null;
-  }
-
+  if (isIntro && bestDiff > 0.00001) return null;
   return bestSplit;
 }
 
@@ -72,7 +67,6 @@ async function generateSingleVersion(
     for (let attempt = 0; attempt < 50; attempt++) {
       const usedThisRound = new Set<number>();
       const matches: NKMatch[] = [];
-      // Target op exact 0 zetten voor intro
       const target = isIntro ? 0 : (attempt < 25 ? 0.3 : 0.6);
       
       const pool = [...allPlayers].filter(p => currentPlayedCount.get(p.id)! < mpp)
@@ -83,13 +77,18 @@ async function generateSingleVersion(
       try {
         for (let h = 0; h < mInRound; h++) {
           const mPlayers = pool.filter(p => !usedThisRound.has(p.id)).slice(0, ppm);
+          if (mPlayers.length < ppm) break;
           const split = getBestTeamSplit(mPlayers, ppt, target, minRating, isIntro);
           if (!split) throw new Error();
           mPlayers.forEach(p => usedThisRound.add(p.id));
           matches.push({ id: `r${rIdx}h${h}`, hallName: hallNames[h], team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false, subLow: null as any, subHigh: null as any, referee: null as any });
         }
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
-        for (let m of matches) { m.subLow = resting.shift()!; m.subHigh = resting.pop()!; m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; }
+        for (let m of matches) { 
+            m.subLow = resting.shift()!; 
+            m.subHigh = resting.pop()!; 
+            m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
+        }
         roundMatches = matches; success = true; break;
       } catch (e) {}
     }
@@ -107,6 +106,11 @@ async function generateSingleVersion(
       if (roundAttempts[rIdx] > 15) return null; 
     }
   }
+
+  const lastCounts = playedCountsHistory[playedCountsHistory.length - 1];
+  const isComplete = allPlayers.every(p => lastCounts.get(p.id) === mpp);
+  if (!isComplete) return null;
+
   return { competitionName, hallNames, playersPerTeam: ppt, totalRounds: rounds.length, rounds, standings: [], isCompleted: false };
 }
 
@@ -126,7 +130,7 @@ export async function generateNKSchedule(
     if (session) validVersions.push(session);
   }
 
-  if (validVersions.length === 0) throw new Error("Geen schema gevonden die voldoet aan de eisen (is een verschil van 0 wel mogelijk met deze spelers?).");
+  if (validVersions.length === 0) throw new Error("Geen schema gevonden die voldoet aan de eisen.");
 
   const getMaxDiff = (s: NKSession): number => {
     let max = 0;
