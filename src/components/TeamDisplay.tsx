@@ -3,7 +3,7 @@ import type { Player, Match, Goal, MatchResult } from '../types';
 import TrophyIcon from './icons/TrophyIcon';
 import MatchForm from './MatchForm';
 
-// --- STAP 1: Vertel TypeScript dat 'confetti' op het window object bestaat ---
+// --- Vertel TypeScript dat 'confetti' op het window object bestaat ---
 declare global {
   interface Window {
     confetti: any;
@@ -27,6 +27,7 @@ interface TeamDisplayProps {
   onStartSecondDoubleHeaderMatch: (match1Result: MatchResult) => void;
   onSaveDoubleHeader: (match2Result: MatchResult) => void;
   onRegenerateTeams: () => void;
+  onManualSwap?: (t1: number, p1: number, t2: number, p2: number) => void;
   actionInProgress: string | null;
 }
 
@@ -129,7 +130,7 @@ const ScoreInput: React.FC<{
 const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
 
 // ============================================================================
-// WEDSTRIJD CARD (AANGEPAST: ALTIJD BLAUW LINKS, GEEL RECHTS)
+// WEDSTRIJD CARD
 // ============================================================================
 const MatchInputCard: React.FC<{
     match: Match;
@@ -182,7 +183,6 @@ const MatchInputCard: React.FC<{
 
         return (
             <div className="flex items-center justify-between space-x-2 bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
-                {/* 👇 Naam niet meer afkappen, maar laten afbreken */}
                 <span className="text-gray-200 flex-1 pr-2 text-sm sm:text-base break-words leading-tight">
                   {player.name}
                 </span>
@@ -231,7 +231,7 @@ const MatchInputCard: React.FC<{
 };
 
 // ============================================================================
-// UITSLAG CARD (AANGEPAST: OOK ALTIJD BLAUW LINKS)
+// UITSLAG CARD
 // ============================================================================
 const MatchResultDisplayCard: React.FC<{
     matchResult: MatchResult;
@@ -281,7 +281,17 @@ const MatchResultDisplayCard: React.FC<{
     );
 };
 
-const TeamCard: React.FC<{team: Player[], index: number, title: string}> = ({ team, index, title }) => {
+// ============================================================================
+// TEAM CARD MET WISSEL-LOGICA
+// ============================================================================
+const TeamCard: React.FC<{
+    team: Player[], 
+    index: number, 
+    title: string,
+    swapSelection: {tIdx: number, pIdx: number} | null,
+    onPlayerClick: (tIdx: number, pIdx: number) => void,
+    canSwap: boolean
+}> = ({ team, index, title, swapSelection, onPlayerClick, canSwap }) => {
     const calculateTeamStats = (team: Player[]) => {
         const totalRating = team.reduce((sum, player) => sum + player.rating, 0);
         const averageRating = team.length > 0 ? (totalRating / team.length).toFixed(2) : '0.00';
@@ -297,16 +307,30 @@ const TeamCard: React.FC<{team: Player[], index: number, title: string}> = ({ te
          <div className={`bg-gray-700 rounded-lg flex flex-col border-t-4 ${borderColor}`}>
               <h3 className={`text-xl font-bold ${headerColor} mb-2 px-4 pt-3`}>{title} {index + 1}</h3>
               <div className="flex-grow space-y-2 mb-4 px-4">
-                {team.map((player) => (
-                  <div key={player.id} className="flex justify-between items-center bg-gray-600 p-2 rounded">
-                    <div className="flex items-center">
-                      <span className="font-medium text-gray-200">{player.name}</span>
-                      {player.isKeeper && (
-                        <span className="ml-2 text-xs font-semibold bg-amber-500 text-white py-0.5 px-2 rounded-full">K</span>
-                      )}
+                {team.map((player, pIndex) => {
+                  const isSelected = swapSelection?.tIdx === index && swapSelection?.pIdx === pIndex;
+                  return (
+                    <div 
+                        key={player.id} 
+                        onClick={() => canSwap && onPlayerClick(index, pIndex)}
+                        className={`
+                            flex justify-between items-center p-2 rounded transition-all select-none
+                            ${canSwap ? 'cursor-pointer hover:bg-gray-500' : ''}
+                            ${isSelected ? 'bg-green-600/40 ring-2 ring-green-400' : 'bg-gray-600'}
+                        `}
+                    >
+                        <div className="flex items-center">
+                            <span className="font-medium text-gray-200">{player.name}</span>
+                            {player.isKeeper && (
+                                <span className="ml-2 text-xs font-semibold bg-amber-500 text-white py-0.5 px-2 rounded-full">K</span>
+                            )}
+                        </div>
+                        {canSwap && isSelected && (
+                            <span className="text-[10px] bg-green-500 text-white px-1.5 rounded">GESELECTEERD</span>
+                        )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="mt-auto border-t border-gray-600 pt-3 text-sm px-4 pb-4">
                 <div className="flex justify-between text-gray-300">
@@ -327,8 +351,11 @@ const TeamCard: React.FC<{team: Player[], index: number, title: string}> = ({ te
 }
 
 
-const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, currentRound, round1Results, round2Pairings, goalScorers, onGoalChange, onSaveRound1, onSaveFinalResults, onSaveSimpleMatch, onStartSecondDoubleHeaderMatch, onSaveDoubleHeader, onRegenerateTeams, actionInProgress }) => {
+const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, currentRound, round1Results, round2Pairings, goalScorers, onGoalChange, onSaveRound1, onSaveFinalResults, onSaveSimpleMatch, onStartSecondDoubleHeaderMatch, onSaveDoubleHeader, onRegenerateTeams, onManualSwap, actionInProgress }) => {
   
+  // State voor het selecteren van spelers voor de wissel
+  const [swapSelection, setSwapSelection] = useState<{tIdx: number, pIdx: number} | null>(null);
+
   // --- CONFETTI LOAD ---
   useEffect(() => {
     if (!document.getElementById('confetti-script')) {
@@ -354,6 +381,28 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
             window.confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
             window.confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
         }, 250);
+    }
+  };
+
+  // --- SWAP LOGICA ---
+  const handlePlayerClick = (tIdx: number, pIdx: number) => {
+    // Alleen wisselen als de functie bestaat en we in ronde 1 zitten (of je wilt het altijd toestaan)
+    // Veiligheidshalve: alleen toestaan voor het "teams" object (dus ronde 1 of current teams)
+    if (!onManualSwap) return;
+
+    if (swapSelection) {
+        // Er is al iemand geselecteerd
+        if (swapSelection.tIdx === tIdx && swapSelection.pIdx === pIdx) {
+            // Zelfde speler aangeklikt -> Deselecteer
+            setSwapSelection(null);
+        } else {
+            // Andere speler -> Wissel uitvoeren!
+            onManualSwap(swapSelection.tIdx, swapSelection.pIdx, tIdx, pIdx);
+            setSwapSelection(null); // Reset selectie na wissel
+        }
+    } else {
+        // Eerste selectie
+        setSwapSelection({tIdx, pIdx});
     }
   };
 
@@ -455,10 +504,21 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
         <>
           {currentRound === 1 && (
             <div>
-              <h3 className="text-xl font-bold text-white mb-4">Teams Wedstrijd 1</h3>
+              <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-white">Teams Wedstrijd 1</h3>
+                  <span className="text-xs text-gray-400 italic">Klik op 2 spelers om te wisselen</span>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {teams.map((team, index) => (
-                  <TeamCard key={index} team={team} index={index} title="Team" />
+                  <TeamCard 
+                    key={index} 
+                    team={team} 
+                    index={index} 
+                    title="Team"
+                    swapSelection={swapSelection}
+                    onPlayerClick={handlePlayerClick}
+                    canSwap={true} // In ronde 1 mag je wisselen
+                  />
                 ))}
               </div>
               <div className="mt-8 border-t border-gray-600 pt-6">
@@ -500,13 +560,29 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
               <h3 className="text-xl font-bold text-white mb-4 opacity-80">Teams Wedstrijd 1</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {teams.map((team, index) => (
-                  <TeamCard key={index} team={team} index={index} title="Team" />
+                  <TeamCard 
+                    key={index} 
+                    team={team} 
+                    index={index} 
+                    title="Team"
+                    swapSelection={null}
+                    onPlayerClick={() => {}}
+                    canSwap={false} // Geen wissel meer mogelijk in historie
+                  />
                 ))}
               </div>
               <h3 className="text-xl font-bold text-white mb-4">Teams Wedstrijd 2</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {teams2.map((team, index) => (
-                  <TeamCard key={`dh-${index}`} team={team} index={index} title="Team" />
+                  <TeamCard 
+                    key={`dh-${index}`} 
+                    team={team} 
+                    index={index} 
+                    title="Team"
+                    swapSelection={null} 
+                    onPlayerClick={() => {}}
+                    canSwap={false} // Voorlopig geen wissel in R2
+                  />
                 ))}
               </div>
                <div className="mt-8 border-t border-gray-600 pt-6">
@@ -557,10 +633,21 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
             {/* Round 1: Show teams */}
             {currentRound === 1 && (
                 <div className="mb-6">
-                    <h3 className="text-xl font-bold text-white mb-4">Gebalanceerde Teams</h3>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xl font-bold text-white">Gebalanceerde Teams</h3>
+                        <span className="text-xs text-gray-400 italic">Klik op 2 spelers om te wisselen</span>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {teams.map((team, index) => (
-                            <TeamCard key={index} team={team} index={index} title="Team" />
+                            <TeamCard 
+                                key={index} 
+                                team={team} 
+                                index={index} 
+                                title="Team"
+                                swapSelection={swapSelection}
+                                onPlayerClick={handlePlayerClick}
+                                canSwap={true}
+                            />
                         ))}
                     </div>
                 </div>
@@ -586,7 +673,15 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
                                 <h3 className="text-xl font-bold text-white mb-4">Teams voor Ronde 2</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {teams.map((team, index) => (
-                                        <TeamCard key={`r2-${index}`} team={team} index={index} title="Team" />
+                                        <TeamCard 
+                                            key={`r2-${index}`} 
+                                            team={team} 
+                                            index={index} 
+                                            title="Team"
+                                            swapSelection={null}
+                                            onPlayerClick={() => {}}
+                                            canSwap={false} // Voor nu geen wissel in R2 toestaan
+                                        />
                                     ))}
                                 </div>
                             </div>
