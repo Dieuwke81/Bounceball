@@ -17,14 +17,15 @@ function areKeepersBalanced(teams: Player[][]): boolean {
 }
 
 /**
- * Zoekt de allerbeste teamindeling uit 10.000 willekeurige pogingen.
+ * Zoekt de allerbeste teamindeling uit 50.000 willekeurige pogingen.
  */
 function generateBestRandomTeams(players: Player[], teamSize: number): Player[][] {
   let bestTeams: Player[][] | null = null;
   let minSpread = Infinity;
   const numTeams = players.length / teamSize;
 
-  for (let i = 0; i < 10000; i++) {
+  // VERHOOGD NAAR 50.000 VOOR OPTIMALE BALANS
+  for (let i = 0; i < 50000; i++) {
     const shuffled = [...players].sort(() => Math.random() - 0.5);
     const candidateTeams: Player[][] = [];
     
@@ -37,6 +38,8 @@ function generateBestRandomTeams(players: Player[], teamSize: number): Player[][
       if (spread < minSpread) {
         minSpread = spread;
         bestTeams = candidateTeams;
+        // Als we een (bijna) perfecte balans hebben gevonden, kunnen we eerder stoppen
+        if (spread < 0.001) break;
       }
     }
   }
@@ -56,7 +59,7 @@ export async function generateFixedNKSchedule(
     throw new Error(`Aantal spelers (${allPlayers.length}) moet een veelvoud zijn van ${ppt}.`);
   }
 
-  // 1. Maak de beste teams (Best of 10.000)
+  // 1. Maak de beste teams (Best of 50.000)
   const teams = generateBestRandomTeams(allPlayers, ppt);
   const numTeams = teams.length;
   const teamIndices = Array.from({ length: numTeams }, (_, i) => i);
@@ -64,7 +67,7 @@ export async function generateFixedNKSchedule(
   // 2. Round Robin (Berger-tabel) pairings maken
   const bergerRounds: { t1: number, t2: number }[][] = [];
   const tempIndices = [...teamIndices];
-  if (numTeams % 2 !== 0) tempIndices.push(-1); // Dummy voor oneven
+  if (numTeams % 2 !== 0) tempIndices.push(-1); 
 
   const n = tempIndices.length;
   const totalBergerRounds = n - 1;
@@ -80,16 +83,13 @@ export async function generateFixedNKSchedule(
     tempIndices.splice(1, 0, tempIndices.pop()!);
   }
 
-  // 3. Omzetten naar Rounds (rekening houdend met de rust-regel voor 4-per-team)
-  // Bij 4-per-team mogen max (numTeams - 2) / 2 wedstrijden tegelijk per ronde.
+  // 3. Omzetten naar Rounds
   const finalRounds: NKRound[] = [];
   let roundNumber = 1;
   const matchesPerRoundLimit = ppt === 4 ? Math.floor((numTeams - 2) / 2) : hallNames.length;
 
-  // We lopen door de Berger-rondes en verdelen de wedstrijden indien nodig over meer fysieke rondes
   bergerRounds.forEach((roundPairings) => {
     let pairingsLeft = [...roundPairings];
-    
     while (pairingsLeft.length > 0) {
       const currentBatch = pairingsLeft.splice(0, matchesPerRoundLimit);
       const time = manualTimes[roundNumber - 1] || { start: '', end: '' };
