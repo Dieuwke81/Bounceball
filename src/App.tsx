@@ -725,6 +725,21 @@ const App: React.FC = () => {
     setActionInProgress(null);
   };
 
+  // --------------------------------------------------------------------------
+  // NIEUW: Handmatige wissel functie
+  // --------------------------------------------------------------------------
+  const handleManualSwap = (teamAIndex: number, playerAIndex: number, teamBIndex: number, playerBIndex: number) => {
+    const newTeams = teams.map(t => [...t]); 
+    const playerA = newTeams[teamAIndex][playerAIndex];
+    const playerB = newTeams[teamBIndex][playerBIndex];
+    newTeams[teamAIndex][playerAIndex] = playerB;
+    newTeams[teamBIndex][playerBIndex] = playerA;
+    setTeams(newTeams);
+    if (currentRound === 1) {
+      setOriginalTeams(JSON.parse(JSON.stringify(newTeams)));
+    }
+  };
+
   const handleAddConstraint = (c: Constraint) => setConstraints(prev => [...prev, c]);
   const handleRemoveConstraint = (i: number) => setConstraints(prev => prev.filter((_, idx) => idx !== i));
   const handleAddPlayer = async (p: NewPlayer) => { try { const { newId } = await addPlayer(p); setPlayers(prev => [...prev, { ...p, id: newId }].sort((a, b) => a.name.localeCompare(b.name))); showNotification('Toegevoegd!'); } catch (e: any) { showNotification(e.message, 'error'); } };
@@ -836,7 +851,7 @@ const App: React.FC = () => {
             <p className="mt-4 text-white font-semibold animate-pulse">AI zoekt balans...</p>
           </div>
         ) : (
-          <TeamDisplay teams={teams} teams2={teams2} gameMode={gameMode} currentRound={currentRound} round1Results={round1Results} round2Pairings={round2Pairings} goalScorers={goalScorers} onGoalChange={handleGoalChange} onSaveRound1={handleSaveRound1} onSaveFinalResults={handleSaveFinalResults} onSaveSimpleMatch={handleSaveSimpleMatch} onStartSecondDoubleHeaderMatch={handleStartSecondDoubleHeaderMatch} onSaveDoubleHeader={handleSaveDoubleHeader} onRegenerateTeams={handleRegenerateTeamsForR2} actionInProgress={actionInProgress} />
+          <TeamDisplay teams={teams} teams2={teams2} gameMode={gameMode} currentRound={currentRound} round1Results={round1Results} round2Pairings={round2Pairings} goalScorers={goalScorers} onGoalChange={handleGoalChange} onSaveRound1={handleSaveRound1} onSaveFinalResults={handleSaveFinalResults} onSaveSimpleMatch={handleSaveSimpleMatch} onStartSecondDoubleHeaderMatch={handleStartSecondDoubleHeaderMatch} onSaveDoubleHeader={handleSaveDoubleHeader} onRegenerateTeams={handleRegenerateTeamsForR2} onManualSwap={handleManualSwap} actionInProgress={actionInProgress} />
         )}
       </div>
     </div>
