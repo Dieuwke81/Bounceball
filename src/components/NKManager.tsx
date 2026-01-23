@@ -261,6 +261,15 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
     setManualTimes(newTimes);
   };
 
+  const handleToggleReserve = (rIdx: number, mIdx: number, teamNum: 1 | 2, playerId: number) => {
+    if (!session) return;
+    const newS = JSON.parse(JSON.stringify(session));
+    const match = newS.rounds[rIdx].matches[mIdx];
+    const key = teamNum === 1 ? 't1ReserveId' : 't2ReserveId';
+    match[key] = match[key] === playerId ? null : playerId;
+    setSession(newS);
+  };
+
   const handleStartFixedNK = async () => {
     setIsGenerating(true); setProgressMsg("Optimaliseren (Best of 50.000)...");
     try {
@@ -562,8 +571,13 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                             <div className="text-[9px] text-blue-400 font-black uppercase mb-2 tracking-widest text-white font-black font-black font-black">{(match as any).team1Name || 'Team Blauw'}</div>
                             {match.team1.map(p => {
                                 const rColor = ratingColors.get(p.rating);
+                                const isReserve = (match as any).t1ReserveId === p.id;
                                 return (
-                                    <div key={p.id} className={`text-sm uppercase font-bold border-l-2 pl-2 ${playerSource === 'intro' ? (rColor?.border || 'border-transparent') : 'border-transparent'} transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md' : ''}`}>
+                                    <div 
+                                        key={p.id} 
+                                        onClick={() => (session as any).isFixedTeams && handleToggleReserve(rIdx, mIdx, 1, p.id)}
+                                        className={`text-sm uppercase font-bold border-l-2 pl-2 ${playerSource === 'intro' ? (rColor?.border || 'border-transparent') : 'border-transparent'} transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md' : ''} ${(session as any).isFixedTeams ? 'cursor-pointer hover:text-amber-500' : ''} ${isReserve ? 'line-through opacity-40 grayscale' : ''}`}
+                                    >
                                         {p.name}
                                     </div>
                                 );
@@ -606,8 +620,13 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                             <div className="text-[9px] text-amber-400 font-black uppercase mb-2 tracking-widest text-white font-black font-black">{(match as any).team2Name || 'Team Geel'}</div>
                             {match.team2.map(p => {
                                 const rColor = ratingColors.get(p.rating);
+                                const isReserve = (match as any).t2ReserveId === p.id;
                                 return (
-                                    <div key={p.id} className={`text-sm uppercase font-bold border-r-2 pr-2 ${playerSource === 'intro' ? (rColor?.border || 'border-transparent') : 'border-transparent'} transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md' : ''}`}>
+                                    <div 
+                                        key={p.id} 
+                                        onClick={() => (session as any).isFixedTeams && handleToggleReserve(rIdx, mIdx, 2, p.id)}
+                                        className={`text-sm uppercase font-bold border-r-2 pr-2 ${playerSource === 'intro' ? (rColor?.border || 'border-transparent') : 'border-transparent'} transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md' : ''} ${(session as any).isFixedTeams ? 'cursor-pointer hover:text-amber-500' : ''} ${isReserve ? 'line-through opacity-40 grayscale' : ''}`}
+                                    >
                                         {p.name}
                                     </div>
                                 );
@@ -617,8 +636,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                         </div>
                         {!isFixed && (
                             <div className="p-2.5 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-8 text-[9px] font-black uppercase text-white font-black font-black font-black">
-                            <span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subHigh?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subHigh?.name || '') ? 'bg-green-500 text-white font-black' : 'text-pink-400/70'}`}>Res 1: {match.subHigh?.name}</span>
-                            <span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subLow?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subLow?.name || '') ? 'bg-green-500 text-white font-black' : 'text-pink-400/70'}`}>Res 2: {match.subLow?.name}</span>
+                            <span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subHigh?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subHigh?.name || '') ? 'bg-green-500 text-white font-black' : 'text-pink-400 font-black'}`}>Res 1: {match.subHigh?.name}</span>
+                            <span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subLow?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subLow?.name || '') ? 'bg-green-500 text-white font-black' : 'text-pink-400 font-black'}`}>Res 2: {match.subLow?.name}</span>
                             </div>
                         )}
                       </div>
