@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import type { GameSession, Player, MatchResult } from '../types';
 import html2canvas from 'html2canvas';
@@ -72,8 +71,6 @@ const buildGoalsMap = (goals: any[]): Map<string, number> => {
 
 /**
  * ✅ Parser die ook double-encoded JSON aan kan.
- * - array/object: return direct
- * - string: probeert tot 3x te JSON.parse-en, en strip wrapping quotes
  */
 const safeParseMaybeJson = <T,>(v: any, fallback: T): T => {
   if (v == null) return fallback;
@@ -89,7 +86,6 @@ const safeParseMaybeJson = <T,>(v: any, fallback: T): T => {
     let s = cur.trim();
     if (!s) return fallback;
 
-    // strip wrapping quotes
     if (
       (s.startsWith('"') && s.endsWith('"') && s.length >= 2) ||
       (s.startsWith("'") && s.endsWith("'") && s.length >= 2)
@@ -98,7 +94,6 @@ const safeParseMaybeJson = <T,>(v: any, fallback: T): T => {
       continue;
     }
 
-    // parse json if it looks like json
     if (s.startsWith('{') || s.startsWith('[')) {
       try {
         cur = JSON.parse(s);
@@ -108,7 +103,6 @@ const safeParseMaybeJson = <T,>(v: any, fallback: T): T => {
       }
     }
 
-    // attempt to find json substring
     const idxObj = s.indexOf('{');
     const idxArr = s.indexOf('[');
     const idx =
@@ -128,11 +122,6 @@ const safeParseMaybeJson = <T,>(v: any, fallback: T): T => {
   return (Array.isArray(cur) || typeof cur === 'object') ? (cur as T) : fallback;
 };
 
-/**
- * ✅ Zorgt dat R2 de juiste teams gebruikt:
- * - als session.round2Teams bestaat én echt een array is → gebruik die
- * - anders val terug op session.teams (ook robuust geparsed)
- */
 const resolveTeamsForRound2 = (session: GameSession): Player[][] => {
   const r2 = safeParseMaybeJson<Player[][]>((session as any).round2Teams, []);
   if (Array.isArray(r2) && r2.length > 0) return r2;
@@ -155,7 +144,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
-  // (optioneel) map voor snelle lookup; niet verplicht, maar handig als je later wil uitbreiden
   const playersById = useMemo(() => {
     const m = new Map<number, Player>();
     (players || []).forEach((p) => {
@@ -255,8 +243,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
               });
 
               const goalsScored = playerGoalData ? Number(playerGoalData.count) || 0 : 0;
-
-              // ✅ excelID is NIET de bron. Alleen voor export.
               const excelId = (player as any).excelID ?? (player as any).excelId ?? '';
 
               rows.push([
@@ -304,7 +290,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     }
   };
 
-  // ================= SCREENSHOT / SHARE =================
+  // ================= SCREENSHOT / SHARE (AANGEPAST VOOR WITTE ACHTERGROND) =================
 
   const handleShareImage = async (e: React.MouseEvent, sessionDate: string) => {
     e.stopPropagation();
@@ -322,7 +308,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     try {
       const fixedWidth = 700;
       const canvas = await html2canvas(element, {
-        backgroundColor: '#111827',
+        backgroundColor: '#ffffff', // ✅ Forceer witte achtergrond in de afbeelding
         scale: 2,
         useCORS: true,
         width: fixedWidth,
@@ -335,6 +321,32 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             clonedElement.style.maxWidth = `${fixedWidth}px`;
             clonedElement.style.height = 'auto';
             clonedElement.style.padding = '2rem';
+            clonedElement.style.backgroundColor = '#ffffff'; // ✅ Achtergrond container wit
+            clonedElement.style.color = '#000000'; // ✅ Hoofdtekst zwart
+
+            // Pas alle titels en teksten aan voor zwart-wit contrast
+            const allElements = clonedElement.getElementsByTagName("*");
+            for (let i = 0; i < allElements.length; i++) {
+              const el = allElements[i] as HTMLElement;
+              
+              // Verander grijze achtergronden van kaarten naar een heel licht grijs of wit met border
+              if (el.classList.contains('bg-gray-800') || el.classList.contains('bg-gray-900') || el.classList.contains('bg-gray-700')) {
+                el.style.backgroundColor = '#ffffff';
+                el.style.borderColor = '#dddddd';
+                el.style.borderWidth = '1px';
+                el.style.borderStyle = 'solid';
+              }
+
+              // Verander witte/grijze teksten naar donkergrijs/zwart
+              if (el.classList.contains('text-white') || el.classList.contains('text-gray-100') || el.classList.contains('text-gray-300') || el.classList.contains('text-gray-400')) {
+                el.style.color = '#111827';
+              }
+              
+              // Behoud team-kleuren maar maak ze iets donkerder voor leesbaarheid op wit
+              if (el.classList.contains('text-cyan-400')) el.style.color = '#0891b2';
+              if (el.classList.contains('text-amber-400')) el.style.color = '#d97706';
+              if (el.classList.contains('text-green-500')) el.style.color = '#16a34a';
+            }
           }
         },
       });
@@ -398,7 +410,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     let leftGoals = result.team1Goals || [];
     let rightGoals = result.team2Goals || [];
 
-    // zorg dat blauw links en geel rechts getoond wordt (consistent)
     if (color1 === 'yellow' && color2 === 'blue') {
       leftTeamIdx = result.team2Index;
       rightTeamIdx = result.team1Index;
@@ -497,7 +508,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
   return (
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
-      {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold text-white">Wedstrijdgeschiedenis</h2>
 
@@ -525,7 +535,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                 <span className="font-bold text-lg text-white">{formatDate(session.date)}</span>
 
                 <div className="flex items-center space-x-3">
-                  {/* CSV per wedstrijd */}
                   <button
                     type="button"
                     onClick={(e) =>
@@ -537,7 +546,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                     <ArchiveIcon className="h-9 w-auto" />
                   </button>
 
-                  {/* WhatsApp / share */}
                   <div
                     onClick={(e) => handleShareImage(e, session.date)}
                     className="p-2 bg-green-600 hover:bg-green-500 rounded-full text-white transition-colors cursor-pointer shadow-lg active:scale-95"
@@ -546,7 +554,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                     <WhatsAppIcon className="w-4 h-4" />
                   </div>
 
-                  {/* Verwijderen (alleen ingelogd) */}
                   {isAuthenticated && (
                     <div
                       onClick={(e) => handleDeleteClick(e, session.date)}
@@ -584,7 +591,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                     </div>
 
                     <div className="grid grid-cols-1 gap-8">
-                      {/* Ronde 1 */}
                       <div>
                         <div className="flex items-center mb-4">
                           <div className="h-8 w-1 bg-green-500 rounded-full mr-3" />
@@ -604,7 +610,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Ronde 2 */}
                       {(session.round2Results || []).length > 0 && (
                         <div>
                           <div className="flex items-center mb-4 mt-4">
