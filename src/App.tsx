@@ -177,15 +177,13 @@ const computeSeasonPairCounts = (seasonHistory: GameSession[]) => {
     for (const match of session.round1Results || []) {
       const t1 = session.teams?.[match.team1Index] || [];
       const t2 = session.teams?.[match.team2Index] || [];
-      addPairsFromTeam(t1);
-      addPairsFromTeam(t2);
+      addPairsFromTeam(t1); addPairsFromTeam(t2);
     }
     const teamsR2 = session.round2Teams ?? session.teams;
     for (const match of session.round2Results || []) {
       const t1 = teamsR2?.[match.team1Index] || [];
       const t2 = teamsR2?.[match.team2Index] || [];
-      addPairsFromTeam(t1);
-      addPairsFromTeam(t2);
+      addPairsFromTeam(t1); addPairsFromTeam(t2);
     }
   }
   return counts;
@@ -248,7 +246,7 @@ const optimizeTeamsSoft = (params: {
   attendingIds: Set<number>;
   seasonPairCounts: Map<PairKey, number>;
   separateFrequent: boolean;
-  pairInfrequent: boolean;
+  pairInfrequent: boolean; 
   separateTop6: boolean;
   top6Ids: Set<number>;
 }) => {
@@ -334,34 +332,20 @@ const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
   const result = [...teams.map((t) => [...t])];
   for (let i = 0; i < result.length; i += 2) {
     if (!result[i + 1]) break;
-    const teamA = result[i];
-    const teamB = result[i + 1];
-
-    const keepersA = teamA.filter(p => p.isKeeper);
-    const othersA = teamA.filter(p => !p.isKeeper);
-    const keepersB = teamB.filter(p => p.isKeeper);
-    const othersB = teamB.filter(p => !p.isKeeper);
-
+    const teamA = result[i]; const teamB = result[i + 1];
+    const keepersA = teamA.filter(p => p.isKeeper); const othersA = teamA.filter(p => !p.isKeeper);
+    const keepersB = teamB.filter(p => p.isKeeper); const othersB = teamB.filter(p => !p.isKeeper);
     const slots: { a: Player | null, b: Player | null }[] = [];
-
     const numKeeperPairs = Math.min(keepersA.length, keepersB.length);
-    for (let k = 0; k < numKeeperPairs; k++) {
-      slots.push({ a: keepersA.shift()!, b: keepersB.shift()! });
-    }
-
+    for (let k = 0; k < numKeeperPairs; k++) slots.push({ a: keepersA.shift()!, b: keepersB.shift()! });
     const remainingA = [...keepersA, ...othersA].sort((a, b) => b.rating - a.rating);
     const remainingB = [...keepersB, ...othersB].sort((a, b) => b.rating - a.rating);
-
     const maxRemaining = Math.max(remainingA.length, remainingB.length);
-    for (let r = 0; r < maxRemaining; r++) {
-      slots.push({ a: remainingA[r] || null, b: remainingB[r] || null });
-    }
-
+    for (let r = 0; r < maxRemaining; r++) slots.push({ a: remainingA[r] || null, b: remainingB[r] || null });
     for (let j = slots.length - 1; j > 0; j--) {
       const k = Math.floor(Math.random() * (j + 1));
       [slots[j], slots[k]] = [slots[k], slots[j]];
     }
-
     result[i] = slots.map(s => s.a).filter((p): p is Player => p !== null);
     result[i + 1] = slots.map(s => s.b).filter((p): p is Player => p !== null);
   }
@@ -508,13 +492,13 @@ const App: React.FC = () => {
   };
 
   const handleParseAttendance = (text: string) => {
-    const normalize = (str: string): string =>
+    const normalizeName = (str: string): string =>
       str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\.$/, '');
 
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
     const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
-    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper', 'reserve', 'niet', 'graag', 'team', 'maandag', 'dinsdag', 'uari', 'Dinsdag'];
+    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper', 'reserve', 'niet', 'graag', 'team'];
 
     lines.forEach((line) => {
       const trimmedLine = line.trim(); if (!trimmedLine) return;
@@ -528,7 +512,7 @@ const App: React.FC = () => {
 
     const playerLookup = new Map<string, Player>();
     players.forEach((player) => {
-      const normalizedFullName = normalize(player.name);
+      const normalizedFullName = normalizeName(player.name);
       const normalizedFirstName = normalizedFullName.split(' ')[0];
       playerLookup.set(normalizedFullName, player);
       if (!playerLookup.has(normalizedFirstName)) playerLookup.set(normalizedFirstName, player);
@@ -539,7 +523,7 @@ const App: React.FC = () => {
     const notFoundOriginalNames: string[] = [];
 
     potentialNames.forEach((originalName) => {
-      const normalizedName = normalize(originalName);
+      const normalizedName = normalizeName(originalName);
       const matchedPlayer = playerLookup.get(normalizedName) || playerLookup.get(normalizedName.split(' ')[0]);
       if (matchedPlayer) {
         if (!newAttendingPlayerIds.has(matchedPlayer.id)) newlyFoundPlayers.push(matchedPlayer.name);
@@ -570,7 +554,7 @@ const App: React.FC = () => {
   const top6Ids = useMemo(() => {
     const standings = computeSeasonStandingsByPlayer(activeHistory);
     return new Set(attendingPlayers.map((p) => ({ id: p.id, ...standings.get(p.id) || { pts: 0, gf: 0, gd: 0 } }))
-      .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.id - b.id)
+      .sort((a, b) => b.pts - a.pts || b.gf - a.gf || b.gd - a.gd || a.id - b.id)
       .slice(0, 6).map((x) => x.id));
   }, [activeHistory, attendingPlayers]);
 
@@ -725,9 +709,6 @@ const App: React.FC = () => {
     setActionInProgress(null);
   };
 
-  // --------------------------------------------------------------------------
-  // NIEUW: Handmatige wissel functie
-  // --------------------------------------------------------------------------
   const handleManualSwap = (teamAIndex: number, playerAIndex: number, teamBIndex: number, playerBIndex: number) => {
     const newTeams = teams.map(t => [...t]); 
     const playerA = newTeams[teamAIndex][playerAIndex];
