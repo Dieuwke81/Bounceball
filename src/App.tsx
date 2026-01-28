@@ -177,13 +177,15 @@ const computeSeasonPairCounts = (seasonHistory: GameSession[]) => {
     for (const match of session.round1Results || []) {
       const t1 = session.teams?.[match.team1Index] || [];
       const t2 = session.teams?.[match.team2Index] || [];
-      addPairsFromTeam(t1); addPairsFromTeam(t2);
+      addPairsFromTeam(t1);
+      addPairsFromTeam(t2);
     }
     const teamsR2 = session.round2Teams ?? session.teams;
     for (const match of session.round2Results || []) {
       const t1 = teamsR2?.[match.team1Index] || [];
       const t2 = teamsR2?.[match.team2Index] || [];
-      addPairsFromTeam(t1); addPairsFromTeam(t2);
+      addPairsFromTeam(t1);
+      addPairsFromTeam(t2);
     }
   }
   return counts;
