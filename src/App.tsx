@@ -246,7 +246,7 @@ const optimizeTeamsSoft = (params: {
   attendingIds: Set<number>;
   seasonPairCounts: Map<PairKey, number>;
   separateFrequent: boolean;
-  pairInfrequent: boolean; 
+  pairInfrequent: boolean;
   separateTop6: boolean;
   top6Ids: Set<number>;
 }) => {
@@ -332,20 +332,34 @@ const syncRatingsBetweenOpponents = (teams: Player[][]): Player[][] => {
   const result = [...teams.map((t) => [...t])];
   for (let i = 0; i < result.length; i += 2) {
     if (!result[i + 1]) break;
-    const teamA = result[i]; const teamB = result[i + 1];
-    const keepersA = teamA.filter(p => p.isKeeper); const othersA = teamA.filter(p => !p.isKeeper);
-    const keepersB = teamB.filter(p => p.isKeeper); const othersB = teamB.filter(p => !p.isKeeper);
+    const teamA = result[i];
+    const teamB = result[i + 1];
+
+    const keepersA = teamA.filter(p => p.isKeeper);
+    const othersA = teamA.filter(p => !p.isKeeper);
+    const keepersB = teamB.filter(p => p.isKeeper);
+    const othersB = teamB.filter(p => !p.isKeeper);
+
     const slots: { a: Player | null, b: Player | null }[] = [];
+
     const numKeeperPairs = Math.min(keepersA.length, keepersB.length);
-    for (let k = 0; k < numKeeperPairs; k++) slots.push({ a: keepersA.shift()!, b: keepersB.shift()! });
+    for (let k = 0; k < numKeeperPairs; k++) {
+      slots.push({ a: keepersA.shift()!, b: keepersB.shift()! });
+    }
+
     const remainingA = [...keepersA, ...othersA].sort((a, b) => b.rating - a.rating);
     const remainingB = [...keepersB, ...othersB].sort((a, b) => b.rating - a.rating);
+
     const maxRemaining = Math.max(remainingA.length, remainingB.length);
-    for (let r = 0; r < maxRemaining; r++) slots.push({ a: remainingA[r] || null, b: remainingB[r] || null });
+    for (let r = 0; r < maxRemaining; r++) {
+      slots.push({ a: remainingA[r] || null, b: remainingB[r] || null });
+    }
+
     for (let j = slots.length - 1; j > 0; j--) {
       const k = Math.floor(Math.random() * (j + 1));
       [slots[j], slots[k]] = [slots[k], slots[j]];
     }
+
     result[i] = slots.map(s => s.a).filter((p): p is Player => p !== null);
     result[i + 1] = slots.map(s => s.b).filter((p): p is Player => p !== null);
   }
@@ -566,7 +580,7 @@ const App: React.FC = () => {
       const pa = idToPlayer.get(a); const pb = idToPlayer.get(b);
       if (!pa || !pb) return null;
       return { a, b, count, aName: pa.name, bName: pb.name };
-    }).filter((x): x is any => !!x).sort((x, y) => y.count - x.count).slice(0, 12);
+    }).filter((x): x is any => !!x).sort((x, y) => y.count - x.count);
   }, [seasonPairCounts, players, attendingPlayerIds]);
 
   const infrequentPairsForUI = useMemo(() => {
@@ -581,7 +595,7 @@ const App: React.FC = () => {
         pairs.push({ a, b, count, aName: idToPlayer.get(a)?.name, bName: idToPlayer.get(b)?.name });
       }
     }
-    return pairs.sort((x, y) => x.count - y.count).slice(0, 12);
+    return pairs.sort((x, y) => x.count - y.count);
   }, [seasonPairCounts, players, attendingPlayers]);
 
   const handleGenerateTeams = async (mode: GameMode) => {
@@ -733,110 +747,6 @@ const App: React.FC = () => {
   const requireAdmin = () => { if (isManagementAuthenticated) return true; const p = window.prompt('Wachtwoord:'); if (p === ADMIN_PASSWORD) { setIsManagementAuthenticated(true); return true; } return false; };
   const handleSaveManualEntry = async (d: any) => { if (requireAdmin()) { setActionInProgress('savingManual'); await handleSaveSession(d); setActionInProgress(null); } };
   const handleSetCompetitionName = async (n: string) => { try { await setCompetitionNameService(n); setCompetitionName(n); } catch (e: any) { showNotification(e.message, 'error'); } };
-
-  const selectedPlayer = players.find((p) => p.id === selectedPlayerId);
-
-  const renderMainView = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-      <div className="lg:col-span-1 space-y-8">
-        <AttendanceParser onParse={handleParseAttendance} />
-        <PlayerList players={players} attendingPlayerIds={attendingPlayerIds} onPlayerToggle={handlePlayerToggle} />
-        
-        <div className="bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-700/50">
-          <h3 className="text-white font-bold text-lg mb-3">Team-voorkeuren</h3>
-          
-          <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
-            <div className="text-sm">
-              <div className="font-semibold text-gray-100">Haal vaak-samen spelers uit elkaar</div>
-              <div className="text-xs text-gray-400">Vergroot variatie in teams.</div>
-            </div>
-            <input type="checkbox" checked={separateFrequentTeammates} onChange={(e) => setSeparateFrequentTeammates(e.target.checked)} className="w-5 h-5" />
-          </label>
-
-          <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
-            <div className="text-sm">
-              <div className="font-semibold text-gray-100">Plaats nieuwe duo's bij elkaar</div>
-              <div className="text-xs text-gray-400">Favoriseert onbekende combinaties.</div>
-            </div>
-            <input type="checkbox" checked={pairInfrequentTeammates} onChange={(e) => setPairInfrequentTeammates(e.target.checked)} className="w-5 h-5" />
-          </label>
-
-          <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
-            <div className="text-sm"><div className="font-semibold text-gray-100">Top 6 spreiden</div></div>
-            <input type="checkbox" checked={separateTop6OnPoints} onChange={(e) => setSeparateTop6OnPoints(e.target.checked)} className="w-5 h-5" />
-          </label>
-
-          <label className="flex items-center justify-between gap-3 bg-gray-900/50 rounded-lg px-3 py-2 mb-2">
-            <div className="text-sm"><div className="font-semibold text-gray-100">Sync ratings tegenstanders</div></div>
-            <input type="checkbox" checked={syncOpponentRatings} onChange={(e) => setSyncOpponentRatings(e.target.checked)} className="w-5 h-5" />
-          </label>
-
-          <div className="border-t border-gray-700 my-4 pt-2">
-            <label className="flex items-center justify-between gap-3 px-1 py-1">
-              <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Lijst: Vaak samen</div>
-              <input type="checkbox" checked={showFrequentPairs} onChange={(e) => setShowFrequentPairs(e.target.checked)} className="w-4 h-4" />
-            </label>
-
-            <label className="flex items-center justify-between gap-3 px-1 py-1">
-              <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Lijst: Zelden samen</div>
-              <input type="checkbox" checked={showInfrequentPairs} onChange={(e) => setShowInfrequentPairs(e.target.checked)} className="w-4 h-4" />
-            </label>
-          </div>
-
-          {showFrequentPairs && (
-            <div className="mt-3 bg-gray-900/40 rounded-lg p-3">
-              <div className="text-[10px] text-gray-500 font-black uppercase mb-2">Vaak samen:</div>
-              {frequentPairsForUI.length === 0 ? <p className="text-xs text-gray-500">Nog geen data.</p> : 
-                frequentPairsForUI.map((p: any) => (
-                  <div key={`${p.a}-${p.b}`} className="flex justify-between text-sm bg-red-900/20 rounded px-2 py-1 mb-1 border border-red-900/30">
-                    <span className="truncate text-gray-200">{p.aName} & {p.bName}</span>
-                    <span className="text-xs font-mono bg-red-900 text-red-100 px-2 rounded-full">{p.count}x</span>
-                  </div>
-                ))
-              }
-            </div>
-          )}
-
-          {showInfrequentPairs && (
-            <div className="mt-3 bg-gray-900/40 rounded-lg p-3">
-              <div className="text-[10px] text-gray-500 font-black uppercase mb-2">Zelden samen:</div>
-              {infrequentPairsForUI.length === 0 ? <p className="text-xs text-gray-500">Nog geen data.</p> : 
-                infrequentPairsForUI.map((p: any) => (
-                  <div key={`${p.a}-${p.b}`} className="flex justify-between text-sm bg-green-900/20 rounded px-2 py-1 mb-1 border border-green-900/30">
-                    <span className="truncate text-gray-200">{p.aName} & {p.bName}</span>
-                    <span className="text-xs font-mono bg-green-900 text-green-100 px-2 rounded-full">{p.count}x</span>
-                  </div>
-                ))
-              }
-            </div>
-          )}
-        </div>
-        <TeamConstraints attendingPlayers={attendingPlayers} constraints={constraints} onAddConstraint={handleAddConstraint} onRemoveConstraint={handleRemoveConstraint} />
-      </div>
-      <div className="lg:col-span-2">
-        <div className="bg-gray-800 rounded-xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-white mb-4">Start Wedstrijd</h2>
-          <div className="flex items-center mb-4"><UsersIcon className="w-5 h-5 text-gray-400 mr-2" /><span className="text-lg font-semibold text-white">{attendingPlayers.length} spelers aanwezig</span></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button onClick={() => handleGenerateTeams('simple')} disabled={actionInProgress==='generating'||attendingPlayers.length<2} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg transform hover:scale-105 transition-all">1 Wedstrijd</button>
-            <button onClick={() => handleGenerateTeams('tournament')} disabled={actionInProgress==='generating'||attendingPlayers.length<4} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transform hover:scale-105 transition-all">Toernooi</button>
-            <button onClick={() => handleGenerateTeams('doubleHeader')} disabled={actionInProgress==='generating'||attendingPlayers.length<2} className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg transform hover:scale-105 transition-all">2 Wedstrijden</button>
-          </div>
-          <div className="mt-8 flex justify-center border-t border-gray-700/50 pt-6">
-            <button onClick={() => { if(requireAdmin()) setCurrentView('nk'); }} className="bg-gradient-to-r from-amber-500/80 to-amber-700/80 text-white text-[10px] font-bold py-2 px-6 rounded-lg uppercase tracking-wider transform hover:scale-105 transition-all">NK/Intro Manager</button>
-          </div>
-        </div>
-        {actionInProgress === 'generating' ? (
-          <div className="mt-8 flex justify-center p-8 bg-gray-800 rounded-xl flex-col items-center">
-            <FutbolIcon className="w-16 h-16 text-cyan-400 animate-bounce" />
-            <p className="mt-4 text-white font-semibold animate-pulse">AI zoekt balans...</p>
-          </div>
-        ) : (
-          <TeamDisplay teams={teams} teams2={teams2} gameMode={gameMode} currentRound={currentRound} round1Results={round1Results} round2Pairings={round2Pairings} goalScorers={goalScorers} onGoalChange={handleGoalChange} onSaveRound1={handleSaveRound1} onSaveFinalResults={handleSaveFinalResults} onSaveSimpleMatch={handleSaveSimpleMatch} onStartSecondDoubleHeaderMatch={handleStartSecondDoubleHeaderMatch} onSaveDoubleHeader={handleSaveDoubleHeader} onRegenerateTeams={handleRegenerateTeamsForR2} onManualSwap={handleManualSwap} actionInProgress={actionInProgress} />
-        )}
-      </div>
-    </div>
-  );
 
   const renderContent = () => {
     switch (currentView) {
