@@ -71,7 +71,7 @@ const ADMIN_PASSWORD = 'kemmer';
 const UNSAVED_GAME_KEY = 'bounceball_unsaved_game';
 
 // ============================================================================
-// Helpers: constraints + keepers validation
+// Helpers: constraints + keepers validation (kopie-light van teamGenerator)
 // ============================================================================
 
 const areTeamCompositionsIdentical = (teamsA: Player[][], teamsB: Player[][]): boolean => {
