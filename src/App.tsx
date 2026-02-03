@@ -582,7 +582,7 @@ const App: React.FC = () => {
       const pa = idToPlayer.get(a); const pb = idToPlayer.get(b);
       if (!pa || !pb) return null;
       return { a, b, count, aName: pa.name, bName: pb.name };
-    }).filter((x): x is any => !!x).sort((x, y) => y.count - x.count).slice(0, 12);
+    }).filter((x): x is any => !!x).sort((x, y) => y.count - x.count);
   }, [seasonPairCounts, players, attendingPlayerIds]);
 
   const infrequentPairsForUI = useMemo(() => {
@@ -597,7 +597,7 @@ const App: React.FC = () => {
         pairs.push({ a, b, count, aName: idToPlayer.get(a)?.name, bName: idToPlayer.get(b)?.name });
       }
     }
-    return pairs.sort((x, y) => x.count - y.count).slice(0, 12);
+    return pairs.sort((x, y) => x.count - y.count);
   }, [seasonPairCounts, players, attendingPlayers]);
 
   const handleGenerateTeams = async (mode: GameMode) => {
@@ -805,28 +805,36 @@ const App: React.FC = () => {
           {showFrequentPairs && (
             <div className="mt-3 bg-gray-900/40 rounded-lg p-3">
               <div className="text-[10px] text-gray-500 font-black uppercase mb-2">Vaak samen:</div>
-              {frequentPairsForUI.length === 0 ? <p className="text-xs text-gray-500">Nog geen data.</p> : 
-                frequentPairsForUI.map((p: any) => (
-                  <div key={`${p.a}-${p.b}`} className="flex justify-between text-sm bg-red-900/20 rounded px-2 py-1 mb-1 border border-red-900/30">
-                    <span className="truncate text-gray-200">{p.aName} & {p.bName}</span>
-                    <span className="text-xs font-mono bg-red-900 text-red-100 px-2 rounded-full">{p.count}x</span>
-                  </div>
-                ))
-              }
+              {/* 👇 DEZE DIV TOEVOEGEN VOOR DE SCROLLBALK 👇 */}
+              <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                {frequentPairsForUI.length === 0 ? <p className="text-xs text-gray-500">Nog geen data.</p> : 
+                  frequentPairsForUI.map((p: any) => (
+                    <div key={`${p.a}-${p.b}`} className="flex justify-between text-sm bg-red-900/20 rounded px-2 py-1 mb-1 border border-red-900/30">
+                      <span className="truncate text-gray-200">{p.aName} & {p.bName}</span>
+                      <span className="text-xs font-mono bg-red-900 text-red-100 px-2 rounded-full">{p.count}x</span>
+                    </div>
+                  ))
+                }
+              </div>
+              {/* 👆 EINDE VAN DE NIEUWE DIV 👆 */}
             </div>
           )}
 
           {showInfrequentPairs && (
             <div className="mt-3 bg-gray-900/40 rounded-lg p-3">
               <div className="text-[10px] text-gray-500 font-black uppercase mb-2">Zelden samen:</div>
-              {infrequentPairsForUI.length === 0 ? <p className="text-xs text-gray-500">Nog geen data.</p> : 
-                infrequentPairsForUI.map((p: any) => (
-                  <div key={`${p.a}-${p.b}`} className="flex justify-between text-sm bg-green-900/20 rounded px-2 py-1 mb-1 border border-green-900/30">
-                    <span className="truncate text-gray-200">{p.aName} & {p.bName}</span>
-                    <span className="text-xs font-mono bg-green-900 text-green-100 px-2 rounded-full">{p.count}x</span>
-                  </div>
-                ))
-              }
+              {/* 👇 DEZE DIV TOEVOEGEN VOOR DE SCROLLBALK 👇 */}
+              <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                {infrequentPairsForUI.length === 0 ? <p className="text-xs text-gray-500">Nog geen data.</p> : 
+                  infrequentPairsForUI.map((p: any) => (
+                    <div key={`${p.a}-${p.b}`} className="flex justify-between text-sm bg-green-900/20 rounded px-2 py-1 mb-1 border border-green-900/30">
+                      <span className="truncate text-gray-200">{p.aName} & {p.bName}</span>
+                      <span className="text-xs font-mono bg-green-900 text-green-100 px-2 rounded-full">{p.count}x</span>
+                    </div>
+                  ))
+                }
+              </div>
+              {/* 👆 EINDE VAN DE NIEUWE DIV 👆 */}
             </div>
           )}
         </div>
