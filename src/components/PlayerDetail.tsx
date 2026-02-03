@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import type {
   Player,
@@ -15,7 +16,6 @@ import ChartBarIcon from './icons/ChartBarIcon';
 import UsersIcon from './icons/UsersIcon';
 import PrinterIcon from './icons/PrinterIcon';
 
-// Zorg dat deze bestanden bestaan en geen errors bevatten
 import RatingChart from './RatingChart';
 import PlayerPrintView from './PlayerPrintView';
 
@@ -28,14 +28,26 @@ const toMs = (d: string) => {
   return Number.isFinite(ms) ? ms : 0;
 };
 
+const matchScore = (m: MatchResult) => {
+  const s1 = m.team1Goals.reduce((sum, g) => sum + (g?.count || 0), 0);
+  const s2 = m.team2Goals.reduce((sum, g) => sum + (g?.count || 0), 0);
+  return { s1, s2 };
+};
+
 const buildAllTimeFromLogs = (playerId: number, ratingLogs: RatingLogEntry[]) => {
   return (ratingLogs || [])
-    .filter((l) => l && l.playerId === playerId) // Extra check op 'l'
+    .filter((l) => l.playerId === playerId)
     .map((l) => ({ date: String(l.date), rating: Number(l.rating) }))
     .filter((x) => Number.isFinite(toMs(x.date)) && Number.isFinite(x.rating))
     .sort((a, b) => toMs(a.date) - toMs(b.date));
 };
 
+/**
+ * Season series:
+ * - filter logs >= seasonStartDate
+ * - add a "start point" on seasonStartDate based on last log BEFORE start
+ *   (or fallback to player.startRating / player.rating)
+ */
 const buildSeasonFromLogs = (params: {
   player: Player;
   ratingLogs: RatingLogEntry[];
@@ -107,7 +119,10 @@ const RelationshipList: React.FC<{
           const relatedPlayer = playerMap.get(id);
           if (!relatedPlayer) return null;
           return (
-            <li key={id} className="flex justify-between items-center text-sm text-gray-300">
+            <li
+              key={id}
+              className="flex justify-between items-center text-sm text-gray-300"
+            >
               <span className="truncate">{relatedPlayer.name}</span>
               <span className="font-mono bg-gray-600 text-xs px-2 py-0.5 rounded-full">
                 {count}x
@@ -132,8 +147,7 @@ interface PlayerDetailProps {
   players: Player[];
   ratingLogs: RatingLogEntry[];
   trophies: Trophy[];
-  seasonStartDate?: string;
-  competitionName?: string | null;
+  seasonStartDate?: string; // ✅ nieuw
   onBack: () => void;
 }
 
@@ -144,7 +158,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
   ratingLogs,
   trophies,
   seasonStartDate,
-  competitionName,
   onBack,
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
@@ -181,21 +194,33 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
   const getTrophyContent = (type: TrophyType) => {
     const images: { [key: string]: string } = {
-      Verdediger: 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
-      Topscoorder: 'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
-      Clubkampioen: 'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
-      '2de': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
-      '3de': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
-      'Speler van het jaar': 'https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png',
-      '1ste Introductietoernooi': 'https://i.postimg.cc/YqW7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
-      '2de Introductietoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
-      '3de Introductietoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+      Verdediger:
+        'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
+      Topscoorder:
+        'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
+      Clubkampioen:
+        'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
+      '2de':
+        'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+      '3de':
+        'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+      'Speler van het jaar':
+        'https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png',
+      '1ste Introductietoernooi':
+        'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
+      '2de Introductietoernooi':
+        'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+      '3de Introductietoernooi':
+        'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
       '1ste NK': 'https://i.postimg.cc/GhXMP4q5/20251203-184928-0000.png',
       '2de NK': 'https://i.postimg.cc/wM0kkrcm/20251203-185040-0000.png',
       '3de NK': 'https://i.postimg.cc/MpcYydnC/20251203-185158-0000.png',
-      '1ste Wintertoernooi': 'https://i.postimg.cc/YqW7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
-      '2de Wintertoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
-      '3de Wintertoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+      '1ste Wintertoernooi':
+        'https://i.postimg.cc/YqW7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
+      '2de Wintertoernooi':
+        'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+      '3de Wintertoernooi':
+        'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
     };
 
     const imageUrl = images[type];
@@ -204,6 +229,9 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     return <TrophyIcon className="w-6 h-6" />;
   };
 
+  /**
+   * ✅ Fix: ronde 2 stats moeten round2Teams gebruiken als die er is
+   */
   const stats = useMemo(() => {
     let wins = 0;
     let losses = 0;
@@ -219,11 +247,9 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     const opponentLosses = new Map<number, number>();
 
     const processMatch = (sessionTeams: Player[][], match: MatchResult) => {
-      // ⚠️ Veiligheidscheck: bestaat de team array wel?
-      if (!sessionTeams || !match) return;
-
+      // zoek teamIndex van speler BINNEN de teams van deze ronde
       const playerTeamIndex = sessionTeams.findIndex((team) =>
-        Array.isArray(team) && team.some((p) => p && p.id === player.id)
+        team.some((p) => p.id === player.id)
       );
       if (playerTeamIndex < 0) return;
 
@@ -236,17 +262,21 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
       gamesPlayed++;
 
-      // ⚠️ CRASH FIX: Zorg dat de goals lijsten bestaan en 'count' hebben
-      const playerTeamGoalsList = (isTeam1 ? match.team1Goals : match.team2Goals) || [];
-      const opponentTeamGoalsList = (isTeam1 ? match.team2Goals : match.team1Goals) || [];
+      const playerTeamGoalsList = isTeam1 ? match.team1Goals : match.team2Goals;
+      const opponentTeamGoalsList = isTeam1 ? match.team2Goals : match.team1Goals;
 
-      // ⚠️ CRASH FIX: Check of 'g' bestaat voordat je playerId leest
       const playerGoalCount =
-        playerTeamGoalsList.find((g) => g && g.playerId === player.id)?.count || 0;
+        playerTeamGoalsList.find((g) => g.playerId === player.id)?.count || 0;
       goalsScored += playerGoalCount;
 
-      const playerTeamScore = playerTeamGoalsList.reduce((sum, g) => sum + (g?.count || 0), 0);
-      const opponentTeamScore = opponentTeamGoalsList.reduce((sum, g) => sum + (g?.count || 0), 0);
+      const playerTeamScore = playerTeamGoalsList.reduce(
+        (sum, g) => sum + (g?.count || 0),
+        0
+      );
+      const opponentTeamScore = opponentTeamGoalsList.reduce(
+        (sum, g) => sum + (g?.count || 0),
+        0
+      );
 
       if (playerTeamScore > opponentTeamScore) {
         wins++;
@@ -258,8 +288,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         points += 1;
       }
 
-      const teammates = sessionTeams[playerTeamIndex].filter((p) => p && p.id !== player.id);
-      const opponents = sessionTeams[opponentTeamIndex].filter((p) => p);
+      const teammates = sessionTeams[playerTeamIndex].filter((p) => p.id !== player.id);
+      const opponents = sessionTeams[opponentTeamIndex];
 
       teammates.forEach((tm) => {
         teammateFrequency.set(tm.id, (teammateFrequency.get(tm.id) || 0) + 1);
@@ -330,16 +360,15 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
       {isPrinting && (
         <PlayerPrintView
-          player={player}
-          stats={stats}
-          trophies={playerTrophies}
-          players={players}
-          history={history}
-          seasonHistory={seasonRatingHistory}
-          allTimeHistory={allTimeRatingHistory}
-          competitionName={competitionName}
-          onClose={() => setIsPrinting(false)}
-        />
+  player={player}
+  stats={stats}
+  trophies={playerTrophies}
+  players={players}
+  history={history}                 // ✅ toevoegen
+  seasonHistory={seasonRatingHistory}
+  allTimeHistory={allTimeRatingHistory}
+  onClose={() => setIsPrinting(false)}
+/>
       )}
 
       <div className="flex items-center justify-between mb-6">
@@ -391,9 +420,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       {playerTrophies.length > 0 && (
         <div className="mb-8 p-4 bg-gradient-to-r from-gray-700 to-gray-800 rounded-xl border border-gray-600/50">
           <h3 className="text-lg font-bold text-white mb-3 flex items-center">
-            <div className="w-5 h-5 mr-2 text-yellow-400">
-                <TrophyIcon className="w-full h-full"/>
-            </div>
+            <div className="w-5 h-5 mr-2 text-yellow-400" />
             Prijzenkast
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -425,7 +452,11 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
           value={stats.goalsScored}
           subtext={`${(stats.goalsScored / (stats.gamesPlayed || 1)).toFixed(2)} gem.`}
         />
-        <StatCard title="Gem. Punten" value={avgPoints.toFixed(2)} subtext={`Totaal: ${stats.points}`} />
+        <StatCard
+          title="Gem. Punten"
+          value={avgPoints.toFixed(2)}
+          subtext={`Totaal: ${stats.points}`}
+        />
       </div>
 
       {/* ALL-TIME */}
@@ -437,7 +468,9 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         {allTimeRatingHistory.length > 1 ? (
           <RatingChart data={allTimeRatingHistory} />
         ) : (
-          <p className="text-gray-500 text-sm text-center py-4">Nog niet genoeg all-time data (rating logs).</p>
+          <p className="text-gray-500 text-sm text-center py-4">
+            Nog niet genoeg all-time data (rating logs).
+          </p>
         )}
       </div>
 
@@ -450,7 +483,9 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         {seasonRatingHistory.length > 1 ? (
           <RatingChart data={seasonRatingHistory} />
         ) : (
-          <p className="text-gray-500 text-sm text-center py-4">Nog niet genoeg seizoensdata.</p>
+          <p className="text-gray-500 text-sm text-center py-4">
+            Nog niet genoeg seizoensdata.
+          </p>
         )}
       </div>
 
