@@ -360,15 +360,14 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     <div className="bg-gray-800 rounded-xl shadow-lg p-6">
       {isPrinting && (
         <PlayerPrintView
-  player={player}
-  stats={stats}
-  trophies={playerTrophies}
-  players={players}
-  history={history}                 // ✅ toevoegen
-  seasonHistory={seasonRatingHistory}
-  allTimeHistory={allTimeRatingHistory}
-  onClose={() => setIsPrinting(false)}
-/>
+          player={player}
+          stats={stats}
+          trophies={playerTrophies}
+          players={players}
+          seasonHistory={seasonRatingHistory}
+          allTimeHistory={allTimeRatingHistory}
+          onClose={() => setIsPrinting(false)}
+        />
       )}
 
       <div className="flex items-center justify-between mb-6">
