@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import type {
   Player,
@@ -16,6 +15,7 @@ import ChartBarIcon from './icons/ChartBarIcon';
 import UsersIcon from './icons/UsersIcon';
 import PrinterIcon from './icons/PrinterIcon';
 
+// ✅ Deze imports staan weer aan omdat je de bestanden hebt
 import RatingChart from './RatingChart';
 import PlayerPrintView from './PlayerPrintView';
 
@@ -28,12 +28,6 @@ const toMs = (d: string) => {
   return Number.isFinite(ms) ? ms : 0;
 };
 
-const matchScore = (m: MatchResult) => {
-  const s1 = m.team1Goals.reduce((sum, g) => sum + (g?.count || 0), 0);
-  const s2 = m.team2Goals.reduce((sum, g) => sum + (g?.count || 0), 0);
-  return { s1, s2 };
-};
-
 const buildAllTimeFromLogs = (playerId: number, ratingLogs: RatingLogEntry[]) => {
   return (ratingLogs || [])
     .filter((l) => l.playerId === playerId)
@@ -42,12 +36,6 @@ const buildAllTimeFromLogs = (playerId: number, ratingLogs: RatingLogEntry[]) =>
     .sort((a, b) => toMs(a.date) - toMs(b.date));
 };
 
-/**
- * Season series:
- * - filter logs >= seasonStartDate
- * - add a "start point" on seasonStartDate based on last log BEFORE start
- *   (or fallback to player.startRating / player.rating)
- */
 const buildSeasonFromLogs = (params: {
   player: Player;
   ratingLogs: RatingLogEntry[];
@@ -144,8 +132,8 @@ interface PlayerDetailProps {
   players: Player[];
   ratingLogs: RatingLogEntry[];
   trophies: Trophy[];
-  seasonStartDate?: string; // ✅ nieuw
-  competitionName?: string | null; // ✅ NIEUW: komt uit sheet tab "Instellingen"
+  seasonStartDate?: string;
+  competitionName?: string | null;
   onBack: () => void;
 }
 
@@ -156,7 +144,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
   ratingLogs,
   trophies,
   seasonStartDate,
-  competitionName, // ✅
+  competitionName,
   onBack,
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
@@ -228,9 +216,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     return <TrophyIcon className="w-6 h-6" />;
   };
 
-  /**
-   * ✅ Fix: ronde 2 stats moeten round2Teams gebruiken als die er is
-   */
   const stats = useMemo(() => {
     let wins = 0;
     let losses = 0;
@@ -260,8 +245,9 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
       gamesPlayed++;
 
-      const playerTeamGoalsList = isTeam1 ? match.team1Goals : match.team2Goals;
-      const opponentTeamGoalsList = isTeam1 ? match.team2Goals : match.team1Goals;
+      // 🛠️ FIX: Beveiliging toegevoegd met '|| []' om crashes te voorkomen bij lege/oude data
+      const playerTeamGoalsList = (isTeam1 ? match.team1Goals : match.team2Goals) || [];
+      const opponentTeamGoalsList = (isTeam1 ? match.team2Goals : match.team1Goals) || [];
 
       const playerGoalCount =
         playerTeamGoalsList.find((g) => g.playerId === player.id)?.count || 0;
@@ -359,7 +345,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
           history={history}
           seasonHistory={seasonRatingHistory}
           allTimeHistory={allTimeRatingHistory}
-          competitionName={competitionName} // ✅ NIEUW: exact uit Instellingen
+          competitionName={competitionName}
           onClose={() => setIsPrinting(false)}
         />
       )}
@@ -413,7 +399,9 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       {playerTrophies.length > 0 && (
         <div className="mb-8 p-4 bg-gradient-to-r from-gray-700 to-gray-800 rounded-xl border border-gray-600/50">
           <h3 className="text-lg font-bold text-white mb-3 flex items-center">
-            <div className="w-5 h-5 mr-2 text-yellow-400" />
+            <div className="w-5 h-5 mr-2 text-yellow-400">
+                <TrophyIcon className="w-full h-full"/>
+            </div>
             Prijzenkast
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
