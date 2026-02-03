@@ -15,7 +15,7 @@ import ChartBarIcon from './icons/ChartBarIcon';
 import UsersIcon from './icons/UsersIcon';
 import PrinterIcon from './icons/PrinterIcon';
 
-// ✅ Deze imports staan weer aan omdat je de bestanden hebt
+// Zorg dat deze bestanden bestaan en geen errors bevatten
 import RatingChart from './RatingChart';
 import PlayerPrintView from './PlayerPrintView';
 
@@ -30,7 +30,7 @@ const toMs = (d: string) => {
 
 const buildAllTimeFromLogs = (playerId: number, ratingLogs: RatingLogEntry[]) => {
   return (ratingLogs || [])
-    .filter((l) => l.playerId === playerId)
+    .filter((l) => l && l.playerId === playerId) // Extra check op 'l'
     .map((l) => ({ date: String(l.date), rating: Number(l.rating) }))
     .filter((x) => Number.isFinite(toMs(x.date)) && Number.isFinite(x.rating))
     .sort((a, b) => toMs(a.date) - toMs(b.date));
@@ -181,33 +181,21 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
   const getTrophyContent = (type: TrophyType) => {
     const images: { [key: string]: string } = {
-      Verdediger:
-        'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
-      Topscoorder:
-        'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
-      Clubkampioen:
-        'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
-      '2de':
-        'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
-      '3de':
-        'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
-      'Speler van het jaar':
-        'https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png',
-      '1ste Introductietoernooi':
-        'https://i.postimg.cc/YqW7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
-      '2de Introductietoernooi':
-        'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
-      '3de Introductietoernooi':
-        'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+      Verdediger: 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
+      Topscoorder: 'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
+      Clubkampioen: 'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
+      '2de': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+      '3de': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+      'Speler van het jaar': 'https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png',
+      '1ste Introductietoernooi': 'https://i.postimg.cc/YqW7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
+      '2de Introductietoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+      '3de Introductietoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
       '1ste NK': 'https://i.postimg.cc/GhXMP4q5/20251203-184928-0000.png',
       '2de NK': 'https://i.postimg.cc/wM0kkrcm/20251203-185040-0000.png',
       '3de NK': 'https://i.postimg.cc/MpcYydnC/20251203-185158-0000.png',
-      '1ste Wintertoernooi':
-        'https://i.postimg.cc/YqW7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
-      '2de Wintertoernooi':
-        'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
-      '3de Wintertoernooi':
-        'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+      '1ste Wintertoernooi': 'https://i.postimg.cc/YqW7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
+      '2de Wintertoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+      '3de Wintertoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
     };
 
     const imageUrl = images[type];
@@ -231,8 +219,11 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     const opponentLosses = new Map<number, number>();
 
     const processMatch = (sessionTeams: Player[][], match: MatchResult) => {
+      // ⚠️ Veiligheidscheck: bestaat de team array wel?
+      if (!sessionTeams || !match) return;
+
       const playerTeamIndex = sessionTeams.findIndex((team) =>
-        team.some((p) => p.id === player.id)
+        Array.isArray(team) && team.some((p) => p && p.id === player.id)
       );
       if (playerTeamIndex < 0) return;
 
@@ -245,12 +236,13 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
       gamesPlayed++;
 
-      // 🛠️ FIX: Beveiliging toegevoegd met '|| []' om crashes te voorkomen bij lege/oude data
+      // ⚠️ CRASH FIX: Zorg dat de goals lijsten bestaan en 'count' hebben
       const playerTeamGoalsList = (isTeam1 ? match.team1Goals : match.team2Goals) || [];
       const opponentTeamGoalsList = (isTeam1 ? match.team2Goals : match.team1Goals) || [];
 
+      // ⚠️ CRASH FIX: Check of 'g' bestaat voordat je playerId leest
       const playerGoalCount =
-        playerTeamGoalsList.find((g) => g.playerId === player.id)?.count || 0;
+        playerTeamGoalsList.find((g) => g && g.playerId === player.id)?.count || 0;
       goalsScored += playerGoalCount;
 
       const playerTeamScore = playerTeamGoalsList.reduce((sum, g) => sum + (g?.count || 0), 0);
@@ -266,8 +258,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         points += 1;
       }
 
-      const teammates = sessionTeams[playerTeamIndex].filter((p) => p.id !== player.id);
-      const opponents = sessionTeams[opponentTeamIndex];
+      const teammates = sessionTeams[playerTeamIndex].filter((p) => p && p.id !== player.id);
+      const opponents = sessionTeams[opponentTeamIndex].filter((p) => p);
 
       teammates.forEach((tm) => {
         teammateFrequency.set(tm.id, (teammateFrequency.get(tm.id) || 0) + 1);
