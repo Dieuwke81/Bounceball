@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import type {
   Player,
@@ -25,6 +24,8 @@ interface PlayerDetailProps {
   players: Player[];
   ratingLogs: RatingLogEntry[];
   trophies: Trophy[];
+  seasonStartDate?: string;     // Toegevoegd om errors te voorkomen
+  competitionName?: string | null; // Toegevoegd om errors te voorkomen
   onBack: () => void;
 }
 
@@ -77,14 +78,18 @@ const RelationshipList: React.FC<{
 
 // Helper: veilige datum parse
 const toMs = (d: string) => {
+  if (!d) return 0;
   const ms = new Date(d).getTime();
   return Number.isFinite(ms) ? ms : 0;
 };
 
-// Helper: scores uit MatchResult
+// Helper: scores uit MatchResult (VEILIG GEMAAKT)
 const matchScore = (m: MatchResult) => {
-  const s1 = m.team1Goals.reduce((sum, g) => sum + (g?.count || 0), 0);
-  const s2 = m.team2Goals.reduce((sum, g) => sum + (g?.count || 0), 0);
+  // 🛡️ CRASH PREVENTIE: Gebruik || [] voor het geval goals ontbreken
+  const goals1 = m.team1Goals || [];
+  const goals2 = m.team2Goals || [];
+  const s1 = goals1.reduce((sum, g) => sum + (g?.count || 0), 0);
+  const s2 = goals2.reduce((sum, g) => sum + (g?.count || 0), 0);
   return { s1, s2 };
 };
 
@@ -94,6 +99,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
   players,
   ratingLogs,
   trophies,
+  seasonStartDate, // Wordt nu geaccepteerd maar niet verplicht gebruikt
+  competitionName, // Wordt nu geaccepteerd
   onBack,
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
@@ -108,14 +115,10 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     return trophies
       .filter((t) => t.playerId === player.id)
       .sort((a, b) => {
-        const yearA = Number(a.year.match(/\d{4}/)?.[0]) || 0;
-        const yearB = Number(b.year.match(/\d{4}/)?.[0]) || 0;
+        const yearA = Number((a.year || "").match(/\d{4}/)?.[0]) || 0;
+        const yearB = Number((b.year || "").match(/\d{4}/)?.[0]) || 0;
         if (yearA !== yearB) return yearB - yearA;
-        const isWinterA = a.year.toLowerCase().includes('winter');
-        const isWinterB = b.year.toLowerCase().includes('winter');
-        if (isWinterA && !isWinterB) return -1;
-        if (!isWinterA && isWinterB) return 1;
-        return b.year.localeCompare(a.year);
+        return (b.year || "").localeCompare(a.year || "");
       });
   }, [trophies, player.id]);
 
@@ -133,48 +136,29 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
   const getTrophyContent = (type: TrophyType) => {
     const images: { [key: string]: string } = {
-      Verdediger:
-        'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
-      Topscoorder:
-        'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
-      Clubkampioen:
-        'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
-      '2de':
-        'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
-      '3de':
-        'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
-      'Speler van het jaar':
-        'https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png',
-      '1ste Introductietoernooi':
-        'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
-      '2de Introductietoernooi':
-        'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
-      '3de Introductietoernooi':
-        'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+      Verdediger: 'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
+      Topscoorder: 'https://i.postimg.cc/q76tHhng/Zonder-titel-(A4)-20251201-195441-0000.png',
+      Clubkampioen: 'https://i.postimg.cc/mkgT85Wm/Zonder-titel-(200-x-200-px)-20251203-070625-0000.png',
+      '2de': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+      '3de': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+      'Speler van het jaar': 'https://i.postimg.cc/76pPxbqT/Zonder-titel-(200-x-200-px)-20251203-124822-0000.png',
+      '1ste Introductietoernooi': 'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
+      '2de Introductietoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+      '3de Introductietoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
       '1ste NK': 'https://i.postimg.cc/GhXMP4q5/20251203-184928-0000.png',
       '2de NK': 'https://i.postimg.cc/wM0kkrcm/20251203-185040-0000.png',
       '3de NK': 'https://i.postimg.cc/MpcYydnC/20251203-185158-0000.png',
-      '1ste Wintertoernooi':
-        'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
-      '2de Wintertoernooi':
-        'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
-      '3de Wintertoernooi':
-        'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
+      '1ste Wintertoernooi': 'https://i.postimg.cc/YqWQ7mfx/Zonder-titel-(200-x-200-px)-20251203-123448-0000.png',
+      '2de Wintertoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
+      '3de Wintertoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
     };
 
     const imageUrl = images[type];
-    if (imageUrl)
-      return <img src={imageUrl} alt={type} className="w-8 h-8 object-contain" />;
+    if (imageUrl) return <img src={imageUrl} alt={type} className="w-8 h-8 object-contain" />;
     if (type === 'Verdediger') return <ShieldIcon className="w-6 h-6" />;
     return <TrophyIcon className="w-6 h-6" />;
   };
 
-  /**
-   * ✅ BELANGRIJKSTE FIX:
-   * - Ronde 1 gebruikt altijd session.teams
-   * - Ronde 2 kan nieuwe teams hebben: session.round2Teams ?? session.teams
-   * Daardoor klopten bij manual “nieuwe teams” je stats/grafieken/relaties niet.
-   */
   const stats = useMemo(() => {
     let wins = 0;
     let losses = 0;
@@ -194,9 +178,11 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       match: MatchResult,
       roundLabel: 'r1' | 'r2'
     ) => {
-      // zoek teamIndex van speler BINNEN de teams van deze ronde
+      // 🛡️ CRASH PREVENTIE: Check of data bestaat
+      if (!sessionTeams || !match) return;
+
       const playerTeamIndex = sessionTeams.findIndex((team) =>
-        team.some((p) => p.id === player.id)
+        Array.isArray(team) && team.some((p) => p.id === player.id)
       );
       if (playerTeamIndex < 0) return;
 
@@ -207,25 +193,20 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       if (!isTeam1 && !isTeam2) return;
 
       const opponentTeamIndex = isTeam1 ? match.team2Index : match.team1Index;
+      // 🛡️ CRASH PREVENTIE: Check of tegenstander bestaat
       if (!sessionTeams[opponentTeamIndex]) return;
 
       gamesPlayed++;
 
-      const playerTeamGoalsList = isTeam1 ? match.team1Goals : match.team2Goals;
-      const opponentTeamGoalsList = isTeam1 ? match.team2Goals : match.team1Goals;
+      const playerTeamGoalsList = (isTeam1 ? match.team1Goals : match.team2Goals) || [];
+      const opponentTeamGoalsList = (isTeam1 ? match.team2Goals : match.team1Goals) || [];
 
       const playerGoalCount =
         playerTeamGoalsList.find((g) => g.playerId === player.id)?.count || 0;
       goalsScored += playerGoalCount;
 
-      const playerTeamScore = playerTeamGoalsList.reduce(
-        (sum, g) => sum + (g?.count || 0),
-        0
-      );
-      const opponentTeamScore = opponentTeamGoalsList.reduce(
-        (sum, g) => sum + (g?.count || 0),
-        0
-      );
+      const playerTeamScore = playerTeamGoalsList.reduce((sum, g) => sum + (g?.count || 0), 0);
+      const opponentTeamScore = opponentTeamGoalsList.reduce((sum, g) => sum + (g?.count || 0), 0);
 
       if (playerTeamScore > opponentTeamScore) {
         wins++;
@@ -237,10 +218,13 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         points += 1;
       }
 
-      const teammates = sessionTeams[playerTeamIndex].filter(
-        (p) => p.id !== player.id
-      );
-      const opponents = sessionTeams[opponentTeamIndex];
+      const myTeam = sessionTeams[playerTeamIndex];
+      const oppTeam = sessionTeams[opponentTeamIndex];
+      
+      if (!myTeam || !oppTeam) return;
+
+      const teammates = myTeam.filter((p) => p.id !== player.id);
+      const opponents = oppTeam;
 
       teammates.forEach((tm) => {
         teammateFrequency.set(tm.id, (teammateFrequency.get(tm.id) || 0) + 1);
@@ -261,13 +245,11 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     };
 
     history.forEach((session) => {
+      if (!session) return;
       const teamsR1 = session.teams || [];
       const teamsR2 = session.round2Teams ?? session.teams ?? [];
 
-      // Ronde 1 matches met teamsR1
       (session.round1Results || []).forEach((m) => processMatch(teamsR1, m, 'r1'));
-
-      // Ronde 2 matches met teamsR2 (als handmatig nieuwe teams → round2Teams)
       (session.round2Results || []).forEach((m) => processMatch(teamsR2, m, 'r2'));
     });
 
@@ -294,46 +276,21 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     };
   }, [player.id, history]);
 
-  /**
-   * Seizoen-grafiek:
-   * - Gebruik ratingLogs als je ze hebt (betrouwbaarder dan “terugrekenen”)
-   * - Filter die logs op de datarange van de huidige `history` (jouw “seizoen/archief” context)
-   */
-  const seasonDateRange = useMemo(() => {
-    const dates = history.map((s) => toMs(s.date)).filter((x) => x > 0);
-    if (dates.length === 0) return null;
-    const min = Math.min(...dates);
-    const max = Math.max(...dates);
-    return { min, max };
-  }, [history]);
-
+  // Voorbereiding data voor grafieken (veilig)
   const allTimeRatingHistory = useMemo(() => {
-    const logs = (ratingLogs || [])
-      .filter((log) => log.playerId === player.id)
-      .map((log) => ({ date: log.date, rating: log.rating }))
+    return (ratingLogs || [])
+      .filter((l) => l.playerId === player.id)
+      .map((l) => ({ date: String(l.date), rating: Number(l.rating) }))
       .sort((a, b) => toMs(a.date) - toMs(b.date));
-    return logs;
   }, [player.id, ratingLogs]);
 
+  // Season history (versimpeld om crash te voorkomen)
   const seasonRatingHistory = useMemo(() => {
-    // Als er geen range is: val terug op alles wat we hebben
-    if (!seasonDateRange) return allTimeRatingHistory;
+    if (!seasonStartDate) return allTimeRatingHistory;
+    const startMs = toMs(seasonStartDate);
+    return allTimeRatingHistory.filter(r => toMs(r.date) >= startMs);
+  }, [allTimeRatingHistory, seasonStartDate]);
 
-    const { min, max } = seasonDateRange;
-
-    // Houd wat marge zodat “zelfde dag” / timezone niet raar doet
-    const pad = 36 * 60 * 60 * 1000; // 36 uur
-
-    const filtered = allTimeRatingHistory.filter((p) => {
-      const ms = toMs(p.date);
-      return ms >= min - pad && ms <= max + pad;
-    });
-
-    // Als filter leeg valt (bv. logs zijn anders opgeslagen), val terug op allTime
-    return filtered.length > 0 ? filtered : allTimeRatingHistory;
-  }, [allTimeRatingHistory, seasonDateRange]);
-
-  // Gemiddelde punten
   const avgPoints = stats.gamesPlayed > 0 ? stats.points / stats.gamesPlayed : 0;
 
   return (
@@ -344,8 +301,10 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
           stats={stats}
           trophies={playerTrophies}
           players={players}
+          history={history}
           seasonHistory={seasonRatingHistory}
           allTimeHistory={allTimeRatingHistory}
+          competitionName={competitionName || ''}
           onClose={() => setIsPrinting(false)}
         />
       )}
@@ -399,8 +358,10 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       {playerTrophies.length > 0 && (
         <div className="mb-8 p-4 bg-gradient-to-r from-gray-700 to-gray-800 rounded-xl border border-gray-600/50">
           <h3 className="text-lg font-bold text-white mb-3 flex items-center">
-            <div className="w-5 h-5 mr-2 text-yellow-400" />
-            Prijzenkast 🏆
+            <div className="w-5 h-5 mr-2 text-yellow-400">
+                <TrophyIcon className="w-full h-full"/>
+            </div>
+            Prijzenkast
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {playerTrophies.map((trophy) => (
@@ -424,10 +385,10 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard title="Gespeeld" value={stats.gamesPlayed} />
        <StatCard
-  title="Resultaten"
-  value={`${stats.wins}W • ${stats.draws}G • ${stats.losses}V`}
-  subtext={`van ${stats.gamesPlayed}`}
-/>
+          title="Resultaten"
+          value={`${stats.wins}W • ${stats.draws}G • ${stats.losses}V`}
+          subtext={`van ${stats.gamesPlayed}`}
+        />
         <StatCard
           title="Goals"
           value={stats.goalsScored}
