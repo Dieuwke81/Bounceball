@@ -84,56 +84,58 @@ async function generateSingleVersion(
           matches.push({ id: `r${rIdx}h${h}`, hallName: hallNames[h], team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false, subLow: null as any, subHigh: null as any, referee: null as any });
         }
         
+        // Wie hebben er rust?
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id));
 
         // ----------------------------------------------------------------------
-        // NIEUWE LOGICA: STRICTE FASES VOOR HOOG/LAAG
+        // HARDE LOGICA: RESERVES VULLEN MET RATING EISEN
         // ----------------------------------------------------------------------
         
-        // 1. Splits de rustende spelers in Laag (< 6.0) en Hoog (>= 6.0)
-        let lowPool = resting.filter(p => p.rating < 6.0).sort((a, b) => a.rating - b.rating); // Laag -> Hoog
-        let highPool = resting.filter(p => p.rating >= 6.0).sort((a, b) => a.rating - b.rating); // Laag -> Hoog
+        // 1. Splits de rustende spelers in de twee bakken
+        // Bak LAAG: alles onder 6.0 (gesorteerd van laag naar hoog)
+        let lowPool = resting.filter(p => p.rating < 6.0).sort((a, b) => a.rating - b.rating);
+        
+        // Bak HOOG: alles vanaf 6.0 (gesorteerd van laag naar hoog)
+        let highPool = resting.filter(p => p.rating >= 6.0).sort((a, b) => a.rating - b.rating);
 
-        // FASE 1: Vul 'Reserve Laag' UITSLUITEND met spelers uit de lage pool
-        for (let m of matches) {
-            if (lowPool.length > 0) {
-                m.subLow = lowPool.shift()!; // Pak de laagste beschikbare
-            } else {
-                m.subLow = null as any; // Nog even leeg laten
-            }
+        // Functie om de "slechtste" speler te pakken (uit lowPool, of fallback naar highPool)
+        const getLowestAvailable = () => {
+            if (lowPool.length > 0) return lowPool.shift()!;
+            if (highPool.length > 0) return highPool.shift()!; // Noodgreep: leen de slechtste van hoog
+            return null;
+        };
+
+        // Functie om de "beste" speler te pakken (uit highPool, of fallback naar lowPool)
+        const getHighestAvailable = () => {
+            if (highPool.length > 0) return highPool.pop()!;
+            if (lowPool.length > 0) return lowPool.pop()!; // Noodgreep: leen de beste van laag
+            return null;
         }
 
-        // FASE 2: Vul 'Reserve Hoog' UITSLUITEND met spelers uit de hoge pool
+        // STAP 1: Vul alle LAGE reserves (Prioriteit 1)
         for (let m of matches) {
-            if (highPool.length > 0) {
-                m.subHigh = highPool.pop()!; // Pak de hoogste beschikbare
-            } else {
-                m.subHigh = null as any; // Nog even leeg laten
-            }
+            const p = getLowestAvailable();
+            if (p) m.subLow = p;
+            else throw new Error("Niet genoeg spelers voor reserves"); // Dit triggert een retry
         }
 
-        // FASE 3: Noodopvulling (Alleen als de juiste pool leeg was)
-        // We gooien nu de overgebleven spelers bij elkaar
+        // STAP 2: Vul alle HOGE reserves (Prioriteit 2)
+        for (let m of matches) {
+            const p = getHighestAvailable();
+            if (p) m.subHigh = p;
+            else throw new Error("Niet genoeg spelers voor reserves"); // Dit triggert een retry
+        }
+
+        // STAP 3: Vul SCHEIDSRECHTERS met wat er over is (Prioriteit 3 - Mag leeg blijven)
+        // Gooi de restanten weer op één hoop
         let leftovers = [...lowPool, ...highPool].sort((a, b) => a.rating - b.rating);
-
-        for (let m of matches) {
-            // Is Reserve Laag nog leeg? Dan MOETEN we lenen (pak de laagste overblijver)
-            if (!m.subLow && leftovers.length > 0) {
-                m.subLow = leftovers.shift()!; 
-            }
-            // Is Reserve Hoog nog leeg? Dan MOETEN we lenen (pak de hoogste overblijver)
-            if (!m.subHigh && leftovers.length > 0) {
-                m.subHigh = leftovers.pop()!;
-            }
-        }
-
-        // FASE 4: Scheidsrechters (Alleen als er NU nog mensen over zijn)
+        
         for (let m of matches) {
             if (leftovers.length > 0) {
-                // Pak de middelste speler
+                // Pak de middelste speler voor scheids (meest eerlijk)
                 m.referee = leftovers.splice(Math.floor(leftovers.length / 2), 1)[0]; 
             } else {
-                m.referee = null as any; // Geen scheids
+                m.referee = null as any; // Geen probleem, scheids mag leeg
             }
         }
         // ----------------------------------------------------------------------
