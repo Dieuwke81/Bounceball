@@ -84,52 +84,40 @@ async function generateSingleVersion(
           matches.push({ id: `r${rIdx}h${h}`, hallName: hallNames[h], team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false, subLow: null as any, subHigh: null as any, referee: null as any });
         }
         
-        // Haal alle spelers op die rust hebben
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id));
 
         // ----------------------------------------------------------------------
-        // NIEUWE LOGICA: HARDE KNIP OP 6.0
+        // NIEUWE LOGICA: HARDE EIS (1 Laag + 1 Hoog PER WEDSTRIJD)
         // ----------------------------------------------------------------------
         
-        // 1. Splits de rustende spelers in Laag (< 6.0) en Hoog (>= 6.0)
-        // We sorteren ze ook meteen: Laag oplopend (slechtste eerst), Hoog oplopend (zodat we met pop() de beste kunnen pakken)
+        // 1. Splits de pool in Laag (< 6.0) en Hoog (>= 6.0)
         let lowPool = resting.filter(p => p.rating < 6.0).sort((a, b) => a.rating - b.rating);
         let highPool = resting.filter(p => p.rating >= 6.0).sort((a, b) => a.rating - b.rating);
 
-        // 2. Vul 'Reserve Laag' (subLow)
-        for (let m of matches) {
-            if (lowPool.length > 0) {
-                m.subLow = lowPool.shift()!; // Pak de laagste uit de lage pool
-            } else if (highPool.length > 0) {
-                // Noodgeval: Lage pool is op, pak de laagste uit de hoge pool
-                m.subLow = highPool.shift()!; 
-            } else {
-                m.subLow = null as any;
-            }
+        // 2. CHECK: Hebben we genoeg reserves voor het aantal wedstrijden?
+        // Als we 3 wedstrijden hebben, MOETEN we 3 lage en 3 hoge spelers beschikbaar hebben.
+        if (lowPool.length < matches.length || highPool.length < matches.length) {
+            // NIET GENOEG MENSEN MET DE JUISTE RATING!
+            // Gooi een error zodat de loop opnieuw begint en andere teams gaat samenstellen
+            throw new Error("Ongeldige verdeling: Niet genoeg Hoog/Laag reserves");
         }
 
-        // 3. Vul 'Reserve Hoog' (subHigh)
+        // 3. Als we hier zijn, hebben we genoeg mensen. Vul de reserves.
         for (let m of matches) {
-            if (highPool.length > 0) {
-                m.subHigh = highPool.pop()!; // Pak de hoogste uit de hoge pool
-            } else if (lowPool.length > 0) {
-                // Noodgeval: Hoge pool is op, pak de hoogste uit de lage pool
-                m.subHigh = lowPool.pop()!;
-            } else {
-                m.subHigh = null as any;
-            }
+            m.subLow = lowPool.shift()!;   // Pak de laagste beschikbare
+            m.subHigh = highPool.pop()!;   // Pak de hoogste beschikbare (beste van de hoge groep)
         }
 
-        // 4. Alles wat nu nog over is in beide pools gaat naar de scheidsrechters
+        // 4. Alles wat nu nog over is (in lowPool en highPool) gaat naar de scheidsrechters
         let leftovers = [...lowPool, ...highPool].sort((a, b) => a.rating - b.rating);
 
         // 5. Vul Scheidsrechters (indien beschikbaar)
         for (let m of matches) {
             if (leftovers.length > 0) {
-                // Pak de middelste speler voor scheids (vaak het eerlijkst)
+                // Pak de middelste speler voor scheids
                 m.referee = leftovers.splice(Math.floor(leftovers.length / 2), 1)[0]; 
             } else {
-                m.referee = null as any; // Geen spelers meer? Geen scheids.
+                m.referee = null as any; // Scheids mag leeg blijven!
             }
         }
         // ----------------------------------------------------------------------
@@ -175,7 +163,7 @@ export async function generateNKSchedule(
     if (session) validVersions.push(session);
   }
 
-  if (validVersions.length === 0) throw new Error("Geen schema gevonden die voldoet aan de eisen.");
+  if (validVersions.length === 0) throw new Error("Geen schema gevonden die voldoet aan de eisen (1 Laag + 1 Hoog per wedstrijd lukt niet met deze spelers/teams).");
 
   const getMaxDiff = (s: NKSession): number => {
     let max = 0;
