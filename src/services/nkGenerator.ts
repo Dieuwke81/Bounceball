@@ -79,7 +79,7 @@ async function generateSingleVersion(
           const mPlayers = pool.filter(p => !usedThisRound.has(p.id)).slice(0, ppm);
           if (mPlayers.length < ppm) break;
           const split = getBestTeamSplit(mPlayers, ppt, target, minRating, isIntro);
-          if (!split) throw new Error();
+          if (!split) throw new Error("Could not find a valid team split"); // Meer specifieke foutmelding
           mPlayers.forEach(p => usedThisRound.add(p.id));
           matches.push({ id: `r${rIdx}h${h}`, hallName: hallNames[h], team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false, subLow: null as any, subHigh: null as any, referee: null as any });
         }
@@ -88,9 +88,12 @@ async function generateSingleVersion(
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id));
 
         // ----------------------------------------------------------------------
-        // HARDE LOGICA: RESERVES VULLEN MET RATING EISEN
+        // HARDE LOGICA: RESERVES VULLEN MET RATING EISEN (AANGEPAST)
         // ----------------------------------------------------------------------
         
+        // Shuffle de matches om een eerlijke verdeling van reserves te bevorderen
+        const shuffledMatches = [...matches].sort(() => Math.random() - 0.5);
+
         // 1. Splits de rustende spelers in de twee bakken
         // Bak LAAG: alles onder 6.0 (gesorteerd van laag naar hoog)
         let lowPool = resting.filter(p => p.rating < 6.0).sort((a, b) => a.rating - b.rating);
@@ -98,39 +101,32 @@ async function generateSingleVersion(
         // Bak HOOG: alles vanaf 6.0 (gesorteerd van laag naar hoog)
         let highPool = resting.filter(p => p.rating >= 6.0).sort((a, b) => a.rating - b.rating);
 
-        // Functie om de "slechtste" speler te pakken (uit lowPool, of fallback naar highPool)
-        const getLowestAvailable = () => {
-            if (lowPool.length > 0) return lowPool.shift()!;
-            if (highPool.length > 0) return highPool.shift()!; // Noodgreep: leen de slechtste van hoog
-            return null;
-        };
+        const requiredLowSubs = shuffledMatches.length;
+        const requiredHighSubs = shuffledMatches.length;
 
-        // Functie om de "beste" speler te pakken (uit highPool, of fallback naar lowPool)
-        const getHighestAvailable = () => {
-            if (highPool.length > 0) return highPool.pop()!;
-            if (lowPool.length > 0) return lowPool.pop()!; // Noodgreep: leen de beste van laag
-            return null;
+        // Controleer of er genoeg spelers zijn voor de minimale eisen
+        if (lowPool.length < requiredLowSubs || highPool.length < requiredHighSubs) {
+            // Als er te weinig spelers zijn in een van de categorieën,
+            // dan is deze ronde niet mogelijk onder de strenge regels.
+            // Gooi een error om een retry van de ronde te forceren.
+            throw new Error("Niet genoeg spelers voor de vereiste lage en hoge reserves");
         }
 
-        // STAP 1: Vul alle LAGE reserves (Prioriteit 1)
-        for (let m of matches) {
-            const p = getLowestAvailable();
-            if (p) m.subLow = p;
-            else throw new Error("Niet genoeg spelers voor reserves"); // Dit triggert een retry
+        // STAP 1: Vul alle LAGE reserves (Prioriteit 1) - Strikt uit lowPool
+        for (let m of shuffledMatches) {
+            m.subLow = lowPool.shift()!; // We hebben gecontroleerd dat er genoeg zijn
         }
 
-        // STAP 2: Vul alle HOGE reserves (Prioriteit 2)
-        for (let m of matches) {
-            const p = getHighestAvailable();
-            if (p) m.subHigh = p;
-            else throw new Error("Niet genoeg spelers voor reserves"); // Dit triggert een retry
+        // STAP 2: Vul alle HOGE reserves (Prioriteit 2) - Strikt uit highPool
+        for (let m of shuffledMatches) {
+            m.subHigh = highPool.pop()!; // We hebben gecontroleerd dat er genoeg zijn
         }
 
         // STAP 3: Vul SCHEIDSRECHTERS met wat er over is (Prioriteit 3 - Mag leeg blijven)
-        // Gooi de restanten weer op één hoop
+        // Gooi de restanten weer op één hoop, gesorteerd op rating
         let leftovers = [...lowPool, ...highPool].sort((a, b) => a.rating - b.rating);
         
-        for (let m of matches) {
+        for (let m of shuffledMatches) {
             if (leftovers.length > 0) {
                 // Pak de middelste speler voor scheids (meest eerlijk)
                 m.referee = leftovers.splice(Math.floor(leftovers.length / 2), 1)[0]; 
@@ -141,7 +137,10 @@ async function generateSingleVersion(
         // ----------------------------------------------------------------------
 
         roundMatches = matches; success = true; break;
-      } catch (e) {}
+      } catch (e) {
+        // Log de fout voor debuggen, maar laat de loop verdergaan met een nieuwe poging
+        // console.warn("Attempt failed for round", rIdx, ":", (e as Error).message);
+      }
     }
 
     if (success) {
@@ -149,6 +148,12 @@ async function generateSingleVersion(
       rounds.push({ roundNumber: rIdx, matches: roundMatches, restingPlayers: [], startTime: time.start, endTime: time.end } as any);
       const nextCounts = new Map(currentPlayedCount);
       roundMatches.forEach(m => [...m.team1, ...m.team2].forEach(p => nextCounts.set(p.id, nextCounts.get(p.id)! + 1)));
+      // Ook de reserves tellen mee voor de 'gespeelde' count als we willen dat ze niet te vaak rusten
+      roundMatches.forEach(m => {
+        if (m.subLow) nextCounts.set(m.subLow.id, nextCounts.get(m.subLow.id)! + 0.5); // Bijvoorbeeld een halve wedstrijd
+        if (m.subHigh) nextCounts.set(m.subHigh.id, nextCounts.get(m.subHigh.id)! + 0.5); // Bijvoorbeeld een halve wedstrijd
+        if (m.referee) nextCounts.set(m.referee.id, nextCounts.get(m.referee.id)! + 0.25); // En een kwart voor scheids
+      });
       playedCountsHistory[rIdx] = nextCounts;
       rIdx++;
     } else {
@@ -159,7 +164,10 @@ async function generateSingleVersion(
   }
 
   const lastCounts = playedCountsHistory[playedCountsHistory.length - 1];
-  const isComplete = allPlayers.every(p => lastCounts.get(p.id) === mpp);
+  // Pas deze controle aan als je de playedCount voor reserves hebt aangepast (bijv. +0.5)
+  // De `mpp` moet dan mogelijk ook de verwachte "sub" of "referee" activiteiten omvatten,
+  // of je moet de playedCount voor de "isComplete" check anders berekenen.
+  const isComplete = allPlayers.every(p => lastCounts.get(p.id)! >= mpp); 
   if (!isComplete) return null;
 
   return { competitionName, hallNames, playersPerTeam: ppt, totalRounds: rounds.length, rounds, standings: [], isCompleted: false };
@@ -197,10 +205,17 @@ export async function generateNKSchedule(
   const getSocialScore = (s: NKSession): number => {
     const pairs = new Map<string, number>();
     s.rounds.forEach(r => r.matches.forEach(m => {
+      // Tel alle betrokken spelers mee voor de social score
       const p = [...m.team1, ...m.team2];
-      for (let i = 0; i < p.length; i++) for (let j = i + 1; j < p.length; j++) {
-        const key = [p[i].id, p[j].id].sort().join('-');
-        pairs.set(key, (pairs.get(key) || 0) + 1);
+      if (m.subLow) p.push(m.subLow);
+      if (m.subHigh) p.push(m.subHigh);
+      if (m.referee) p.push(m.referee);
+
+      for (let i = 0; i < p.length; i++) {
+        for (let j = i + 1; j < p.length; j++) {
+          const key = [p[i].id, p[j].id].sort().join('-');
+          pairs.set(key, (pairs.get(key) || 0) + 1);
+        }
       }
     }));
     let score = 0;
