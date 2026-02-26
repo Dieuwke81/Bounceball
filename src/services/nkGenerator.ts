@@ -83,12 +83,32 @@ async function generateSingleVersion(
           mPlayers.forEach(p => usedThisRound.add(p.id));
           matches.push({ id: `r${rIdx}h${h}`, hallName: hallNames[h], team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false, subLow: null as any, subHigh: null as any, referee: null as any });
         }
+        
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
-        for (let m of matches) { 
-            m.subLow = resting.shift()!; 
-            m.subHigh = resting.pop()!; 
-            m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
+        
+        // ----------------------------------------------------------------------
+        // AANGEPAST DEEL: VOLGORDE VAN VULLEN
+        // Eerst reserves, dan pas scheidsrechter
+        // ----------------------------------------------------------------------
+        for (let m of matches) {
+            // EERST: Vul Reserve Laag (indien beschikbaar)
+            if (resting.length > 0) m.subLow = resting.shift()!;
+            else m.subLow = null as any;
+
+            // DAN: Vul Reserve Hoog (indien beschikbaar)
+            if (resting.length > 0) m.subHigh = resting.pop()!;
+            else m.subHigh = null as any;
+
+            // LAATST: Vul Scheidsrechter (mag leeg blijven als op)
+            if (resting.length > 0) {
+                // Pak middelste speler voor scheids (zoals origineel)
+                m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
+            } else {
+                m.referee = null as any; // Geen scheids, jammer dan
+            }
         }
+        // ----------------------------------------------------------------------
+
         roundMatches = matches; success = true; break;
       } catch (e) {}
     }
