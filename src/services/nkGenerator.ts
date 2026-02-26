@@ -84,31 +84,52 @@ async function generateSingleVersion(
           matches.push({ id: `r${rIdx}h${h}`, hallName: hallNames[h], team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false, subLow: null as any, subHigh: null as any, referee: null as any });
         }
         
-        let resting = allPlayers.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
-        
-        // ----------------------------------------------------------------------
-        // AANGEPASTE LOGICA: Verdeel schaarste
-        // ----------------------------------------------------------------------
-        
-        // Stap 1: Geef ELKE wedstrijd eerst een "Reserve Laag" (indien beschikbaar)
-        for (let m of matches) {
-            if (resting.length > 0) m.subLow = resting.shift()!;
-            else m.subLow = null as any;
-        }
+        // Haal alle spelers op die rust hebben
+        let resting = allPlayers.filter(p => !usedThisRound.has(p.id));
 
-        // Stap 2: Geef ELKE wedstrijd een "Reserve Hoog" (indien beschikbaar)
-        for (let m of matches) {
-            if (resting.length > 0) m.subHigh = resting.pop()!;
-            else m.subHigh = null as any;
-        }
+        // ----------------------------------------------------------------------
+        // NIEUWE LOGICA: HARDE KNIP OP 6.0
+        // ----------------------------------------------------------------------
+        
+        // 1. Splits de rustende spelers in Laag (< 6.0) en Hoog (>= 6.0)
+        // We sorteren ze ook meteen: Laag oplopend (slechtste eerst), Hoog oplopend (zodat we met pop() de beste kunnen pakken)
+        let lowPool = resting.filter(p => p.rating < 6.0).sort((a, b) => a.rating - b.rating);
+        let highPool = resting.filter(p => p.rating >= 6.0).sort((a, b) => a.rating - b.rating);
 
-        // Stap 3: Geef ELKE wedstrijd pas als laatste een Scheidsrechter (indien beschikbaar)
+        // 2. Vul 'Reserve Laag' (subLow)
         for (let m of matches) {
-            if (resting.length > 0) {
-                // Pak de middelste/beste overgebleven speler als scheids
-                m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
+            if (lowPool.length > 0) {
+                m.subLow = lowPool.shift()!; // Pak de laagste uit de lage pool
+            } else if (highPool.length > 0) {
+                // Noodgeval: Lage pool is op, pak de laagste uit de hoge pool
+                m.subLow = highPool.shift()!; 
             } else {
-                m.referee = null as any; // Geen scheids, jammer dan
+                m.subLow = null as any;
+            }
+        }
+
+        // 3. Vul 'Reserve Hoog' (subHigh)
+        for (let m of matches) {
+            if (highPool.length > 0) {
+                m.subHigh = highPool.pop()!; // Pak de hoogste uit de hoge pool
+            } else if (lowPool.length > 0) {
+                // Noodgeval: Hoge pool is op, pak de hoogste uit de lage pool
+                m.subHigh = lowPool.pop()!;
+            } else {
+                m.subHigh = null as any;
+            }
+        }
+
+        // 4. Alles wat nu nog over is in beide pools gaat naar de scheidsrechters
+        let leftovers = [...lowPool, ...highPool].sort((a, b) => a.rating - b.rating);
+
+        // 5. Vul Scheidsrechters (indien beschikbaar)
+        for (let m of matches) {
+            if (leftovers.length > 0) {
+                // Pak de middelste speler voor scheids (vaak het eerlijkst)
+                m.referee = leftovers.splice(Math.floor(leftovers.length / 2), 1)[0]; 
+            } else {
+                m.referee = null as any; // Geen spelers meer? Geen scheids.
             }
         }
         // ----------------------------------------------------------------------
