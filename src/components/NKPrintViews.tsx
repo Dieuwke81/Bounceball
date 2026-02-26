@@ -43,6 +43,18 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           .print-table td { border: 2px solid black !important; padding: 6px !important; vertical-align: middle !important; color: black !important; }
           .small-score-box { border: 1.5px solid black; width: 25pt; height: 25pt; display: inline-block; background: white !important; }
           .time-label { font-size: 14pt !important; font-weight: 900 !important; color: #444 !important; margin-left: 10px; }
+          
+          /* Nieuwe stijl voor de puntenuitleg */
+          .points-explanation {
+            margin-top: 15px !important;
+            font-size: 10pt !important;
+            font-weight: bold !important;
+            color: black !important;
+            text-align: center !important;
+          }
+          .points-explanation div {
+            margin-bottom: 3px !important;
+          }
         }
       `}</style>
 
@@ -176,6 +188,12 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
               })}</tbody>
             <tfoot><tr><td colSpan={3} className="border-none"></td><td className="text-right font-black text-xl py-4 pr-4 uppercase">TOTAAL:</td><td className="text-center"><div className="border-4 border-black w-14 h-14 mx-auto bg-white"></div></td></tr></tfoot>
           </table>
+          {/* NIEUWE TEKST HIER */}
+          <div className="points-explanation">
+            <div>Winst = 3 punten</div>
+            <div>Gelijk = 1 punt</div>
+            <div>Verlies = 0 punten</div> {/* Ik heb aangenomen dat Verlies 0 punten is */}
+          </div>
         </div>
       ))}
 
