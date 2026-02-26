@@ -88,51 +88,42 @@ async function generateSingleVersion(
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id));
 
         // ----------------------------------------------------------------------
-        // HARDE LOGICA: RESERVES VULLEN MET RATING EISEN
+        // AANGEPASTE LOGICA: HARDE EISEN VOOR LOW/HIGH RESERVE
         // ----------------------------------------------------------------------
         
         // 1. Splits de rustende spelers in de twee bakken
-        // Bak LAAG: alles onder 6.0 (gesorteerd van laag naar hoog)
+        // Bak LAAG: alles onder 6.0
         let lowPool = resting.filter(p => p.rating < 6.0).sort((a, b) => a.rating - b.rating);
         
-        // Bak HOOG: alles vanaf 6.0 (gesorteerd van laag naar hoog)
+        // Bak HOOG: alles vanaf 6.0
         let highPool = resting.filter(p => p.rating >= 6.0).sort((a, b) => a.rating - b.rating);
 
-        // Functie om de "slechtste" speler te pakken (uit lowPool, of fallback naar highPool)
-        const getLowestAvailable = () => {
-            if (lowPool.length > 0) return lowPool.shift()!;
-            if (highPool.length > 0) return highPool.shift()!; // Noodgreep: leen de slechtste van hoog
-            return null;
-        };
-
-        // Functie om de "beste" speler te pakken (uit highPool, of fallback naar lowPool)
-        const getHighestAvailable = () => {
-            if (highPool.length > 0) return highPool.pop()!;
-            if (lowPool.length > 0) return lowPool.pop()!; // Noodgreep: leen de beste van laag
-            return null;
+        // CHECK: Zijn er genoeg spelers in elke bak voor het aantal wedstrijden?
+        // Als we 3 wedstrijden hebben, moeten we MINIMAAL 3 lage en 3 hoge spelers "over" hebben.
+        if (lowPool.length < matches.length || highPool.length < matches.length) {
+             // Niet genoeg juiste types spelers over in de rust-poule.
+             // Gooi error om de `attempt` loop te triggeren (retry met andere spelers in de teams)
+             throw new Error("Ongeldige verdeling rustende spelers (te weinig laag of hoog)");
         }
 
-        // STAP 1: Vul alle LAGE reserves (Prioriteit 1)
+        // STAP 1: Vul alle LAGE reserves (Pak de allerlaagste ratings eerst)
         for (let m of matches) {
-            const p = getLowestAvailable();
-            if (p) m.subLow = p;
-            else throw new Error("Niet genoeg spelers voor reserves"); // Dit triggert een retry
+            m.subLow = lowPool.shift()!; // We weten zeker dat dit bestaat door de check hierboven
         }
 
-        // STAP 2: Vul alle HOGE reserves (Prioriteit 2)
+        // STAP 2: Vul alle HOGE reserves (Pak de allerhoogste ratings eerst)
+        // We pakken .pop() zodat de 'middelmatige' hoge spelers overblijven voor scheidsrechteren (eerlijker)
         for (let m of matches) {
-            const p = getHighestAvailable();
-            if (p) m.subHigh = p;
-            else throw new Error("Niet genoeg spelers voor reserves"); // Dit triggert een retry
+            m.subHigh = highPool.pop()!; 
         }
 
-        // STAP 3: Vul SCHEIDSRECHTERS met wat er over is (Prioriteit 3 - Mag leeg blijven)
-        // Gooi de restanten weer op één hoop
+        // STAP 3: Vul SCHEIDSRECHTERS met wat er over is
+        // Gooi de restanten weer op één hoop en sorteer
         let leftovers = [...lowPool, ...highPool].sort((a, b) => a.rating - b.rating);
         
         for (let m of matches) {
             if (leftovers.length > 0) {
-                // Pak de middelste speler voor scheids (meest eerlijk)
+                // Pak de middelste speler voor scheids (meest eerlijk qua niveau)
                 m.referee = leftovers.splice(Math.floor(leftovers.length / 2), 1)[0]; 
             } else {
                 m.referee = null as any; // Geen probleem, scheids mag leeg
