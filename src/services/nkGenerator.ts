@@ -87,21 +87,25 @@ async function generateSingleVersion(
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
         
         // ----------------------------------------------------------------------
-        // AANGEPAST DEEL: VOLGORDE VAN VULLEN
-        // Eerst reserves, dan pas scheidsrechter
+        // AANGEPASTE LOGICA: Verdeel schaarste
         // ----------------------------------------------------------------------
+        
+        // Stap 1: Geef ELKE wedstrijd eerst een "Reserve Laag" (indien beschikbaar)
         for (let m of matches) {
-            // EERST: Vul Reserve Laag (indien beschikbaar)
             if (resting.length > 0) m.subLow = resting.shift()!;
             else m.subLow = null as any;
+        }
 
-            // DAN: Vul Reserve Hoog (indien beschikbaar)
+        // Stap 2: Geef ELKE wedstrijd een "Reserve Hoog" (indien beschikbaar)
+        for (let m of matches) {
             if (resting.length > 0) m.subHigh = resting.pop()!;
             else m.subHigh = null as any;
+        }
 
-            // LAATST: Vul Scheidsrechter (mag leeg blijven als op)
+        // Stap 3: Geef ELKE wedstrijd pas als laatste een Scheidsrechter (indien beschikbaar)
+        for (let m of matches) {
             if (resting.length > 0) {
-                // Pak middelste speler voor scheids (zoals origineel)
+                // Pak de middelste/beste overgebleven speler als scheids
                 m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
             } else {
                 m.referee = null as any; // Geen scheids, jammer dan
