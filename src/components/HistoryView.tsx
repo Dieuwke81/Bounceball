@@ -188,7 +188,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     const headers = [
       'Datum',
       'Ronde',
-      'Team Kleur',
+      'Team Nummer', // Aangepast van 'Team Kleur' naar 'Team Nummer'
       'excelID',
       'Speler ID',
       'Naam',
@@ -229,9 +229,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({
           }
 
           const addTeamRows = (
-            teamIndex: number,
+            teamIndex: number, // teamIndex wordt nu gebruikt
             goalsArray: any[],
-            teamColor: 'Blauw' | 'Geel',
+            // teamColor: 'Blauw' | 'Geel', // Deze parameter is niet meer nodig voor de output
             points: number
           ) => {
             const teamPlayers = teamsForRound?.[teamIndex] || [];
@@ -248,7 +248,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
               rows.push([
                 dateStr,
                 roundName,
-                teamColor,
+                `Team ${teamIndex + 1}`, // Aangepast naar Team + nummer
                 String(excelId ?? ''),
                 String(player.id),
                 String(player.name),
@@ -258,8 +258,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             });
           };
 
-          addTeamRows(match.team1Index, match.team1Goals, 'Blauw', pts1);
-          addTeamRows(match.team2Index, match.team2Goals, 'Geel', pts2);
+          addTeamRows(match.team1Index, match.team1Goals, pts1); // Verwijderd 'Blauw'
+          addTeamRows(match.team2Index, match.team2Goals, pts2); // Verwijderd 'Geel'
         });
       };
 
@@ -481,7 +481,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             <h4
               className={`font-bold text-lg mb-2 border-b border-gray-600 pb-2 truncate ${rightColorClass}`}
             >
-              Team {rightTeamIdx + 1}
+            Team {rightTeamIdx + 1}
             </h4>
             <PlayerListWithGoals
               players={team2Players}
