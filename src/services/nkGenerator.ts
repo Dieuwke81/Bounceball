@@ -83,12 +83,28 @@ async function generateSingleVersion(
           mPlayers.forEach(p => usedThisRound.add(p.id));
           matches.push({ id: `r${rIdx}h${h}`, hallName: hallNames[h], team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false, subLow: null as any, subHigh: null as any, referee: null as any });
         }
+
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
+        
+        // Verdeel eerst alle eerste reserves (subLow) over de matches
         for (let m of matches) { 
-            m.subLow = resting.shift()!; 
-            m.subHigh = resting.pop()!; 
-            m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
+            if (resting.length > 0) {
+                m.subLow = resting.shift()!;
+            }
         }
+        // Verdeel daarna alle tweede reserves (subHigh) over de matches
+        for (let m of matches) { 
+            if (resting.length > 0) {
+                m.subHigh = resting.pop()!;
+            }
+        }
+        // Verdeel tot slot de scheidsrechters over de matches
+        for (let m of matches) { 
+            if (resting.length > 0) {
+                m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
+            }
+        }
+
         roundMatches = matches; success = true; break;
       } catch (e) {}
     }
