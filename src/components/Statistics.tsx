@@ -52,32 +52,34 @@ const Statistics: React.FC<StatisticsProps> = ({ history, players, onSelectPlaye
   // ============================
   // Attendance per SPEELAVOND (sessie)
   // ============================
-  const { playerGames, totalSessions, minGames } = useMemo(() => {
-    const playerGamesMap = new Map<number, number>();
-    const sessions = history.length;
+  // VERVANG DIT IN Statistics.tsx
+const { playerGames, totalSessions, minGames } = useMemo(() => {
+  const playerGamesMap = new Map<number, number>();
+  
+  // FILTER: Alleen sessies met resultaten tellen mee (net als in PrintView)
+  const validSessions = history.filter(s => 
+    (s.round1Results?.length || 0) > 0 || (s.round2Results?.length || 0) > 0
+  );
 
-    if (sessions === 0) return { playerGames: playerGamesMap, totalSessions: 0, minGames: 0 };
+  validSessions.forEach((session) => {
+    const attendingIds = new Set<number>();
+    const r1 = getTeamsR1(session);
+    r1.flat().forEach((p) => attendingIds.add(p.id));
+    const r2 = getTeamsR2(session);
+    r2.flat().forEach((p) => attendingIds.add(p.id));
 
-    history.forEach((session) => {
-      const attendingIds = new Set<number>();
-
-      const r1 = getTeamsR1(session);
-      r1.flat().forEach((p) => attendingIds.add(p.id));
-
-      const r2 = getTeamsR2(session);
-      r2.flat().forEach((p) => attendingIds.add(p.id));
-
-      attendingIds.forEach((id) => {
-        playerGamesMap.set(id, (playerGamesMap.get(id) || 0) + 1);
-      });
+    attendingIds.forEach((id) => {
+      playerGamesMap.set(id, (playerGamesMap.get(id) || 0) + 1);
     });
+  });
 
-    return {
-      playerGames: playerGamesMap,
-      totalSessions: sessions,
-      minGames: Math.max(1, Math.round(sessions / 2)),
-    };
-  }, [history]);
+  const sessionsCount = validSessions.length;
+  return {
+    playerGames: playerGamesMap,
+    totalSessions: sessionsCount,
+    minGames: Math.max(1, Math.round(sessionsCount / 2)),
+  };
+}, [history]);
 
   // ============================
   // Matches per speler
