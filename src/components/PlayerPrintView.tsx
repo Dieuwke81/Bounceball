@@ -184,6 +184,7 @@ const computeSeasonAggregates = (params: {
   return { standings, goalsForPlayer, defense };
 };
 
+// VERVANG DIT IN PlayerPrintView.tsx
 const rankStanding = (standings: Map<number, StandingRow>, playerId: number, eligibleIds: Set<number>) => {
   const rows = [...standings.entries()]
     .filter(([id]) => eligibleIds.has(id))
@@ -196,7 +197,14 @@ const rankStanding = (standings: Map<number, StandingRow>, playerId: number, eli
       avg: r.matches > 0 ? r.pts / r.matches : 0,
     }));
 
-  rows.sort((a, b) => b.avg - a.avg || b.gd - a.gd || b.gf - a.gf || a.id - b.id);
+  // EXACT dezelfde sortering als in Statistics.tsx: 
+  // 1. Gemiddelde punten, 2. Doelsaldo, 3. Goals Voor, 4. ID (om swap te voorkomen)
+  rows.sort((a, b) => 
+    b.avg - a.avg || 
+    b.gd - a.gd || 
+    b.gf - a.gf || 
+    a.id - b.id
+  );
 
   const idx = rows.findIndex((r) => r.id === playerId);
   return idx >= 0 ? idx + 1 : 0;
