@@ -52,8 +52,8 @@ const Page: React.FC<{ title: string; subtitle: string; rows: PrintRow[]; logo: 
         {rows.map((r, index) => (
           <tr key={index}>
             <td>{r.rank}</td>
-            <td>{r.name}</td>
-            <td className="right">{r.value}</td>
+            <td className="font-bold">{r.name}</td>
+            <td className="right font-black">{r.value}</td>
             <td className="right">{r.sub ?? ''}</td>
           </tr>
         ))}
@@ -81,40 +81,58 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
   return createPortal(
     <div className="print-root">
       <style>{`
-        /* 1. Forceer lichte modus voor de browser */
+        /* Forceer lichte kleurstelling voor browsers */
         :root {
           color-scheme: light !important;
         }
 
         @media print {
-          /* 2. Verberg alles behalve de print-root */
           body > *:not(.print-root) { 
             display: none !important; 
           }
 
-          /* 3. Forceer witte achtergrond op de body */
           html, body {
             background-color: #ffffff !important;
+            /* Geen grijs: puur zwart */
             color: #000000 !important;
             margin: 0;
             padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
 
           @page { 
             size: A4; 
             margin: 15mm; 
           }
+
+          /* Forceer zwart op ALLE elementen binnen de print */
+          .print-root, .print-root * {
+            color: #000000 !important;
+            border-color: #000000 !important;
+            opacity: 1 !important;
+          }
+
+          /* Voorkom dat rijen in het midden worden gesplitst over twee pagina's */
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+
+          thead {
+            display: table-header-group !important;
+          }
         }
 
         .print-root {
-          font-family: Arial, sans-serif;
+          font-family: "Helvetica Neue", Arial, sans-serif;
           background-color: #ffffff !important;
-          color: #000000 !important;
-          min-height: 100vh;
+          width: 100%;
         }
 
         .print-page {
           page-break-after: always;
+          break-after: page;
           padding-top: 10px;
           background-color: #ffffff !important;
         }
@@ -123,8 +141,8 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
           display: flex;
           align-items: center;
           gap: 20px;
-          margin-bottom: 25px;
-          border-bottom: 2px solid #000000 !important;
+          margin-bottom: 20px;
+          border-bottom: 3px solid #000000 !important;
           padding-bottom: 15px;
         }
 
@@ -135,14 +153,15 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
         }
 
         h1 {
-          font-size: 24px;
+          font-size: 26px;
           margin: 0;
+          font-weight: 900;
           color: #000000 !important;
-          font-weight: bold;
         }
 
         p {
           margin: 4px 0 0;
+          font-size: 14px;
           color: #000000 !important;
           font-style: italic;
         }
@@ -151,38 +170,33 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
           width: 100%;
           border-collapse: collapse;
           margin-top: 10px;
-          background-color: #ffffff !important;
         }
 
         th {
           text-align: left;
-          padding: 10px 6px;
+          padding: 12px 8px;
           border-bottom: 2px solid #000000 !important;
           font-size: 14px;
-          color: #000000 !important;
-          font-weight: bold;
+          font-weight: 900;
+          text-transform: uppercase;
         }
 
         td {
-          padding: 8px 6px;
-          border-bottom: 1px solid #eeeeee !important;
-          font-size: 13px;
+          padding: 10px 8px;
+          border-bottom: 1px solid #dddddd !important;
+          font-size: 14px;
           color: #000000 !important;
         }
 
-        /* Zebra-striping: heel licht grijs voor leesbaarheid, of zet op #fff voor volledig wit */
+        .font-bold { font-weight: 700; }
+        .font-black { font-weight: 900; }
+
         tr:nth-child(even) {
-          background-color: #f9f9f9 !important;
+          background-color: #f2f2f2 !important;
         }
 
         .right {
           text-align: right;
-        }
-        
-        /* Forceer alle tekst op zwart, ook als de app elders anders zegt */
-        .print-root * {
-          color: #000000 !important;
-          text-shadow: none !important;
         }
       `}</style>
 
