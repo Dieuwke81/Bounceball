@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { Player, Trophy, TrophyType, GameSession, MatchResult } from '../types';
@@ -36,24 +35,17 @@ type SeasonMeta = {
 };
 
 /**
- * ✅ Seizoen-avonden tellen (met resulltaten) + aanwezigheid per speler.
- * - telt per sessie (avond) max 1x, ook als iemand in R1 én R2 voorkomt.
- * - telt ook spelers uit round2Teams mee.
- * - filtert op huidige spelers (allowedIds)
+ * ✅ Seizoen-avonden tellen (met resultaten) + aanwezigheid per speler.
  */
 const computeSeasonMeta = (params: {
   history: GameSession[];
-  seasonStartMs: number;
   allowedIds: Set<number>;
 }): SeasonMeta => {
-  const { history, seasonStartMs, allowedIds } = params;
+  const { history, allowedIds } = params;
 
   const nightsByPlayer = new Map<number, number>();
 
   const seasonSessions = (history || []).filter((s) => {
-    const ms = toMs(String(s.date || ''));
-    if (!ms) return false;
-    if (seasonStartMs && ms < seasonStartMs) return false;
     return hasAnyResults(s);
   });
 
@@ -87,17 +79,13 @@ const computeSeasonMeta = (params: {
 };
 
 /**
- * ✅ Seizoen aggregaties:
- * - competitie: punten / wedstrijden (avg)
- * - topscorer: goals / wedstrijden (avg)
- * - verdediger: tegengoals / wedstrijden (avg, lager is beter)
+ * ✅ Seizoen aggregaties
  */
 const computeSeasonAggregates = (params: {
   history: GameSession[];
-  seasonStartMs: number;
   allowedIds: Set<number>;
 }) => {
-  const { history, seasonStartMs, allowedIds } = params;
+  const { history, allowedIds } = params;
 
   const standings = new Map<number, StandingRow>();
   const goalsForPlayer = new Map<number, number>();
@@ -124,9 +112,9 @@ const computeSeasonAggregates = (params: {
   };
 
   const applyMatch = (teamsForRound: Player[][] | undefined, match: MatchResult) => {
-    const t1 = (teamsForRound?.[match.team1Index] || []).filter((p) => allowedIds.has(p.id));
-    const t2 = (teamsForRound?.[match.team2Index] || []).filter((p) => allowedIds.has(p.id));
-    if (!t1.length || !t2.length) return;
+    const rawT1 = teamsForRound?.[match.team1Index] || [];
+    const rawT2 = teamsForRound?.[match.team2Index] || [];
+    if (!rawT1.length || !rawT2.length) return;
 
     const s1 = sumGoals(match.team1Goals || []);
     const s2 = sumGoals(match.team2Goals || []);
@@ -134,27 +122,25 @@ const computeSeasonAggregates = (params: {
     addPlayerGoals(match.team1Goals || []);
     addPlayerGoals(match.team2Goals || []);
 
+    const t1 = rawT1.filter((p) => allowedIds.has(p.id));
+    const t2 = rawT2.filter((p) => allowedIds.has(p.id));
+
     t1.forEach((p) => {
       const row = ensureStanding(p.id);
       row.gf += s1;
       row.gd += s1 - s2;
       row.matches += 1;
+      if (s1 > s2) row.pts += 3;
+      else if (s1 === s2) row.pts += 1;
     });
     t2.forEach((p) => {
       const row = ensureStanding(p.id);
       row.gf += s2;
       row.gd += s2 - s1;
       row.matches += 1;
+      if (s2 > s1) row.pts += 3;
+      else if (s2 === s1) row.pts += 1;
     });
-
-    if (s1 > s2) {
-      t1.forEach((p) => (ensureStanding(p.id).pts += 3));
-    } else if (s2 > s1) {
-      t2.forEach((p) => (ensureStanding(p.id).pts += 3));
-    } else {
-      t1.forEach((p) => (ensureStanding(p.id).pts += 1));
-      t2.forEach((p) => (ensureStanding(p.id).pts += 1));
-    }
 
     t1.forEach((p) => {
       const d = ensureDefense(p.id);
@@ -169,9 +155,6 @@ const computeSeasonAggregates = (params: {
   };
 
   (history || []).forEach((session) => {
-    const ms = toMs(String(session.date || ''));
-    if (!ms) return;
-    if (seasonStartMs && ms < seasonStartMs) return;
     if (!hasAnyResults(session)) return;
 
     const teamsR1 = session.teams || [];
@@ -184,7 +167,6 @@ const computeSeasonAggregates = (params: {
   return { standings, goalsForPlayer, defense };
 };
 
-// VERVANG DIT IN PlayerPrintView.tsx
 const rankStanding = (standings: Map<number, StandingRow>, playerId: number, eligibleIds: Set<number>) => {
   const rows = [...standings.entries()]
     .filter(([id]) => eligibleIds.has(id))
@@ -197,8 +179,6 @@ const rankStanding = (standings: Map<number, StandingRow>, playerId: number, eli
       avg: r.matches > 0 ? r.pts / r.matches : 0,
     }));
 
-  // EXACT dezelfde sortering als in Statistics.tsx: 
-  // 1. Gemiddelde punten, 2. Doelsaldo, 3. Goals Voor, 4. ID (om swap te voorkomen)
   rows.sort((a, b) => 
     b.avg - a.avg || 
     b.gd - a.gd || 
@@ -288,7 +268,6 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
         <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#e2e8f0" strokeWidth="1" />
         <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#e2e8f0" strokeWidth="1" />
 
-        {/* lijn + subtle gradient */}
         <defs>
           <linearGradient id="ratingLine" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#22c55e" />
@@ -334,7 +313,6 @@ const PrintChart: React.FC<{ data: { date: string; rating: number }[]; title: st
           {formatDate(data[data.length - 1].date)}
         </text>
 
-        {/* highlight laatste punt */}
         <circle cx={getX(data.length - 1)} cy={getY(data[data.length - 1].rating)} r="5" fill="#3b82f6" />
         <circle cx={getX(data.length - 1)} cy={getY(data[data.length - 1].rating)} r="2.7" fill="#0f172a" />
         <text
@@ -362,7 +340,7 @@ interface PlayerPrintViewProps {
   history: GameSession[];
   seasonHistory: { date: string; rating: number }[];
   allTimeHistory: { date: string; rating: number }[];
-  competitionName?: string | null; // ✅ uit instellingen (sheet)
+  competitionName?: string | null; 
   onClose: () => void;
 }
 
@@ -448,17 +426,15 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
   const avgPoints = stats.gamesPlayed > 0 ? (Number(stats.points) || 0) / stats.gamesPlayed : 0;
 
-  const seasonStartMs = useMemo(() => toMs(seasonHistory?.[0]?.date || ''), [seasonHistory]);
   const allowedIds = useMemo(() => new Set(players.map((p) => p.id)), [players]);
 
   const seasonMeta = useMemo(
     () =>
       computeSeasonMeta({
         history: history || [],
-        seasonStartMs,
         allowedIds,
       }),
-    [history, seasonStartMs, allowedIds]
+    [history, allowedIds]
   );
 
   const seasonAttendance = useMemo(() => {
@@ -472,7 +448,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
   const seasonRanks = useMemo(() => {
     const { standings, goalsForPlayer, defense } = computeSeasonAggregates({
       history: history || [],
-      seasonStartMs,
       allowedIds,
     });
 
@@ -489,7 +464,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
       defenderAvgAgainst: def.concededPerMatch,
       minNights: seasonMeta.minNights,
     };
-  }, [history, player.id, seasonStartMs, allowedIds, seasonMeta.eligibleIds, seasonMeta.minNights]);
+  }, [history, player.id, allowedIds, seasonMeta.eligibleIds, seasonMeta.minNights]);
 
   const seasonTitle = (competitionName || '').trim() || 'Competitie';
 
@@ -504,9 +479,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
 
             @page { size: A4; margin: 10mm; }
 
-            /* =========================================================
-               Theme (menu kleuren) + kaartjes
-               ========================================================= */
             :root {
               --tile-blue:   #3b82f6;
               --tile-orange: #f59e0b;
@@ -538,11 +510,9 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               z-index: 9999;
             }
 
-            /* ✅ verberg url’s linksonder */
             a[href]:after { content: "" !important; }
             a:after { content: "" !important; }
 
-            /* HEADER polish */
             .header-wrap {
               border-bottom: 2px solid var(--ink);
               padding-bottom: 14px;
@@ -569,18 +539,15 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               opacity: 0.45;
             }
 
-            /* Stat tiles */
             .stat-box {
               border: 1.5px solid var(--border);
-              padding: 12px 10px;                 /* ✅ iets meer lucht */
+              padding: 12px 10px;
               border-radius: 14px;
               text-align: center;
               background: #fff;
               position: relative;
               overflow: hidden;
               box-shadow: 0 7px 18px var(--shadow);
-
-              /* ✅ alles netjes midden + nooit afkappen */
               display: flex;
               flex-direction: column;
               justify-content: center;
@@ -599,7 +566,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               transform: translate(24px,-24px);
             }
 
-            /* kleur-variant (zelfde gevoel als menu tegels) */
             .tile-green  { border-left: 9px solid var(--tile-green);  background: linear-gradient(180deg, rgba(34,197,94,0.14), rgba(34,197,94,0.06)); }
             .tile-yellow { border-left: 9px solid var(--tile-yellow); background: linear-gradient(180deg, rgba(251,191,36,0.16), rgba(251,191,36,0.06)); }
             .tile-pink   { border-left: 9px solid var(--tile-pink);   background: linear-gradient(180deg, rgba(236,72,153,0.14), rgba(236,72,153,0.06)); }
@@ -623,13 +589,12 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               margin-bottom: 18px;
             }
 
-            /* ✅ TITELS: mogen wrappen, niet afkappen */
             .stat-title {
-              font-size: 9px;                    /* ✅ iets kleiner */
+              font-size: 9px;
               text-transform: uppercase;
               color: var(--muted);
               font-weight: 950;
-              letter-spacing: 0.06em;            /* ✅ minder spacing -> past beter */
+              letter-spacing: 0.06em;
               line-height: 1.15;
               white-space: normal;
               word-break: break-word;
@@ -657,7 +622,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               z-index: 1;
             }
 
-            /* ✅ Resultaten: netjes onder elkaar, zonder "punten" */
             .result-grid {
               margin-top: 6px;
               display: flex;
@@ -709,7 +673,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               margin-top: 1px;
             }
 
-            /* Charts */
             .chart-card {
               border: 1.5px solid var(--border);
               border-radius: 14px;
@@ -739,7 +702,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               opacity: 0.70;
             }
 
-            /* Relationships cards */
             .rel-card {
               border: 1.5px solid var(--border);
               border-radius: 14px;
@@ -750,7 +712,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               overflow: hidden;
             }
 
-            /* ✅ KLEUR in de REL-CARDS (subtiel) */
             .rel-card:before {
               content: "";
               position: absolute;
@@ -773,7 +734,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               transform: translate(24px,-28px);
             }
 
-            /* per variant: top-gradient + zachte achtergrond */
             .rel-frequent { background: linear-gradient(180deg, rgba(20,184,166,0.10), rgba(255,255,255,0.92)); }
             .rel-best     { background: linear-gradient(180deg, rgba(34,197,94,0.10), rgba(255,255,255,0.92)); }
             .rel-worst    { background: linear-gradient(180deg, rgba(239,68,68,0.10), rgba(255,255,255,0.92)); }
@@ -794,7 +754,7 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
               letter-spacing: 0.08em;
               border-bottom: 1px solid rgba(226,232,240,0.9);
               padding-bottom: 6px;
-              margin: 8px 0 6px; /* ruimte voor de kleur-strip */
+              margin: 8px 0 6px;
               position: relative;
               z-index: 1;
             }
@@ -847,29 +807,10 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
             .rel-hard     .rel-count { background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.35); }
 
             .rel-row { break-inside: avoid; }
+            .charts-page { break-before: page; page-break-before: always; }
+            .relationships-page { break-before: page; page-break-before: always; }
+            .relationships-page, .relationships-grid { break-inside: avoid; page-break-inside: avoid; }
 
-            /* =========================================================
-               ✅ GRAFIEKEN op nieuwe pagina
-               ========================================================= */
-            .charts-page {
-              break-before: page;
-              page-break-before: always;
-            }
-
-            /* =========================================================
-               ✅ RELATIES ALTIJD OP NIEUWE PAGINA
-               ========================================================= */
-            .relationships-page {
-              break-before: page;
-              page-break-before: always;
-            }
-            .relationships-page,
-            .relationships-grid {
-              break-inside: avoid;
-              page-break-inside: avoid;
-            }
-
-            /* Footer */
             .print-footer {
               font-size: 10px;
               color: #94a3b8;
@@ -882,7 +823,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
       </style>
 
       <div className="p-6 max-w-4xl mx-auto">
-        {/* HEADER */}
         <div className="flex items-center justify-between header-wrap">
           <div className="flex items-center">
             {player.photoBase64 ? (
@@ -910,7 +850,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           <img src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png" alt="Logo" className="h-20 w-auto" />
         </div>
 
-        {/* PRIJZENKAST */}
         {trophies.length > 0 && (
           <div className="mb-6 break-inside-avoid">
             <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-3 uppercase">Prijzenkast</h3>
@@ -928,10 +867,8 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         )}
 
-        {/* ✅ TITEL van het huidige seizoen/competitie (uit instellingen) */}
         <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-4 uppercase">{seasonTitle}</h3>
 
-        {/* RIJ 1 */}
         <div className="print-grid">
           <div className="stat-box tile-green">
             <div className="stat-title">Speelavonden aanwezig</div>
@@ -968,7 +905,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         </div>
 
-        {/* RIJ 2 */}
         <div className="print-grid">
           <div className="stat-box tile-orange">
             <div className="stat-title">Gespeelde wedstrijden</div>
@@ -976,31 +912,28 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
 
           <div className="stat-box tile-purple">
-  <div className="stat-title">Resultaten</div>
-
-  <div className="result-grid">
-    <div className="result-item">
-      <span className="result-text">
-        <span className="result-count">{stats.wins}</span>
-        <span className="result-label">Gewonnen</span>
-      </span>
-    </div>
-
-    <div className="result-item">
-      <span className="result-text">
-        <span className="result-count">{stats.draws}</span>
-        <span className="result-label">Gelijk</span>
-      </span>
-    </div>
-
-    <div className="result-item">
-      <span className="result-text">
-        <span className="result-count">{stats.losses}</span>
-        <span className="result-label">Verloren</span>
-      </span>
-    </div>
-  </div>
-</div>
+            <div className="stat-title">Resultaten</div>
+            <div className="result-grid">
+              <div className="result-item">
+                <span className="result-text">
+                  <span className="result-count">{stats.wins}</span>
+                  <span className="result-label">Gewonnen</span>
+                </span>
+              </div>
+              <div className="result-item">
+                <span className="result-text">
+                  <span className="result-count">{stats.draws}</span>
+                  <span className="result-label">Gelijk</span>
+                </span>
+              </div>
+              <div className="result-item">
+                <span className="result-text">
+                  <span className="result-count">{stats.losses}</span>
+                  <span className="result-label">Verloren</span>
+                </span>
+              </div>
+            </div>
+          </div>
 
           <div className="stat-box tile-teal">
             <div className="stat-title">Goals</div>
@@ -1013,13 +946,11 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         </div>
 
-        {/* ✅ GRAFIEKEN -> nieuwe pagina */}
         <div className="charts-page mb-8">
           <PrintChart data={seasonHistory} title="Verloop Huidig Seizoen" />
           <PrintChart data={allTimeHistory} title="All-Time Verloop" />
         </div>
 
-        {/* RELATIES — altijd nieuwe pagina */}
         <div className="relationships-page mb-8">
           <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-3 uppercase">
             Statistieken vs Spelers (Top 5)
@@ -1033,7 +964,6 @@ const PlayerPrintView: React.FC<PlayerPrintViewProps> = ({
           </div>
         </div>
 
-        {/* FOOTER */}
         <div className="print-footer">Gegenereerd door de Bounceball App {new Date().toLocaleDateString('nl-NL')}</div>
       </div>
     </div>,
