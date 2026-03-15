@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -85,16 +84,24 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
         @media print {
           body > *:not(.print-root) { display: none !important; }
           @page { size: A4; margin: 15mm; }
+          
+          /* Forceer zwart op alle tekst tijdens printen */
+          * {
+            color: #000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
         }
 
         .print-root {
           font-family: Arial, sans-serif;
-          color: #000;
+          color: #000 !important;
         }
 
         .print-page {
           page-break-after: always;
           padding-top: 10px;
+          color: #000 !important;
         }
 
         .header {
@@ -115,12 +122,13 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
         h1 {
           font-size: 24px;
           margin: 0;
-          color: #000;
+          color: #000 !important;
+          font-weight: bold;
         }
 
         p {
           margin: 4px 0 0;
-          color: #000;
+          color: #000 !important;
           font-style: italic;
         }
 
@@ -128,6 +136,7 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
           width: 100%;
           border-collapse: collapse;
           margin-top: 10px;
+          color: #000 !important;
         }
 
         th {
@@ -135,16 +144,19 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
           padding: 10px 6px;
           border-bottom: 2px solid #000;
           font-size: 14px;
+          color: #000 !important;
+          font-weight: bold;
         }
 
         td {
           padding: 8px 6px;
-          border-bottom: 1px solid #ccc;
+          border-bottom: 1px solid #000;
           font-size: 13px;
+          color: #000 !important;
         }
 
         tr:nth-child(even) {
-          background: #f9f9f9;
+          background: #f2f2f2;
         }
 
         .right {
