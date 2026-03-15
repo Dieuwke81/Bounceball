@@ -36,7 +36,7 @@ type SeasonMeta = {
 };
 
 /**
- * ✅ Seizoen-avonden tellen (met resultaten) + aanwezigheid per speler.
+ * ✅ Seizoen-avonden tellen (met resulltaten) + aanwezigheid per speler.
  * - telt per sessie (avond) max 1x, ook als iemand in R1 én R2 voorkomt.
  * - telt ook spelers uit round2Teams mee.
  * - filtert op huidige spelers (allowedIds)
