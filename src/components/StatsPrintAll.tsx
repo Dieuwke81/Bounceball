@@ -81,27 +81,42 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
   return createPortal(
     <div className="print-root">
       <style>{`
+        /* 1. Forceer lichte modus voor de browser */
+        :root {
+          color-scheme: light !important;
+        }
+
         @media print {
-          body > *:not(.print-root) { display: none !important; }
-          @page { size: A4; margin: 15mm; }
-          
-          /* Forceer zwart op alle tekst tijdens printen */
-          * {
-            color: #000 !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+          /* 2. Verberg alles behalve de print-root */
+          body > *:not(.print-root) { 
+            display: none !important; 
+          }
+
+          /* 3. Forceer witte achtergrond op de body */
+          html, body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            margin: 0;
+            padding: 0;
+          }
+
+          @page { 
+            size: A4; 
+            margin: 15mm; 
           }
         }
 
         .print-root {
           font-family: Arial, sans-serif;
-          color: #000 !important;
+          background-color: #ffffff !important;
+          color: #000000 !important;
+          min-height: 100vh;
         }
 
         .print-page {
           page-break-after: always;
           padding-top: 10px;
-          color: #000 !important;
+          background-color: #ffffff !important;
         }
 
         .header {
@@ -109,7 +124,7 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
           align-items: center;
           gap: 20px;
           margin-bottom: 25px;
-          border-bottom: 2px solid #000;
+          border-bottom: 2px solid #000000 !important;
           padding-bottom: 15px;
         }
 
@@ -122,13 +137,13 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
         h1 {
           font-size: 24px;
           margin: 0;
-          color: #000 !important;
+          color: #000000 !important;
           font-weight: bold;
         }
 
         p {
           margin: 4px 0 0;
-          color: #000 !important;
+          color: #000000 !important;
           font-style: italic;
         }
 
@@ -136,31 +151,38 @@ const StatsPrintAll: React.FC<StatsPrintAllProps> = ({
           width: 100%;
           border-collapse: collapse;
           margin-top: 10px;
-          color: #000 !important;
+          background-color: #ffffff !important;
         }
 
         th {
           text-align: left;
           padding: 10px 6px;
-          border-bottom: 2px solid #000;
+          border-bottom: 2px solid #000000 !important;
           font-size: 14px;
-          color: #000 !important;
+          color: #000000 !important;
           font-weight: bold;
         }
 
         td {
           padding: 8px 6px;
-          border-bottom: 1px solid #000;
+          border-bottom: 1px solid #eeeeee !important;
           font-size: 13px;
-          color: #000 !important;
+          color: #000000 !important;
         }
 
+        /* Zebra-striping: heel licht grijs voor leesbaarheid, of zet op #fff voor volledig wit */
         tr:nth-child(even) {
-          background: #f2f2f2;
+          background-color: #f9f9f9 !important;
         }
 
         .right {
           text-align: right;
+        }
+        
+        /* Forceer alle tekst op zwart, ook als de app elders anders zegt */
+        .print-root * {
+          color: #000000 !important;
+          text-shadow: none !important;
         }
       `}</style>
 
