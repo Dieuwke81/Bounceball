@@ -51,7 +51,7 @@ async function generateSingleVersion(
   const ppm = ppt * 2;
   const totalRounds = Math.ceil((allPlayers.length * mpp / ppm) / hallNames.length);
   const playedCount = new Map(allPlayers.map(p => [p.id, 0]));
-  const pairCounts = new Map<string, number>(); // Bijhouden wie wie heeft gezien in DEZE versie
+  const pairCounts = new Map<string, number>(); 
   const rounds: NKRound[] = [];
   const playedCountsHistory: (Map<number, number>)[] = [new Map(playedCount)];
   const roundAttempts = new Array(totalRounds + 1).fill(0);
@@ -65,12 +65,14 @@ async function generateSingleVersion(
     let success = false;
     let roundMatches: NKMatch[] = [];
 
-    for (let attempt = 0; attempt < 50; attempt++) {
+    // Pogingen per ronde verhoogd omdat 0.30 een zeer strikte eis is
+    for (let attempt = 0; attempt < 100; attempt++) {
       const usedThisRound = new Set<number>();
       const matches: NKMatch[] = [];
-      const target = isIntro ? 0 : (attempt < 25 ? 0.3 : 0.6);
       
-      // Pool van spelers die nog wedstrijden moeten spelen
+      // STRIKTE EIS: Maximaal 0.30 verschil (of 0 voor intro)
+      const target = isIntro ? 0 : 0.30;
+      
       let pool = [...allPlayers].filter(p => currentPlayedCount.get(p.id)! < mpp)
         .sort((a, b) => (mpp - currentPlayedCount.get(a.id)!) - (mpp - currentPlayedCount.get(b.id)!) || Math.random() - 0.5)
         .reverse();
@@ -81,14 +83,11 @@ async function generateSingleVersion(
           const candidates = pool.filter(p => !usedThisRound.has(p.id));
           if (candidates.length < ppm) break;
 
-          // --- SOCIALE SELECTIE ---
-          // Pak niet zomaar de eersten, maar kies een groep die elkaar weinig heeft gezien
           const selectedForMatch: Player[] = [];
-          selectedForMatch.push(candidates[0]); // Start met de speler die de hoogste prio heeft
+          selectedForMatch.push(candidates[0]); 
 
           while (selectedForMatch.length < ppm) {
             const remaining = candidates.filter(c => !selectedForMatch.includes(c));
-            // Sorteer resterende spelers op basis van ontmoetingen met de al geselecteerden
             remaining.sort((a, b) => {
                 const scoreA = selectedForMatch.reduce((sum, p) => sum + (pairCounts.get([p.id, a.id].sort().join('-')) || 0), 0);
                 const scoreB = selectedForMatch.reduce((sum, p) => sum + (pairCounts.get([p.id, b.id].sort().join('-')) || 0), 0);
@@ -99,8 +98,12 @@ async function generateSingleVersion(
           
           const mPlayers = selectedForMatch;
           const split = getBestTeamSplit(mPlayers, ppt, target, minRating, isIntro);
-          if (!split) throw new Error();
           
+          // Als er geen split is onder de 0.30, gooi deze poging weg
+          if (!split) throw new Error();
+          const diff = Math.abs((split.t1.reduce((s,p)=>s+p.rating,0)/ppt) - (split.t2.reduce((s,p)=>s+p.rating,0)/ppt));
+          if (!isIntro && diff > 0.301) throw new Error(); 
+
           mPlayers.forEach(p => usedThisRound.add(p.id));
           matches.push({ id: `r${rIdx}h${h}`, hallName: hallNames[h], team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false, subLow: null as any, subHigh: null as any, referee: null as any });
         }
@@ -123,7 +126,6 @@ async function generateSingleVersion(
       roundMatches.forEach(m => {
         const allInMatch = [...m.team1, ...m.team2];
         allInMatch.forEach(p => nextCounts.set(p.id, nextCounts.get(p.id)! + 1));
-        // Update pair counts voor sociale selectie in volgende rondes
         for (let i = 0; i < allInMatch.length; i++) {
             for (let j = i + 1; j < allInMatch.length; j++) {
                 const key = [allInMatch[i].id, allInMatch[j].id].sort().join('-');
@@ -153,18 +155,18 @@ export async function generateNKSchedule(
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
 
-  // We genereren meer versies om een betere sociale spreiding te kunnen vinden
-  while (validVersions.length < 300 && totalAttempts < 3000) {
+  // We blijven bij 300 versies om sociale spreiding te garanderen
+  while (validVersions.length < 300 && totalAttempts < 3500) {
     totalAttempts++;
     if (totalAttempts % 10 === 0) {
-        onProgress(`Optimaliseren: Versie ${validVersions.length}/300 gevonden...`);
+        onProgress(`Optimaliseren: Versie ${validVersions.length}/300 gevonden (Max diff 0.30)...`);
         await delay(1);
     }
     const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName, manualTimes, minTeamRating, isIntro);
     if (session) validVersions.push(session);
   }
 
-  if (validVersions.length === 0) throw new Error("Geen schema gevonden die voldoet aan de eisen.");
+  if (validVersions.length === 0) throw new Error("Geen schema gevonden met max 0.30 rating verschil. Verlaag de eisen of verhoog het aantal spelers.");
 
   const getMaxDiff = (s: NKSession): number => {
     let max = 0;
@@ -190,32 +192,26 @@ export async function generateNKSchedule(
     let score = 0;
     let maxRepeats = 0;
     pairs.forEach(v => {
-      // EXTREME straf voor herhalingen boven de 2-3 keer.
-      // v^6 zorgt dat 4x herhalen (4096) vele malen zwaarder weegt dan 2x (64).
       score += Math.pow(v, 6);
       if (v > maxRepeats) maxRepeats = v;
     });
 
-    // Straf voor spelers die elkaar NOOIT zien
     let missing = 0;
     for (let i = 0; i < players.length; i++) {
         for (let j = i + 1; j < players.length; j++) {
             if (!pairs.has([players[i].id, players[j].id].sort().join('-'))) missing++;
         }
     }
-
     return score + (missing * 500) + (maxRepeats * 10000);
   };
 
-  // Selectie-strategie:
-  // 1. Filter versies die een acceptabele balans hebben (bijv. maxDiff < 0.7)
-  // 2. Sorteer die subset op de allerbeste sociale score.
-  const balanceThreshold = 0.75;
+  // STRIKTE FILTER: Alleen versies die echt onder de 0.30 blijven
+  const balanceThreshold = 0.305;
   let candidates = validVersions.filter(v => getMaxDiff(v) <= balanceThreshold);
   
-  // Als er geen kandidaten zijn onder de threshold, pak dan de 20 beste qua balans
-  if (candidates.length < 10) {
-      candidates = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b)).slice(0, 20);
+  if (candidates.length === 0) {
+      // Fallback: pak de beste 10 als 0.30 echt niet lukt (bijv door te weinig spelers)
+      candidates = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b)).slice(0, 10);
   }
 
   return candidates.reduce((best, cur) => getSocialScore(cur) < getSocialScore(best) ? cur : best);
