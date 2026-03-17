@@ -86,16 +86,9 @@ async function generateSingleVersion(
 
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
         
-        // Fase 1: Verdeel eerst alle eerste reserves over de matches
         for (let m of matches) { 
             if (resting.length > 0) m.subLow = resting.shift()!;
-        }
-        // Fase 2: Verdeel daarna alle tweede reserves over de matches
-        for (let m of matches) { 
             if (resting.length > 0) m.subHigh = resting.pop()!;
-        }
-        // Fase 3: Verdeel tot slot de scheidsrechters over de matches
-        for (let m of matches) { 
             if (resting.length > 0) m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
         }
 
@@ -166,10 +159,15 @@ export async function generateNKSchedule(
     }));
 
     let score = 0;
-    // Bestraf herhalingen (kwadratisch zodat 3x veel erger is dan 2x)
-    pairs.forEach(v => score += Math.pow(v, 2));
+    
+    // 1. Straf herhalingen EXTREEM hard (v^4). 
+    // Hierdoor is 2x bij elkaar zitten al een enorme boete t.o.v. 1x.
+    pairs.forEach(v => {
+        if (v > 1) score += Math.pow(v, 4) * 1000;
+        else score += 1;
+    });
 
-    // Bestraf het NIET ontmoeten van spelers
+    // 2. Straf voor mensen die elkaar NOOIT hebben gezien.
     let missingEncounters = 0;
     for (let i = 0; i < players.length; i++) {
       for (let j = i + 1; j < players.length; j++) {
@@ -180,11 +178,16 @@ export async function generateNKSchedule(
       }
     }
     
-    // Voeg een flinke boete toe voor elke combinatie spelers die elkaar nooit ziet
-    return score + (missingEncounters * 100);
+    // Elke missende ontmoeting krijgt een zeer zware boete (2000 punten).
+    // Dit dwingt het algoritme om versies te kiezen waar bijna iedereen elkaar ziet.
+    return score + (missingEncounters * 2000);
   };
 
+  // Sorteer op balans (niveau)
   const sortedByBalance = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b));
-  const top5Balanced = sortedByBalance.slice(0, 5);
-  return top5Balanced.reduce((best, cur) => getSocialScore(cur) < getSocialScore(best) ? cur : best);
+  
+  // We vergroten de vijver naar de top 15 meest gebalanceerde schema's.
+  // Binnen deze 15 zoeken we nu degene met de ALLERBESTE sociale spreiding.
+  const topCandidates = sortedByBalance.slice(0, 15);
+  return topCandidates.reduce((best, cur) => getSocialScore(cur) < getSocialScore(best) ? cur : best);
 }
