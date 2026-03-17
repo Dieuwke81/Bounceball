@@ -86,23 +86,17 @@ async function generateSingleVersion(
 
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
         
-        // Verdeel eerst alle eerste reserves (subLow) over de matches
+        // Fase 1: Verdeel eerst alle eerste reserves over de matches
         for (let m of matches) { 
-            if (resting.length > 0) {
-                m.subLow = resting.shift()!;
-            }
+            if (resting.length > 0) m.subLow = resting.shift()!;
         }
-        // Verdeel daarna alle tweede reserves (subHigh) over de matches
+        // Fase 2: Verdeel daarna alle tweede reserves over de matches
         for (let m of matches) { 
-            if (resting.length > 0) {
-                m.subHigh = resting.pop()!;
-            }
+            if (resting.length > 0) m.subHigh = resting.pop()!;
         }
-        // Verdeel tot slot de scheidsrechters over de matches
+        // Fase 3: Verdeel tot slot de scheidsrechters over de matches
         for (let m of matches) { 
-            if (resting.length > 0) {
-                m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
-            }
+            if (resting.length > 0) m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
         }
 
         roundMatches = matches; success = true; break;
@@ -163,14 +157,31 @@ export async function generateNKSchedule(
     const pairs = new Map<string, number>();
     s.rounds.forEach(r => r.matches.forEach(m => {
       const p = [...m.team1, ...m.team2];
-      for (let i = 0; i < p.length; i++) for (let j = i + 1; j < p.length; j++) {
-        const key = [p[i].id, p[j].id].sort().join('-');
-        pairs.set(key, (pairs.get(key) || 0) + 1);
+      for (let i = 0; i < p.length; i++) {
+        for (let j = i + 1; j < p.length; j++) {
+          const key = [p[i].id, p[j].id].sort().join('-');
+          pairs.set(key, (pairs.get(key) || 0) + 1);
+        }
       }
     }));
+
     let score = 0;
+    // Bestraf herhalingen (kwadratisch zodat 3x veel erger is dan 2x)
     pairs.forEach(v => score += Math.pow(v, 2));
-    return score;
+
+    // Bestraf het NIET ontmoeten van spelers
+    let missingEncounters = 0;
+    for (let i = 0; i < players.length; i++) {
+      for (let j = i + 1; j < players.length; j++) {
+        const key = [players[i].id, players[j].id].sort().join('-');
+        if (!pairs.has(key)) {
+          missingEncounters++;
+        }
+      }
+    }
+    
+    // Voeg een flinke boete toe voor elke combinatie spelers die elkaar nooit ziet
+    return score + (missingEncounters * 100);
   };
 
   const sortedByBalance = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b));
