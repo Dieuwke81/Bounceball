@@ -51,6 +51,7 @@ async function generateSingleVersion(
   const ppm = ppt * 2;
   const totalRounds = Math.ceil((allPlayers.length * mpp / ppm) / hallNames.length);
   const playedCount = new Map(allPlayers.map(p => [p.id, 0]));
+  const pairCounts = new Map<string, number>(); // Bijhouden wie wie heeft gezien in DEZE versie
   const rounds: NKRound[] = [];
   const playedCountsHistory: (Map<number, number>)[] = [new Map(playedCount)];
   const roundAttempts = new Array(totalRounds + 1).fill(0);
@@ -69,29 +70,47 @@ async function generateSingleVersion(
       const matches: NKMatch[] = [];
       const target = isIntro ? 0 : (attempt < 25 ? 0.3 : 0.6);
       
-      const pool = [...allPlayers].filter(p => currentPlayedCount.get(p.id)! < mpp)
+      // Pool van spelers die nog wedstrijden moeten spelen
+      let pool = [...allPlayers].filter(p => currentPlayedCount.get(p.id)! < mpp)
         .sort((a, b) => (mpp - currentPlayedCount.get(a.id)!) - (mpp - currentPlayedCount.get(b.id)!) || Math.random() - 0.5)
         .reverse();
 
       const mInRound = Math.min(hallNames.length, Math.floor(pool.length / ppm));
       try {
         for (let h = 0; h < mInRound; h++) {
-          const mPlayers = pool.filter(p => !usedThisRound.has(p.id)).slice(0, ppm);
-          if (mPlayers.length < ppm) break;
+          const candidates = pool.filter(p => !usedThisRound.has(p.id));
+          if (candidates.length < ppm) break;
+
+          // --- SOCIALE SELECTIE ---
+          // Pak niet zomaar de eersten, maar kies een groep die elkaar weinig heeft gezien
+          const selectedForMatch: Player[] = [];
+          selectedForMatch.push(candidates[0]); // Start met de speler die de hoogste prio heeft
+
+          while (selectedForMatch.length < ppm) {
+            const remaining = candidates.filter(c => !selectedForMatch.includes(c));
+            // Sorteer resterende spelers op basis van ontmoetingen met de al geselecteerden
+            remaining.sort((a, b) => {
+                const scoreA = selectedForMatch.reduce((sum, p) => sum + (pairCounts.get([p.id, a.id].sort().join('-')) || 0), 0);
+                const scoreB = selectedForMatch.reduce((sum, p) => sum + (pairCounts.get([p.id, b.id].sort().join('-')) || 0), 0);
+                return scoreA - scoreB || Math.random() - 0.5;
+            });
+            selectedForMatch.push(remaining[0]);
+          }
+          
+          const mPlayers = selectedForMatch;
           const split = getBestTeamSplit(mPlayers, ppt, target, minRating, isIntro);
           if (!split) throw new Error();
+          
           mPlayers.forEach(p => usedThisRound.add(p.id));
           matches.push({ id: `r${rIdx}h${h}`, hallName: hallNames[h], team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false, subLow: null as any, subHigh: null as any, referee: null as any });
         }
 
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
-        
         for (let m of matches) { 
             if (resting.length > 0) m.subLow = resting.shift()!;
             if (resting.length > 0) m.subHigh = resting.pop()!;
             if (resting.length > 0) m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
         }
-
         roundMatches = matches; success = true; break;
       } catch (e) {}
     }
@@ -100,7 +119,19 @@ async function generateSingleVersion(
       const time = manualTimes[rIdx - 1] || { start: '', end: '' };
       rounds.push({ roundNumber: rIdx, matches: roundMatches, restingPlayers: [], startTime: time.start, endTime: time.end } as any);
       const nextCounts = new Map(currentPlayedCount);
-      roundMatches.forEach(m => [...m.team1, ...m.team2].forEach(p => nextCounts.set(p.id, nextCounts.get(p.id)! + 1)));
+      
+      roundMatches.forEach(m => {
+        const allInMatch = [...m.team1, ...m.team2];
+        allInMatch.forEach(p => nextCounts.set(p.id, nextCounts.get(p.id)! + 1));
+        // Update pair counts voor sociale selectie in volgende rondes
+        for (let i = 0; i < allInMatch.length; i++) {
+            for (let j = i + 1; j < allInMatch.length; j++) {
+                const key = [allInMatch[i].id, allInMatch[j].id].sort().join('-');
+                pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+            }
+        }
+      });
+      
       playedCountsHistory[rIdx] = nextCounts;
       rIdx++;
     } else {
@@ -111,8 +142,7 @@ async function generateSingleVersion(
   }
 
   const lastCounts = playedCountsHistory[playedCountsHistory.length - 1];
-  const isComplete = allPlayers.every(p => lastCounts.get(p.id) === mpp);
-  if (!isComplete) return null;
+  if (!allPlayers.every(p => lastCounts.get(p.id) === mpp)) return null;
 
   return { competitionName, hallNames, playersPerTeam: ppt, totalRounds: rounds.length, rounds, standings: [], isCompleted: false };
 }
@@ -123,10 +153,11 @@ export async function generateNKSchedule(
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
 
-  while (validVersions.length < 250 && totalAttempts < 2000) {
+  // We genereren meer versies om een betere sociale spreiding te kunnen vinden
+  while (validVersions.length < 300 && totalAttempts < 3000) {
     totalAttempts++;
     if (totalAttempts % 10 === 0) {
-        onProgress(`Optimaliseren: Versie ${validVersions.length}/250 gevonden...`);
+        onProgress(`Optimaliseren: Versie ${validVersions.length}/300 gevonden...`);
         await delay(1);
     }
     const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName, manualTimes, minTeamRating, isIntro);
@@ -150,44 +181,42 @@ export async function generateNKSchedule(
     const pairs = new Map<string, number>();
     s.rounds.forEach(r => r.matches.forEach(m => {
       const p = [...m.team1, ...m.team2];
-      for (let i = 0; i < p.length; i++) {
-        for (let j = i + 1; j < p.length; j++) {
-          const key = [p[i].id, p[j].id].sort().join('-');
-          pairs.set(key, (pairs.get(key) || 0) + 1);
-        }
+      for (let i = 0; i < p.length; i++) for (let j = i + 1; j < p.length; j++) {
+        const key = [p[i].id, p[j].id].sort().join('-');
+        pairs.set(key, (pairs.get(key) || 0) + 1);
       }
     }));
 
     let score = 0;
-    
-    // 1. Straf herhalingen EXTREEM hard (v^4). 
-    // Hierdoor is 2x bij elkaar zitten al een enorme boete t.o.v. 1x.
+    let maxRepeats = 0;
     pairs.forEach(v => {
-        if (v > 1) score += Math.pow(v, 4) * 1000;
-        else score += 1;
+      // EXTREME straf voor herhalingen boven de 2-3 keer.
+      // v^6 zorgt dat 4x herhalen (4096) vele malen zwaarder weegt dan 2x (64).
+      score += Math.pow(v, 6);
+      if (v > maxRepeats) maxRepeats = v;
     });
 
-    // 2. Straf voor mensen die elkaar NOOIT hebben gezien.
-    let missingEncounters = 0;
+    // Straf voor spelers die elkaar NOOIT zien
+    let missing = 0;
     for (let i = 0; i < players.length; i++) {
-      for (let j = i + 1; j < players.length; j++) {
-        const key = [players[i].id, players[j].id].sort().join('-');
-        if (!pairs.has(key)) {
-          missingEncounters++;
+        for (let j = i + 1; j < players.length; j++) {
+            if (!pairs.has([players[i].id, players[j].id].sort().join('-'))) missing++;
         }
-      }
     }
-    
-    // Elke missende ontmoeting krijgt een zeer zware boete (2000 punten).
-    // Dit dwingt het algoritme om versies te kiezen waar bijna iedereen elkaar ziet.
-    return score + (missingEncounters * 2000);
+
+    return score + (missing * 500) + (maxRepeats * 10000);
   };
 
-  // Sorteer op balans (niveau)
-  const sortedByBalance = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b));
+  // Selectie-strategie:
+  // 1. Filter versies die een acceptabele balans hebben (bijv. maxDiff < 0.7)
+  // 2. Sorteer die subset op de allerbeste sociale score.
+  const balanceThreshold = 0.75;
+  let candidates = validVersions.filter(v => getMaxDiff(v) <= balanceThreshold);
   
-  // We vergroten de vijver naar de top 15 meest gebalanceerde schema's.
-  // Binnen deze 15 zoeken we nu degene met de ALLERBESTE sociale spreiding.
-  const topCandidates = sortedByBalance.slice(0, 15);
-  return topCandidates.reduce((best, cur) => getSocialScore(cur) < getSocialScore(best) ? cur : best);
+  // Als er geen kandidaten zijn onder de threshold, pak dan de 20 beste qua balans
+  if (candidates.length < 10) {
+      candidates = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b)).slice(0, 20);
+  }
+
+  return candidates.reduce((best, cur) => getSocialScore(cur) < getSocialScore(best) ? cur : best);
 }
