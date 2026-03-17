@@ -65,12 +65,9 @@ async function generateSingleVersion(
     let success = false;
     let roundMatches: NKMatch[] = [];
 
-    // Pogingen per ronde verhoogd omdat 0.30 een zeer strikte eis is
     for (let attempt = 0; attempt < 100; attempt++) {
       const usedThisRound = new Set<number>();
       const matches: NKMatch[] = [];
-      
-      // STRIKTE EIS: Maximaal 0.30 verschil (of 0 voor intro)
       const target = isIntro ? 0 : 0.30;
       
       let pool = [...allPlayers].filter(p => currentPlayedCount.get(p.id)! < mpp)
@@ -99,7 +96,6 @@ async function generateSingleVersion(
           const mPlayers = selectedForMatch;
           const split = getBestTeamSplit(mPlayers, ppt, target, minRating, isIntro);
           
-          // Als er geen split is onder de 0.30, gooi deze poging weg
           if (!split) throw new Error();
           const diff = Math.abs((split.t1.reduce((s,p)=>s+p.rating,0)/ppt) - (split.t2.reduce((s,p)=>s+p.rating,0)/ppt));
           if (!isIntro && diff > 0.301) throw new Error(); 
@@ -108,12 +104,22 @@ async function generateSingleVersion(
           matches.push({ id: `r${rIdx}h${h}`, hallName: hallNames[h], team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false, subLow: null as any, subHigh: null as any, referee: null as any });
         }
 
+        // --- VERBETERDE VERDELING RESERVES EN SCHEIDS ---
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
+        
+        // Stap 1: Geef elke wedstrijd eerst de laagste beschikbare reserve
         for (let m of matches) { 
             if (resting.length > 0) m.subLow = resting.shift()!;
+        }
+        // Stap 2: Geef elke wedstrijd daarna de hoogste beschikbare reserve
+        for (let m of matches) { 
             if (resting.length > 0) m.subHigh = resting.pop()!;
+        }
+        // Stap 3: Geef elke wedstrijd tot slot een scheidsrechter uit de middenmoot
+        for (let m of matches) { 
             if (resting.length > 0) m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
         }
+
         roundMatches = matches; success = true; break;
       } catch (e) {}
     }
@@ -155,18 +161,17 @@ export async function generateNKSchedule(
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
 
-  // We blijven bij 300 versies om sociale spreiding te garanderen
   while (validVersions.length < 300 && totalAttempts < 3500) {
     totalAttempts++;
     if (totalAttempts % 10 === 0) {
-        onProgress(`Optimaliseren: Versie ${validVersions.length}/300 gevonden (Max diff 0.30)...`);
+        onProgress(`Optimaliseren: Versie ${validVersions.length}/300 gevonden...`);
         await delay(1);
     }
     const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName, manualTimes, minTeamRating, isIntro);
     if (session) validVersions.push(session);
   }
 
-  if (validVersions.length === 0) throw new Error("Geen schema gevonden met max 0.30 rating verschil. Verlaag de eisen of verhoog het aantal spelers.");
+  if (validVersions.length === 0) throw new Error("Geen schema gevonden die voldoet aan de eisen (max 0.30 diff).");
 
   const getMaxDiff = (s: NKSession): number => {
     let max = 0;
@@ -205,12 +210,10 @@ export async function generateNKSchedule(
     return score + (missing * 500) + (maxRepeats * 10000);
   };
 
-  // STRIKTE FILTER: Alleen versies die echt onder de 0.30 blijven
   const balanceThreshold = 0.305;
   let candidates = validVersions.filter(v => getMaxDiff(v) <= balanceThreshold);
   
   if (candidates.length === 0) {
-      // Fallback: pak de beste 10 als 0.30 echt niet lukt (bijv door te weinig spelers)
       candidates = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b)).slice(0, 10);
   }
 
