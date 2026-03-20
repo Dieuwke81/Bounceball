@@ -57,7 +57,7 @@ async function generateSingleVersion(
   const roundAttempts = new Array(totalRounds + 1).fill(0);
   
   let rIdx = 1;
-  const maxGlobalTime = Date.now() + 8000; // Iets meer tijd voor de strengere eisen
+  const maxGlobalTime = Date.now() + 5000; 
 
   while (rIdx <= totalRounds) {
     if (Date.now() > maxGlobalTime) return null;
@@ -86,10 +86,9 @@ async function generateSingleVersion(
           while (selectedForMatch.length < ppm) {
             const remaining = candidates.filter(c => !selectedForMatch.includes(c));
             remaining.sort((a, b) => {
-                const countA = selectedForMatch.reduce((sum, p) => sum + (pairCounts.get([p.id, a.id].sort().join('-')) || 0), 0);
-                const countB = selectedForMatch.reduce((sum, p) => sum + (pairCounts.get([p.id, b.id].sort().join('-')) || 0), 0);
-                // Extreem zware straf op ELKE herhaling tijdens het bouwen
-                return (countA * 1000) - (countB * 1000) || Math.random() - 0.5;
+                const scoreA = selectedForMatch.reduce((sum, p) => sum + (pairCounts.get([p.id, a.id].sort().join('-')) || 0), 0);
+                const scoreB = selectedForMatch.reduce((sum, p) => sum + (pairCounts.get([p.id, b.id].sort().join('-')) || 0), 0);
+                return scoreA - scoreB || Math.random() - 0.5;
             });
             selectedForMatch.push(remaining[0]);
           }
@@ -105,10 +104,21 @@ async function generateSingleVersion(
           matches.push({ id: `r${rIdx}h${h}`, hallName: hallNames[h], team1: split.t1, team2: split.t2, team1Score: 0, team2Score: 0, isPlayed: false, subLow: null as any, subHigh: null as any, referee: null as any });
         }
 
+        // --- VERBETERDE VERDELING RESERVES EN SCHEIDS ---
         let resting = allPlayers.filter(p => !usedThisRound.has(p.id)).sort((a, b) => a.rating - b.rating);
-        for (let m of matches) if (resting.length > 0) m.subLow = resting.shift()!;
-        for (let m of matches) if (resting.length > 0) m.subHigh = resting.pop()!;
-        for (let m of matches) if (resting.length > 0) m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
+        
+        // Stap 1: Geef elke wedstrijd eerst de laagste beschikbare reserve
+        for (let m of matches) { 
+            if (resting.length > 0) m.subLow = resting.shift()!;
+        }
+        // Stap 2: Geef elke wedstrijd daarna de hoogste beschikbare reserve
+        for (let m of matches) { 
+            if (resting.length > 0) m.subHigh = resting.pop()!;
+        }
+        // Stap 3: Geef elke wedstrijd tot slot een scheidsrechter uit de middenmoot
+        for (let m of matches) { 
+            if (resting.length > 0) m.referee = resting.splice(Math.floor(resting.length / 2), 1)[0]; 
+        }
 
         roundMatches = matches; success = true; break;
       } catch (e) {}
@@ -151,18 +161,17 @@ export async function generateNKSchedule(
   const validVersions: NKSession[] = [];
   let totalAttempts = 0;
 
-  // We gaan naar 500 versies voor maximale sociale variatie
-  while (validVersions.length < 500 && totalAttempts < 5000) {
+  while (validVersions.length < 300 && totalAttempts < 3500) {
     totalAttempts++;
     if (totalAttempts % 10 === 0) {
-        onProgress(`Optimaliseren: Versie ${validVersions.length}/500 gevonden...`);
+        onProgress(`Optimaliseren: Versie ${validVersions.length}/300 gevonden...`);
         await delay(1);
     }
     const session = await generateSingleVersion(players, hallNames, mpp, ppt, competitionName, manualTimes, minTeamRating, isIntro);
     if (session) validVersions.push(session);
   }
 
-  if (validVersions.length === 0) throw new Error("Geen schema gevonden.");
+  if (validVersions.length === 0) throw new Error("Geen schema gevonden die voldoet aan de eisen (max 0.30 diff).");
 
   const getMaxDiff = (s: NKSession): number => {
     let max = 0;
@@ -186,36 +195,27 @@ export async function generateNKSchedule(
     }));
 
     let score = 0;
+    let maxRepeats = 0;
     pairs.forEach(v => {
-      // EXTREME straf voor elke keer dat je iemand voor de 2e of 3e keer ziet
-      if (v === 2) score += 10000;
-      if (v === 3) score += 200000;
-      if (v > 3) score += 5000000;
+      score += Math.pow(v, 6);
+      if (v > maxRepeats) maxRepeats = v;
     });
 
-    // Beloon het ontmoeten van NIEUWE mensen extreem hard
     let missing = 0;
     for (let i = 0; i < players.length; i++) {
         for (let j = i + 1; j < players.length; j++) {
             if (!pairs.has([players[i].id, players[j].id].sort().join('-'))) missing++;
         }
     }
-    // Elke speler die je NIET ziet kost 5000 punten extra score
-    return score + (missing * 5000);
+    return score + (missing * 500) + (maxRepeats * 10000);
   };
 
-  // --- DE SELECTIE STRATEGIE IS NU SOCIAAL-EERST ---
-  
-  // 1. Pak alle versies die voldoen aan je 0.30 eis
   const balanceThreshold = 0.305;
   let candidates = validVersions.filter(v => getMaxDiff(v) <= balanceThreshold);
   
-  // 2. Als er geen zijn onder de 0.30, pak dan de 30 beste qua balans
   if (candidates.length === 0) {
-      candidates = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b)).slice(0, 30);
+      candidates = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b)).slice(0, 10);
   }
 
-  // 3. Kies uit de goedgekeurde versies de versie met de ABSOLUUT laagste sociale score
-  // Dit zorgt ervoor dat de spreiding nu de doorslaggevende factor is.
   return candidates.reduce((best, cur) => getSocialScore(cur) < getSocialScore(best) ? cur : best);
 }
