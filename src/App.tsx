@@ -518,7 +518,8 @@ const App: React.FC = () => {
     const updates = players.filter(p => changes[p.id] !== undefined)
       .map(p => ({ id: p.id, rating: parseFloat((Number(p.rating) + changes[p.id]).toFixed(2)) }));
     try {
-      await saveGameSession(sessionData, updates); showNotification('Sessie opgeslagen!', 'success');
+    //  await saveGameSession(sessionData, updates); showNotification('Sessie opgeslagen!', 'success');
+      showNotification('TESTMODUS: Niets naar de sheet gestuurd!', 'success');
       setPlayers(prev => prev.map(p => { const u = updates.find(x => x.id === p.id); return u ? { ...p, rating: u.rating } : p; }));
       setHistory(prev => [sessionData, ...prev]); resetGameState(); setAttendingPlayerIds(new Set());
     } catch (e: any) { showNotification(`Fout: ${e.message}`, 'error'); }
