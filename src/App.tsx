@@ -75,6 +75,7 @@ const UNSAVED_GAME_KEY = 'bounceball_unsaved_game';
 // ============================================================================
 
 const areTeamCompositionsIdentical = (teamsA: Player[][], teamsB: Player[][]): boolean => {
+  if (!teamsA || !teamsB) return false;
   if (teamsA.length !== teamsB.length) return false;
   if (teamsA.length === 0) return true;
 
@@ -669,9 +670,10 @@ const App: React.FC = () => {
   const handleRegenerateTeamsForR2 = async () => {
     if (!originalTeams) return; setActionInProgress('regeneratingTeams');
     try {
-      let regeneratedTeams = await generateTeams(attendingPlayers, originalTeams.length, constraints, null, activeHistory);
+      const currentAttending = players.filter((p) => attendingPlayerIds.has(p.id));
+      let regeneratedTeams = await generateTeams(currentAttending, originalTeams.length, constraints, null, activeHistory);
       regeneratedTeams = optimizeTeamsSoft({
-        teams: regeneratedTeams, constraints, attendingIds: new Set(attendingPlayers.map(p => p.id)), seasonPairCounts,
+        teams: regeneratedTeams, constraints, attendingIds: new Set(currentAttending.map(p => p.id)), seasonPairCounts,
         separateFrequent: separateFrequentTeammates, pairInfrequent: pairInfrequentTeammates,
         separateTop6: separateTop6OnPoints, top6Ids
       });
@@ -681,16 +683,39 @@ const App: React.FC = () => {
     } catch (e: any) { showNotification(e.message, 'error'); } finally { setActionInProgress(null); }
   };
 
+  // ✅ GEREPAREERDE OPSLAAN FUNCTIE
   const handleSaveFinalResults = async (matches: Match[]) => {
     if (!requireAdmin()) return; setActionInProgress('savingFinal');
     const r2 = matches.map((m, i) => ({ ...m, team1Goals: goalScorers[`${i}-team1`] || [], team2Goals: goalScorers[`${i}-team2`] || [] }));
-    await handleSaveSession({ date: new Date().toISOString(), teams, round1Results, round2Results: r2 });
+    
+    // Gebruik originalTeams voor Ronde 1 uitslagen
+    const sessionTeamsR1 = originalTeams || teams;
+    const sessionTeamsR2 = teams;
+
+    const sessionData: GameSession = {
+      date: new Date().toISOString(),
+      teams: sessionTeamsR1,
+      round1Results,
+      round2Results: r2,
+    };
+
+    // Als Ronde 2 teams anders zijn dan Ronde 1 (blessure/wissel), sla ze apart op
+    if (!areTeamCompositionsIdentical(sessionTeamsR1, sessionTeamsR2)) {
+      sessionData.round2Teams = sessionTeamsR2;
+    }
+
+    await handleSaveSession(sessionData);
     setActionInProgress(null);
   };
 
   const handleSaveSimpleMatch = async (match: Match) => {
     if (!requireAdmin()) return; setActionInProgress('savingSimple');
-    await handleSaveSession({ date: new Date().toISOString(), teams, round1Results: [{ ...match, team1Goals: goalScorers['0-team1'] || [], team2Goals: goalScorers['0-team2'] || [] }], round2Results: [] });
+    await handleSaveSession({ 
+      date: new Date().toISOString(), 
+      teams: originalTeams || teams, 
+      round1Results: [{ ...match, team1Goals: goalScorers['0-team1'] || [], team2Goals: goalScorers['0-team2'] || [] }], 
+      round2Results: [] 
+    });
     setActionInProgress(null);
   };
 
@@ -725,9 +750,6 @@ const App: React.FC = () => {
     setActionInProgress(null);
   };
 
-  // --------------------------------------------------------------------------
-  // NIEUW: Handmatige wissel functie
-  // --------------------------------------------------------------------------
   const handleManualSwap = (teamAIndex: number, playerAIndex: number, teamBIndex: number, playerBIndex: number) => {
     const newTeams = teams.map(t => [...t]); 
     const playerA = newTeams[teamAIndex][playerAIndex];
@@ -805,7 +827,6 @@ const App: React.FC = () => {
           {showFrequentPairs && (
             <div className="mt-3 bg-gray-900/40 rounded-lg p-3">
               <div className="text-[10px] text-gray-500 font-black uppercase mb-2">Vaak samen:</div>
-              {/* 👇 DEZE DIV TOEVOEGEN VOOR DE SCROLLBALK 👇 */}
               <div className="max-h-72 overflow-y-auto custom-scrollbar">
                 {frequentPairsForUI.length === 0 ? <p className="text-xs text-gray-500">Nog geen data.</p> : 
                   frequentPairsForUI.map((p: any) => (
@@ -816,14 +837,12 @@ const App: React.FC = () => {
                   ))
                 }
               </div>
-              {/* 👆 EINDE VAN DE NIEUWE DIV 👆 */}
             </div>
           )}
 
           {showInfrequentPairs && (
             <div className="mt-3 bg-gray-900/40 rounded-lg p-3">
               <div className="text-[10px] text-gray-500 font-black uppercase mb-2">Zelden samen:</div>
-              {/* 👇 DEZE DIV TOEVOEGEN VOOR DE SCROLLBALK 👇 */}
               <div className="max-h-72 overflow-y-auto custom-scrollbar">
                 {infrequentPairsForUI.length === 0 ? <p className="text-xs text-gray-500">Nog geen data.</p> : 
                   infrequentPairsForUI.map((p: any) => (
@@ -834,7 +853,6 @@ const App: React.FC = () => {
                   ))
                 }
               </div>
-              {/* 👆 EINDE VAN DE NIEUWE DIV 👆 */}
             </div>
           )}
         </div>
@@ -888,8 +906,9 @@ const App: React.FC = () => {
           <LoginScreen onLogin={handleLogin} />
         );
       case 'playerDetail':
-        return selectedPlayer ? (
-          <PlayerDetail player={selectedPlayer} history={activeHistory} players={players} ratingLogs={ratingLogs} trophies={trophies} seasonStartDate={seasonStartDate} competitionName={competitionName} onBack={() => setCurrentView('stats')} />
+        const pdP = players.find(p => p.id === selectedPlayerId);
+        return pdP ? (
+          <PlayerDetail player={pdP} history={activeHistory} players={players} ratingLogs={ratingLogs} trophies={trophies} seasonStartDate={seasonStartDate} competitionName={competitionName} onBack={() => setCurrentView('stats')} />
         ) : (
           <div className="text-center p-8 bg-gray-800 rounded-xl"><p>Speler niet gevonden.</p><button onClick={() => setCurrentView('stats')} className="mt-4 text-cyan-400 underline">Terug naar stats</button></div>
         );
@@ -928,11 +947,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
         <div className="text-center">
-          <img
-            src="https://i.postimg.cc/XJy7yfJ2/bounceball.png"
-            alt="Laden..."
-            className="w-32 h-auto mx-auto mb-6 animate-bounce"
-          />
+          <img src="https://i.postimg.cc/XJy7yfJ2/bounceball.png" alt="Laden..." className="w-32 h-auto mx-auto mb-6 animate-bounce" />
           <p className="text-xl font-semibold animate-pulse">Gegevens laden...</p>
         </div>
       </div>
