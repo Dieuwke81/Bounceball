@@ -704,15 +704,30 @@ const App: React.FC = () => {
       sessionData.round2Teams = sessionTeamsR2;
     }
 
-    // ZET HIER DE STREEPJES VOOR:
-    // await handleSaveSession(sessionData);
+   // await handleSaveSession(sessionData);
 
-    // VOEG DIT TOE VOOR DE TEST:
-    setHistory(prev => [sessionData, ...prev]); 
-    resetGameState();
-    setAttendingPlayerIds(new Set());
-    alert("TEST: Niets opgeslagen in de Sheet, maar wel toegevoegd aan de Historie-lijst!");
-    setActionInProgress(null);
+      // 1. NIET OPSLAAN NAAR SHEETS
+      // await handleSaveSession(sessionData);
+
+      // 2. SIMULEER DE DATABASE (voorkomt zwart scherm/crash)
+      // We maken er even 'tekst' van en dan weer een 'object', net als de sheet doet.
+      const simulatedDataFromSheet = JSON.parse(JSON.stringify(sessionData));
+
+      // 3. UPDATE DE LOKALE HISTORIE
+      setHistory(prev => [simulatedDataFromSheet, ...prev]);
+      
+      // 4. RESET DE WEDSTRIJDMODUS
+      resetGameState();
+      setAttendingPlayerIds(new Set());
+
+      // 5. MELDING
+      alert("TEST GELUKT!\n\nDe gegevens zijn NIET naar Google gestuurd, maar je kunt ze nu WEL bekijken onder het groene klokje (Historie).");
+
+      setActionInProgress(null);
+    } catch (e: any) {
+      alert("Er ging iets mis in de test: " + e.message);
+      setActionInProgress(null);
+    
   };
 
   const handleSaveSimpleMatch = async (match: Match) => {
