@@ -704,7 +704,14 @@ const App: React.FC = () => {
       sessionData.round2Teams = sessionTeamsR2;
     }
 
-    await handleSaveSession(sessionData);
+    // ZET HIER DE STREEPJES VOOR:
+    // await handleSaveSession(sessionData);
+
+    // VOEG DIT TOE VOOR DE TEST:
+    setHistory(prev => [sessionData, ...prev]); 
+    resetGameState();
+    setAttendingPlayerIds(new Set());
+    alert("TEST: Niets opgeslagen in de Sheet, maar wel toegevoegd aan de Historie-lijst!");
     setActionInProgress(null);
   };
 
