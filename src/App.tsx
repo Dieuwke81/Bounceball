@@ -1,4 +1,3 @@
-// App.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type {
   Player,
@@ -376,6 +375,7 @@ const calculateRatingDeltas = (
 
   const applyResults = (results: MatchResult[], teamsForRound: Player[][]) => {
     results.forEach((match) => {
+      // Gebruik hier de correcte teamindeling voor deze specifieke ronde
       const team1 = teamsForRound[match.team1Index];
       const team2 = teamsForRound[match.team2Index];
       if (!team1 || !team2) return;
@@ -394,6 +394,7 @@ const calculateRatingDeltas = (
   };
 
   applyResults(session.round1Results, session.teams);
+  // Gebruik session.round2Teams als deze beschikbaar is, anders session.teams
   applyResults(session.round2Results, session.round2Teams ?? session.teams);
 
   return ratingChanges;
@@ -407,8 +408,8 @@ const App: React.FC = () => {
   const [trophies, setTrophies] = useState<Trophy[]>([]);
   const [attendingPlayerIds, setAttendingPlayerIds] = useState<Set<number>>(new Set());
   const [teams, setTeams] = useState<Player[][]>([]);
-  const [originalTeams, setOriginalTeams] = useState<Player[][] | null>(null);
-  const [teams2, setTeams2] = useState<Player[][] | null>(null);
+  const [originalTeams, setOriginalTeams] = useState<Player[][] | null>(null); // Teams as generated for Round 1
+  const [teams2, setTeams2] = useState<Player[][] | null>(null); // Teams for second match in Double Header
   const [currentRound, setCurrentRound] = useState(0);
   const [round1Results, setRound1Results] = useState<MatchResult[]>([]);
   const [round2Pairings, setRound2Pairings] = useState<Match[]>([]);
@@ -676,15 +677,33 @@ const App: React.FC = () => {
         separateTop6: separateTop6OnPoints, top6Ids
       });
       if (syncOpponentRatings) regeneratedTeams = syncRatingsBetweenOpponents(regeneratedTeams);
-      setTeams(regeneratedTeams); setRound2Pairings(Array.from({ length: regeneratedTeams.length / 2 }, (_, i) => ({ team1Index: i * 2, team2Index: i * 2 + 1 })));
-      setGoalScorers({});
+      setTeams(regeneratedTeams); 
+      setRound2Pairings(Array.from({ length: regeneratedTeams.length / 2 }, (_, i) => ({ team1Index: i * 2, team2Index: i * 2 + 1 })));
+      setGoalScorers({}); // Doelpunten resetten voor nieuwe ronde
     } catch (e: any) { showNotification(e.message, 'error'); } finally { setActionInProgress(null); }
   };
 
   const handleSaveFinalResults = async (matches: Match[]) => {
     if (!requireAdmin()) return; setActionInProgress('savingFinal');
     const r2 = matches.map((m, i) => ({ ...m, team1Goals: goalScorers[`${i}-team1`] || [], team2Goals: goalScorers[`${i}-team2`] || [] }));
-    await handleSaveSession({ date: new Date().toISOString(), teams, round1Results, round2Results: r2 });
+    
+    // START AANPASSING VOOR RONDE 2 TEAMS
+    // Als de teams zijn geregenereerd (teams is niet gelijk aan originalTeams),
+    // sla dan de huidige 'teams' state op als 'round2Teams'.
+    // Anders (als ze niet zijn geregenereerd, of als het een eenvoudige match is),
+    // blijft round2Teams null of gelijk aan teams van ronde 1.
+    const teamsToSaveForRound2 = gameMode === 'tournament' && !areTeamCompositionsIdentical(teams, originalTeams || [])
+                                 ? teams
+                                 : originalTeams; // Fallback naar originalTeams als er geen regeneratie was, of als geen toernooi
+    // EINDE AANPASSING VOOR RONDE 2 TEAMS
+
+    await handleSaveSession({
+      date: new Date().toISOString(),
+      teams: originalTeams, // Teams van Ronde 1 (de oorspronkelijke generatie)
+      round1Results,
+      round2Results: r2,
+      round2Teams: teamsToSaveForRound2, // De teams die daadwerkelijk in Ronde 2 speelden
+    });
     setActionInProgress(null);
   };
 
