@@ -41,7 +41,6 @@ const StatCard: React.FC<{
   </div>
 );
 
-// Aangepaste lijst die percentages (winst of verlies) en de grappige styling snapt
 const RelationshipList: React.FC<{
   title: string;
   data: { id: number; label: string; percentage: number }[];
@@ -59,7 +58,6 @@ const RelationshipList: React.FC<{
           const relatedPlayer = playerMap.get(item.id);
           if (!relatedPlayer) return null;
           
-          // Kleur bolletje: roodachtig bij hoge percentages in de 'slechte' lijstjes
           const isNegativeList = title.includes('Afgrond') || title.includes('Nachtmerrie');
           const pillColor = (isNegativeList && item.percentage > 50) 
             ? 'bg-red-900/40 text-red-200' 
@@ -84,14 +82,12 @@ const RelationshipList: React.FC<{
   </div>
 );
 
-// Helper: veilige datum parse
 const toMs = (d: string) => {
   if (!d) return 0;
   const ms = new Date(d).getTime();
   return Number.isFinite(ms) ? ms : 0;
 };
 
-// Helper: scores uit MatchResult
 const matchScore = (m: MatchResult) => {
   const goals1 = m.team1Goals || [];
   const goals2 = m.team2Goals || [];
@@ -111,11 +107,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
   onBack,
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
-
-  const playerMap = useMemo(
-    () => new Map(players.map((p) => [p.id, p])),
-    [players]
-  );
+  const playerMap = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
 
   const playerTrophies = useMemo(() => {
     if (!trophies) return [];
@@ -124,8 +116,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       .sort((a, b) => {
         const yearA = Number((a.year || "").match(/\d{4}/)?.[0]) || 0;
         const yearB = Number((b.year || "").match(/\d{4}/)?.[0]) || 0;
-        if (yearA !== yearB) return yearB - yearA;
-        return (b.year || "").localeCompare(a.year || "");
+        return yearA !== yearB ? yearB - yearA : (b.year || "").localeCompare(a.year || "");
       });
   }, [trophies, player.id]);
 
@@ -167,8 +158,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
   const stats = useMemo(() => {
     let wins = 0, losses = 0, draws = 0, points = 0, gamesPlayed = 0, goalsScored = 0;
-
-    // We houden nu gedetailleerde resultaten bij per partner/tegenstander
     const teammateResults = new Map<number, { pts: number; games: number; wins: number; losses: number }>();
     const opponentResults = new Map<number, { pts: number; games: number; wins: number; losses: number }>();
 
@@ -187,58 +176,60 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     history.forEach((session) => {
       if (!session) return;
       
-      // ✅ SEIZOEN FILTER
       const sessionMs = toMs(session.date);
+      // We filteren alleen voor de Lijstjes, maar niet voor de totale teller als dat verwarrend is.
+      // Echter, meestal wil je alles op deze pagina van het seizoen hebben:
       if (startMs > 0 && sessionMs < startMs) return;
 
-      const processRound = (teams: Player[][], results: MatchResult[]) => {
-        results?.forEach(m => {
-          const myTIdx = teams.findIndex(t => t.some(p => p.id === player.id));
-          if (myTIdx < 0) return;
-          const isT1 = m.team1Index === myTIdx;
-          const myTeam = teams[myTIdx];
-          const oppTeam = teams[isT1 ? m.team2Index : m.team1Index];
-          if (!myTeam || !oppTeam) return;
+      const teamsR1 = session.teams || [];
+      const teamsR2 = session.round2Teams ?? session.teams ?? [];
 
-          const { s1, s2 } = matchScore(m);
-          const myS = isT1 ? s1 : s2;
-          const oppS = isT1 ? s2 : s1;
+      const processMatch = (teams: Player[][], match: MatchResult) => {
+        if (!teams || !match) return;
+        const myTIdx = teams.findIndex(t => Array.isArray(t) && t.some(p => p.id === player.id));
+        if (myTIdx < 0) return;
 
-          let p = 0, w = false, l = false;
-          if (myS > oppS) { p = 3; w = true; } 
-          else if (myS < oppS) { l = true; }
-          else { p = 1; }
+        const isT1 = match.team1Index === myTIdx;
+        const isT2 = match.team2Index === myTIdx;
+        if (!isT1 && !isT2) return;
 
-          // Hoofdstatistieken bijwerken (alleen als de teams-array overeenkomt met de ronde van de sessie)
-          if (teams === session.teams || teams === (session as any).round2Teams) {
-            gamesPlayed++;
-            const g = (isT1 ? m.team1Goals : m.team2Goals)?.find(goal => goal.playerId === player.id);
-            goalsScored += (g?.count || 0);
-            if (w) { wins++; points += 3; } 
-            else if (myS === oppS) { draws++; points += 1; } 
-            else losses++;
-          }
+        const oppTIdx = isT1 ? match.team2Index : match.team1Index;
+        if (!teams[oppTIdx]) return;
 
-          // Relationele data (per medespeler/tegenstander)
-          myTeam.forEach(pl => { if (pl.id !== player.id) updateRecord(teammateResults, pl.id, p, w, l); });
-          oppTeam.forEach(pl => updateRecord(opponentResults, pl.id, p, w, l));
-        });
+        const { s1, s2 } = matchScore(match);
+        const myS = isT1 ? s1 : s2;
+        const oppS = isT1 ? s2 : s1;
+
+        let p = 0, w = false, l = false;
+        if (myS > oppS) { p = 3; w = true; } 
+        else if (myS < oppS) { l = true; }
+        else { p = 1; }
+
+        // DIT STUKJE BIJWERKEN (Wedstrijden tellen)
+        gamesPlayed++;
+        const g = (isT1 ? match.team1Goals : match.team2Goals)?.find(goal => goal.playerId === player.id);
+        goalsScored += (g?.count || 0);
+        if (w) { wins++; points += 3; } 
+        else if (myS === oppS) { draws++; points += 1; } 
+        else losses++;
+
+        // Medespelers / Tegenstanders
+        teams[myTIdx].forEach(pl => { if (pl.id !== player.id) updateRecord(teammateResults, pl.id, p, w, l); });
+        teams[oppTIdx].forEach(pl => updateRecord(opponentResults, pl.id, p, w, l));
       };
 
-      processRound(session.teams || [], session.round1Results || []);
-      processRound((session as any).round2Teams ?? session.teams ?? [], session.round2Results || []);
+      (session.round1Results || []).forEach(m => processMatch(teamsR1, m));
+      (session.round2Results || []).forEach(m => processMatch(teamsR2, m));
     });
 
-    // POSITIEVE LIJSTEN (Sorteer op winstkans, toon winst %)
     const getWinList = (resMap: Map<number, any>) => {
       return [...resMap.entries()].map(([id, data]) => {
         const perc = Math.round((data.wins / data.games) * 100);
-        const score = (data.pts + 3) / (data.games + 2); // Laplace weging
+        const score = (data.pts + 3) / (data.games + 2);
         return { id, percentage: perc, label: `${data.wins}W - ${data.losses}V`, score };
       }).sort((a, b) => b.score - a.score);
     };
 
-    // NEGATIEVE LIJSTEN (Sorteer op verlieskans, toon verlies %)
     const getLossList = (resMap: Map<number, any>) => {
       return [...resMap.entries()].map(([id, data]) => {
         const perc = Math.round((data.losses / data.games) * 100);
@@ -343,7 +334,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         <RelationshipList title="Gouden Duo (Winstgarantie)" data={stats.bestT as any} playerMap={playerMap} icon={<TrophyIcon className="w-6 h-6 text-green-400" />} />
         <RelationshipList title="Samen de Afgrond in..." data={stats.worstT as any} playerMap={playerMap} icon={<ShieldIcon className="w-6 h-6 text-red-400" />} />
         <RelationshipList title="Mijn Favoriete Slachtoffer" data={stats.bestO as any} playerMap={playerMap} icon={<TrophyIcon className="w-6 h-6 text-green-400" />} />
-        <RelationshipList title="Mijn Persoonlijke Nachtmerrie" data={stats.worstO as any} playerMap={playerMap} icon={<ShieldIcon className="w-6 h-6 text-red-400" />} />
+        <RelationshipList title="Mijn Persoonlijke Nachtmerrie" data={stats.worstO as any} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
       </div>
     </div>
   );
