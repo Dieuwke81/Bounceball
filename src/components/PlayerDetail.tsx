@@ -63,7 +63,7 @@ const RelationshipList: React.FC<{
                 <span className="truncate font-medium">{relatedPlayer.name}</span>
                 <span className="text-[10px] text-gray-500">{item.label}</span>
               </div>
-              <span className={`font-mono text-xs px-2 py-0.5 rounded-full ml-2 ${item.percentage > 50 ? 'bg-red-900/40 text-red-200' : 'bg-gray-600 text-gray-200'}`}>
+              <span className={`font-mono text-xs px-2 py-0.5 rounded-full ml-2 ${item.percentage > 50 && (title.includes('Afgrond') || title.includes('Nachtmerrie')) ? 'bg-red-900/40 text-red-200' : 'bg-gray-600 text-gray-200'}`}>
                 {item.percentage}%
               </span>
             </li>
@@ -80,14 +80,6 @@ const toMs = (d: string) => {
   if (!d) return 0;
   const ms = new Date(d).getTime();
   return Number.isFinite(ms) ? ms : 0;
-};
-
-const matchScore = (m: MatchResult) => {
-  const goals1 = m.team1Goals || [];
-  const goals2 = m.team2Goals || [];
-  const s1 = goals1.reduce((sum, g) => sum + (g?.count || 0), 0);
-  const s2 = goals2.reduce((sum, g) => sum + (g?.count || 0), 0);
-  return { s1, s2 };
 };
 
 const PlayerDetail: React.FC<PlayerDetailProps> = ({
@@ -144,10 +136,9 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       '2de Wintertoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
       '3de Wintertoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
     };
-    const imageUrl = images[type];
-    if (imageUrl) return <img src={imageUrl} alt={type} className="w-8 h-8 object-contain" />;
-    if (type === 'Verdediger') return <ShieldIcon className="w-6 h-6" />;
-    return <TrophyIcon className="w-6 h-6" />;
+    const url = images[type];
+    if (url) return <img src={url} alt={type} className="w-8 h-8 object-contain" />;
+    return type === 'Verdediger' ? <ShieldIcon className="w-6 h-6" /> : <TrophyIcon className="w-6 h-6" />;
   };
 
   const stats = useMemo(() => {
@@ -176,7 +167,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
           const oppTeam = teams[isT1 ? m.team2Index : m.team1Index];
           if (!myTeam || !oppTeam) return;
 
-          const { s1, s2 } = matchScore(m);
+          const s1 = (m.team1Goals || []).reduce((acc, g) => acc + (g?.count || 0), 0);
+          const s2 = (m.team2Goals || []).reduce((acc, g) => acc + (g?.count || 0), 0);
           const myS = isT1 ? s1 : s2;
           const oppS = isT1 ? s2 : s1;
 
@@ -187,7 +179,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
           if (teams === session.teams || teams === (session as any).round2Teams) {
             gamesPlayed++;
-            goalsScored += (isT1 ? m.team1Goals : m.team2Goals)?.find(g => g.playerId === player.id)?.count || 0;
+            const g = (isT1 ? m.team1Goals : m.team2Goals)?.find(goal => goal.playerId === player.id);
+            goalsScored += (g?.count || 0);
             if (w) { wins++; points += 3; } else if (myS === oppS) { draws++; points += 1; } else losses++;
           }
 
@@ -199,20 +192,18 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       process((session as any).round2Teams ?? session.teams ?? [], session.round2Results || []);
     });
 
-    // Helper voor de positieve lijstjes (Winst %)
     const getWinList = (resMap: Map<number, any>) => {
       return [...resMap.entries()].map(([id, data]) => {
         const perc = Math.round((data.wins / data.games) * 100);
-        const score = (data.pts + 3) / (data.games + 2); // Laplace
+        const score = (data.pts + 3) / (data.games + 2);
         return { id, percentage: perc, label: `${data.wins}W - ${data.losses}V`, score };
       }).sort((a, b) => b.score - a.score);
     };
 
-    // Helper voor de negatieve lijstjes (Verlies %)
     const getLossList = (resMap: Map<number, any>) => {
       return [...resMap.entries()].map(([id, data]) => {
         const perc = Math.round((data.losses / data.games) * 100);
-        const score = (data.pts + 3) / (data.games + 2); // We sorteren op laagste win-score
+        const score = (data.pts + 3) / (data.games + 2);
         return { id, percentage: perc, label: `${data.losses}V - ${data.wins}W`, score };
       }).sort((a, b) => a.score - b.score);
     };
@@ -290,9 +281,9 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard title="Gespeeld" value={stats.gamesPlayed} />
-        <StatCard title="Resultaten" value={`${wins}W • ${draws}G • ${losses}V`} subtext={`van ${stats.gamesPlayed}`} />
-        <StatCard title="Goals" value={stats.goalsScored} subtext={`${(stats.goalsScored / (stats.gamesPlayed || 1)).toFixed(2)} gem.`} />
-        <StatCard title="Gem. Punten" value={(points / (stats.gamesPlayed || 1)).toFixed(2)} subtext={`Totaal: ${points}`} />
+        <StatCard title="Resultaten" value={`${stats.wins}W • ${stats.draws}G • ${stats.losses}V`} subtext={`van ${stats.gamesPlayed}`} />
+        <StatCard title="Goals" value={stats.goalsScored} subtext={`${(stats.goalsScored / Math.max(1, stats.gamesPlayed)).toFixed(2)} gem.`} />
+        <StatCard title="Gem. Punten" value={(stats.points / Math.max(1, stats.gamesPlayed)).toFixed(2)} subtext={`Totaal: ${stats.points}`} />
       </div>
 
       <div className="bg-gray-700 p-4 rounded-lg mb-8">
@@ -312,8 +303,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <RelationshipList title="Gouden Duo (Winstgarantie)" data={stats.bestT} playerMap={playerMap} icon={<TrophyIcon className="w-6 h-6 text-green-400" />} />
         <RelationshipList title="Samen de Afgrond in..." data={stats.worstT} playerMap={playerMap} icon={<ShieldIcon className="w-6 h-6 text-red-400" />} />
-        <RelationshipList title="Mijn Favoriete Slachtoffer" data={stats.bestO} playerMap={playerMap} icon={<TrophyIcon className="w-6 h-6 text-green-400" />} />
-        <RelationshipList title="Mijn Persoonlijke Nachtmerrie" data={stats.worstO} playerMap={playerMap} icon={<ShieldIcon className="w-6 h-6 text-red-400" />} />
+        <RelationshipList title="Mijn Favoriete Slachtoffer" data={stats.bestO} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
+        <RelationshipList title="Mijn Persoonlijke Nachtmerrie" data={stats.worstO} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
       </div>
     </div>
   );
