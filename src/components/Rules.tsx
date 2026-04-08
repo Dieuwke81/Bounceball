@@ -312,7 +312,7 @@ const Rules: React.FC = () => {
                 query={query}
               />
               <Line
-                text="Totdat de stick is opgehaald, mag hij geen invloed hebben op het spel."
+                text="Totdat de stick is opgehaald, mag hij of zij geen invloed hebben op het spel."
                 query={query}
               />
               <Line
