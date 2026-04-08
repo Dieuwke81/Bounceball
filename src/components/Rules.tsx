@@ -173,7 +173,7 @@ const Rules: React.FC = () => {
             query={query}
           />
           <Line
-            text="Raakt de bal onbedoeld een been, voet, hand of arm? Dan gaat het spel door. Bij opzettelijk gebruik van deze lichaamsdelen volgt een vrije slag."
+            text="Raakt de bal onbedoeld een been, voet, hand of arm? Dan gaat het spel door. Bij opzettelijk gebruik van deze lichaamsdelen of teveel voordeel bij per ongeluk gebruik van deze lichaamsdelen volgt een vrije slag."
             query={query}
           />
         </ul>
