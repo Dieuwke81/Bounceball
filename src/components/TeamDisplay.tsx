@@ -66,7 +66,7 @@ const LoadingDots: React.FC = () => {
 };
 
 // ============================================================================
-// COMPONENT: ScoreInput (EXACT GEKOPIEERD VAN MANUAL ENTRY LOGICA)
+// COMPONENT: ScoreInput
 // ============================================================================
 const ScoreInput: React.FC<{
   value: number;
@@ -80,13 +80,11 @@ const ScoreInput: React.FC<{
   }, [value]);
 
   const handleFocus = () => {
-    // Maakt het vakje leeg als er een 0 staat, zodat je meteen kunt typen
     if (localValue === '0') setLocalValue('');
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    // Accepteer alleen cijfers
     if (val === '' || /^\d+$/.test(val)) {
       setLocalValue(val);
     }
@@ -98,10 +96,8 @@ const ScoreInput: React.FC<{
       if (value !== 0) onChange(0);
       return;
     }
-
     let num = parseInt(localValue, 10);
     if (isNaN(num)) num = 0;
-
     if (num !== value) onChange(num);
     setLocalValue(num.toString());
   };
@@ -112,8 +108,8 @@ const ScoreInput: React.FC<{
 
   return (
     <input
-      type="text"          // Gebruik "text" ipv "number" voor betere mobiele respons
-      inputMode="numeric"  // Toon wel het cijfer-toetsenbord
+      type="text"
+      inputMode="numeric"
       pattern="[0-9]*"
       value={localValue}
       onFocus={handleFocus}
@@ -130,7 +126,34 @@ const ScoreInput: React.FC<{
 const getBaseColor = (index: number) => (index % 2 === 0 ? 'blue' : 'yellow');
 
 // ============================================================================
-// WEDSTRIJD CARD
+// SUB-COMPONENT: PlayerGoalInput (BUITEN MatchInputCard geplaatst voor stabiliteit)
+// ============================================================================
+const PlayerGoalInput: React.FC<{
+    player: Player, 
+    teamIdentifier: 'team1' | 'team2', 
+    matchIndex: number, 
+    goalScorers: TeamDisplayProps['goalScorers'], 
+    onGoalChange: TeamDisplayProps['onGoalChange']
+}> = ({ player, teamIdentifier, matchIndex, goalScorers, onGoalChange }) => {
+    const goals = goalScorers[`${matchIndex}-${teamIdentifier}`] || [];
+    const goalCount = goals.find(g => g.playerId === player.id)?.count || 0;
+
+    return (
+        <div className="flex items-center justify-between space-x-2 bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
+            <span className="text-gray-200 flex-1 pr-2 text-sm sm:text-base break-words leading-tight">
+              {player.name}
+            </span>
+            <ScoreInput
+                value={goalCount}
+                onChange={(newVal) => onGoalChange(matchIndex, teamIdentifier, player.id, newVal)}
+                className="w-10 bg-gray-700 border border-gray-500 rounded-md py-1 px-2 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+        </div>
+    );
+};
+
+// ============================================================================
+// WEDSTRIJD CARD (BUITEN TeamDisplay geplaatst voor stabiliteit)
 // ============================================================================
 const MatchInputCard: React.FC<{
     match: Match;
@@ -140,60 +163,35 @@ const MatchInputCard: React.FC<{
     onGoalChange: TeamDisplayProps['onGoalChange'];
 }> = ({ match, matchIndex, teams, goalScorers, onGoalChange }) => {
     
-    // 1. Haal de teams op
     const team1Data = teams[match.team1Index];
     const team2Data = teams[match.team2Index];
 
-    // 2. Bepaal de 'natuurlijke' kleur
     const color1 = getBaseColor(match.team1Index);
     const color2 = getBaseColor(match.team2Index);
 
-    // 3. Logica: Wie moet er LINKS (Blauw) en wie RECHTS (Geel)?
     let blueTeam, yellowTeam;
     let blueIdentifier: 'team1' | 'team2';
     let yellowIdentifier: 'team1' | 'team2';
     let blueTeamIndex, yellowTeamIndex;
 
-    // SCENARIO: Team 1 is Geel en Team 2 is Blauw -> OMDRAAIEN
     if (color1 === 'yellow' && color2 === 'blue') {
         blueTeam = team2Data;       blueIdentifier = 'team2';   blueTeamIndex = match.team2Index;
         yellowTeam = team1Data;     yellowIdentifier = 'team1'; yellowTeamIndex = match.team1Index;
     } 
-    // STANDAARD: Team 1 is Blauw, Team 2 is Geel (of allebei zelfde kleur, dan fallback)
     else {
         blueTeam = team1Data;       blueIdentifier = 'team1';   blueTeamIndex = match.team1Index;
         yellowTeam = team2Data;     yellowIdentifier = 'team2'; yellowTeamIndex = match.team2Index;
     }
 
-    // --- FORCEER KLEUREN ---
     const leftColorClass = 'text-cyan-300';
     const rightColorClass = 'text-amber-300';
     const leftBorderClass = 'border-cyan-500/30';
     const rightBorderClass = 'border-amber-500/30';
 
-    // Hulpfunctie score
     const getTeamScore = (identifier: 'team1' | 'team2') => {
         const goals = goalScorers[`${matchIndex}-${identifier}`] || [];
         return goals.reduce((sum, g) => sum + g.count, 0);
     };
-
-    const PlayerGoalInput: React.FC<{player: Player, teamIdentifier: 'team1' | 'team2'}> = ({ player, teamIdentifier }) => {
-        const goals = goalScorers[`${matchIndex}-${teamIdentifier}`] || [];
-        const goalCount = goals.find(g => g.playerId === player.id)?.count || 0;
-
-        return (
-            <div className="flex items-center justify-between space-x-2 bg-gray-600/50 p-2 rounded hover:bg-gray-600 transition-colors">
-                <span className="text-gray-200 flex-1 pr-2 text-sm sm:text-base break-words leading-tight">
-                  {player.name}
-                </span>
-                <ScoreInput
-                    value={goalCount}
-                    onChange={(newVal) => onGoalChange(matchIndex, teamIdentifier, player.id, newVal)}
-                    className="w-10 bg-gray-700 border border-gray-500 rounded-md py-1 px-2 text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
-            </div>
-        )
-    }
 
     return (
         <div className="bg-gray-700 rounded-lg p-4 shadow-md">
@@ -208,7 +206,16 @@ const MatchInputCard: React.FC<{
                         <p className="text-3xl font-bold text-white mt-1">{getTeamScore(blueIdentifier)}</p>
                     </div>
                     <div className="space-y-2 pr-1">
-                        {blueTeam.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier={blueIdentifier} />)}
+                        {blueTeam.map(p => (
+                            <PlayerGoalInput 
+                                key={p.id} 
+                                player={p} 
+                                teamIdentifier={blueIdentifier} 
+                                matchIndex={matchIndex} 
+                                goalScorers={goalScorers} 
+                                onGoalChange={onGoalChange} 
+                            />
+                        ))}
                     </div>
                 </div>
                 
@@ -222,7 +229,16 @@ const MatchInputCard: React.FC<{
                         <p className="text-3xl font-bold text-white mt-1">{getTeamScore(yellowIdentifier)}</p>
                     </div>
                     <div className="space-y-2 pr-1">
-                        {yellowTeam.map(p => <PlayerGoalInput key={p.id} player={p} teamIdentifier={yellowIdentifier} />)}
+                        {yellowTeam.map(p => (
+                            <PlayerGoalInput 
+                                key={p.id} 
+                                player={p} 
+                                teamIdentifier={yellowIdentifier} 
+                                matchIndex={matchIndex} 
+                                goalScorers={goalScorers} 
+                                onGoalChange={onGoalChange} 
+                            />
+                        ))}
                     </div>
                 </div>
             </div>
@@ -244,23 +260,20 @@ const MatchResultDisplayCard: React.FC<{
 
     let leftText, rightText, leftScore, rightScore;
     
-    // Als Team 1 Geel was en Team 2 Blauw -> Wisselen
     if (color1 === 'yellow' && color2 === 'blue') {
-        leftText = `Team ${matchResult.team2Index + 1}`; // Blauw Team Naam
-        rightText = `Team ${matchResult.team1Index + 1}`; // Geel Team Naam
+        leftText = `Team ${matchResult.team2Index + 1}`; 
+        rightText = `Team ${matchResult.team1Index + 1}`; 
         leftScore = score2;
         rightScore = score1;
     } else {
-        // Normaal
         leftText = `Team ${matchResult.team1Index + 1}`;
         rightText = `Team ${matchResult.team2Index + 1}`;
         leftScore = score1;
         rightScore = score2;
     }
 
-    // Forceer kleuren
-    const leftColor = 'text-cyan-400/80'; // Blauw
-    const rightColor = 'text-amber-400/80'; // Geel
+    const leftColor = 'text-cyan-400/80'; 
+    const rightColor = 'text-amber-400/80'; 
 
     return (
         <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600/30">
@@ -353,10 +366,8 @@ const TeamCard: React.FC<{
 
 const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, currentRound, round1Results, round2Pairings, goalScorers, onGoalChange, onSaveRound1, onSaveFinalResults, onSaveSimpleMatch, onStartSecondDoubleHeaderMatch, onSaveDoubleHeader, onRegenerateTeams, onManualSwap, actionInProgress }) => {
   
-  // State voor het selecteren van spelers voor de wissel
   const [swapSelection, setSwapSelection] = useState<{tIdx: number, pIdx: number} | null>(null);
 
-  // --- CONFETTI LOAD ---
   useEffect(() => {
     if (!document.getElementById('confetti-script')) {
         const script = document.createElement('script');
@@ -367,7 +378,6 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
     }
   }, []);
 
-  // --- CONFETTI FUNCTIE ---
   const triggerFirework = () => {
     if (window.confetti) {
         const duration = 2 * 1000;
@@ -384,24 +394,16 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
     }
   };
 
-  // --- SWAP LOGICA ---
   const handlePlayerClick = (tIdx: number, pIdx: number) => {
-    // Alleen wisselen als de functie bestaat en we in ronde 1 zitten (of je wilt het altijd toestaan)
-    // Veiligheidshalve: alleen toestaan voor het "teams" object (dus ronde 1 of current teams)
     if (!onManualSwap) return;
-
     if (swapSelection) {
-        // Er is al iemand geselecteerd
         if (swapSelection.tIdx === tIdx && swapSelection.pIdx === pIdx) {
-            // Zelfde speler aangeklikt -> Deselecteer
             setSwapSelection(null);
         } else {
-            // Andere speler -> Wissel uitvoeren!
             onManualSwap(swapSelection.tIdx, swapSelection.pIdx, tIdx, pIdx);
-            setSwapSelection(null); // Reset selectie na wissel
+            setSwapSelection(null); 
         }
     } else {
-        // Eerste selectie
         setSwapSelection({tIdx, pIdx});
     }
   };
@@ -431,7 +433,6 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
     return [];
   }, [teams, gameMode]);
 
-  // --- WHATSAPP LOGICA ---
   const handleShareToWhatsApp = () => {
     const today = new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
     const dateStr = today.charAt(0).toUpperCase() + today.slice(1);
@@ -448,7 +449,6 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
         const team2 = teams[match.team2Index];
         if (!team1 || !team2) return;
         
-        // Kleur bepalen en wisselen indien nodig
         const color1 = getBaseColor(match.team1Index);
         const color2 = getBaseColor(match.team2Index);
         
@@ -499,7 +499,6 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
         </div>
       </div>
 
-      {/* --- DOUBLE HEADER LOGIC --- */}
       {gameMode === 'doubleHeader' && (
         <>
           {currentRound === 1 && (
@@ -517,7 +516,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
                     title="Team"
                     swapSelection={swapSelection}
                     onPlayerClick={handlePlayerClick}
-                    canSwap={true} // In ronde 1 mag je wisselen
+                    canSwap={true}
                   />
                 ))}
               </div>
@@ -567,7 +566,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
                     title="Team"
                     swapSelection={null}
                     onPlayerClick={() => {}}
-                    canSwap={false} // Geen wissel meer mogelijk in historie
+                    canSwap={false}
                   />
                 ))}
               </div>
@@ -581,7 +580,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
                     title="Team"
                     swapSelection={null} 
                     onPlayerClick={() => {}}
-                    canSwap={false} // Voorlopig geen wissel in R2
+                    canSwap={false}
                   />
                 ))}
               </div>
@@ -627,10 +626,8 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
       )}
 
 
-      {/* --- SIMPLE MATCH / TOURNAMENT LOGIC --- */}
       {(isSimpleMatch || gameMode === 'tournament') && (
         <>
-            {/* Round 1: Show teams */}
             {currentRound === 1 && (
                 <div className="mb-6">
                     <div className="flex items-center justify-between mb-4">
@@ -655,7 +652,6 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
             
             {currentRound > 0 && (
                 <div className="mt-8 border-t border-gray-600 pt-6">
-                    {/* Round 2 setup: R1 results + R2 teams */}
                     {currentRound === 2 && round1Results.length > 0 && (
                         <>
                             <div className="mb-8">
@@ -680,7 +676,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
                                             title="Team"
                                             swapSelection={null}
                                             onPlayerClick={() => {}}
-                                            canSwap={false} // Voor nu geen wissel in R2 toestaan
+                                            canSwap={false} 
                                         />
                                     ))}
                                 </div>
@@ -695,7 +691,7 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
                                 key={`${currentRound}-${index}`}
                                 match={match}
                                 matchIndex={index}
-                                teams={teams}
+                                teams={currentRound === 2 ? teams : teams} // Behoudt teams structuur
                                 goalScorers={goalScorers}
                                 onGoalChange={onGoalChange}
                             />
@@ -772,7 +768,6 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
         </>
       )}
 
-      {/* DIT IS HET VERBORGEN FORMULIER DAT WORDT GEPRIINT */}
       <MatchForm teams={teams} />
     </div>
   );
