@@ -24,8 +24,8 @@ interface PlayerDetailProps {
   players: Player[];
   ratingLogs: RatingLogEntry[];
   trophies: Trophy[];
-  seasonStartDate?: string;     // Toegevoegd om errors te voorkomen
-  competitionName?: string | null; // Toegevoegd om errors te voorkomen
+  seasonStartDate?: string;     
+  competitionName?: string | null; 
   onBack: () => void;
 }
 
@@ -85,7 +85,6 @@ const toMs = (d: string) => {
 
 // Helper: scores uit MatchResult (VEILIG GEMAAKT)
 const matchScore = (m: MatchResult) => {
-  // 🛡️ CRASH PREVENTIE: Gebruik || [] voor het geval goals ontbreken
   const goals1 = m.team1Goals || [];
   const goals2 = m.team2Goals || [];
   const s1 = goals1.reduce((sum, g) => sum + (g?.count || 0), 0);
@@ -99,8 +98,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
   players,
   ratingLogs,
   trophies,
-  seasonStartDate, // Wordt nu geaccepteerd maar niet verplicht gebruikt
-  competitionName, // Wordt nu geaccepteerd
+  seasonStartDate, 
+  competitionName, 
   onBack,
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
@@ -122,11 +121,12 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       });
   }, [trophies, player.id]);
 
-  const getTrophyStyle = (type: TrophyType) => {
+  // FIX: Stijl alleen voor de titel van de prijs
+  const getTrophyTitleStyle = (type: TrophyType) => {
     if (type.includes('1ste') || type === 'Clubkampioen') {
       return 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-600';
     }
-    if (type.includes('2de')) return 'text-slate-500';
+    if (type.includes('2de')) return 'text-slate-400';
     if (type.includes('3de')) return 'text-amber-700';
     if (type === 'Topscoorder') return 'text-yellow-300';
     if (type === 'Verdediger') return 'text-red-500';
@@ -152,7 +152,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       '2de Wintertoernooi': 'https://i.postimg.cc/zBgcKf1m/Zonder-titel-(200-x-200-px)-20251203-122554-0000.png',
       '3de Wintertoernooi': 'https://i.postimg.cc/FKRtdmR9/Zonder-titel-(200-x-200-px)-20251203-122622-0000.png',
     };
-
     const imageUrl = images[type];
     if (imageUrl) return <img src={imageUrl} alt={type} className="w-8 h-8 object-contain" />;
     if (type === 'Verdediger') return <ShieldIcon className="w-6 h-6" />;
@@ -175,10 +174,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
     const processMatch = (
       sessionTeams: Player[][],
-      match: MatchResult,
-      roundLabel: 'r1' | 'r2'
+      match: MatchResult
     ) => {
-      // 🛡️ CRASH PREVENTIE: Check of data bestaat
       if (!sessionTeams || !match) return;
 
       const playerTeamIndex = sessionTeams.findIndex((team) =>
@@ -187,13 +184,11 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       if (playerTeamIndex < 0) return;
 
       const { s1, s2 } = matchScore(match);
-
       const isTeam1 = match.team1Index === playerTeamIndex;
       const isTeam2 = match.team2Index === playerTeamIndex;
       if (!isTeam1 && !isTeam2) return;
 
       const opponentTeamIndex = isTeam1 ? match.team2Index : match.team1Index;
-      // 🛡️ CRASH PREVENTIE: Check of tegenstander bestaat
       if (!sessionTeams[opponentTeamIndex]) return;
 
       gamesPlayed++;
@@ -249,8 +244,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       const teamsR1 = session.teams || [];
       const teamsR2 = session.round2Teams ?? session.teams ?? [];
 
-      (session.round1Results || []).forEach((m) => processMatch(teamsR1, m, 'r1'));
-      (session.round2Results || []).forEach((m) => processMatch(teamsR2, m, 'r2'));
+      (session.round1Results || []).forEach((m) => processMatch(teamsR1, m));
+      (session.round2Results || []).forEach((m) => processMatch(teamsR2, m));
     });
 
     const bestTeammates = [...teammateWins.entries()].sort((a, b) => b[1] - a[1]);
@@ -276,7 +271,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
     };
   }, [player.id, history]);
 
-  // Voorbereiding data voor grafieken (veilig)
   const allTimeRatingHistory = useMemo(() => {
     return (ratingLogs || [])
       .filter((l) => l.playerId === player.id)
@@ -284,7 +278,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       .sort((a, b) => toMs(a.date) - toMs(b.date));
   }, [player.id, ratingLogs]);
 
-  // Season history (versimpeld om crash te voorkomen)
   const seasonRatingHistory = useMemo(() => {
     if (!seasonStartDate) return allTimeRatingHistory;
     const startMs = toMs(seasonStartDate);
@@ -367,14 +360,16 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
             {playerTrophies.map((trophy) => (
               <div
                 key={trophy.id}
-                className={`flex items-center p-3 rounded-lg border ${getTrophyStyle(
-                  trophy.type
-                )}`}
+                className="flex items-center p-3 rounded-lg border border-gray-600/50 bg-gray-800/40"
               >
                 <div className="mr-3">{getTrophyContent(trophy.type)}</div>
                 <div>
-                  <div className="font-bold text-sm">{trophy.type}</div>
-                  <div className="text-xs opacity-80">{trophy.year}</div>
+                  <div className={`font-bold text-sm leading-tight ${getTrophyTitleStyle(trophy.type)}`}>
+                    {trophy.type}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    {trophy.year}
+                  </div>
                 </div>
               </div>
             ))}
@@ -401,7 +396,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         />
       </div>
 
-      {/* ALL-TIME */}
       <div className="bg-gray-700 p-4 rounded-lg mb-8">
         <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
           <ChartBarIcon className="w-5 h-5 text-green-400" />
@@ -411,12 +405,11 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
           <RatingChart data={allTimeRatingHistory} />
         ) : (
           <p className="text-gray-500 text-sm text-center py-4">
-            Nog niet genoeg all-time data (rating logs).
+            Nog niet genoeg data.
           </p>
         )}
       </div>
 
-      {/* SEIZOEN */}
       <div className="bg-gray-700 p-4 rounded-lg mb-8">
         <h4 className="flex items-center text-md font-semibold text-gray-300 mb-2">
           <ChartBarIcon className="w-5 h-5 text-cyan-400" />
