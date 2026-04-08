@@ -82,6 +82,14 @@ const toMs = (d: string) => {
   return Number.isFinite(ms) ? ms : 0;
 };
 
+const matchScore = (m: MatchResult) => {
+  const goals1 = m.team1Goals || [];
+  const goals2 = m.team2Goals || [];
+  const s1 = goals1.reduce((sum, g) => sum + (g?.count || 0), 0);
+  const s2 = goals2.reduce((sum, g) => sum + (g?.count || 0), 0);
+  return { s1, s2 };
+};
+
 const PlayerDetail: React.FC<PlayerDetailProps> = ({
   player,
   history,
@@ -156,8 +164,15 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       });
     };
 
+    const seasonStartMs = toMs(seasonStartDate || '');
+
     history.forEach((session) => {
       if (!session) return;
+      
+      // ✅ FILTER: Alleen wedstrijden van het huidige seizoen meetellen voor de lijstjes
+      const sessionMs = toMs(session.date);
+      if (seasonStartMs && sessionMs < seasonStartMs) return;
+
       const process = (teams: Player[][], results: MatchResult[]) => {
         results?.forEach(m => {
           const myTIdx = teams.findIndex(t => t.some(p => p.id === player.id));
@@ -167,8 +182,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
           const oppTeam = teams[isT1 ? m.team2Index : m.team1Index];
           if (!myTeam || !oppTeam) return;
 
-          const s1 = (m.team1Goals || []).reduce((acc, g) => acc + (g?.count || 0), 0);
-          const s2 = (m.team2Goals || []).reduce((acc, g) => acc + (g?.count || 0), 0);
+          const { s1, s2 } = matchScore(m);
           const myS = isT1 ? s1 : s2;
           const oppS = isT1 ? s2 : s1;
 
@@ -221,7 +235,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         score: d.games 
       })).sort((a, b) => b.score - a.score)
     };
-  }, [player.id, history]);
+  }, [player.id, history, seasonStartDate]);
 
   const allTimeRatingHistory = useMemo(() => {
     return (ratingLogs || [])
@@ -246,6 +260,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         />
       )}
 
+      {/* De rest van de UI blijft identiek aan je werkende versie */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
           <button onClick={onBack} className="p-2 mr-4 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-colors"><ArrowLeftIcon className="w-6 h-6" /></button>
@@ -301,8 +316,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <RelationshipList title="Gouden Duo (Winstgarantie)" data={stats.bestT} playerMap={playerMap} icon={<TrophyIcon className="w-6 h-6 text-green-400" />} />
-        <RelationshipList title="Samen de Afgrond in..." data={stats.worstT} playerMap={playerMap} icon={<ShieldIcon className="w-6 h-6 text-red-400" />} />
+        <RelationshipList title="Gouden Duo (Winstgarantie)" data={stats.bestT} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
+        <RelationshipList title="Samen de Afgrond in..." data={stats.worstT} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
         <RelationshipList title="Mijn Favoriete Slachtoffer" data={stats.bestO} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
         <RelationshipList title="Mijn Persoonlijke Nachtmerrie" data={stats.worstO} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
       </div>
