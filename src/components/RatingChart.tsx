@@ -42,7 +42,12 @@ const RatingChart: React.FC<RatingChartProps> = ({ data }) => {
   const formatDate = (dateStr: string) => {
     // Check if it's an ISO string, which will contain 'T'
     if (dateStr.includes('T')) {
-        return new Date(dateStr).toLocaleDateString('nl-NL', { month: 'short', day: 'numeric' });
+        // Aangepast om ook het jaartal te tonen (bijv. 2 sep '24)
+        return new Date(dateStr).toLocaleDateString('nl-NL', { 
+          day: 'numeric', 
+          month: 'short', 
+          year: '2-digit' 
+        });
     }
     // Fallback for non-ISO strings, like 'Nu'
     return dateStr;
