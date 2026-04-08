@@ -66,7 +66,7 @@ const LoadingDots: React.FC = () => {
 };
 
 // ============================================================================
-// COMPONENT: ScoreInput
+// COMPONENT: ScoreInput (GEOPTIMALISEERD VOOR 1-KLIK FOCUS)
 // ============================================================================
 const ScoreInput: React.FC<{
   value: number;
@@ -75,29 +75,30 @@ const ScoreInput: React.FC<{
 }> = ({ value, onChange, className }) => {
   const [localValue, setLocalValue] = useState<string>(value.toString());
 
+  // Update lokale waarde als de prop van buitenaf verandert
   useEffect(() => {
     setLocalValue(value.toString());
   }, [value]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
+    // Sta alleen cijfers toe
     if (val === '' || /^\d+$/.test(val)) {
       setLocalValue(val);
     }
   };
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (localValue === '0') {
-        setLocalValue('');
-    } else {
-        e.target.select();
-    }
+    // Selecteer direct alle tekst (ook de 0) zodat je eroverheen kunt typen
+    // Dit werkt veel betrouwbaarder dan de waarde leegmaken
+    e.target.select();
   };
 
   const handleBlur = () => {
     let num = parseInt(localValue, 10);
     if (isNaN(num)) num = 0;
     
+    // Alleen doorgeven als de waarde echt anders is
     if (num !== value) {
       onChange(num);
     }
@@ -112,10 +113,10 @@ const ScoreInput: React.FC<{
 
   return (
     <input
-      type="text"
+      type="number"      // Veranderd naar number voor snellere browser-reactie
       inputMode="numeric"
       pattern="[0-9]*"
-      value={localValue}
+      value={localValue === '0' && document.activeElement !== null ? '' : localValue} // Toon leeg als 0 bij actieve focus via CSS/Logic
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
