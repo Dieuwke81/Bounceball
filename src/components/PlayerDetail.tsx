@@ -71,7 +71,7 @@ const RelationshipList: React.FC<{
         })}
       </ul>
     ) : (
-      <p className="text-gray-500 text-xs text-center py-2">Geen data</p>
+      <p className="text-gray-500 text-xs text-center py-2">Geen data dit seizoen</p>
     )}
   </div>
 );
@@ -164,14 +164,15 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       });
     };
 
-    const seasonStartMs = toMs(seasonStartDate || '');
+    // 🕒 TIJD FILTER BEREKENEN
+    const startMs = seasonStartDate ? new Date(seasonStartDate).getTime() : 0;
 
     history.forEach((session) => {
       if (!session) return;
       
-      // ✅ FILTER: Alleen wedstrijden van het huidige seizoen meetellen voor de lijstjes
-      const sessionMs = toMs(session.date);
-      if (seasonStartMs && sessionMs < seasonStartMs) return;
+      // STRENGE CHECK: Valt de sessie buiten het seizoen?
+      const sessionMs = new Date(session.date).getTime();
+      if (startMs > 0 && sessionMs < startMs) return;
 
       const process = (teams: Player[][], results: MatchResult[]) => {
         results?.forEach(m => {
@@ -191,12 +192,11 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
           else if (myS < oppS) { l = true; }
           else { p = 1; }
 
-          if (teams === session.teams || teams === (session as any).round2Teams) {
-            gamesPlayed++;
-            const g = (isT1 ? m.team1Goals : m.team2Goals)?.find(goal => goal.playerId === player.id);
-            goalsScored += (g?.count || 0);
-            if (w) { wins++; points += 3; } else if (myS === oppS) { draws++; points += 1; } else losses++;
-          }
+          // We weten nu zeker dat deze sessie binnen het seizoen valt
+          gamesPlayed++;
+          const g = (isT1 ? m.team1Goals : m.team2Goals)?.find(goal => goal.playerId === player.id);
+          goalsScored += (g?.count || 0);
+          if (w) { wins++; points += 3; } else if (myS === oppS) { draws++; points += 1; } else losses++;
 
           myTeam.forEach(pl => { if (pl.id !== player.id) updateRecord(teammateResults, pl.id, p, w, l); });
           oppTeam.forEach(pl => updateRecord(opponentResults, pl.id, p, w, l));
@@ -260,7 +260,6 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         />
       )}
 
-      {/* De rest van de UI blijft identiek aan je werkende versie */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
           <button onClick={onBack} className="p-2 mr-4 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-colors"><ArrowLeftIcon className="w-6 h-6" /></button>
@@ -298,7 +297,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
         <StatCard title="Gespeeld" value={stats.gamesPlayed} />
         <StatCard title="Resultaten" value={`${stats.wins}W • ${stats.draws}G • ${stats.losses}V`} subtext={`van ${stats.gamesPlayed}`} />
         <StatCard title="Goals" value={stats.goalsScored} subtext={`${(stats.goalsScored / Math.max(1, stats.gamesPlayed)).toFixed(2)} gem.`} />
-        <StatCard title="Gem. Punten" value={(stats.points / Math.max(1, stats.gamesPlayed)).toFixed(2)} subtext={`Totaal: ${stats.points}`} />
+        <StatCard title="Gem. Punten" value={stats.gamesPlayed > 0 ? (stats.points / stats.gamesPlayed).toFixed(2) : "0.00"} subtext={`Totaal: ${stats.points}`} />
       </div>
 
       <div className="bg-gray-700 p-4 rounded-lg mb-8">
@@ -316,10 +315,10 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <RelationshipList title="Gouden Duo (Winstgarantie)" data={stats.bestT} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
-        <RelationshipList title="Samen de Afgrond in..." data={stats.worstT} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
-        <RelationshipList title="Mijn Favoriete Slachtoffer" data={stats.bestO} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
-        <RelationshipList title="Mijn Persoonlijke Nachtmerrie" data={stats.worstO} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
+        <RelationshipList title="Gouden Duo (Winstgarantie)" data={stats.bestT} playerMap={playerMap} icon={<TrophyIcon className="w-6 h-6 text-green-400" />} />
+        <RelationshipList title="Samen de Afgrond in..." data={stats.worstT} playerMap={playerMap} icon={<ShieldIcon className="w-6 h-6 text-red-400" />} />
+        <RelationshipList title="Mijn Favoriete Slachtoffer" data={stats.bestO} playerMap={playerMap} icon={<TrophyIcon className="w-6 h-6 text-green-400" />} />
+        <RelationshipList title="Mijn Persoonlijke Nachtmerrie" data={stats.worstO} playerMap={playerMap} icon={<ShieldIcon className="w-6 h-6 text-red-400" />} />
       </div>
     </div>
   );
