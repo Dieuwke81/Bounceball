@@ -1,3 +1,4 @@
+// App.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type {
   Player,
@@ -63,12 +64,11 @@ type View =
   | 'trophyRoom'
   | 'nk';
 
-type Notification = { message: string; type: 'success' | 'error' | 'info' }; // Voeg 'info' toe
+type Notification = { message: string; type: 'success' | 'error' };
 type GameMode = 'simple' | 'tournament' | 'doubleHeader' | null;
 
 const ADMIN_PASSWORD = 'kemmer';
 const UNSAVED_GAME_KEY = 'bounceball_unsaved_game';
-const TEMP_HISTORY_KEY = 'bounceball_temp_history'; // NIEUW: sleutel voor tijdelijke geschiedenis
 
 // ============================================================================
 // Helpers: constraints + keepers validation
@@ -477,29 +477,6 @@ const App: React.FC = () => {
   const fetchData = useCallback(async () => {
     setIsLoading(true); setError(null);
     try {
-      // NIEUW: Probeer eerst de tijdelijke geschiedenis te laden
-      const tempHistoryJSON = localStorage.getItem(TEMP_HISTORY_KEY);
-      if (tempHistoryJSON) {
-        try {
-          const tempHistory = JSON.parse(tempHistoryJSON) as GameSession[];
-          setHistory(tempHistory);
-          // Als er tijdelijke geschiedenis is, hoeven we de Google Sheet niet te laden
-          // of we voegen de sheet history toe aan de temp history
-          // Voor dit scenario laden we de Google Sheet history NIET als er tijdelijke is
-          // Of als je ze wilt combineren:
-          // const sheetData = await getInitialData();
-          // setHistory([...tempHistory, ...sheetData.history]);
-          // Voor dit scenario overschrijven we de Google Sheet data
-          setNotification({ message: 'Tijdelijke geschiedenis geladen.', type: 'info' });
-          setIsLoading(false);
-          return; // Stop het laden hier, tenzij je de sheet data erbij wilt
-        } catch (e) {
-          console.error("Fout bij het laden van tijdelijke geschiedenis:", e);
-          localStorage.removeItem(TEMP_HISTORY_KEY); // Corrupte data weghalen
-        }
-      }
-
-      // Originele logica om data van Google Sheet te laden
       const data = await getInitialData();
       setSeasonStartDate(data.seasonStartDate || ''); 
       setPlayers(data.players); 
@@ -520,7 +497,7 @@ const App: React.FC = () => {
     }
   }, [notification]);
 
-  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => { setNotification({ message, type }); }; // Voeg 'info' toe
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => { setNotification({ message, type }); };
 
   const handlePlayerToggle = (playerId: number) => {
     setAttendingPlayerIds((prev) => {
@@ -586,17 +563,8 @@ const App: React.FC = () => {
     localStorage.removeItem(UNSAVED_GAME_KEY);
   };
 
-  // NIEUW: Functie om de tijdelijke geschiedenis te wissen
-  const clearTempHistory = () => {
-    if (window.confirm('Weet je zeker dat je de tijdelijke geschiedenis wilt wissen? Deze actie kan niet ongedaan worden gemaakt.')) {
-      localStorage.removeItem(TEMP_HISTORY_KEY);
-      fetchData(); // Laad de echte geschiedenis opnieuw
-      showNotification('Tijdelijke geschiedenis gewist. De echte geschiedenis is geladen.', 'info');
-    }
-  };
-
   const attendingPlayers = useMemo(() => players.filter((p) => attendingPlayerIds.has(p.id)), [players, attendingPlayerIds]);
-  const activeHistory = viewingArchive || history; // Deze blijft history gebruiken.
+  const activeHistory = viewingArchive || history;
   const seasonPairCounts = useMemo(() => computeSeasonPairCounts(activeHistory), [activeHistory]);
 
   const top6Ids = useMemo(() => {
@@ -664,38 +632,15 @@ const App: React.FC = () => {
     });
   };
 
-  // Functie voor opslaan, met een optie voor "alleen lokaal"
-  const handleSaveSession = async (sessionData: GameSession, updatedRatings: { id: number; rating: number }[], saveLocallyOnly: boolean = false) => {
-    if (saveLocallyOnly) {
-      // Voeg de sessie toe aan de lokale geschiedenis
-      const newHistory = [sessionData, ...history]; // Voeg de nieuwe sessie bovenaan toe
-      setHistory(newHistory);
-      localStorage.setItem(TEMP_HISTORY_KEY, JSON.stringify(newHistory)); // Sla lokaal op
-      showNotification('Test sessie lokaal opgeslagen!', 'info');
-      
-      // Update ratings lokaal (optioneel, voor accurate weergave in de UI)
-      setPlayers((prev) => prev.map((p) => { 
-        const u = updatedRatings.find((x) => x.id === p.id); 
-        return u ? { ...p, rating: u.rating } : p; 
-      }));
-
-      resetGameState(); 
-      setAttendingPlayerIds(new Set());
-      return;
-    }
-
-    // Originele logica om naar Google Sheet te schrijven
+  const handleSaveSession = async (sessionData: GameSession) => {
+    const ratingChanges = calculateRatingDeltas(sessionData);
+    const updatedRatings = players.filter((p) => ratingChanges[p.id] !== undefined)
+      .map((p) => ({ id: p.id, rating: parseFloat((Number(p.rating) + ratingChanges[p.id]).toFixed(2)) }));
     try {
-      await saveGameSession(sessionData, updatedRatings); 
-      showNotification('Sessie opgeslagen!', 'success');
+      await saveGameSession(sessionData, updatedRatings); showNotification('Sessie opgeslagen!', 'success');
       setPlayers((prev) => prev.map((p) => { const u = updatedRatings.find((x) => x.id === p.id); return u ? { ...p, rating: u.rating } : p; }));
-      setHistory((prev) => [sessionData, ...prev]); 
-      resetGameState(); 
-      setAttendingPlayerIds(new Set());
-      localStorage.removeItem(TEMP_HISTORY_KEY); // Wis tijdelijke geschiedenis na echte opslag
-    } catch (e: any) { 
-      showNotification(`Fout bij opslaan: ${e.message}`, 'error'); 
-    }
+      setHistory((prev) => [sessionData, ...prev]); resetGameState(); setAttendingPlayerIds(new Set());
+    } catch (e: any) { showNotification(`Fout: ${e.message}`, 'error'); }
   };
 
   const handleSaveRound1 = (matches: Match[]) => {
@@ -731,51 +676,21 @@ const App: React.FC = () => {
         separateTop6: separateTop6OnPoints, top6Ids
       });
       if (syncOpponentRatings) regeneratedTeams = syncRatingsBetweenOpponents(regeneratedTeams);
-      setTeams(regeneratedTeams); 
-      setRound2Pairings(Array.from({ length: regeneratedTeams.length / 2 }, (_, i) => ({ team1Index: i * 2, team2Index: i * 2 + 1 })));
-      setGoalScorers({}); 
+      setTeams(regeneratedTeams); setRound2Pairings(Array.from({ length: regeneratedTeams.length / 2 }, (_, i) => ({ team1Index: i * 2, team2Index: i * 2 + 1 })));
+      setGoalScorers({});
     } catch (e: any) { showNotification(e.message, 'error'); } finally { setActionInProgress(null); }
   };
 
-  const handleSaveFinalResults = async (matches: Match[], saveLocallyOnly: boolean = false) => { // NIEUW: saveLocallyOnly parameter
+  const handleSaveFinalResults = async (matches: Match[]) => {
     if (!requireAdmin()) return; setActionInProgress('savingFinal');
     const r2 = matches.map((m, i) => ({ ...m, team1Goals: goalScorers[`${i}-team1`] || [], team2Goals: goalScorers[`${i}-team2`] || [] }));
-    
-    const teamsToSaveForRound2 = gameMode === 'tournament' && !areTeamCompositionsIdentical(teams, originalTeams || [])
-                                 ? teams
-                                 : originalTeams;
-
-    const sessionData = {
-      date: new Date().toISOString(),
-      teams: originalTeams, 
-      round1Results,
-      round2Results: r2,
-      round2Teams: teamsToSaveForRound2, 
-    };
-
-    const ratingChanges = calculateRatingDeltas(sessionData); // Bereken rating changes
-    const updatedRatings = players.filter((p) => ratingChanges[p.id] !== undefined)
-      .map((p) => ({ id: p.id, rating: parseFloat((Number(p.rating) + ratingChanges[p.id]).toFixed(2)) }));
-
-    await handleSaveSession(sessionData, updatedRatings, saveLocallyOnly); // Geef parameter door
+    await handleSaveSession({ date: new Date().toISOString(), teams, round1Results, round2Results: r2 });
     setActionInProgress(null);
   };
 
-  const handleSaveSimpleMatch = async (match: Match, saveLocallyOnly: boolean = false) => { // NIEUW: saveLocallyOnly parameter
+  const handleSaveSimpleMatch = async (match: Match) => {
     if (!requireAdmin()) return; setActionInProgress('savingSimple');
-    
-    const sessionData = { 
-      date: new Date().toISOString(), 
-      teams, 
-      round1Results: [{ ...match, team1Goals: goalScorers['0-team1'] || [], team2Goals: goalScorers['0-team2'] || [] }], 
-      round2Results: [] 
-    };
-
-    const ratingChanges = calculateRatingDeltas(sessionData);
-    const updatedRatings = players.filter((p) => ratingChanges[p.id] !== undefined)
-      .map((p) => ({ id: p.id, rating: parseFloat((Number(p.rating) + ratingChanges[p.id]).toFixed(2)) }));
-
-    await handleSaveSession(sessionData, updatedRatings, saveLocallyOnly); // Geef parameter door
+    await handleSaveSession({ date: new Date().toISOString(), teams, round1Results: [{ ...match, team1Goals: goalScorers['0-team1'] || [], team2Goals: goalScorers['0-team2'] || [] }], round2Results: [] });
     setActionInProgress(null);
   };
 
@@ -793,51 +708,20 @@ const App: React.FC = () => {
     } catch (e: any) { showNotification(e.message, 'error'); } finally { setActionInProgress(null); }
   };
 
-  const handleSaveDoubleHeader = async (match2Result: MatchResult, saveLocallyOnly: boolean = false) => { // NIEUW: saveLocallyOnly parameter
+  const handleSaveDoubleHeader = async (match2Result: MatchResult) => {
     if (!requireAdmin()) return; setActionInProgress('savingDouble');
-    if (!originalTeams || !teams2) {
-      setActionInProgress(null);
-      showNotification('Fout: originele teams of teams voor ronde 2 ontbreken.', 'error');
-      return;
-    }
+    if (!originalTeams || !teams2) return setActionInProgress(null);
     const s1 = { date: new Date().toISOString(), teams: originalTeams, round1Results, round2Results: [] };
     const s2 = { date: new Date().toISOString(), teams: teams2, round1Results: [match2Result], round2Results: [] };
-    
-    const d1 = calculateRatingDeltas(s1); 
-    const d2 = calculateRatingDeltas(s2);
-
+    const d1 = calculateRatingDeltas(s1); const d2 = calculateRatingDeltas(s2);
     const updates = players.map(p => {
       const v = (d1[p.id] || 0) + (d2[p.id] || 0);
       return v !== 0 ? { id: p.id, rating: parseFloat((Number(p.rating) + v).toFixed(2)) } : null;
     }).filter((x): x is any => !!x);
-
-    // Voor double header zijn er twee sessies. We moeten ze beide lokaal opslaan
-    // of beide naar de sheet sturen.
-    if (saveLocallyOnly) {
-      const newHistory = [s2, s1, ...history]; // Voeg beide sessies toe
-      setHistory(newHistory);
-      localStorage.setItem(TEMP_HISTORY_KEY, JSON.stringify(newHistory));
-      showNotification('Dubbele test sessie lokaal opgeslagen!', 'info');
-      setPlayers((prev) => prev.map((p) => { // Update ratings lokaal
-        const u = updates.find((x) => x.id === p.id); 
-        return u ? { ...p, rating: u.rating } : p; 
-      }));
-      resetGameState(); 
-      setAttendingPlayerIds(new Set());
-    } else {
-      try {
-        await saveGameSession(s1, updates); 
-        await new Promise(r => setTimeout(r, 2000)); // Even wachten
-        await saveGameSession(s2, updates);
-        showNotification('Beide opgeslagen!', 'success'); 
-        fetchData(); // Laad data opnieuw om zeker te zijn dat alles gesynchroniseerd is
-        resetGameState(); 
-        setAttendingPlayerIds(new Set());
-        localStorage.removeItem(TEMP_HISTORY_KEY); // Wis tijdelijke geschiedenis
-      } catch (e: any) { 
-        showNotification(`Fout bij opslaan: ${e.message}`, 'error'); 
-      }
-    }
+    try {
+      await saveGameSession(s1, updates); await new Promise(r => setTimeout(r, 2000)); await saveGameSession(s2, updates);
+      showNotification('Beide opgeslagen!', 'success'); fetchData(); resetGameState(); setAttendingPlayerIds(new Set());
+    } catch (e: any) { showNotification(`Fout: ${e.message}`, 'error'); }
     setActionInProgress(null);
   };
 
@@ -866,17 +750,7 @@ const App: React.FC = () => {
   const handleSelectPlayer = (id: number) => { setSelectedPlayerId(id); setCurrentView('playerDetail'); };
   const handleLogin = (p: string) => { if (p === ADMIN_PASSWORD) { setIsManagementAuthenticated(true); return true; } return false; };
   const requireAdmin = () => { if (isManagementAuthenticated) return true; const p = window.prompt('Wachtwoord:'); if (p === ADMIN_PASSWORD) { setIsManagementAuthenticated(true); return true; } return false; };
-  // Aangepaste handleSaveManualEntry om saveLocallyOnly door te geven
-  const handleSaveManualEntry = async (d: any, saveLocallyOnly: boolean = false) => { 
-    if (requireAdmin()) { 
-      setActionInProgress('savingManual'); 
-      const ratingChanges = calculateRatingDeltas(d);
-      const updatedRatings = players.filter((p) => ratingChanges[p.id] !== undefined)
-        .map((p) => ({ id: p.id, rating: parseFloat((Number(p.rating) + ratingChanges[p.id]).toFixed(2)) }));
-      await handleSaveSession(d, updatedRatings, saveLocallyOnly); 
-      setActionInProgress(null); 
-    } 
-  };
+  const handleSaveManualEntry = async (d: any) => { if (requireAdmin()) { setActionInProgress('savingManual'); await handleSaveSession(d); setActionInProgress(null); } };
   const handleSetCompetitionName = async (n: string) => { try { await setCompetitionNameService(n); setCompetitionName(n); } catch (e: any) { showNotification(e.message, 'error'); } };
 
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId);
@@ -985,17 +859,7 @@ const App: React.FC = () => {
             <p className="mt-4 text-white font-semibold animate-pulse">AI zoekt balans...</p>
           </div>
         ) : (
-          <TeamDisplay 
-            teams={teams} teams2={teams2} gameMode={gameMode} currentRound={currentRound} 
-            round1Results={round1Results} round2Pairings={round2Pairings} goalScorers={goalScorers} 
-            onGoalChange={handleGoalChange} onSaveRound1={handleSaveRound1} 
-            onSaveFinalResults={(matches) => handleSaveFinalResults(matches, true)} // NIEUW: Roep aan met true voor lokaal opslaan
-            onSaveSimpleMatch={(match) => handleSaveSimpleMatch(match, true)} // NIEUW: Roep aan met true
-            onStartSecondDoubleHeaderMatch={handleStartSecondDoubleHeaderMatch} 
-            onSaveDoubleHeader={(match2Result) => handleSaveDoubleHeader(match2Result, true)} // NIEUW: Roep aan met true
-            onRegenerateTeams={handleRegenerateTeamsForR2} onManualSwap={handleManualSwap} 
-            actionInProgress={actionInProgress} 
-          />
+          <TeamDisplay teams={teams} teams2={teams2} gameMode={gameMode} currentRound={currentRound} round1Results={round1Results} round2Pairings={round2Pairings} goalScorers={goalScorers} onGoalChange={handleGoalChange} onSaveRound1={handleSaveRound1} onSaveFinalResults={handleSaveFinalResults} onSaveSimpleMatch={handleSaveSimpleMatch} onStartSecondDoubleHeaderMatch={handleStartSecondDoubleHeaderMatch} onSaveDoubleHeader={handleSaveDoubleHeader} onRegenerateTeams={handleRegenerateTeamsForR2} onManualSwap={handleManualSwap} actionInProgress={actionInProgress} />
         )}
       </div>
     </div>
@@ -1015,13 +879,7 @@ const App: React.FC = () => {
         );
       case 'history':
         return (
-          <HistoryView 
-            history={activeHistory} 
-            players={players} 
-            isAuthenticated={isManagementAuthenticated} 
-            onDeleteSession={() => {}} // Je had hier een lege functie, maar je kunt een handleDeleteClick maken voor lokale items
-            onClearTempHistory={clearTempHistory} // NIEUW: Geef de functie door
-          />
+          <HistoryView history={activeHistory} players={players} isAuthenticated={isManagementAuthenticated} onDeleteSession={() => {}} />
         );
       case 'playerManagement':
         return isManagementAuthenticated ? (
@@ -1036,8 +894,7 @@ const App: React.FC = () => {
           <div className="text-center p-8 bg-gray-800 rounded-xl"><p>Speler niet gevonden.</p><button onClick={() => setCurrentView('stats')} className="mt-4 text-cyan-400 underline">Terug naar stats</button></div>
         );
       case 'manualEntry':
-        // Aangepaste oproep voor lokaal opslaan
-        return <ManualEntry allPlayers={players} onSave={(d) => handleSaveManualEntry(d, true)} isLoading={actionInProgress === 'savingManual'} />;
+        return <ManualEntry allPlayers={players} onSave={handleSaveManualEntry} isLoading={actionInProgress === 'savingManual'} />;
       case 'competitionManagement':
         return isManagementAuthenticated ? (
           <CompetitionManagement currentHistory={history} players={players} seasonStartDate={seasonStartDate} onViewArchive={setViewingArchive} onRefresh={fetchData} currentCompetitionName={competitionName} onSetCompetitionName={handleSetCompetitionName} />
