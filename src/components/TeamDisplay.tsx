@@ -66,59 +66,58 @@ const LoadingDots: React.FC = () => {
 };
 
 // ============================================================================
-// COMPONENT: ScoreInput (GEOPTIMALISEERD VOOR 1-KLIK FOCUS)
+// COMPONENT: ScoreInput (EXACT GEKOPIEERD VAN MANUAL ENTRY LOGICA)
 // ============================================================================
 const ScoreInput: React.FC<{
   value: number;
   onChange: (val: number) => void;
   className?: string;
 }> = ({ value, onChange, className }) => {
-  const [localValue, setLocalValue] = useState<string>(value.toString());
+  const [localValue, setLocalValue] = useState(value.toString());
 
-  // Update lokale waarde als de prop van buitenaf verandert
   useEffect(() => {
     setLocalValue(value.toString());
   }, [value]);
 
+  const handleFocus = () => {
+    // Maakt het vakje leeg als er een 0 staat, zodat je meteen kunt typen
+    if (localValue === '0') setLocalValue('');
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    // Sta alleen cijfers toe
+    // Accepteer alleen cijfers
     if (val === '' || /^\d+$/.test(val)) {
       setLocalValue(val);
     }
   };
 
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Selecteer direct alle tekst (ook de 0) zodat je eroverheen kunt typen
-    // Dit werkt veel betrouwbaarder dan de waarde leegmaken
-    e.target.select();
-  };
-
   const handleBlur = () => {
+    if (localValue === '') {
+      setLocalValue('0');
+      if (value !== 0) onChange(0);
+      return;
+    }
+
     let num = parseInt(localValue, 10);
     if (isNaN(num)) num = 0;
-    
-    // Alleen doorgeven als de waarde echt anders is
-    if (num !== value) {
-      onChange(num);
-    }
+
+    if (num !== value) onChange(num);
     setLocalValue(num.toString());
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      (e.target as HTMLInputElement).blur();
-    }
+    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
   };
 
   return (
     <input
-      type="number"      // Veranderd naar number voor snellere browser-reactie
-      inputMode="numeric"
+      type="text"          // Gebruik "text" ipv "number" voor betere mobiele respons
+      inputMode="numeric"  // Toon wel het cijfer-toetsenbord
       pattern="[0-9]*"
-      value={localValue === '0' && document.activeElement !== null ? '' : localValue} // Toon leeg als 0 bij actieve focus via CSS/Logic
-      onChange={handleChange}
+      value={localValue}
       onFocus={handleFocus}
+      onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       className={className}
