@@ -24,8 +24,8 @@ interface PlayerDetailProps {
   players: Player[];
   ratingLogs: RatingLogEntry[];
   trophies: Trophy[];
-  seasonStartDate?: string;
-  competitionName?: string | null;
+  seasonStartDate?: string;     
+  competitionName?: string | null; 
   onBack: () => void;
 }
 
@@ -41,7 +41,6 @@ const StatCard: React.FC<{
   </div>
 );
 
-// Aangepaste lijst die de slimme data begrijpt
 const RelationshipList: React.FC<{
   title: string;
   data: { id: number; label: string; percentage: number }[];
@@ -64,7 +63,7 @@ const RelationshipList: React.FC<{
                 <span className="truncate font-medium">{relatedPlayer.name}</span>
                 <span className="text-[10px] text-gray-500">{item.label}</span>
               </div>
-              <span className="font-mono bg-gray-600 text-xs px-2 py-0.5 rounded-full ml-2">
+              <span className={`font-mono text-xs px-2 py-0.5 rounded-full ml-2 ${item.percentage > 50 ? 'bg-red-900/40 text-red-200' : 'bg-gray-600 text-gray-200'}`}>
                 {item.percentage}%
               </span>
             </li>
@@ -81,6 +80,14 @@ const toMs = (d: string) => {
   if (!d) return 0;
   const ms = new Date(d).getTime();
   return Number.isFinite(ms) ? ms : 0;
+};
+
+const matchScore = (m: MatchResult) => {
+  const goals1 = m.team1Goals || [];
+  const goals2 = m.team2Goals || [];
+  const s1 = goals1.reduce((sum, g) => sum + (g?.count || 0), 0);
+  const s2 = goals2.reduce((sum, g) => sum + (g?.count || 0), 0);
+  return { s1, s2 };
 };
 
 const PlayerDetail: React.FC<PlayerDetailProps> = ({
@@ -145,12 +152,17 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
   const stats = useMemo(() => {
     let wins = 0, losses = 0, draws = 0, points = 0, gamesPlayed = 0, goalsScored = 0;
-    const teammateResults = new Map<number, { pts: number; games: number; wins: number }>();
-    const opponentResults = new Map<number, { pts: number; games: number; wins: number }>();
+    const teammateResults = new Map<number, { pts: number; games: number; wins: number; losses: number }>();
+    const opponentResults = new Map<number, { pts: number; games: number; wins: number; losses: number }>();
 
-    const updateRecord = (map: Map<number, any>, id: number, p: number, isWin: boolean) => {
-      const cur = map.get(id) || { pts: 0, games: 0, wins: 0 };
-      map.set(id, { pts: cur.pts + p, games: cur.games + 1, wins: cur.wins + (isWin ? 1 : 0) });
+    const updateRecord = (map: Map<number, any>, id: number, p: number, isWin: boolean, isLoss: boolean) => {
+      const cur = map.get(id) || { pts: 0, games: 0, wins: 0, losses: 0 };
+      map.set(id, { 
+        pts: cur.pts + p, 
+        games: cur.games + 1, 
+        wins: cur.wins + (isWin ? 1 : 0),
+        losses: cur.losses + (isLoss ? 1 : 0)
+      });
     };
 
     history.forEach((session) => {
@@ -160,21 +172,18 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
           const myTIdx = teams.findIndex(t => t.some(p => p.id === player.id));
           if (myTIdx < 0) return;
           const isT1 = m.team1Index === myTIdx;
-          const isT2 = m.team2Index === myTIdx;
-          if (!isT1 && !isT2) return;
-
-          const oppTIdx = isT1 ? m.team2Index : m.team1Index;
           const myTeam = teams[myTIdx];
-          const oppTeam = teams[oppTIdx];
+          const oppTeam = teams[isT1 ? m.team2Index : m.team1Index];
           if (!myTeam || !oppTeam) return;
 
-          const s1 = (m.team1Goals || []).reduce((acc, g) => acc + (g?.count || 0), 0);
-          const s2 = (m.team2Goals || []).reduce((acc, g) => acc + (g?.count || 0), 0);
+          const { s1, s2 } = matchScore(m);
           const myS = isT1 ? s1 : s2;
           const oppS = isT1 ? s2 : s1;
 
-          let p = 0, w = false;
-          if (myS > oppS) { p = 3; w = true; } else if (myS === oppS) { p = 1; }
+          let p = 0, w = false, l = false;
+          if (myS > oppS) { p = 3; w = true; } 
+          else if (myS < oppS) { l = true; }
+          else { p = 1; }
 
           if (teams === session.teams || teams === (session as any).round2Teams) {
             gamesPlayed++;
@@ -182,29 +191,38 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
             if (w) { wins++; points += 3; } else if (myS === oppS) { draws++; points += 1; } else losses++;
           }
 
-          myTeam.forEach(pl => { if (pl.id !== player.id) updateRecord(teammateResults, pl.id, p, w); });
-          oppTeam.forEach(pl => updateRecord(opponentResults, pl.id, p, w));
+          myTeam.forEach(pl => { if (pl.id !== player.id) updateRecord(teammateResults, pl.id, p, w, l); });
+          oppTeam.forEach(pl => updateRecord(opponentResults, pl.id, p, w, l));
         });
       };
       process(session.teams || [], session.round1Results || []);
       process((session as any).round2Teams ?? session.teams ?? [], session.round2Results || []);
     });
 
-    const getSlimmeLijst = (resMap: Map<number, any>, order: 'high' | 'low') => {
+    // Helper voor de positieve lijstjes (Winst %)
+    const getWinList = (resMap: Map<number, any>) => {
       return [...resMap.entries()].map(([id, data]) => {
-        const winPerc = Math.round((data.wins / data.games) * 100);
-        // Laplace smoothing: (punten + 3) / (wedstrijden + 2) om toevalstreffers (1 uit 1) te filteren
-        const score = (data.pts + 3) / (data.games + 2);
-        return { id, percentage: winPerc, label: `${data.wins}W - ${data.games - data.wins}V`, score };
-      }).sort((a, b) => order === 'high' ? b.score - a.score : a.score - b.score);
+        const perc = Math.round((data.wins / data.games) * 100);
+        const score = (data.pts + 3) / (data.games + 2); // Laplace
+        return { id, percentage: perc, label: `${data.wins}W - ${data.losses}V`, score };
+      }).sort((a, b) => b.score - a.score);
+    };
+
+    // Helper voor de negatieve lijstjes (Verlies %)
+    const getLossList = (resMap: Map<number, any>) => {
+      return [...resMap.entries()].map(([id, data]) => {
+        const perc = Math.round((data.losses / data.games) * 100);
+        const score = (data.pts + 3) / (data.games + 2); // We sorteren op laagste win-score
+        return { id, percentage: perc, label: `${data.losses}V - ${data.wins}W`, score };
+      }).sort((a, b) => a.score - b.score);
     };
 
     return {
       wins, losses, draws, points, gamesPlayed, goalsScored,
-      bestT: getSlimmeLijst(teammateResults, 'high'),
-      worstT: getSlimmeLijst(teammateResults, 'low'),
-      bestO: getSlimmeLijst(opponentResults, 'high'),
-      worstO: getSlimmeLijst(opponentResults, 'low'),
+      bestT: getWinList(teammateResults),
+      worstT: getLossList(teammateResults),
+      bestO: getWinList(opponentResults),
+      worstO: getLossList(opponentResults),
       freq: [...teammateResults.entries()].map(([id, d]) => ({ 
         id, 
         percentage: Math.round((d.games / Math.max(1, gamesPlayed)) * 100), 
@@ -272,9 +290,9 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard title="Gespeeld" value={stats.gamesPlayed} />
-        <StatCard title="Resultaten" value={`${stats.wins}W • ${stats.draws}G • ${stats.losses}V`} subtext={`van ${stats.gamesPlayed}`} />
+        <StatCard title="Resultaten" value={`${wins}W • ${draws}G • ${losses}V`} subtext={`van ${stats.gamesPlayed}`} />
         <StatCard title="Goals" value={stats.goalsScored} subtext={`${(stats.goalsScored / (stats.gamesPlayed || 1)).toFixed(2)} gem.`} />
-        <StatCard title="Gem. Punten" value={(stats.points / (stats.gamesPlayed || 1)).toFixed(2)} subtext={`Totaal: ${stats.points}`} />
+        <StatCard title="Gem. Punten" value={(points / (stats.gamesPlayed || 1)).toFixed(2)} subtext={`Totaal: ${points}`} />
       </div>
 
       <div className="bg-gray-700 p-4 rounded-lg mb-8">
@@ -292,10 +310,10 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <RelationshipList title="Gouden Duo (Winstgarantie)" data={stats.bestT} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
-        <RelationshipList title="Samen de Afgrond in..." data={stats.worstT} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
-        <RelationshipList title="Mijn Favoriete Slachtoffer" data={stats.bestO} playerMap={playerMap} icon={<TrophyIcon className="w-5 h-5 text-green-400" />} />
-        <RelationshipList title="Mijn Persoonlijke Nachtmerrie" data={stats.worstO} playerMap={playerMap} icon={<ShieldIcon className="w-5 h-5 text-red-400" />} />
+        <RelationshipList title="Gouden Duo (Winstgarantie)" data={stats.bestT} playerMap={playerMap} icon={<TrophyIcon className="w-6 h-6 text-green-400" />} />
+        <RelationshipList title="Samen de Afgrond in..." data={stats.worstT} playerMap={playerMap} icon={<ShieldIcon className="w-6 h-6 text-red-400" />} />
+        <RelationshipList title="Mijn Favoriete Slachtoffer" data={stats.bestO} playerMap={playerMap} icon={<TrophyIcon className="w-6 h-6 text-green-400" />} />
+        <RelationshipList title="Mijn Persoonlijke Nachtmerrie" data={stats.worstO} playerMap={playerMap} icon={<ShieldIcon className="w-6 h-6 text-red-400" />} />
       </div>
     </div>
   );
