@@ -515,7 +515,7 @@ const App: React.FC = () => {
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
     const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
-    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper', 'reserve', 'niet', 'graag', 'team', 'maandag', 'dinsdag', 'uari', 'Dinsdag'];
+    const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper', 'reserve', 'niet', 'graag', 'team', 'maandag', 'dinsdag', 'uari', 'Dinsdag', 'jarig'];
 
     lines.forEach((line) => {
       const trimmedLine = line.trim(); if (!trimmedLine) return;
