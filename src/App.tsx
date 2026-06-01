@@ -514,7 +514,7 @@ const App: React.FC = () => {
 
     const lines = text.split('\n');
     const potentialNames = new Set<string>();
-    const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec', 'januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+    const monthNames = ['feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec', 'januari', 'februari', 'maart', 'april', 'mei', 'Juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
     const nonNameIndicators = ['afgemeld', 'gemeld', 'ja', 'nee', 'ok', 'jup', 'aanwezig', 'present', 'ik ben er', 'ik kan', 'helaas', 'ik ben erbij', 'twijfel', 'later', 'keepen', 'keeper', 'reserve', 'niet', 'graag', 'team', 'maandag', 'dinsdag', 'uari', 'Dinsdag', 'jarig', 'wissel', '1ste keer', '2de keer', '3de keer'];
 
     lines.forEach((line) => {
