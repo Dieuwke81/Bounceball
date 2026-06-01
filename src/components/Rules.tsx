@@ -66,6 +66,10 @@ const Rules: React.FC = () => {
             text="Wie herhaaldelijk ongewenst gedrag vertoont, kan worden geschorst of zelfs uit de vereniging worden gezet."
             query={query}
           />
+          <Line
+            text="Wij vinden een veilige en respectvolle omgeving belangrijk. Wie zich niet prettig voelt of te maken krijgt met ongewenste intimiteiten, pesten, discriminatie of ander grensoverschrijdend gedrag, kan zich wenden tot onze vertrouwenscontactpersoon: Mariëlle Sauer."
+            query={query}
+          />
         </ul>
       </Section>
 
