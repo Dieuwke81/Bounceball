@@ -402,7 +402,7 @@ const calculateRatingDeltas = (
 
 const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
-  const [introPlayers, setIntroPlayers] = useState<Player[]>([]); 
+  // VERWIJDERD: const [introPlayers, setIntroPlayers] = useState<Player[]>([]); 
   const [history, setHistory] = useState<GameSession[]>([]);
   const [ratingLogs, setRatingLogs] = useState<RatingLogEntry[]>([]);
   const [trophies, setTrophies] = useState<Trophy[]>([]);
@@ -481,7 +481,7 @@ const App: React.FC = () => {
       const data = await getInitialData();
       setSeasonStartDate(data.seasonStartDate || ''); 
       setPlayers(data.players); 
-      setIntroPlayers((data as any).introPlayers || []);
+      // VERWIJDERD: setIntroPlayers((data as any).introPlayers || []);
       setHistory(data.history); 
       setCompetitionName(data.competitionName || null); 
       setRatingLogs(data.ratingLogs || []); 
@@ -600,6 +600,30 @@ const App: React.FC = () => {
     }
     return pairs.sort((x, y) => x.count - y.count);
   }, [seasonPairCounts, players, attendingPlayers]);
+
+  // NIEUWE useMemo voor het tellen van deelnames van niet-vaste leden
+  // Gebaseerd op all-time ratingLogs, niet op seizoensgebonden history
+  const nonFixedMemberParticipationCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+    
+    // 1. Initialiseer alle NIET-vaste leden met een telling van 0.
+    players.filter(p => !p.isFixedMember).forEach(p => counts.set(p.id, 0));
+
+    // 2. Loop door de complete ALL-TIME rating logs (`ratingLogs`).
+    ratingLogs.forEach(logEntry => {
+      const playerId = logEntry.playerId;
+      const playerObj = players.find(p => p.id === playerId);
+      
+      // Als de speler bestaat én GEEN vast lid is...
+      if (playerObj && !playerObj.isFixedMember) {
+        // ...verhoog dan zijn deelnameteller. We tellen hier unieke log-entries als deelnames.
+        counts.set(playerId, (counts.get(playerId) || 0) + 1);
+      }
+    });
+
+    return counts;
+  }, [players, ratingLogs]); // Afhankelijk van `players` en `ratingLogs`
+
 
   const handleGenerateTeams = async (mode: GameMode) => {
     resetGameState(); setGameMode(mode);
@@ -778,7 +802,13 @@ const App: React.FC = () => {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
       <div className="lg:col-span-1 space-y-8">
         <AttendanceParser onParse={handleParseAttendance} />
-        <PlayerList players={players} attendingPlayerIds={attendingPlayerIds} onPlayerToggle={handlePlayerToggle} />
+        <PlayerList 
+          players={players} 
+          attendingPlayerIds={attendingPlayerIds} 
+          onPlayerToggle={handlePlayerToggle} 
+          allPlayers={players} // <-- Geef de complete spelerslijst door
+          nonFixedMemberParticipationCounts={nonFixedMemberParticipationCounts} // <-- Geef de nieuwe tellingen door
+        />
         
         <div className="bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-700/50">
           <h3 className="text-white font-bold text-lg mb-3">Team-voorkeuren</h3>
@@ -926,7 +956,7 @@ const App: React.FC = () => {
         );
       case 'nk':
         return (
-          <NKManager players={players} introPlayers={introPlayers} onClose={() => setCurrentView('main')} />
+          <NKManager players={players} introPlayers={[]} onClose={() => setCurrentView('main')} />
         );
       default:
         return renderMainView();
