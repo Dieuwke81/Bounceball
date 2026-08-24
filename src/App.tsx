@@ -402,8 +402,7 @@ const calculateRatingDeltas = (
 
 const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
-  // VERWIJDERD: const [introPlayers, setIntroPlayers] = useState<Player[]>([]); 
-  const [history, setHistory] = useState<GameSession[]>([]);
+const [introPlayers, setIntroPlayers] = useState<Player[]>([]);  const [history, setHistory] = useState<GameSession[]>([]);
   const [ratingLogs, setRatingLogs] = useState<RatingLogEntry[]>([]);
   const [trophies, setTrophies] = useState<Trophy[]>([]);
   const [attendingPlayerIds, setAttendingPlayerIds] = useState<Set<number>>(new Set());
@@ -480,9 +479,9 @@ const App: React.FC = () => {
     try {
       const data = await getInitialData();
       setSeasonStartDate(data.seasonStartDate || ''); 
-      setPlayers(data.players); 
-      // VERWIJDERD: setIntroPlayers((data as any).introPlayers || []);
-      setHistory(data.history); 
+      setPlayers(data.players);
+setIntroPlayers(data.introPlayers || []);
+setHistory(data.history);
       setCompetitionName(data.competitionName || null); 
       setRatingLogs(data.ratingLogs || []); 
       setTrophies(data.trophies || []);
@@ -956,7 +955,11 @@ const App: React.FC = () => {
         );
       case 'nk':
         return (
-          <NKManager players={players} introPlayers={[]} onClose={() => setCurrentView('main')} />
+          <NKManager
+  players={players}
+  introPlayers={introPlayers}
+  onClose={() => setCurrentView('main')}
+/>
         );
       default:
         return renderMainView();
