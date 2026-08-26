@@ -750,22 +750,96 @@ setHistory(data.history);
     } catch (e: any) { showNotification(e.message, 'error'); } finally { setActionInProgress(null); }
   };
 
-  const handleSaveDoubleHeader = async (match2Result: MatchResult) => {
-    if (!requireAdmin()) return; setActionInProgress('savingDouble');
-    if (!originalTeams || !teams2) return setActionInProgress(null);
-    const s1 = { date: new Date().toISOString(), teams: originalTeams, round1Results, round2Results: [] };
-    const s2 = { date: new Date().toISOString(), teams: teams2, round1Results: [match2Result], round2Results: [] };
-    const d1 = calculateRatingDeltas(s1); const d2 = calculateRatingDeltas(s2);
-    const updates = players.map(p => {
-      const v = (d1[p.id] || 0) + (d2[p.id] || 0);
-      return v !== 0 ? { id: p.id, rating: parseFloat((Number(p.rating) + v).toFixed(2)) } : null;
-    }).filter((x): x is any => !!x);
-    try {
-      await saveGameSession(s1, updates); await new Promise(r => setTimeout(r, 2000)); await saveGameSession(s2, updates);
-      showNotification('Beide opgeslagen!', 'success'); fetchData(); resetGameState(); setAttendingPlayerIds(new Set());
-    } catch (e: any) { showNotification(`Fout: ${e.message}`, 'error'); }
+ const handleSaveDoubleHeader = async (match2Result: MatchResult) => {
+  if (!requireAdmin()) return;
+
+  setActionInProgress('savingDouble');
+
+  if (!originalTeams || !teams2) {
     setActionInProgress(null);
+    return;
+  }
+
+  // Beide wedstrijden horen bij dezelfde speelavond.
+  // Daarom slaan we ze op als ÉÉN GameSession.
+  //
+  // Wedstrijd 1:
+  //   teams       = originalTeams
+  //   round1Results
+  //
+  // Wedstrijd 2:
+  //   round2Teams = teams2
+  //   round2Results
+
+  const session: GameSession = {
+    date: new Date().toISOString(),
+    teams: originalTeams,
+    round1Results: round1Results,
+    round2Teams: teams2,
+    round2Results: [match2Result],
   };
+
+  // Bereken de ratingverandering van beide wedstrijden
+  // samen, maar sla de avond maar één keer op.
+  const ratingChanges = calculateRatingDeltas(session);
+
+  const updates = players
+    .map((p) => {
+      const change = ratingChanges[p.id] || 0;
+
+      if (change === 0) return null;
+
+      return {
+        id: p.id,
+        rating: parseFloat(
+          (Number(p.rating) + change).toFixed(2)
+        ),
+      };
+    })
+    .filter(
+      (x): x is { id: number; rating: number } =>
+        x !== null
+    );
+
+  try {
+    // BELANGRIJK:
+    // maar één keer opslaan = één speelavond
+    await saveGameSession(session, updates);
+
+    showNotification(
+      'Beide wedstrijden opgeslagen!',
+      'success'
+    );
+
+    setPlayers((prev) =>
+      prev.map((p) => {
+        const update = updates.find(
+          (u) => u.id === p.id
+        );
+
+        return update
+          ? { ...p, rating: update.rating }
+          : p;
+      })
+    );
+
+    // Eén GameSession aan de geschiedenis toevoegen
+    setHistory((prev) => [
+      session,
+      ...prev,
+    ]);
+
+    resetGameState();
+    setAttendingPlayerIds(new Set());
+  } catch (e: any) {
+    showNotification(
+      `Fout: ${e.message}`,
+      'error'
+    );
+  }
+
+  setActionInProgress(null);
+};
 
   // --------------------------------------------------------------------------
   // NIEUW: Handmatige wissel functie
