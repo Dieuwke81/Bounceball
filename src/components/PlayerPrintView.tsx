@@ -1,13 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type {
-  Player,
-  Trophy,
-  TrophyType,
-  GameSession,
-  MatchResult,
-} from '../types';
-
+import type { Player, Trophy, TrophyType, GameSession, MatchResult } from '../types';
 import ShieldIcon from './icons/ShieldIcon';
 import TrophyIcon from './icons/TrophyIcon';
 
@@ -15,20 +8,22 @@ import TrophyIcon from './icons/TrophyIcon';
  * Helpers
  * ========================================================================== */
 
-const sumGoals = (goals: any[]) =>
-  (goals || []).reduce(
-    (sum, g) => sum + (Number(g?.count) || 0),
-    0
-  );
-
-const ordinalNl = (n: number) => {
-  if (!Number.isFinite(n) || n <= 0) return '—';
-  return `${n}e`;
+const toMs = (d: string) => {
+  const ms = new Date(d).getTime();
+  return Number.isFinite(ms) ? ms : 0;
 };
 
 const hasAnyResults = (s: GameSession) =>
   (Array.isArray(s.round1Results) && s.round1Results.length > 0) ||
   (Array.isArray(s.round2Results) && s.round2Results.length > 0);
+
+const sumGoals = (goals: any[]) =>
+  (goals || []).reduce((sum, g) => sum + (Number(g?.count) || 0), 0);
+
+const ordinalNl = (n: number) => {
+  if (!Number.isFinite(n) || n <= 0) return '—';
+  return `${n}e`;
+};
 
 type StandingRow = {
   pts: number;
@@ -49,10 +44,9 @@ type SeasonMeta = {
   eligibleIds: Set<number>;
 };
 
-/* ============================================================================
- * Seizoen-meta
- * ========================================================================== */
-
+/**
+ * Seizoen-avonden tellen (met resultaten) + aanwezigheid per speler.
+ */
 const computeSeasonMeta = (params: {
   history: GameSession[];
   allowedIds: Set<number>;
@@ -61,51 +55,32 @@ const computeSeasonMeta = (params: {
 
   const nightsByPlayer = new Map<number, number>();
 
-  const seasonSessions = (history || []).filter((s) =>
-    hasAnyResults(s)
-  );
+  const seasonSessions = (history || []).filter((s) => hasAnyResults(s));
 
   seasonSessions.forEach((s) => {
     const attending = new Set<number>();
 
     const r1 = s.teams || [];
-
     r1.flat().forEach((p) => {
-      if (allowedIds.has(p.id)) {
-        attending.add(p.id);
-      }
+      if (allowedIds.has(p.id)) attending.add(p.id);
     });
 
-    const r2 = ((s as any).round2Teams ??
-      s.teams ??
-      []) as Player[][];
-
+    const r2 = ((s as any).round2Teams ?? s.teams ?? []) as Player[][];
     r2.flat().forEach((p) => {
-      if (allowedIds.has(p.id)) {
-        attending.add(p.id);
-      }
+      if (allowedIds.has(p.id)) attending.add(p.id);
     });
 
     attending.forEach((id) => {
-      nightsByPlayer.set(
-        id,
-        (nightsByPlayer.get(id) || 0) + 1
-      );
+      nightsByPlayer.set(id, (nightsByPlayer.get(id) || 0) + 1);
     });
   });
 
   const totalNights = seasonSessions.length;
-  const minNights = Math.max(
-    1,
-    Math.round(totalNights / 2)
-  );
+  const minNights = Math.max(1, Math.round(totalNights / 2));
 
   const eligibleIds = new Set<number>();
-
   nightsByPlayer.forEach((count, id) => {
-    if (count >= minNights) {
-      eligibleIds.add(id);
-    }
+    if (count >= minNights) eligibleIds.add(id);
   });
 
   return {
@@ -116,10 +91,9 @@ const computeSeasonMeta = (params: {
   };
 };
 
-/* ============================================================================
- * Seizoen-statistieken
- * ========================================================================== */
-
+/**
+ * Seizoen aggregaties.
+ */
 const computeSeasonAggregates = (params: {
   history: GameSession[];
   allowedIds: Set<number>;
@@ -157,19 +131,14 @@ const computeSeasonAggregates = (params: {
   const addPlayerGoals = (goalsArr: any[]) => {
     (goalsArr || []).forEach((g) => {
       const pid = Number(g?.playerId);
-      const count = Number(g?.count) || 0;
+      const c = Number(g?.count) || 0;
 
-      if (!Number.isFinite(pid) || pid <= 0 || count <= 0) {
-        return;
-      }
-
-      if (!allowedIds.has(pid)) {
-        return;
-      }
+      if (!Number.isFinite(pid) || pid <= 0 || c <= 0) return;
+      if (!allowedIds.has(pid)) return;
 
       goalsForPlayer.set(
         pid,
-        (goalsForPlayer.get(pid) || 0) + count
+        (goalsForPlayer.get(pid) || 0) + c
       );
     });
   };
@@ -178,15 +147,10 @@ const computeSeasonAggregates = (params: {
     teamsForRound: Player[][] | undefined,
     match: MatchResult
   ) => {
-    const rawT1 =
-      teamsForRound?.[match.team1Index] || [];
+    const rawT1 = teamsForRound?.[match.team1Index] || [];
+    const rawT2 = teamsForRound?.[match.team2Index] || [];
 
-    const rawT2 =
-      teamsForRound?.[match.team2Index] || [];
-
-    if (!rawT1.length || !rawT2.length) {
-      return;
-    }
+    if (!rawT1.length || !rawT2.length) return;
 
     const s1 = sumGoals(match.team1Goals || []);
     const s2 = sumGoals(match.team2Goals || []);
@@ -194,13 +158,8 @@ const computeSeasonAggregates = (params: {
     addPlayerGoals(match.team1Goals || []);
     addPlayerGoals(match.team2Goals || []);
 
-    const t1 = rawT1.filter((p) =>
-      allowedIds.has(p.id)
-    );
-
-    const t2 = rawT2.filter((p) =>
-      allowedIds.has(p.id)
-    );
+    const t1 = rawT1.filter((p) => allowedIds.has(p.id));
+    const t2 = rawT2.filter((p) => allowedIds.has(p.id));
 
     t1.forEach((p) => {
       const row = ensureStanding(p.id);
@@ -209,11 +168,8 @@ const computeSeasonAggregates = (params: {
       row.gd += s1 - s2;
       row.matches += 1;
 
-      if (s1 > s2) {
-        row.pts += 3;
-      } else if (s1 === s2) {
-        row.pts += 1;
-      }
+      if (s1 > s2) row.pts += 3;
+      else if (s1 === s2) row.pts += 1;
     });
 
     t2.forEach((p) => {
@@ -223,11 +179,8 @@ const computeSeasonAggregates = (params: {
       row.gd += s2 - s1;
       row.matches += 1;
 
-      if (s2 > s1) {
-        row.pts += 3;
-      } else if (s1 === s2) {
-        row.pts += 1;
-      }
+      if (s2 > s1) row.pts += 3;
+      else if (s2 === s1) row.pts += 1;
     });
 
     t1.forEach((p) => {
@@ -244,22 +197,19 @@ const computeSeasonAggregates = (params: {
   };
 
   (history || []).forEach((session) => {
-    if (!hasAnyResults(session)) {
-      return;
-    }
+    if (!hasAnyResults(session)) return;
 
     const teamsR1 = session.teams || [];
-
     const teamsR2 = ((session as any).round2Teams ??
       session.teams ??
       []) as Player[][];
 
-    (session.round1Results || []).forEach((match) =>
-      applyMatch(teamsR1, match)
+    (session.round1Results || []).forEach((m) =>
+      applyMatch(teamsR1, m)
     );
 
-    (session.round2Results || []).forEach((match) =>
-      applyMatch(teamsR2, match)
+    (session.round2Results || []).forEach((m) =>
+      applyMatch(teamsR2, m)
     );
   });
 
@@ -269,10 +219,6 @@ const computeSeasonAggregates = (params: {
     defense,
   };
 };
-
-/* ============================================================================
- * Rankings
- * ========================================================================== */
 
 const rankStanding = (
   standings: Map<number, StandingRow>,
@@ -287,10 +233,7 @@ const rankStanding = (
       gf: r.gf,
       gd: r.gd,
       matches: r.matches,
-      avg:
-        r.matches > 0
-          ? r.pts / r.matches
-          : 0,
+      avg: r.matches > 0 ? r.pts / r.matches : 0,
     }));
 
   rows.sort(
@@ -301,10 +244,7 @@ const rankStanding = (
       a.id - b.id
   );
 
-  const idx = rows.findIndex(
-    (r) => r.id === playerId
-  );
-
+  const idx = rows.findIndex((r) => r.id === playerId);
   return idx >= 0 ? idx + 1 : 0;
 };
 
@@ -315,16 +255,9 @@ const rankTopScorer = (
   eligibleIds: Set<number>
 ) => {
   const rows = [...eligibleIds].map((id) => {
-    const goals =
-      goalsForPlayer.get(id) || 0;
-
-    const matches =
-      standings.get(id)?.matches || 0;
-
-    const avg =
-      matches > 0
-        ? goals / matches
-        : 0;
+    const goals = goalsForPlayer.get(id) || 0;
+    const matches = standings.get(id)?.matches || 0;
+    const avg = matches > 0 ? goals / matches : 0;
 
     return {
       id,
@@ -341,18 +274,12 @@ const rankTopScorer = (
       a.id - b.id
   );
 
-  const idx = rows.findIndex(
-    (r) => r.id === playerId
-  );
-
-  const mine = rows.find(
-    (r) => r.id === playerId
-  );
+  const idx = rows.findIndex((r) => r.id === playerId);
+  const mine = rows.find((r) => r.id === playerId);
 
   return {
     rank: idx >= 0 ? idx + 1 : 0,
-    myGoals:
-      goalsForPlayer.get(playerId) || 0,
+    myGoals: goalsForPlayer.get(playerId) || 0,
     myAvg: mine ? mine.avg : 0,
   };
 };
@@ -376,16 +303,12 @@ const rankDefender = (
 
   rows.sort(
     (a, b) =>
-      a.concededPerMatch -
-        b.concededPerMatch ||
+      a.concededPerMatch - b.concededPerMatch ||
       b.matches - a.matches ||
       a.id - b.id
   );
 
-  const idx = rows.findIndex(
-    (r) => r.id === playerId
-  );
-
+  const idx = rows.findIndex((r) => r.id === playerId);
   const mine = defense.get(playerId);
 
   const myAvg =
@@ -400,37 +323,25 @@ const rankDefender = (
 };
 
 /* ============================================================================
- * Print Chart
+ * PrintChart
  * ========================================================================== */
 
 const PrintChart: React.FC<{
   data: { date: string; rating: number }[];
   title: string;
 }> = ({ data, title }) => {
-  if (!data || data.length < 2) {
-    return null;
-  }
+  if (!data || data.length < 2) return null;
 
   const width = 900;
-  const height = 300;
-  const padding = 50;
+  const height = 260;
+  const padding = 52;
 
-  const minRating = Math.min(
-    ...data.map((d) => d.rating)
-  );
+  const minRating = Math.min(...data.map((d) => d.rating));
+  const maxRating = Math.max(...data.map((d) => d.rating));
+  const range = maxRating - minRating || 1;
 
-  const maxRating = Math.max(
-    ...data.map((d) => d.rating)
-  );
-
-  const range =
-    maxRating - minRating || 1;
-
-  const minY =
-    minRating - range * 0.1;
-
-  const maxY =
-    maxRating + range * 0.1;
+  const minY = minRating - range * 0.1;
+  const maxY = maxRating + range * 0.1;
 
   const getX = (index: number) =>
     (index / (data.length - 1)) *
@@ -440,8 +351,7 @@ const PrintChart: React.FC<{
   const getY = (rating: number) =>
     height -
     padding -
-    ((rating - minY) /
-      (maxY - minY)) *
+    ((rating - minY) / (maxY - minY)) *
       (height - padding * 2);
 
   const points = data
@@ -452,17 +362,9 @@ const PrintChart: React.FC<{
     .join(' ');
 
   const formatDate = (dateStr: string) => {
-    if (dateStr === 'Nu') {
-      return 'Nu';
-    }
+    if (dateStr === 'Nu') return 'Nu';
 
-    const date = new Date(dateStr);
-
-    if (Number.isNaN(date.getTime())) {
-      return dateStr;
-    }
-
-    return date.toLocaleDateString(
+    return new Date(dateStr).toLocaleDateString(
       'nl-NL',
       {
         month: 'short',
@@ -471,26 +373,21 @@ const PrintChart: React.FC<{
     );
   };
 
-  const last = data[data.length - 1];
-
   return (
-    <div className="chart-card">
-      <h4 className="chart-title">
-        {title}
-      </h4>
+    <div className="chart-card break-inside-avoid">
+      <h5 className="chart-title">{title}</h5>
 
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="print-chart-svg"
+        className="w-full h-auto"
       >
         <line
           x1={padding}
           y1={padding}
           x2={width - padding}
           y2={padding}
-          stroke="#cbd5e1"
+          stroke="#e2e8f0"
           strokeWidth="1"
-          strokeDasharray="5 5"
         />
 
         <line
@@ -498,9 +395,8 @@ const PrintChart: React.FC<{
           y1={height / 2}
           x2={width - padding}
           y2={height / 2}
-          stroke="#cbd5e1"
+          stroke="#e2e8f0"
           strokeWidth="1"
-          strokeDasharray="5 5"
         />
 
         <line
@@ -508,57 +404,38 @@ const PrintChart: React.FC<{
           y1={height - padding}
           x2={width - padding}
           y2={height - padding}
-          stroke="#cbd5e1"
+          stroke="#e2e8f0"
           strokeWidth="1"
-          strokeDasharray="5 5"
         />
 
         <defs>
           <linearGradient
-            id={`ratingLine-${title.replace(
-              /\s/g,
-              ''
-            )}`}
+            id={`ratingLine-${title.replace(/\s+/g, '-')}`}
             x1="0"
             y1="0"
             x2="1"
             y2="0"
           >
-            <stop
-              offset="0%"
-              stopColor="#22c55e"
-            />
-            <stop
-              offset="35%"
-              stopColor="#3b82f6"
-            />
-            <stop
-              offset="70%"
-              stopColor="#8b5cf6"
-            />
-            <stop
-              offset="100%"
-              stopColor="#ec4899"
-            />
+            <stop offset="0%" stopColor="#22c55e" />
+            <stop offset="35%" stopColor="#3b82f6" />
+            <stop offset="70%" stopColor="#8b5cf6" />
+            <stop offset="100%" stopColor="#ec4899" />
           </linearGradient>
         </defs>
 
         <polyline
           fill="none"
-          stroke={`url(#ratingLine-${title.replace(
-            /\s/g,
-            ''
-          )})`}
-          strokeWidth="5"
+          stroke={`url(#ratingLine-${title.replace(/\s+/g, '-')})`}
+          strokeWidth="4"
           points={points}
           strokeLinejoin="round"
           strokeLinecap="round"
         />
 
         <text
-          x={padding - 10}
+          x={padding - 8}
           y={getY(maxRating)}
-          className="chart-axis"
+          className="chart-axis-label"
           textAnchor="end"
           dominantBaseline="middle"
         >
@@ -566,9 +443,9 @@ const PrintChart: React.FC<{
         </text>
 
         <text
-          x={padding - 10}
+          x={padding - 8}
           y={getY(minRating)}
-          className="chart-axis"
+          className="chart-axis-label"
           textAnchor="end"
           dominantBaseline="middle"
         >
@@ -577,60 +454,58 @@ const PrintChart: React.FC<{
 
         <text
           x={getX(0)}
-          y={height - 15}
-          className="chart-axis"
+          y={height - 18}
+          className="chart-axis-label"
           textAnchor="start"
         >
           {formatDate(data[0].date)}
         </text>
 
         <text
-          x={getX(
-            Math.floor(data.length / 2)
-          )}
-          y={height - 15}
-          className="chart-axis"
+          x={getX(Math.floor(data.length / 2))}
+          y={height - 18}
+          className="chart-axis-label"
           textAnchor="middle"
         >
           {formatDate(
-            data[
-              Math.floor(data.length / 2)
-            ].date
+            data[Math.floor(data.length / 2)].date
           )}
         </text>
 
         <text
           x={getX(data.length - 1)}
-          y={height - 15}
-          className="chart-axis"
+          y={height - 18}
+          className="chart-axis-label"
           textAnchor="end"
         >
-          {formatDate(last.date)}
+          {formatDate(data[data.length - 1].date)}
         </text>
 
         <circle
           cx={getX(data.length - 1)}
-          cy={getY(last.rating)}
-          r="8"
-          fill="#3b82f6"
+          cy={getY(data[data.length - 1].rating)}
+          r="7"
+          fill="#ec4899"
         />
 
         <circle
           cx={getX(data.length - 1)}
-          cy={getY(last.rating)}
-          r="4"
-          fill="#ffffff"
+          cy={getY(data[data.length - 1].rating)}
+          r="3.5"
+          fill="#0f172a"
         />
 
         <text
-          x={getX(data.length - 1) - 5}
+          x={getX(data.length - 1)}
           y={
-            getY(last.rating) - 18
+            getY(
+              data[data.length - 1].rating
+            ) - 14
           }
-          className="chart-value"
+          className="chart-current-value"
           textAnchor="end"
         >
-          {last.rating.toFixed(2)}
+          {data[data.length - 1].rating.toFixed(2)}
         </text>
       </svg>
     </div>
@@ -638,18 +513,7 @@ const PrintChart: React.FC<{
 };
 
 /* ============================================================================
- * Relationship types
- * ========================================================================== */
-
-type RelationshipItem = {
-  id: number;
-  percentage?: number;
-  label?: string;
-  count?: number;
-};
-
-/* ============================================================================
- * PlayerPrintView
+ * Component
  * ========================================================================== */
 
 interface PlayerPrintViewProps {
@@ -658,14 +522,8 @@ interface PlayerPrintViewProps {
   trophies: Trophy[];
   players: Player[];
   history: GameSession[];
-  seasonHistory: {
-    date: string;
-    rating: number;
-  }[];
-  allTimeHistory: {
-    date: string;
-    rating: number;
-  }[];
+  seasonHistory: { date: string; rating: number }[];
+  allTimeHistory: { date: string; rating: number }[];
   competitionName?: string | null;
   onClose: () => void;
 }
@@ -691,16 +549,27 @@ const PlayerPrintView: React.FC<
     [players]
   );
 
-  /* --------------------------------------------------------------------------
-   * Print openen en daarna sluiten
-   * ------------------------------------------------------------------------ */
-
   useEffect(() => {
+    let closed = false;
+
     const printTimer = window.setTimeout(() => {
-      window.print();
-    }, 400);
+      if (!closed) {
+        window.print();
+      }
+    }, 350);
+
+    const closeFallbackTimer = window.setTimeout(() => {
+      if (!closed) {
+        closed = true;
+        onClose();
+      }
+    }, 30000);
 
     const handleAfterPrint = () => {
+      if (closed) return;
+
+      closed = true;
+      window.clearTimeout(closeFallbackTimer);
       onClose();
     };
 
@@ -710,7 +579,11 @@ const PlayerPrintView: React.FC<
     );
 
     return () => {
+      closed = true;
       window.clearTimeout(printTimer);
+      window.clearTimeout(
+        closeFallbackTimer
+      );
       window.removeEventListener(
         'afterprint',
         handleAfterPrint
@@ -718,16 +591,16 @@ const PlayerPrintView: React.FC<
     };
   }, [onClose]);
 
-  /* --------------------------------------------------------------------------
-   * Prijzen
-   * ------------------------------------------------------------------------ */
-
   const getTrophyContent = (
     type: TrophyType
   ) => {
-    const images: {
-      [key: string]: string;
-    } = {
+    /*
+     * Belangrijk:
+     * Dit zijn gewone URL's en GEEN Markdown-links.
+     * Daardoor kan de printweergave de afbeeldingen
+     * correct laden.
+     */
+    const images: Record<string, string> = {
       Verdediger:
         'https://i.postimg.cc/4x8qtnYx/pngtree-red-shield-protection-badge-design-artwork-png-image-16343420.png',
 
@@ -781,179 +654,226 @@ const PlayerPrintView: React.FC<
         <img
           src={url}
           alt={type}
-          className="trophy-image"
+          className="w-10 h-10 object-contain"
         />
       );
     }
 
     if (type === 'Verdediger') {
       return (
-        <ShieldIcon className="trophy-icon" />
+        <ShieldIcon className="w-8 h-8 text-slate-900" />
       );
     }
 
     return (
-      <TrophyIcon className="trophy-icon" />
+      <TrophyIcon className="w-8 h-8 text-slate-900" />
     );
   };
 
-  /* --------------------------------------------------------------------------
-   * Relatiegegevens
-   *
-   * PlayerDetail geeft:
-   * freq, bestT, worstT, bestO, worstO
-   *
-   * We zetten die hier om naar één printformaat.
-   * ------------------------------------------------------------------------ */
+  /*
+   * Percentage:
+   * - samen: aantal keer samen / gespeelde wedstrijden
+   * - overige categorieën: als de aangeleverde stats een object
+   *   met wins/losses bevatten, wordt het winpercentage berekend.
+   * - bij alleen een getal blijft de bestaande waarde staan en
+   *   wordt een percentage alleen getoond wanneer dat betrouwbaar
+   *   uit de beschikbare gegevens kan worden berekend.
+   */
+  const getRelationValues = (
+    item: any
+  ): {
+    count: number;
+    wins?: number;
+    losses?: number;
+    percentage?: number;
+  } => {
+    if (Array.isArray(item)) {
+      const raw = item[1];
 
-  const normalizeRelationshipData = (
-    data: any[]
-  ): RelationshipItem[] => {
-    if (!Array.isArray(data)) {
-      return [];
-    }
+      if (
+        raw &&
+        typeof raw === 'object'
+      ) {
+        const wins = Number(
+          raw.wins ??
+            raw.w ??
+            raw.win ??
+            0
+        );
 
-    return data
-      .map((item: any) => {
-        if (Array.isArray(item)) {
-          return {
-            id: Number(item[0]),
-            count: Number(item[1]) || 0,
-          };
-        }
+        const losses = Number(
+          raw.losses ??
+            raw.l ??
+            raw.loss ??
+            0
+        );
+
+        const total = wins + losses;
 
         return {
-          id: Number(item.id),
-          percentage:
-            Number.isFinite(
-              Number(item.percentage)
-            )
-              ? Number(item.percentage)
-              : undefined,
-          label:
-            typeof item.label === 'string'
-              ? item.label
-              : undefined,
           count:
-            Number.isFinite(
-              Number(item.count)
-            )
-              ? Number(item.count)
+            Number(
+              raw.count ??
+                raw.total ??
+                total
+            ) || 0,
+          wins,
+          losses,
+          percentage:
+            total > 0
+              ? (wins / total) * 100
               : undefined,
         };
-      })
-      .filter(
-        (item) =>
-          Number.isFinite(item.id)
-      );
+      }
+
+      return {
+        count: Number(raw) || 0,
+      };
+    }
+
+    return {
+      count:
+        Number(
+          item?.count ??
+            item?.total ??
+            0
+        ) || 0,
+      wins:
+        item?.wins != null
+          ? Number(item.wins)
+          : undefined,
+      losses:
+        item?.losses != null
+          ? Number(item.losses)
+          : undefined,
+      percentage:
+        item?.percentage != null
+          ? Number(item.percentage)
+          : undefined,
+    };
   };
 
-  const formatRelationshipValue = (
-    item: RelationshipItem
-  ) => {
-    if (
-      item.label &&
-      item.label.trim().length > 0
-    ) {
-      return item.label;
-    }
-
-    if (
-      typeof item.count === 'number'
-    ) {
-      return `${item.count}x`;
-    }
-
-    if (
-      typeof item.percentage === 'number'
-    ) {
-      return `${item.percentage}%`;
-    }
-
-    return '';
-  };
-
-  const RelationshipCard: React.FC<{
+  const RelationshipSection: React.FC<{
     title: string;
     data: any[];
-    variant:
-      | 'frequent'
-      | 'best'
-      | 'worst'
-      | 'easy'
-      | 'hard';
-    icon: React.ReactNode;
+    variant?: string;
+    mode?: 'frequent' | 'winrate';
   }> = ({
     title,
     data,
     variant,
-    icon,
+    mode = 'winrate',
   }) => {
-    const normalized =
-      normalizeRelationshipData(
-        data
-      ).slice(0, 5);
+    const safeData = Array.isArray(data)
+      ? data
+      : [];
 
     return (
       <div
-        className={`relationship-card rel-${variant}`}
+        className={`break-inside-avoid rel-card ${
+          variant || ''
+        }`}
       >
-        <div className="relationship-header">
-          <div className="relationship-icon">
-            {icon}
-          </div>
+        <h4 className="rel-title">
+          {title}
+        </h4>
 
-          <h4>{title}</h4>
-        </div>
+        <ul className="text-xs">
+          {safeData.length > 0 ? (
+            safeData
+              .slice(0, 5)
+              .map(
+                (
+                  item: any,
+                  idx: number
+                ) => {
+                  const id =
+                    Array.isArray(item)
+                      ? Number(item[0])
+                      : Number(
+                          item?.id
+                        );
 
-        <div className="relationship-list">
-          {normalized.length > 0 ? (
-            normalized.map(
-              (item, index) => {
-                const related =
-                  playerMap.get(
-                    item.id
+                  const p =
+                    playerMap.get(id);
+
+                  const rel =
+                    getRelationValues(
+                      item
+                    );
+
+                  const frequentPercentage =
+                    stats.gamesPlayed > 0
+                      ? (rel.count /
+                          stats.gamesPlayed) *
+                        100
+                      : undefined;
+
+                  const percentage =
+                    mode === 'frequent'
+                      ? frequentPercentage
+                      : rel.percentage;
+
+                  return (
+                    <li
+                      key={`${id}-${idx}`}
+                      className="rel-row"
+                    >
+                      <span className="rel-name">
+                        <span className="rel-rank">
+                          {idx + 1}
+                        </span>
+
+                        {p
+                          ? p.name
+                          : `Speler ${id}`}
+                      </span>
+
+                      <span className="rel-right">
+                        <span className="rel-count">
+                          {mode ===
+                          'frequent'
+                            ? `${rel.count}x samen`
+                            : rel.wins !=
+                                  null &&
+                              rel.losses !=
+                                null
+                            ? `${rel.wins}W - ${rel.losses}V`
+                            : `${rel.count}x`}
+                        </span>
+
+                        {percentage !=
+                          null &&
+                          Number.isFinite(
+                            percentage
+                          ) && (
+                            <span className="rel-percentage">
+                              {Math.round(
+                                percentage
+                              )}
+                              %
+                            </span>
+                          )}
+                      </span>
+                    </li>
                   );
-
-                return (
-                  <div
-                    key={`${item.id}-${index}`}
-                    className="relationship-row"
-                  >
-                    <div className="relationship-player">
-                      <span className="rank-badge">
-                        {index + 1}
-                      </span>
-
-                      <span>
-                        {related
-                          ? related.name
-                          : `Speler ${item.id}`}
-                      </span>
-                    </div>
-
-                    <span className="relationship-value">
-                      {formatRelationshipValue(
-                        item
-                      )}
-                    </span>
-                  </div>
-                );
-              }
-            )
+                }
+              )
           ) : (
-            <div className="empty-relationship">
-              Geen data
-            </div>
+            <li className="text-slate-400 italic py-1">
+              - Geen data -
+            </li>
           )}
-        </div>
+        </ul>
       </div>
     );
   };
 
-  /* --------------------------------------------------------------------------
-   * Seizoen-ranking
-   * ------------------------------------------------------------------------ */
+  const avgPoints =
+    stats.gamesPlayed > 0
+      ? (Number(stats.points) || 0) /
+        stats.gamesPlayed
+      : 0;
 
   const allowedIds = useMemo(
     () =>
@@ -972,26 +892,21 @@ const PlayerPrintView: React.FC<
     [history, allowedIds]
   );
 
-  const seasonAttendance =
-    useMemo(() => {
-      const attendedNights =
-        seasonMeta.nightsByPlayer.get(
-          player.id
-        ) || 0;
+  const seasonAttendance = useMemo(() => {
+    const attendedNights =
+      seasonMeta.nightsByPlayer.get(
+        player.id
+      ) || 0;
 
-      return {
-        attendedNights,
-        totalNights:
-          seasonMeta.totalNights,
-      };
-    }, [
-      seasonMeta,
-      player.id,
-    ]);
+    return {
+      attendedNights,
+      totalNights:
+        seasonMeta.totalNights,
+    };
+  }, [seasonMeta, player.id]);
 
   const eligible50 =
-    seasonAttendance.totalNights >
-      0 &&
+    seasonAttendance.totalNights > 0 &&
     seasonAttendance.attendedNights /
       seasonAttendance.totalNights >=
       0.5;
@@ -1001,10 +916,11 @@ const PlayerPrintView: React.FC<
       standings,
       goalsForPlayer,
       defense,
-    } = computeSeasonAggregates({
-      history: history || [],
-      allowedIds,
-    });
+    } =
+      computeSeasonAggregates({
+        history: history || [],
+        allowedIds,
+      });
 
     const position =
       rankStanding(
@@ -1031,12 +947,9 @@ const PlayerPrintView: React.FC<
     return {
       position,
       topscorerRank: ts.rank,
-      topscorerGoals:
-        ts.myGoals,
-      topscorerAvg:
-        ts.myAvg,
-      defenderRank:
-        def.rank,
+      topscorerGoals: ts.myGoals,
+      topscorerAvg: ts.myAvg,
+      defenderRank: def.rank,
       defenderAvgAgainst:
         def.concededPerMatch,
       minNights:
@@ -1054,805 +967,775 @@ const PlayerPrintView: React.FC<
     (competitionName || '').trim() ||
     'Competitie';
 
-  const avgPoints =
-    stats.gamesPlayed > 0
-      ? (Number(stats.points) || 0) /
-        stats.gamesPlayed
-      : 0;
-
-  /* ==========================================================================
-   * RENDER
-   * ======================================================================== */
-
   return createPortal(
     <div className="print-portal">
-      <style>{`
-        /* ================================================================
-         * NORMAAL SCHERM
-         * ================================================================ */
+      <style>
+        {`
+          /* ============================================================
+           * PRINT RESET
+           * ========================================================== */
 
-        @media screen {
+          @media print {
+            html,
+            body {
+              background: #fff !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+              min-height: 100% !important;
+            }
+
+            body::before,
+            body::after {
+              display: none !important;
+              content: none !important;
+            }
+
+            body > *:not(.print-portal) {
+              display: none !important;
+            }
+
+            @page {
+              size: A4 landscape;
+              margin: 8mm;
+            }
+
+            .print-portal {
+              display: block !important;
+              visibility: visible !important;
+              position: relative !important;
+              width: 100% !important;
+              min-height: 100% !important;
+              background: #fff !important;
+              color: #0f172a !important;
+              font-family:
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Roboto,
+                Arial,
+                sans-serif;
+              z-index: 999999 !important;
+            }
+
+            .print-page {
+              width: 100%;
+              min-height: 180mm;
+              box-sizing: border-box;
+              break-after: page;
+              page-break-after: always;
+              position: relative;
+            }
+
+            .print-page:last-child {
+              break-after: auto;
+              page-break-after: auto;
+            }
+
+            a[href]::after,
+            a::after {
+              content: "" !important;
+            }
+
+            img {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            * {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+          }
+
+          /* ============================================================
+           * COLORS
+           * ========================================================== */
+
+          :root {
+            --tile-blue: #3b82f6;
+            --tile-orange: #f59e0b;
+            --tile-purple: #8b5cf6;
+            --tile-yellow: #fbbf24;
+            --tile-pink: #ec4899;
+            --tile-green: #22c55e;
+            --tile-red: #ef4444;
+            --tile-teal: #14b8a6;
+
+            --ink: #0f172a;
+            --muted: #475569;
+            --border: #cbd5e1;
+            --paper: #ffffff;
+            --shadow: rgba(15, 23, 42, 0.10);
+          }
+
           .print-portal {
-            display: none !important;
-          }
-        }
-
-        /* ================================================================
-         * PRINT
-         * ================================================================ */
-
-        @media print {
-
-          @page {
-            size: A4 landscape;
-            margin: 8mm;
+            background: #fff;
+            color: var(--ink);
           }
 
-          html,
-          body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
+          /* ============================================================
+           * GENERAL
+           * ========================================================== */
 
-          body > *:not(.print-portal) {
-            display: none !important;
-          }
-
-          .print-portal {
-            display: block !important;
-            width: 100%;
-            min-height: 100%;
-            background: white;
-            color: #0f172a;
-            font-family:
-              ui-sans-serif,
-              system-ui,
-              -apple-system,
-              BlinkMacSystemFont,
-              "Segoe UI",
-              Roboto,
-              Arial,
-              sans-serif;
-          }
-
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+          .print-page {
+            padding: 8mm 9mm;
             box-sizing: border-box;
           }
 
-          .print-page {
-            width: 100%;
-            min-height: 194mm;
-            position: relative;
-            page-break-after: always;
-            break-after: page;
-            padding: 3mm;
-          }
-
-          .print-page:last-child {
-            page-break-after: auto;
-            break-after: auto;
-          }
-
-          /* ============================================================
-           * ALGEMEEN
-           * ========================================================== */
-
           .page-footer {
             position: absolute;
-            bottom: 0;
+            bottom: 1mm;
             left: 0;
             right: 0;
             text-align: center;
+            font-size: 9px;
             color: #94a3b8;
-            font-size: 8px;
-            font-weight: 700;
           }
 
-          .section-title {
-            font-size: 18px;
-            font-weight: 950;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            margin: 0 0 10px;
-            padding-bottom: 6px;
-            border-bottom: 2px solid #cbd5e1;
-          }
-
-          /* ============================================================
-           * HEADER
-           * ========================================================== */
-
-          .player-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 10px;
-            margin-bottom: 12px;
-            border-bottom: 2px solid #0f172a;
+          .header-wrap {
+            border-bottom: 2px solid var(--ink);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
             position: relative;
           }
 
-          .player-header::after {
+          .header-wrap::after {
             content: "";
             position: absolute;
             left: 0;
-            right: 0;
             bottom: -2px;
-            height: 5px;
-            background:
-              linear-gradient(
-                90deg,
-                #ef4444,
-                #f59e0b,
-                #fbbf24,
-                #22c55e,
-                #14b8a6,
-                #3b82f6,
-                #8b5cf6,
-                #ec4899
-              );
-            opacity: 0.55;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(
+              90deg,
+              var(--tile-red),
+              var(--tile-orange),
+              var(--tile-yellow),
+              var(--tile-green),
+              var(--tile-teal),
+              var(--tile-blue),
+              var(--tile-purple),
+              var(--tile-pink)
+            );
+            opacity: 0.45;
           }
 
-          .player-info {
-            display: flex;
-            align-items: center;
-          }
-
-          .player-photo {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #0f172a;
-            margin-right: 14px;
-          }
-
-          .player-initial {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: 2px solid #0f172a;
-            margin-right: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 25px;
-            font-weight: 950;
-          }
-
-          .player-name {
-            font-size: 29px;
-            font-weight: 950;
-            text-transform: uppercase;
-            line-height: 1;
-          }
-
-          .player-tags {
-            display: flex;
-            gap: 6px;
-            margin-top: 7px;
-          }
-
-          .player-tag {
-            border: 1px solid #0f172a;
-            border-radius: 6px;
-            padding: 3px 7px;
-            font-size: 8px;
-            font-weight: 900;
-            text-transform: uppercase;
-          }
-
-          .club-logo {
-            height: 48px;
-            width: auto;
-            object-fit: contain;
-          }
-
-          /* ============================================================
-           * STAT CARDS
-           * ========================================================== */
-
-          .stats-grid {
-            display: grid;
-            grid-template-columns:
-              repeat(4, 1fr);
-            gap: 9px;
-            margin-bottom: 12px;
-          }
-
-          .stat-card {
-            min-height: 74px;
-            border: 1px solid #cbd5e1;
-            border-left-width: 7px;
-            border-radius: 12px;
-            padding: 8px 10px;
-            background: white;
-            box-shadow:
-              0 4px 12px
-              rgba(15,23,42,0.08);
+          .stat-box {
+            border: 1.5px solid var(--border);
+            padding: 10px 9px;
+            border-radius: 14px;
             text-align: center;
+            background: #fff;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 7px 18px var(--shadow);
             display: flex;
             flex-direction: column;
             justify-content: center;
+            min-height: 84px;
           }
 
-          .stat-title {
-            font-size: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            font-weight: 950;
-            color: #475569;
-            line-height: 1.1;
-          }
-
-          .stat-value {
-            font-size: 19px;
-            font-weight: 950;
-            color: #0f172a;
-            line-height: 1.05;
-            margin-top: 3px;
-          }
-
-          .stat-sub {
-            font-size: 8px;
-            font-weight: 750;
-            color: #64748b;
-            margin-top: 3px;
+          .stat-box::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 74px;
+            height: 74px;
+            border-radius: 999px;
+            background: radial-gradient(
+              circle at 30% 30%,
+              rgba(255, 255, 255, 0.85),
+              rgba(15, 23, 42, 0.05)
+            );
+            transform: translate(24px, -24px);
           }
 
           .tile-green {
-            border-left-color: #22c55e;
-            background:
-              linear-gradient(
-                180deg,
-                rgba(34,197,94,.13),
-                white
-              );
+            border-left: 9px solid var(--tile-green);
+            background: linear-gradient(
+              180deg,
+              rgba(34, 197, 94, 0.14),
+              rgba(34, 197, 94, 0.06)
+            );
           }
 
           .tile-yellow {
-            border-left-color: #fbbf24;
-            background:
-              linear-gradient(
-                180deg,
-                rgba(251,191,36,.14),
-                white
-              );
+            border-left: 9px solid var(--tile-yellow);
+            background: linear-gradient(
+              180deg,
+              rgba(251, 191, 36, 0.16),
+              rgba(251, 191, 36, 0.06)
+            );
           }
 
           .tile-pink {
-            border-left-color: #ec4899;
-            background:
-              linear-gradient(
-                180deg,
-                rgba(236,72,153,.13),
-                white
-              );
+            border-left: 9px solid var(--tile-pink);
+            background: linear-gradient(
+              180deg,
+              rgba(236, 72, 153, 0.14),
+              rgba(236, 72, 153, 0.06)
+            );
           }
 
           .tile-blue {
-            border-left-color: #3b82f6;
-            background:
-              linear-gradient(
-                180deg,
-                rgba(59,130,246,.13),
-                white
-              );
+            border-left: 9px solid var(--tile-blue);
+            background: linear-gradient(
+              180deg,
+              rgba(59, 130, 246, 0.14),
+              rgba(59, 130, 246, 0.06)
+            );
           }
 
           .tile-orange {
-            border-left-color: #f59e0b;
-            background:
-              linear-gradient(
-                180deg,
-                rgba(245,158,11,.13),
-                white
-              );
+            border-left: 9px solid var(--tile-orange);
+            background: linear-gradient(
+              180deg,
+              rgba(245, 158, 11, 0.16),
+              rgba(245, 158, 11, 0.06)
+            );
           }
 
           .tile-purple {
-            border-left-color: #8b5cf6;
-            background:
-              linear-gradient(
-                180deg,
-                rgba(139,92,246,.13),
-                white
-              );
+            border-left: 9px solid var(--tile-purple);
+            background: linear-gradient(
+              180deg,
+              rgba(139, 92, 246, 0.14),
+              rgba(139, 92, 246, 0.06)
+            );
           }
 
           .tile-teal {
-            border-left-color: #14b8a6;
-            background:
-              linear-gradient(
-                180deg,
-                rgba(20,184,166,.13),
-                white
-              );
+            border-left: 9px solid var(--tile-teal);
+            background: linear-gradient(
+              180deg,
+              rgba(20, 184, 166, 0.14),
+              rgba(20, 184, 166, 0.06)
+            );
           }
 
           .tile-red {
-            border-left-color: #ef4444;
-            background:
-              linear-gradient(
-                180deg,
-                rgba(239,68,68,.13),
-                white
-              );
+            border-left: 9px solid var(--tile-red);
+            background: linear-gradient(
+              180deg,
+              rgba(239, 68, 68, 0.14),
+              rgba(239, 68, 68, 0.06)
+            );
           }
 
-          /* ============================================================
-           * RESULTATEN
-           * ========================================================== */
-
-          .result-row {
-            display: flex;
-            justify-content: center;
-            gap: 13px;
-            margin-top: 4px;
+          .print-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 9px;
+            margin-bottom: 14px;
           }
 
-          .result-number {
-            font-size: 13px;
+          .stat-title {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: var(--muted);
             font-weight: 950;
+            letter-spacing: 0.06em;
+            line-height: 1.15;
+            padding: 0 5px;
+            margin-bottom: 4px;
+            z-index: 1;
+          }
+
+          .stat-value {
+            font-size: 21px;
+            font-weight: 950;
+            color: var(--ink);
+            line-height: 1.05;
+            z-index: 1;
+          }
+
+          .stat-sub {
+            font-size: 9px;
+            color: var(--muted);
+            margin-top: 4px;
+            font-weight: 800;
+            line-height: 1.15;
+            z-index: 1;
+          }
+
+          .result-grid {
+            margin-top: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+          }
+
+          .result-text {
+            display: flex;
+            flex-direction: row;
+            align-items: baseline;
+            gap: 5px;
+            line-height: 1.05;
+          }
+
+          .result-count {
+            font-size: 14px;
+            font-weight: 950;
+            color: var(--ink);
+            font-variant-numeric: tabular-nums;
           }
 
           .result-label {
-            font-size: 7px;
-            font-weight: 850;
-            text-transform: uppercase;
-            color: #64748b;
-          }
-
-          /* ============================================================
-           * PRIJZENKAST
-           * ========================================================== */
-
-          .trophy-card {
-            border: 1px solid #cbd5e1;
-            border-radius: 11px;
-            padding: 6px 8px;
-            display: flex;
-            align-items: center;
-            background: #fff;
-            min-height: 44px;
-          }
-
-          .trophy-image {
-            width: 32px;
-            height: 32px;
-            object-fit: contain;
-            margin-right: 8px;
-          }
-
-          .trophy-icon {
-            width: 28px;
-            height: 28px;
-            margin-right: 8px;
-            color: #334155;
-          }
-
-          .trophy-name {
             font-size: 8px;
             font-weight: 950;
-            line-height: 1.1;
-          }
-
-          .trophy-year {
-            font-size: 7px;
-            color: #64748b;
-            font-weight: 750;
-            margin-top: 2px;
-          }
-
-          .trophies-grid {
-            display: grid;
-            grid-template-columns:
-              repeat(5, 1fr);
-            gap: 7px;
-          }
-
-          .trophies-box {
-            border: 1px solid #cbd5e1;
-            border-radius: 13px;
-            padding: 9px;
-            box-shadow:
-              0 4px 12px
-              rgba(15,23,42,.06);
-          }
-
-          .trophies-title {
-            text-align: center;
-            font-size: 11px;
-            font-weight: 950;
             text-transform: uppercase;
-            letter-spacing: .08em;
-            margin-bottom: 7px;
+            letter-spacing: 0.05em;
+            color: var(--muted);
           }
 
           /* ============================================================
-           * PAGINA 2 - GRAFIEKEN
+           * TROPHIES
+           * ========================================================== */
+
+          .trophy-section {
+            border: 1.5px solid var(--border);
+            border-radius: 14px;
+            padding: 12px;
+            background: #fff;
+            box-shadow: 0 7px 18px var(--shadow);
+            margin-bottom: 14px;
+          }
+
+          .trophy-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+          }
+
+          .trophy-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 11px;
+            padding: 8px;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 52px;
+          }
+
+          /* ============================================================
+           * CHARTS
            * ========================================================== */
 
           .charts-page {
             display: flex;
             flex-direction: column;
-            justify-content: center;
-          }
-
-          .charts-header {
-            font-size: 20px;
-            font-weight: 950;
-            text-transform: uppercase;
-            letter-spacing: .05em;
-            margin-bottom: 14px;
-          }
-
-          .charts-grid {
-            display: grid;
-            grid-template-columns:
-              1fr 1fr;
             gap: 14px;
           }
 
           .chart-card {
-            border: 1px solid #cbd5e1;
-            border-radius: 14px;
-            padding: 12px;
-            background: white;
-            box-shadow:
-              0 5px 15px
-              rgba(15,23,42,.08);
+            border: 1.5px solid var(--border);
+            border-radius: 16px;
+            background: #fff;
+            padding: 12px 18px 10px;
+            box-shadow: 0 7px 18px var(--shadow);
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
 
           .chart-title {
-            text-align: center;
             font-size: 11px;
             font-weight: 950;
+            letter-spacing: 0.10em;
             text-transform: uppercase;
-            letter-spacing: .08em;
+            text-align: center;
+            color: var(--ink);
             margin: 0 0 5px;
-            color: #0f172a;
           }
 
-          .print-chart-svg {
-            width: 100%;
-            height: auto;
+          .chart-title::after {
+            content: "";
             display: block;
+            margin: 6px auto 0;
+            width: 86px;
+            height: 3px;
+            border-radius: 999px;
+            background: linear-gradient(
+              90deg,
+              var(--tile-green),
+              var(--tile-blue),
+              var(--tile-purple),
+              var(--tile-pink)
+            );
+            opacity: 0.70;
           }
 
-          .chart-axis {
+          .chart-axis-label {
+            font-size: 11px;
             fill: #64748b;
-            font-size: 12px;
             font-weight: 700;
           }
 
-          .chart-value {
+          .chart-current-value {
+            font-size: 14px;
             fill: #0f172a;
-            font-size: 16px;
             font-weight: 950;
           }
 
           /* ============================================================
-           * PAGINA 3 - RELATIES
+           * RELATIONSHIPS
            * ========================================================== */
 
           .relationships-page {
-            display: flex;
-            flex-direction: column;
+            padding-top: 7mm;
           }
 
           .relationships-grid {
             display: grid;
-            grid-template-columns:
-              repeat(6, 1fr);
-            gap: 11px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
           }
 
-          .relationship-card {
-            border: 1px solid #cbd5e1;
-            border-radius: 13px;
-            background: white;
-            padding: 9px;
-            box-shadow:
-              0 5px 14px
-              rgba(15,23,42,.08);
+          .rel-card {
+            border: 1.5px solid var(--border);
+            border-radius: 14px;
+            padding: 10px;
+            background: #fff;
+            box-shadow: 0 7px 18px var(--shadow);
+            position: relative;
             overflow: hidden;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
 
-          /*
-           * Bovenste drie cards
-           */
-          .relationship-card:nth-child(1),
-          .relationship-card:nth-child(2),
-          .relationship-card:nth-child(3) {
-            grid-column: span 2;
-          }
-
-          /*
-           * Onderste twee cards:
-           * iets breder zodat de pagina mooi gevuld wordt.
-           */
-          .relationship-card:nth-child(4),
-          .relationship-card:nth-child(5) {
-            grid-column: span 3;
-          }
-
-          .relationship-header {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            padding-bottom: 7px;
-            margin-bottom: 2px;
-            border-bottom: 1px solid #e2e8f0;
-          }
-
-          .relationship-icon {
-            width: 22px;
-            height: 22px;
-            flex: 0 0 auto;
-          }
-
-          .relationship-icon svg {
+          .rel-card::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
             width: 100%;
-            height: 100%;
+            height: 6px;
+            background: linear-gradient(
+              90deg,
+              var(--tile-blue),
+              var(--tile-purple),
+              var(--tile-pink)
+            );
+            opacity: 0.55;
           }
 
-          .relationship-header h4 {
-            margin: 0;
-            font-size: 9px;
-            font-weight: 950;
+          .rel-title {
+            font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: .06em;
-            color: #334155;
+            color: var(--muted);
+            font-weight: 950;
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+            padding-bottom: 6px;
+            margin: 8px 0 4px;
+            position: relative;
+            z-index: 1;
           }
 
-          .relationship-list {
-            width: 100%;
-          }
-
-          .relationship-row {
+          .rel-row {
             display: flex;
-            align-items: center;
             justify-content: space-between;
+            align-items: center;
             gap: 8px;
-            min-height: 29px;
-            border-bottom: 1px solid #e2e8f0;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+            position: relative;
+            z-index: 1;
+            break-inside: avoid;
           }
 
-          .relationship-row:last-child {
-            border-bottom: none;
+          .rel-row:last-child {
+            border-bottom: 0;
           }
 
-          .relationship-player {
+          .rel-name {
+            min-width: 0;
+            font-weight: 800;
+            color: var(--ink);
             display: flex;
             align-items: center;
             gap: 7px;
-            min-width: 0;
-            font-size: 9px;
-            font-weight: 900;
-            color: #0f172a;
           }
 
-          .relationship-player > span:last-child {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-
-          .rank-badge {
+          .rel-rank {
             width: 18px;
             height: 18px;
-            min-width: 18px;
-            border-radius: 50%;
+            border-radius: 999px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 8px;
+            flex: 0 0 18px;
+            font-size: 10px;
             font-weight: 950;
             color: white;
-            background: #3b82f6;
+            background: var(--tile-blue);
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
           }
 
-          .relationship-value {
-            font-size: 8px;
+          .rel-right {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex: 0 0 auto;
+          }
+
+          .rel-count {
             font-weight: 950;
-            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
             padding: 3px 7px;
             border-radius: 999px;
-            border: 1px solid #cbd5e1;
-            color: #334155;
-            background: #f8fafc;
+            border: 1px solid rgba(203, 213, 225, 0.9);
+            color: var(--muted);
+            background: rgba(15, 23, 42, 0.06);
+            white-space: nowrap;
           }
 
-          .empty-relationship {
-            font-size: 8px;
-            color: #94a3b8;
-            font-style: italic;
-            padding: 8px 0;
+          .rel-percentage {
+            font-weight: 950;
+            font-variant-numeric: tabular-nums;
+            padding: 3px 7px;
+            border-radius: 999px;
+            border: 1px solid rgba(203, 213, 225, 0.9);
+            color: var(--muted);
+            background: #fff;
+            white-space: nowrap;
           }
 
+          /* Plaatfactor = turquoise */
           .rel-frequent {
-            background:
-              linear-gradient(
-                180deg,
-                rgba(20,184,166,.09),
-                white 35%
-              );
+            background: linear-gradient(
+              180deg,
+              rgba(20, 184, 166, 0.10),
+              rgba(255, 255, 255, 0.92)
+            );
           }
 
+          .rel-frequent::before {
+            background: linear-gradient(
+              90deg,
+              var(--tile-teal),
+              var(--tile-blue)
+            );
+          }
+
+          .rel-frequent .rel-rank {
+            background: var(--tile-teal);
+          }
+
+          .rel-frequent .rel-count,
+          .rel-frequent .rel-percentage {
+            background: rgba(20, 184, 166, 0.12);
+            border-color: rgba(20, 184, 166, 0.35);
+          }
+
+          /* Gouden duo = goud */
           .rel-best {
-            background:
-              linear-gradient(
-                180deg,
-                rgba(34,197,94,.09),
-                white 35%
-              );
+            background: linear-gradient(
+              180deg,
+              rgba(251, 191, 36, 0.16),
+              rgba(255, 255, 255, 0.92)
+            );
           }
 
-          .rel-worst {
-            background:
-              linear-gradient(
-                180deg,
-                rgba(239,68,68,.09),
-                white 35%
-              );
+          .rel-best::before {
+            background: linear-gradient(
+              90deg,
+              #f59e0b,
+              #fbbf24
+            );
           }
 
-          .rel-easy {
-            background:
-              linear-gradient(
-                180deg,
-                rgba(251,191,36,.11),
-                white 35%
-              );
-          }
-
-          .rel-hard {
-            background:
-              linear-gradient(
-                180deg,
-                rgba(139,92,246,.09),
-                white 35%
-              );
-          }
-
-          .rel-frequent .rank-badge {
-            background: #14b8a6;
-          }
-
-          .rel-best .rank-badge {
-            background: #22c55e;
-          }
-
-          .rel-worst .rank-badge {
-            background: #ef4444;
-          }
-
-          .rel-easy .rank-badge {
+          .rel-best .rel-rank {
             background: #f59e0b;
+            color: #fff;
           }
 
-          .rel-hard .rank-badge {
-            background: #8b5cf6;
+          .rel-best .rel-count,
+          .rel-best .rel-percentage {
+            background: rgba(251, 191, 36, 0.18);
+            border-color: rgba(245, 158, 11, 0.45);
+            color: #92400e;
           }
 
-          .rel-frequent .relationship-value {
-            color: #0f766e;
-            border-color: #99f6e4;
-            background: #f0fdfa;
+          /* Favoriete slachtoffer = roze */
+          .rel-easy {
+            background: linear-gradient(
+              180deg,
+              rgba(236, 72, 153, 0.11),
+              rgba(255, 255, 255, 0.92)
+            );
           }
 
-          .rel-best .relationship-value {
-            color: #15803d;
-            border-color: #86efac;
-            background: #f0fdf4;
+          .rel-easy::before {
+            background: linear-gradient(
+              90deg,
+              #ec4899,
+              #f472b6
+            );
           }
 
-          .rel-worst .relationship-value {
-            color: #dc2626;
-            border-color: #fca5a5;
-            background: #fef2f2;
+          .rel-easy .rel-rank {
+            background: #ec4899;
           }
 
-          .rel-easy .relationship-value {
-            color: #b45309;
-            border-color: #fcd34d;
-            background: #fffbeb;
+          .rel-easy .rel-count,
+          .rel-easy .rel-percentage {
+            background: rgba(236, 72, 153, 0.10);
+            border-color: rgba(236, 72, 153, 0.35);
+            color: #be185d;
           }
 
-          .rel-hard .relationship-value {
-            color: #7c3aed;
-            border-color: #c4b5fd;
-            background: #f5f3ff;
+          /* Slechtste medespeler = rood */
+          .rel-worst {
+            background: linear-gradient(
+              180deg,
+              rgba(239, 68, 68, 0.10),
+              rgba(255, 255, 255, 0.92)
+            );
           }
-        }
-      `}</style>
 
-      {/* ====================================================================
-       * PAGINA 1
-       * ================================================================== */}
+          .rel-worst::before {
+            background: linear-gradient(
+              90deg,
+              var(--tile-red),
+              var(--tile-orange)
+            );
+          }
+
+          .rel-worst .rel-rank {
+            background: var(--tile-red);
+          }
+
+          .rel-worst .rel-count,
+          .rel-worst .rel-percentage {
+            background: rgba(239, 68, 68, 0.10);
+            border-color: rgba(239, 68, 68, 0.35);
+          }
+
+          /* Persoonlijke nachtmerrie = paars */
+          .rel-hard {
+            background: linear-gradient(
+              180deg,
+              rgba(139, 92, 246, 0.10),
+              rgba(255, 255, 255, 0.92)
+            );
+          }
+
+          .rel-hard::before {
+            background: linear-gradient(
+              90deg,
+              var(--tile-purple),
+              var(--tile-pink)
+            );
+          }
+
+          .rel-hard .rel-rank {
+            background: var(--tile-purple);
+          }
+
+          .rel-hard .rel-count,
+          .rel-hard .rel-percentage {
+            background: rgba(139, 92, 246, 0.12);
+            border-color: rgba(139, 92, 246, 0.35);
+          }
+
+          /* ============================================================
+           * SMALL SCREEN / NORMAL VIEW
+           * ========================================================== */
+
+          @media screen {
+            .print-portal {
+              position: fixed;
+              inset: 0;
+              overflow: auto;
+              background: #fff;
+              z-index: 999999;
+            }
+
+            .print-page {
+              max-width: 1400px;
+              margin: 0 auto;
+            }
+          }
+        `}
+      </style>
+
+      {/* ================================================================
+       * PAGE 1 — OVERVIEW
+       * ============================================================= */}
 
       <div className="print-page">
-        <div className="player-header">
-          <div className="player-info">
+        <div className="flex items-center justify-between header-wrap">
+          <div className="flex items-center">
             {player.photoBase64 ? (
               <img
                 src={player.photoBase64}
                 alt={player.name}
-                className="player-photo"
+                className="w-20 h-20 rounded-full object-cover border-2 border-slate-900 mr-5"
               />
             ) : (
-              <div className="player-initial">
+              <div className="w-20 h-20 rounded-full bg-slate-100 border-2 border-slate-900 mr-5 flex items-center justify-center text-3xl font-black">
                 {player.name.charAt(0)}
               </div>
             )}
 
             <div>
-              <div className="player-name">
+              <h1 className="text-4xl font-black uppercase tracking-wide">
                 {player.name}
-              </div>
+              </h1>
 
-              <div className="player-tags">
+              <div className="flex gap-2 mt-2 text-sm font-bold uppercase text-slate-600">
                 {player.isKeeper && (
-                  <span className="player-tag">
+                  <span className="border border-slate-900 px-2 py-1 rounded">
                     Keeper
                   </span>
                 )}
 
                 {player.isFixedMember && (
-                  <span className="player-tag">
+                  <span className="border border-slate-900 px-2 py-1 rounded">
                     Lid
                   </span>
                 )}
 
-                <span className="player-tag">
-                  Rating:{' '}
-                  {player.rating.toFixed(2)}
+                <span className="border border-slate-900 px-2 py-1 rounded">
+                  Rating: {player.rating.toFixed(2)}
                 </span>
               </div>
             </div>
           </div>
 
-          <img
-            src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png"
-            alt="Logo"
-            className="club-logo"
-          />
+          {/* Geen groot achtergrondlogo meer. */}
         </div>
 
-        <h2 className="section-title">
+        <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-4 uppercase">
           {seasonTitle}
-        </h2>
+        </h3>
 
-        {/* Eerste rij */}
-        <div className="stats-grid">
-          <div className="stat-card tile-green">
+        <div className="print-grid">
+          <div className="stat-box tile-green">
             <div className="stat-title">
               Speelavonden aanwezig
             </div>
 
             <div className="stat-value">
-              {
-                seasonAttendance.attendedNights
-              }
-              /
-              {
-                seasonAttendance.totalNights
-              }
+              {seasonAttendance.attendedNights}/
+              {seasonAttendance.totalNights}
             </div>
 
             <div className="stat-sub">
-              Minimaal:{' '}
-              {seasonRanks.minNights}{' '}
+              Minimaal: {seasonRanks.minNights}{' '}
               avonden
             </div>
           </div>
 
-          <div className="stat-card tile-yellow">
+          <div className="stat-box tile-yellow">
             <div className="stat-title">
               Competitie
             </div>
@@ -1872,7 +1755,7 @@ const PlayerPrintView: React.FC<
             )}
           </div>
 
-          <div className="stat-card tile-pink">
+          <div className="stat-box tile-pink">
             <div className="stat-title">
               Topscoorder
             </div>
@@ -1894,7 +1777,7 @@ const PlayerPrintView: React.FC<
             </div>
           </div>
 
-          <div className="stat-card tile-blue">
+          <div className="stat-box tile-blue">
             <div className="stat-title">
               Verdediger
             </div>
@@ -1920,9 +1803,8 @@ const PlayerPrintView: React.FC<
           </div>
         </div>
 
-        {/* Tweede rij */}
-        <div className="stats-grid">
-          <div className="stat-card tile-orange">
+        <div className="print-grid">
+          <div className="stat-box tile-orange">
             <div className="stat-title">
               Gespeelde wedstrijden
             </div>
@@ -1932,42 +1814,42 @@ const PlayerPrintView: React.FC<
             </div>
           </div>
 
-          <div className="stat-card tile-purple">
+          <div className="stat-box tile-purple">
             <div className="stat-title">
               Resultaten
             </div>
 
-            <div className="result-row">
-              <div>
-                <div className="result-number">
+            <div className="result-grid">
+              <div className="result-text">
+                <span className="result-count">
                   {stats.wins}
-                </div>
-                <div className="result-label">
+                </span>
+                <span className="result-label">
                   Gewonnen
-                </div>
+                </span>
               </div>
 
-              <div>
-                <div className="result-number">
+              <div className="result-text">
+                <span className="result-count">
                   {stats.draws}
-                </div>
-                <div className="result-label">
+                </span>
+                <span className="result-label">
                   Gelijk
-                </div>
+                </span>
               </div>
 
-              <div>
-                <div className="result-number">
+              <div className="result-text">
+                <span className="result-count">
                   {stats.losses}
-                </div>
-                <div className="result-label">
+                </span>
+                <span className="result-label">
                   Verloren
-                </div>
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="stat-card tile-teal">
+          <div className="stat-box tile-teal">
             <div className="stat-title">
               Goals
             </div>
@@ -1977,7 +1859,7 @@ const PlayerPrintView: React.FC<
             </div>
           </div>
 
-          <div className="stat-card tile-red">
+          <div className="stat-box tile-red">
             <div className="stat-title">
               Gem. Punten
             </div>
@@ -1988,29 +1870,28 @@ const PlayerPrintView: React.FC<
           </div>
         </div>
 
-        {/* Prijzenkast */}
         {trophies.length > 0 && (
-          <div className="trophies-box">
-            <div className="trophies-title">
+          <div className="trophy-section break-inside-avoid">
+            <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-3 uppercase">
               Prijzenkast
-            </div>
+            </h3>
 
-            <div className="trophies-grid">
+            <div className="trophy-grid">
               {trophies.map((t) => (
                 <div
                   key={t.id}
                   className="trophy-card"
                 >
-                  {getTrophyContent(
-                    t.type
-                  )}
+                  <div className="mr-1">
+                    {getTrophyContent(t.type)}
+                  </div>
 
                   <div>
-                    <div className="trophy-name">
+                    <div className="font-black text-sm">
                       {t.type}
                     </div>
 
-                    <div className="trophy-year">
+                    <div className="text-xs text-slate-500 font-bold">
                       {t.year}
                     </div>
                   </div>
@@ -2025,101 +1906,75 @@ const PlayerPrintView: React.FC<
         </div>
       </div>
 
-      {/* ====================================================================
-       * PAGINA 2 - 2 GRAFIEKEN
-       * ================================================================== */}
+      {/* ================================================================
+       * PAGE 2 — RATING GRAPHS
+       * ============================================================= */}
 
       <div className="print-page charts-page">
-        <div className="charts-header">
+        <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-4 uppercase">
           Rating verloop
-        </div>
+        </h3>
 
-        <div className="charts-grid">
-          <PrintChart
-            data={seasonHistory}
-            title="Verloop huidig seizoen"
-          />
+        <PrintChart
+          data={seasonHistory}
+          title="Verloop huidig seizoen"
+        />
 
-          <PrintChart
-            data={allTimeHistory}
-            title="All-time verloop"
-          />
-        </div>
+        <PrintChart
+          data={allTimeHistory}
+          title="All-time verloop"
+        />
 
         <div className="page-footer">
           Pagina 2 van 3
         </div>
       </div>
 
-      {/* ====================================================================
-       * PAGINA 3 - RELATIES
-       * ================================================================== */}
+      {/* ================================================================
+       * PAGE 3 — RELATIONSHIPS
+       * ============================================================= */}
 
       <div className="print-page relationships-page">
-        <h2 className="section-title">
+        <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-3 uppercase">
           Statistieken vs spelers (Top 5)
-        </h2>
+        </h3>
 
         <div className="relationships-grid">
-          <RelationshipCard
-            title="Plakfactor: Onlosmakelijk"
-            data={stats.freq || []}
-            variant="frequent"
-            icon={
-              <span style={{ color: '#14b8a6' }}>
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle
-                    cx="9"
-                    cy="7"
-                    r="4"
-                  />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              </span>
+          <RelationshipSection
+            title="Plakfactor: onlosmakelijk"
+            data={
+              stats.mostFrequentTeammates
             }
+            variant="rel-frequent"
+            mode="frequent"
           />
 
-          <RelationshipCard
-            title="Gouden Duo"
-            data={stats.bestT || []}
-            variant="best"
-            icon={
-              <TrophyIcon />
-            }
+          <RelationshipSection
+            title="Gouden duo (winstgarantie)"
+            data={stats.bestTeammates}
+            variant="rel-best"
+            mode="winrate"
           />
 
-          <RelationshipCard
-            title="Samen de Afgrond in..."
-            data={stats.worstT || []}
-            variant="worst"
-            icon={
-              <ShieldIcon />
-            }
+          <RelationshipSection
+            title="Samen de afgrond in..."
+            data={stats.worstTeammates}
+            variant="rel-worst"
+            mode="winrate"
           />
 
-          <RelationshipCard
-            title="Mijn Favoriete Slachtoffer"
-            data={stats.bestO || []}
-            variant="easy"
-            icon={
-              <TrophyIcon />
-            }
+          <RelationshipSection
+            title="Mijn favoriete slachtoffer"
+            data={stats.bestOpponents}
+            variant="rel-easy"
+            mode="winrate"
           />
 
-          <RelationshipCard
-            title="Mijn Persoonlijke Nachtmerrie"
-            data={stats.worstO || []}
-            variant="hard"
-            icon={
-              <ShieldIcon />
-            }
+          <RelationshipSection
+            title="Mijn persoonlijke nachtmerrie"
+            data={stats.worstOpponents}
+            variant="rel-hard"
+            mode="winrate"
           />
         </div>
 
