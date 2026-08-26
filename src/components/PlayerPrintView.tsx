@@ -333,8 +333,8 @@ const PrintChart: React.FC<{
   if (!data || data.length < 2) return null;
 
   const width = 900;
-  const height = 260;
-  const padding = 52;
+  const height = 170;
+  const padding = 42;
 
   const minRating = Math.min(...data.map((d) => d.rating));
   const maxRating = Math.max(...data.map((d) => d.rating));
@@ -1332,35 +1332,37 @@ const PlayerPrintView: React.FC<
           .charts-page {
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 8px;
+            overflow: hidden;
           }
 
           .chart-card {
             border: 1.5px solid var(--border);
             border-radius: 16px;
             background: #fff;
-            padding: 12px 18px 10px;
+            padding: 8px 14px 6px;
             box-shadow: 0 7px 18px var(--shadow);
             break-inside: avoid;
             page-break-inside: avoid;
+            flex: 0 0 auto;
           }
 
           .chart-title {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 950;
             letter-spacing: 0.10em;
             text-transform: uppercase;
             text-align: center;
             color: var(--ink);
-            margin: 0 0 5px;
+            margin: 0 0 3px;
           }
 
           .chart-title::after {
             content: "";
             display: block;
-            margin: 6px auto 0;
-            width: 86px;
-            height: 3px;
+            margin: 4px auto 0;
+            width: 72px;
+            height: 2px;
             border-radius: 999px;
             background: linear-gradient(
               90deg,
@@ -1373,13 +1375,13 @@ const PlayerPrintView: React.FC<
           }
 
           .chart-axis-label {
-            font-size: 11px;
+            font-size: 9px;
             fill: #64748b;
             font-weight: 700;
           }
 
           .chart-current-value {
-            font-size: 14px;
+            font-size: 11px;
             fill: #0f172a;
             font-weight: 950;
           }
