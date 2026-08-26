@@ -7,7 +7,6 @@ import type {
   GameSession,
   MatchResult,
 } from '../types';
-
 import ShieldIcon from './icons/ShieldIcon';
 import TrophyIcon from './icons/TrophyIcon';
 
@@ -16,8 +15,6 @@ import TrophyIcon from './icons/TrophyIcon';
  * ========================================================================== */
 
 const toMs = (d: string) => {
-  if (!d) return 0;
-
   const ms = new Date(d).getTime();
   return Number.isFinite(ms) ? ms : 0;
 };
@@ -27,19 +24,12 @@ const hasAnyResults = (s: GameSession) =>
   (Array.isArray(s.round2Results) && s.round2Results.length > 0);
 
 const sumGoals = (goals: any[]) =>
-  (goals || []).reduce(
-    (sum, g) => sum + (Number(g?.count) || 0),
-    0
-  );
+  (goals || []).reduce((sum, g) => sum + (Number(g?.count) || 0), 0);
 
 const ordinalNl = (n: number) => {
   if (!Number.isFinite(n) || n <= 0) return '—';
   return `${n}e`;
 };
-
-/* ============================================================================
- * Season statistics
- * ========================================================================== */
 
 type StandingRow = {
   pts: number;
@@ -61,7 +51,7 @@ type SeasonMeta = {
 };
 
 /**
- * Seizoen-avonden tellen met resultaten + aanwezigheid per speler.
+ * Seizoen-avonden tellen (met resultaten) + aanwezigheid per speler.
  */
 const computeSeasonMeta = (params: {
   history: GameSession[];
@@ -103,11 +93,7 @@ const computeSeasonMeta = (params: {
   });
 
   const totalNights = seasonSessions.length;
-
-  const minNights = Math.max(
-    1,
-    Math.round(totalNights / 2)
-  );
+  const minNights = Math.max(1, Math.round(totalNights / 2));
 
   const eligibleIds = new Set<number>();
 
@@ -126,7 +112,7 @@ const computeSeasonMeta = (params: {
 };
 
 /**
- * Seizoen aggregaties.
+ * Seizoen aggregaties
  */
 const computeSeasonAggregates = (params: {
   history: GameSession[];
@@ -233,7 +219,7 @@ const computeSeasonAggregates = (params: {
 
       if (s2 > s1) {
         row.pts += 3;
-      } else if (s1 === s2) {
+      } else if (s2 === s1) {
         row.pts += 1;
       }
     });
@@ -260,19 +246,18 @@ const computeSeasonAggregates = (params: {
 
     const teamsR1 = session.teams || [];
 
-    const teamsR2 = (
-      (session as any).round2Teams ??
-      session.teams ??
-      []
-    ) as Player[][];
+    const teamsR2 =
+      ((session as any).round2Teams ??
+        session.teams ??
+        []) as Player[][];
 
-    (session.round1Results || []).forEach((m) => {
-      applyMatch(teamsR1, m);
-    });
+    (session.round1Results || []).forEach((m) =>
+      applyMatch(teamsR1, m)
+    );
 
-    (session.round2Results || []).forEach((m) => {
-      applyMatch(teamsR2, m);
-    });
+    (session.round2Results || []).forEach((m) =>
+      applyMatch(teamsR2, m)
+    );
   });
 
   return {
@@ -408,7 +393,7 @@ const rankDefender = (
 };
 
 /* ============================================================================
- * Rating chart
+ * PrintChart
  * ========================================================================== */
 
 const PrintChart: React.FC<{
@@ -422,13 +407,9 @@ const PrintChart: React.FC<{
     return null;
   }
 
-  const width = 1000;
-  const height = 190;
-
-  const paddingLeft = 55;
-  const paddingRight = 25;
-  const paddingTop = 25;
-  const paddingBottom = 35;
+  const width = 800;
+  const height = 200;
+  const padding = 40;
 
   const minRating = Math.min(
     ...data.map((d) => d.rating)
@@ -442,26 +423,22 @@ const PrintChart: React.FC<{
     maxRating - minRating || 1;
 
   const minY =
-    minRating - range * 0.12;
+    minRating - range * 0.1;
 
   const maxY =
-    maxRating + range * 0.12;
+    maxRating + range * 0.1;
 
   const getX = (index: number) =>
-    (index / Math.max(1, data.length - 1)) *
-      (width -
-        paddingLeft -
-        paddingRight) +
-    paddingLeft;
+    (index / (data.length - 1)) *
+      (width - padding * 2) +
+    padding;
 
   const getY = (rating: number) =>
     height -
-    paddingBottom -
+    padding -
     ((rating - minY) /
       (maxY - minY)) *
-      (height -
-        paddingTop -
-        paddingBottom);
+      (height - padding * 2);
 
   const points = data
     .map(
@@ -475,66 +452,56 @@ const PrintChart: React.FC<{
       return 'Nu';
     }
 
-    const date = new Date(dateStr);
-
-    if (Number.isNaN(date.getTime())) {
-      return '';
-    }
-
-    return date.toLocaleDateString(
-      'nl-NL',
-      {
-        month: 'short',
-        year: '2-digit',
-      }
-    );
+    return new Date(
+      dateStr
+    ).toLocaleDateString('nl-NL', {
+      month: 'short',
+      year: '2-digit',
+    });
   };
 
-  const middleIndex = Math.floor(
-    data.length / 2
-  );
-
   return (
-    <div className="chart-card">
-      <h4 className="chart-title">
+    <div className="chart-card break-inside-avoid">
+      <h5 className="chart-title">
         {title}
-      </h4>
+      </h5>
 
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="chart-svg"
-        preserveAspectRatio="none"
+        className="w-full h-auto"
       >
         <line
-          x1={paddingLeft}
-          y1={paddingTop}
-          x2={width - paddingRight}
-          y2={paddingTop}
-          className="chart-grid-line"
+          x1={padding}
+          y1={padding}
+          x2={width - padding}
+          y2={padding}
+          stroke="#e2e8f0"
+          strokeWidth="1"
         />
 
         <line
-          x1={paddingLeft}
+          x1={padding}
           y1={height / 2}
-          x2={width - paddingRight}
+          x2={width - padding}
           y2={height / 2}
-          className="chart-grid-line"
+          stroke="#e2e8f0"
+          strokeWidth="1"
         />
 
         <line
-          x1={paddingLeft}
-          y1={height - paddingBottom}
-          x2={width - paddingRight}
-          y2={height - paddingBottom}
-          className="chart-grid-line"
+          x1={padding}
+          y1={height - padding}
+          x2={width - padding}
+          y2={height - padding}
+          stroke="#e2e8f0"
+          strokeWidth="1"
         />
 
         <defs>
           <linearGradient
-            id={`ratingLine-${title.replace(
-              /\s+/g,
-              '-'
-            )}`}
+            id={`ratingLine-${title
+              .replace(/\s+/g, '-')
+              .toLowerCase()}`}
             x1="0"
             y1="0"
             x2="1"
@@ -544,17 +511,14 @@ const PrintChart: React.FC<{
               offset="0%"
               stopColor="#22c55e"
             />
-
             <stop
               offset="35%"
               stopColor="#3b82f6"
             />
-
             <stop
               offset="70%"
               stopColor="#8b5cf6"
             />
-
             <stop
               offset="100%"
               stopColor="#ec4899"
@@ -564,60 +528,44 @@ const PrintChart: React.FC<{
 
         <polyline
           fill="none"
-          stroke={`url(#ratingLine-${title.replace(
-            /\s+/g,
-            '-'
-          )})`}
-          strokeWidth="4"
+          stroke={`url(#ratingLine-${title
+            .replace(/\s+/g, '-')
+            .toLowerCase()})`}
+          strokeWidth="3.2"
           points={points}
           strokeLinejoin="round"
-          strokeLinecap="round"
         />
 
-        <text
-          x={paddingLeft - 8}
-          y={getY(maxRating)}
-          className="chart-label chart-label-bold"
-          textAnchor="end"
-          dominantBaseline="middle"
-        >
-          {maxRating.toFixed(1)}
-        </text>
-
-        <text
-          x={paddingLeft - 8}
-          y={getY(minRating)}
-          className="chart-label chart-label-bold"
-          textAnchor="end"
-          dominantBaseline="middle"
-        >
-          {minRating.toFixed(1)}
-        </text>
+        {/* Ratingcijfers bewust verwijderd */}
 
         <text
           x={getX(0)}
-          y={height - 10}
-          className="chart-label"
+          y={height - 15}
+          className="text-[12px] fill-slate-600"
           textAnchor="start"
         >
           {formatDate(data[0].date)}
         </text>
 
         <text
-          x={getX(middleIndex)}
-          y={height - 10}
-          className="chart-label"
+          x={getX(
+            Math.floor(data.length / 2)
+          )}
+          y={height - 15}
+          className="text-[12px] fill-slate-600"
           textAnchor="middle"
         >
           {formatDate(
-            data[middleIndex].date
+            data[
+              Math.floor(data.length / 2)
+            ].date
           )}
         </text>
 
         <text
           x={getX(data.length - 1)}
-          y={height - 10}
-          className="chart-label"
+          y={height - 15}
+          className="text-[12px] fill-slate-600"
           textAnchor="end"
         >
           {formatDate(
@@ -630,7 +578,7 @@ const PrintChart: React.FC<{
           cy={getY(
             data[data.length - 1].rating
           )}
-          r="6"
+          r="5"
           fill="#3b82f6"
         />
 
@@ -639,127 +587,18 @@ const PrintChart: React.FC<{
           cy={getY(
             data[data.length - 1].rating
           )}
-          r="3"
+          r="2.7"
           fill="#0f172a"
         />
 
-        <text
-          x={getX(data.length - 1) - 8}
-          y={
-            getY(
-              data[data.length - 1].rating
-            ) - 12
-          }
-          className="chart-value"
-          textAnchor="end"
-        >
-          {data[
-            data.length - 1
-          ].rating.toFixed(2)}
-        </text>
+        {/* Ratingcijfer bij laatste punt bewust verwijderd */}
       </svg>
     </div>
   );
 };
 
 /* ============================================================================
- * Relationship types
- * ========================================================================== */
-
-type RelationshipItem = {
-  id: number;
-  label: string;
-  percentage: number;
-  score?: number;
-};
-
-type RelationshipMode =
-  | 'frequent'
-  | 'winrate';
-
-/* ============================================================================
- * Relationship card
- * ========================================================================== */
-
-const RelationshipSection: React.FC<{
-  title: string;
-  data: RelationshipItem[];
-  playerMap: Map<number, Player>;
-  variant:
-    | 'rel-frequent'
-    | 'rel-best'
-    | 'rel-worst'
-    | 'rel-easy'
-    | 'rel-hard';
-  mode: RelationshipMode;
-}> = ({
-  title,
-  data,
-  playerMap,
-  variant,
-  mode,
-}) => {
-  const items = Array.isArray(data)
-    ? data.slice(0, 5)
-    : [];
-
-  return (
-    <div
-      className={`relationship-card ${variant}`}
-    >
-      <div className="relationship-title">
-        {title}
-      </div>
-
-      {items.length > 0 ? (
-        <div className="relationship-list">
-          {items.map(
-            (item, index) => {
-              const p =
-                playerMap.get(item.id);
-
-              return (
-                <div
-                  key={item.id}
-                  className="relationship-row"
-                >
-                  <div className="relationship-person">
-                    <span className="relationship-rank">
-                      {index + 1}
-                    </span>
-
-                    <span className="relationship-name">
-                      {p
-                        ? p.name
-                        : `Speler ${item.id}`}
-                    </span>
-                  </div>
-
-                  <div className="relationship-result">
-                    <span className="relationship-label">
-                      {item.label}
-                    </span>
-
-                    <span className="relationship-percent">
-                      {item.percentage}%
-                    </span>
-                  </div>
-                </div>
-              );
-            }
-          )}
-        </div>
-      ) : (
-        <div className="relationship-empty">
-          - Geen data -
-        </div>
-      )}
-    </div>
-  );
-};
-
-/* ============================================================================
- * Props
+ * Component
  * ========================================================================== */
 
 interface PlayerPrintViewProps {
@@ -780,10 +619,6 @@ interface PlayerPrintViewProps {
   onClose: () => void;
 }
 
-/* ============================================================================
- * Component
- * ========================================================================== */
-
 const PlayerPrintView: React.FC<
   PlayerPrintViewProps
 > = ({
@@ -800,45 +635,32 @@ const PlayerPrintView: React.FC<
   const playerMap = useMemo(
     () =>
       new Map(
-        players.map((p) => [
-          p.id,
-          p,
-        ])
+        players.map((p) => [p.id, p])
       ),
     [players]
   );
 
-  /* --------------------------------------------------------------------------
-   * Print trigger
-   * ------------------------------------------------------------------------ */
-
   useEffect(() => {
-    const printTimer = window.setTimeout(() => {
-      window.print();
-    }, 700);
+    const printTimer = setTimeout(
+      () => window.print(),
+      500
+    );
 
-    const handleAfterPrint = () => {
+    const closeTimer = setTimeout(
+      () => onClose(),
+      1500
+    );
+
+    window.onafterprint = () => {
+      clearTimeout(closeTimer);
       onClose();
     };
 
-    window.addEventListener(
-      'afterprint',
-      handleAfterPrint
-    );
-
     return () => {
-      window.clearTimeout(printTimer);
-
-      window.removeEventListener(
-        'afterprint',
-        handleAfterPrint
-      );
+      clearTimeout(printTimer);
+      clearTimeout(closeTimer);
     };
   }, [onClose]);
-
-  /* --------------------------------------------------------------------------
-   * Trophy images
-   * ------------------------------------------------------------------------ */
 
   const getTrophyContent = (
     type: TrophyType
@@ -899,25 +721,82 @@ const PlayerPrintView: React.FC<
         <img
           src={url}
           alt={type}
-          className="trophy-image"
+          className="w-10 h-10 object-contain"
         />
       );
     }
 
     if (type === 'Verdediger') {
       return (
-        <ShieldIcon className="trophy-icon" />
+        <ShieldIcon className="w-8 h-8 text-slate-900" />
       );
     }
 
     return (
-      <TrophyIcon className="trophy-icon" />
+      <TrophyIcon className="w-8 h-8 text-slate-900" />
     );
   };
 
-  /* --------------------------------------------------------------------------
-   * Season calculations
-   * ------------------------------------------------------------------------ */
+  const RelationshipSection: React.FC<{
+    title: string;
+    data: [number, number][];
+    variant?: string;
+  }> = ({
+    title,
+    data,
+    variant,
+  }) => (
+    <div
+      className={`break-inside-avoid mb-4 rel-card ${
+        variant || ''
+      }`}
+    >
+      <h4 className="rel-title">
+        {title}
+      </h4>
+
+      <ul className="text-xs">
+        {data.length > 0 ? (
+          data.slice(0, 5).map(
+            ([id, count], idx) => {
+              const p = playerMap.get(id);
+
+              return (
+                <li
+                  key={id}
+                  className="rel-row"
+                >
+                  <span className="rel-name">
+                    <span className="rel-rank">
+                      {idx + 1}
+                    </span>
+
+                    {p
+                      ? p.name
+                      : `Speler ${id}`}
+                  </span>
+
+                  <span className="rel-count">
+                    {count}x
+                  </span>
+                </li>
+              );
+            }
+          )
+        ) : (
+          <li className="text-slate-400 italic py-1">
+            - Geen data -
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+
+  const avgPoints =
+    stats.gamesPlayed > 0
+      ? (Number(stats.points) || 0) /
+        stats.gamesPlayed
+      : 0;
 
   const allowedIds = useMemo(
     () =>
@@ -947,14 +826,10 @@ const PlayerPrintView: React.FC<
       totalNights:
         seasonMeta.totalNights,
     };
-  }, [
-    seasonMeta,
-    player.id,
-  ]);
+  }, [seasonMeta, player.id]);
 
   const eligible50 =
-    seasonAttendance.totalNights >
-      0 &&
+    seasonAttendance.totalNights > 0 &&
     seasonAttendance.attendedNights /
       seasonAttendance.totalNights >=
       0.5;
@@ -964,48 +839,39 @@ const PlayerPrintView: React.FC<
       standings,
       goalsForPlayer,
       defense,
-    } =
-      computeSeasonAggregates({
-        history: history || [],
-        allowedIds,
-      });
+    } = computeSeasonAggregates({
+      history: history || [],
+      allowedIds,
+    });
 
-    const position =
-      rankStanding(
-        standings,
-        player.id,
-        seasonMeta.eligibleIds
-      );
+    const position = rankStanding(
+      standings,
+      player.id,
+      seasonMeta.eligibleIds
+    );
 
-    const ts =
-      rankTopScorer(
-        goalsForPlayer,
-        standings,
-        player.id,
-        seasonMeta.eligibleIds
-      );
+    const ts = rankTopScorer(
+      goalsForPlayer,
+      standings,
+      player.id,
+      seasonMeta.eligibleIds
+    );
 
-    const def =
-      rankDefender(
-        defense,
-        player.id,
-        seasonMeta.eligibleIds
-      );
+    const def = rankDefender(
+      defense,
+      player.id,
+      seasonMeta.eligibleIds
+    );
 
     return {
       position,
-      topscorerRank:
-        ts.rank,
-      topscorerGoals:
-        ts.myGoals,
-      topscorerAvg:
-        ts.myAvg,
-      defenderRank:
-        def.rank,
+      topscorerRank: ts.rank,
+      topscorerGoals: ts.myGoals,
+      topscorerAvg: ts.myAvg,
+      defenderRank: def.rank,
       defenderAvgAgainst:
         def.concededPerMatch,
-      minNights:
-        seasonMeta.minNights,
+      minNights: seasonMeta.minNights,
     };
   }, [
     history,
@@ -1015,777 +881,632 @@ const PlayerPrintView: React.FC<
     seasonMeta.minNights,
   ]);
 
-  const avgPoints =
-    stats.gamesPlayed > 0
-      ? (Number(stats.points) || 0) /
-        stats.gamesPlayed
-      : 0;
-
   const seasonTitle =
     (competitionName || '').trim() ||
     'Competitie';
 
-  /* --------------------------------------------------------------------------
-   * Portal
-   * ------------------------------------------------------------------------ */
-
   return createPortal(
-    <div className="print-portal">
+    <div className="print-portal hidden">
       <style>
         {`
-          /* ================================================================
-             SCREEN
-             ================================================================ */
-
-          .print-portal {
-            display: none;
-          }
-
-          /* ================================================================
-             PRINT PAGE
-             ================================================================ */
-
           @media print {
-
-            @page {
-              size: A4 landscape;
-              margin: 9mm;
+            body::before {
+              display: none !important;
             }
 
             html,
             body {
-              width: 100%;
-              height: auto;
-              margin: 0 !important;
-              padding: 0 !important;
               background: white !important;
-            }
-
-            body::before {
-              display: none !important;
+              height: 100%;
+              margin: 0;
+              padding: 0;
             }
 
             body > *:not(.print-portal) {
               display: none !important;
             }
 
+            @page {
+              size: A4;
+              margin: 10mm;
+            }
+
+            :root {
+              --tile-blue: #3b82f6;
+              --tile-orange: #f59e0b;
+              --tile-purple: #8b5cf6;
+              --tile-yellow: #fbbf24;
+              --tile-pink: #ec4899;
+              --tile-green: #22c55e;
+              --tile-red: #ef4444;
+              --tile-teal: #14b8a6;
+
+              --ink: #0f172a;
+              --muted: #475569;
+              --border: #cbd5e1;
+              --paper: #ffffff;
+
+              --shadow: rgba(15,23,42,0.10);
+              --soft: rgba(15,23,42,0.05);
+            }
+
             .print-portal {
               display: block !important;
-              position: static !important;
+              position: absolute;
+              top: 0;
+              left: 0;
               width: 100%;
-              min-height: 100%;
-              background: white;
-              color: #0f172a;
+              height: 100%;
+              background: var(--paper);
+              color: var(--ink);
               font-family:
                 ui-sans-serif,
                 system-ui,
                 -apple-system,
-                BlinkMacSystemFont,
-                "Segoe UI",
+                Segoe UI,
                 Roboto,
                 Arial,
+                "Noto Sans",
+                "Helvetica Neue",
                 sans-serif;
-              z-index: 99999;
+              z-index: 9999;
             }
 
-            * {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
+            a[href]:after {
+              content: "" !important;
             }
 
-            /* ============================================================
-               GENERAL
-               ============================================================ */
-
-            .print-page {
-              width: 100%;
-              min-height: 185mm;
-              box-sizing: border-box;
-              position: relative;
+            a:after {
+              content: "" !important;
             }
-
-            .page-break {
-              break-before: page;
-              page-break-before: always;
-            }
-
-            .avoid-break {
-              break-inside: avoid;
-              page-break-inside: avoid;
-            }
-
-            /* ============================================================
-               PAGE 1
-               ============================================================ */
 
             .header-wrap {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              padding-bottom: 9px;
-              margin-bottom: 10px;
-              border-bottom: 2px solid #0f172a;
+              border-bottom: 2px solid var(--ink);
+              padding-bottom: 14px;
+              margin-bottom: 18px;
               position: relative;
             }
 
-            .header-wrap::after {
+            .header-wrap:after {
               content: "";
               position: absolute;
               left: 0;
               bottom: -2px;
               width: 100%;
-              height: 5px;
-              background:
-                linear-gradient(
-                  90deg,
-                  #ef4444,
-                  #f59e0b,
-                  #fbbf24,
-                  #22c55e,
-                  #14b8a6,
-                  #3b82f6,
-                  #8b5cf6,
-                  #ec4899
-                );
+              height: 7px;
+              background: linear-gradient(
+                90deg,
+                var(--tile-red),
+                var(--tile-orange),
+                var(--tile-yellow),
+                var(--tile-green),
+                var(--tile-teal),
+                var(--tile-blue),
+                var(--tile-purple),
+                var(--tile-pink)
+              );
               opacity: 0.45;
             }
 
-            .player-header {
-              display: flex;
-              align-items: center;
-            }
-
-            .player-photo {
-              width: 70px;
-              height: 70px;
-              border-radius: 999px;
-              object-fit: cover;
-              border: 2px solid #0f172a;
-              margin-right: 14px;
-            }
-
-            .player-initial {
-              width: 70px;
-              height: 70px;
-              border-radius: 999px;
-              background: #f1f5f9;
-              border: 2px solid #0f172a;
-              margin-right: 14px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 28px;
-              font-weight: 900;
-            }
-
-            .player-name {
-              font-size: 28px;
-              line-height: 1;
-              font-weight: 950;
-              text-transform: uppercase;
-              letter-spacing: 0.03em;
-            }
-
-            .player-tags {
-              display: flex;
-              gap: 6px;
-              margin-top: 7px;
-            }
-
-            .player-tag {
-              border: 1px solid #0f172a;
-              padding: 3px 8px;
-              border-radius: 999px;
-              font-size: 8px;
-              font-weight: 900;
-              text-transform: uppercase;
-            }
-
-            .print-logo {
-              height: 42px;
-              width: auto;
-              object-fit: contain;
-            }
-
-            /* ============================================================
-               TROPHIES
-               ============================================================ */
-
-            .section-title {
-              font-size: 14px;
-              font-weight: 950;
-              text-transform: uppercase;
-              letter-spacing: 0.04em;
-              border-bottom: 1px solid #cbd5e1;
-              padding-bottom: 4px;
-              margin: 0 0 7px;
-            }
-
-            .trophies {
-              display: grid;
-              grid-template-columns: repeat(4, 1fr);
-              gap: 7px;
-              margin-bottom: 10px;
-            }
-
-            .trophy-card {
-              display: flex;
-              align-items: center;
-              min-height: 44px;
-              padding: 5px 7px;
-              border: 1px solid #cbd5e1;
-              border-radius: 9px;
-              background: #f8fafc;
-            }
-
-            .trophy-image {
-              width: 32px;
-              height: 32px;
-              object-fit: contain;
-              margin-right: 8px;
-            }
-
-            .trophy-icon {
-              width: 27px;
-              height: 27px;
-              margin-right: 8px;
-            }
-
-            .trophy-name {
-              font-size: 9px;
-              font-weight: 950;
-              line-height: 1.15;
-            }
-
-            .trophy-year {
-              font-size: 8px;
-              color: #64748b;
-              font-weight: 700;
-              margin-top: 2px;
-            }
-
-            /* ============================================================
-               STAT BOXES
-               ============================================================ */
-
-            .print-grid {
-              display: grid;
-              grid-template-columns: repeat(4, 1fr);
-              gap: 8px;
-              margin-bottom: 9px;
-            }
-
             .stat-box {
-              min-height: 65px;
-              border: 1px solid #cbd5e1;
-              border-radius: 11px;
-              padding: 7px;
+              border: 1.5px solid var(--border);
+              padding: 12px 10px;
+              border-radius: 14px;
               text-align: center;
-              background: white;
+              background: #fff;
               position: relative;
               overflow: hidden;
-              box-shadow:
-                0 4px 12px rgba(15,23,42,0.08);
+              box-shadow: 0 7px 18px var(--shadow);
               display: flex;
               flex-direction: column;
               justify-content: center;
+              min-height: 96px;
             }
 
-            .stat-box::before {
+            .stat-box:before {
               content: "";
               position: absolute;
               top: 0;
-              left: 0;
-              width: 100%;
-              height: 4px;
-              background: var(--accent);
+              right: 0;
+              width: 74px;
+              height: 74px;
+              border-radius: 999px;
+              background:
+                radial-gradient(
+                  circle at 30% 30%,
+                  rgba(255,255,255,0.85),
+                  var(--soft)
+                );
+              transform: translate(24px,-24px);
             }
 
             .tile-green {
-              --accent: #22c55e;
+              border-left: 9px solid var(--tile-green);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(34,197,94,0.10),
-                  white
+                  rgba(34,197,94,0.14),
+                  rgba(34,197,94,0.06)
                 );
             }
 
             .tile-yellow {
-              --accent: #fbbf24;
+              border-left: 9px solid var(--tile-yellow);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(251,191,36,0.12),
-                  white
+                  rgba(251,191,36,0.16),
+                  rgba(251,191,36,0.06)
                 );
             }
 
             .tile-pink {
-              --accent: #ec4899;
+              border-left: 9px solid var(--tile-pink);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(236,72,153,0.10),
-                  white
+                  rgba(236,72,153,0.14),
+                  rgba(236,72,153,0.06)
                 );
             }
 
             .tile-blue {
-              --accent: #3b82f6;
+              border-left: 9px solid var(--tile-blue);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(59,130,246,0.10),
-                  white
+                  rgba(59,130,246,0.14),
+                  rgba(59,130,246,0.06)
                 );
             }
 
             .tile-orange {
-              --accent: #f59e0b;
+              border-left: 9px solid var(--tile-orange);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(245,158,11,0.10),
-                  white
+                  rgba(245,158,11,0.16),
+                  rgba(245,158,11,0.06)
                 );
             }
 
             .tile-purple {
-              --accent: #8b5cf6;
+              border-left: 9px solid var(--tile-purple);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(139,92,246,0.10),
-                  white
+                  rgba(139,92,246,0.14),
+                  rgba(139,92,246,0.06)
                 );
             }
 
             .tile-teal {
-              --accent: #14b8a6;
+              border-left: 9px solid var(--tile-teal);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(20,184,166,0.10),
-                  white
+                  rgba(20,184,166,0.14),
+                  rgba(20,184,166,0.06)
                 );
             }
 
             .tile-red {
-              --accent: #ef4444;
+              border-left: 9px solid var(--tile-red);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(239,68,68,0.10),
-                  white
+                  rgba(239,68,68,0.14),
+                  rgba(239,68,68,0.06)
                 );
             }
 
+            .print-grid {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 10px;
+              margin-bottom: 18px;
+            }
+
+            .relationships-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr 1fr;
+              gap: 14px;
+              margin-bottom: 18px;
+            }
+
             .stat-title {
-              font-size: 7px;
+              font-size: 9px;
               text-transform: uppercase;
-              color: #475569;
+              color: var(--muted);
               font-weight: 950;
-              letter-spacing: 0.05em;
-              line-height: 1.1;
+              letter-spacing: 0.06em;
+              line-height: 1.15;
+              white-space: normal;
+              word-break: break-word;
+              padding: 0 6px;
+              margin-bottom: 4px;
+              z-index: 1;
             }
 
             .stat-value {
-              font-size: 18px;
+              font-size: 22px;
               font-weight: 950;
-              color: #0f172a;
-              line-height: 1.1;
-              margin-top: 3px;
+              color: var(--ink);
+              line-height: 1.05;
+              z-index: 1;
             }
 
             .stat-sub {
-              font-size: 7px;
-              color: #64748b;
-              margin-top: 3px;
+              font-size: 10px;
+              color: var(--muted);
+              margin-top: 4px;
               font-weight: 800;
+              line-height: 1.15;
+              white-space: normal;
+              word-break: break-word;
+              z-index: 1;
             }
 
             .result-grid {
+              margin-top: 6px;
               display: flex;
+              flex-direction: column;
+              gap: 8px;
+              align-items: center;
               justify-content: center;
+              z-index: 1;
+            }
+
+            .result-item {
+              display: flex;
               align-items: center;
               gap: 10px;
-              margin-top: 4px;
+            }
+
+            .result-dot {
+              width: 9px;
+              height: 9px;
+              border-radius: 999px;
+              display: inline-block;
+              box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+              flex: 0 0 auto;
+            }
+
+            .dot-win {
+              background: var(--tile-green);
+            }
+
+            .dot-draw {
+              background: var(--tile-yellow);
+            }
+
+            .dot-loss {
+              background: var(--tile-red);
             }
 
             .result-text {
               display: flex;
               flex-direction: column;
               align-items: center;
+              line-height: 1.05;
             }
 
             .result-count {
-              font-size: 13px;
+              font-size: 16px;
               font-weight: 950;
+              color: var(--ink);
+              font-variant-numeric: tabular-nums;
             }
 
             .result-label {
-              font-size: 6px;
-              color: #64748b;
-              text-transform: uppercase;
-              font-weight: 900;
-            }
-
-            /* ============================================================
-               PAGE 2 - CHARTS
-               ============================================================ */
-
-            .charts-page {
-              min-height: 185mm;
-              display: flex;
-              flex-direction: column;
-              justify-content: flex-start;
-            }
-
-            .charts-heading {
-              font-size: 16px;
+              font-size: 9px;
               font-weight: 950;
               text-transform: uppercase;
-              letter-spacing: 0.04em;
-              border-bottom: 1px solid #cbd5e1;
-              padding-bottom: 5px;
-              margin-bottom: 8px;
+              letter-spacing: 0.06em;
+              color: var(--muted);
+              margin-top: 1px;
             }
 
             .chart-card {
-              width: 100%;
-              height: 78mm;
-              box-sizing: border-box;
-              border: 1px solid #cbd5e1;
-              border-radius: 12px;
-              background: white;
-              padding: 8px 12px 6px;
-              margin-bottom: 8mm;
-              box-shadow:
-                0 5px 14px rgba(15,23,42,0.08);
-              break-inside: avoid;
-              page-break-inside: avoid;
-            }
-
-            .chart-card:last-child {
-              margin-bottom: 0;
+              border: 1.5px solid var(--border);
+              border-radius: 14px;
+              background: #ffffff;
+              padding: 12px;
+              margin-bottom: 14px;
+              box-shadow: 0 7px 18px var(--shadow);
             }
 
             .chart-title {
-              text-align: center;
-              text-transform: uppercase;
-              font-size: 10px;
+              font-size: 11px;
               font-weight: 950;
-              letter-spacing: 0.08em;
-              margin: 0 0 3px;
-              color: #0f172a;
+              letter-spacing: 0.10em;
+              text-transform: uppercase;
+              text-align: center;
+              color: var(--ink);
+              margin-bottom: 8px;
+              position: relative;
             }
 
-            .chart-title::after {
+            .chart-title:after {
               content: "";
               display: block;
-              width: 65px;
-              height: 2px;
-              margin: 4px auto 0;
+              margin: 8px auto 0;
+              width: 86px;
+              height: 3px;
               border-radius: 999px;
               background:
                 linear-gradient(
                   90deg,
-                  #22c55e,
-                  #3b82f6,
-                  #8b5cf6,
-                  #ec4899
+                  var(--tile-green),
+                  var(--tile-blue),
+                  var(--tile-purple),
+                  var(--tile-pink)
                 );
+              opacity: 0.70;
             }
 
-            .chart-svg {
-              width: 100%;
-              height: calc(100% - 25px);
-              display: block;
-            }
-
-            .chart-grid-line {
-              stroke: #e2e8f0;
-              stroke-width: 1;
-            }
-
-            .chart-label {
-              fill: #64748b;
-              font-size: 11px;
-            }
-
-            .chart-label-bold {
-              font-weight: 800;
-            }
-
-            .chart-value {
-              fill: #0f172a;
-              font-size: 13px;
-              font-weight: 950;
-            }
-
-            /* ============================================================
-               PAGE 3 - RELATIONSHIPS
-               ============================================================ */
-
-            .relationships-page {
-              min-height: 185mm;
-            }
-
-            .relationships-grid {
-              display: grid;
-              grid-template-columns:
-                repeat(3, 1fr);
-              gap: 9px;
-              align-items: start;
-            }
-
-            .relationship-card {
-              border: 1px solid #cbd5e1;
-              border-radius: 11px;
-              background: white;
-              overflow: hidden;
-              box-shadow:
-                0 5px 14px rgba(15,23,42,0.08);
-              break-inside: avoid;
-              page-break-inside: avoid;
-              min-height: 68mm;
-            }
-
-            .relationship-title {
-              padding: 8px 10px 7px;
-              border-bottom: 1px solid #dbe4ee;
-              font-size: 9px;
-              line-height: 1.1;
-              font-weight: 950;
-              text-transform: uppercase;
-              letter-spacing: 0.055em;
+            .rel-card {
+              border: 1.5px solid var(--border);
+              border-radius: 14px;
+              padding: 10px;
+              background: #fff;
+              box-shadow: 0 7px 18px var(--shadow);
               position: relative;
+              overflow: hidden;
             }
 
-            .relationship-title::before {
+            .rel-card:before {
               content: "";
               position: absolute;
-              top: 0;
               left: 0;
+              top: 0;
+              width: 100%;
+              height: 6px;
+              background:
+                linear-gradient(
+                  90deg,
+                  var(--tile-blue),
+                  var(--tile-purple),
+                  var(--tile-pink)
+                );
+              opacity: 0.55;
+            }
+
+            .rel-card:after {
+              content: "";
+              position: absolute;
               right: 0;
-              height: 4px;
-              background: var(--relationship-color);
-            }
-
-            .relationship-list {
-              padding: 2px 10px 6px;
-            }
-
-            .relationship-row {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              gap: 8px;
-              padding: 7px 0;
-              border-bottom: 1px solid #e2e8f0;
-            }
-
-            .relationship-row:last-child {
-              border-bottom: 0;
-            }
-
-            .relationship-person {
-              display: flex;
-              align-items: center;
-              gap: 7px;
-              min-width: 0;
-            }
-
-            .relationship-rank {
-              width: 20px;
-              height: 20px;
-              min-width: 20px;
+              top: 0;
+              width: 70px;
+              height: 70px;
               border-radius: 999px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: var(--relationship-color);
-              color: white;
-              font-size: 9px;
-              font-weight: 950;
-              box-shadow:
-                0 2px 5px rgba(15,23,42,0.15);
+              background:
+                radial-gradient(
+                  circle at 30% 30%,
+                  rgba(255,255,255,0.85),
+                  rgba(15,23,42,0.05)
+                );
+              transform: translate(24px,-28px);
             }
-
-            .rel-easy .relationship-rank {
-              color: #0f172a;
-            }
-
-            .relationship-name {
-              font-size: 10px;
-              font-weight: 900;
-              color: #0f172a;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-            }
-
-            .relationship-result {
-              display: flex;
-              align-items: center;
-              gap: 5px;
-              flex-shrink: 0;
-            }
-
-            .relationship-label {
-              font-size: 8px;
-              font-weight: 850;
-              color: #475569;
-              white-space: nowrap;
-            }
-
-            .relationship-percent {
-              font-size: 8px;
-              font-weight: 950;
-              padding: 3px 7px;
-              border-radius: 999px;
-              border: 1px solid var(--relationship-border);
-              background: var(--relationship-bg);
-              color: #334155;
-              white-space: nowrap;
-            }
-
-            .relationship-empty {
-              padding: 12px;
-              color: #94a3b8;
-              font-size: 9px;
-              font-style: italic;
-            }
-
-            /* COLORS */
 
             .rel-frequent {
-              --relationship-color: #14b8a6;
-              --relationship-bg: rgba(20,184,166,0.10);
-              --relationship-border: rgba(20,184,166,0.35);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(20,184,166,0.08),
-                  white 55%
+                  rgba(20,184,166,0.10),
+                  rgba(255,255,255,0.92)
                 );
             }
 
             .rel-best {
-              --relationship-color: #eab308;
-              --relationship-bg: rgba(234,179,8,0.13);
-              --relationship-border: rgba(202,138,4,0.40);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(234,179,8,0.11),
-                  white 55%
+                  rgba(34,197,94,0.10),
+                  rgba(255,255,255,0.92)
                 );
             }
 
             .rel-worst {
-              --relationship-color: #f97316;
-              --relationship-bg: rgba(249,115,22,0.11);
-              --relationship-border: rgba(249,115,22,0.35);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(249,115,22,0.09),
-                  white 55%
+                  rgba(239,68,68,0.10),
+                  rgba(255,255,255,0.92)
                 );
             }
 
             .rel-easy {
-              --relationship-color: #ec4899;
-              --relationship-bg: rgba(236,72,153,0.11);
-              --relationship-border: rgba(236,72,153,0.35);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(236,72,153,0.09),
-                  white 55%
+                  rgba(251,191,36,0.12),
+                  rgba(255,255,255,0.92)
                 );
             }
 
             .rel-hard {
-              --relationship-color: #8b5cf6;
-              --relationship-bg: rgba(139,92,246,0.11);
-              --relationship-border: rgba(139,92,246,0.35);
               background:
                 linear-gradient(
                   180deg,
-                  rgba(139,92,246,0.09),
-                  white 55%
+                  rgba(139,92,246,0.10),
+                  rgba(255,255,255,0.92)
                 );
             }
 
-            /* ============================================================
-               FOOTER
-               ============================================================ */
-
-            .print-footer {
-              position: absolute;
-              bottom: 0;
-              left: 0;
-              right: 0;
-              text-align: center;
-              border-top: 1px solid #e2e8f0;
-              padding-top: 5px;
-              font-size: 7px;
-              color: #94a3b8;
+            .rel-frequent:before {
+              background:
+                linear-gradient(
+                  90deg,
+                  var(--tile-teal),
+                  var(--tile-blue)
+                );
             }
 
-            /* Geen URL's achter afbeeldingen/links */
-            a::after,
-            a[href]::after {
-              content: "" !important;
+            .rel-best:before {
+              background:
+                linear-gradient(
+                  90deg,
+                  var(--tile-green),
+                  var(--tile-teal)
+                );
+            }
+
+            .rel-worst:before {
+              background:
+                linear-gradient(
+                  90deg,
+                  var(--tile-red),
+                  var(--tile-orange)
+                );
+            }
+
+            .rel-easy:before {
+              background:
+                linear-gradient(
+                  90deg,
+                  var(--tile-yellow),
+                  var(--tile-orange)
+                );
+            }
+
+            .rel-hard:before {
+              background:
+                linear-gradient(
+                  90deg,
+                  var(--tile-purple),
+                  var(--tile-pink)
+                );
+            }
+
+            .rel-title {
+              font-size: 10px;
+              text-transform: uppercase;
+              color: var(--muted);
+              font-weight: 950;
+              letter-spacing: 0.08em;
+              border-bottom:
+                1px solid rgba(226,232,240,0.9);
+              padding-bottom: 6px;
+              margin: 8px 0 6px;
+              position: relative;
+              z-index: 1;
+            }
+
+            .rel-row {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 6px 0;
+              border-bottom:
+                1px solid rgba(226,232,240,0.85);
+              position: relative;
+              z-index: 1;
+            }
+
+            .rel-row:last-child {
+              border-bottom: 0;
+            }
+
+            .rel-name {
+              font-weight: 800;
+              color: var(--ink);
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+
+            .rel-rank {
+              width: 18px;
+              height: 18px;
+              border-radius: 999px;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 10px;
+              font-weight: 950;
+              color: white;
+              background: var(--tile-blue);
+              box-shadow:
+                0 2px 6px rgba(15,23,42,0.18);
+            }
+
+            .rel-count {
+              font-weight: 950;
+              font-variant-numeric: tabular-nums;
+              padding: 2px 8px;
+              border-radius: 999px;
+              border:
+                1px solid rgba(203,213,225,0.9);
+              color: var(--muted);
+              background:
+                rgba(15,23,42,0.06);
+            }
+
+            .rel-row {
+              break-inside: avoid;
+            }
+
+            .charts-page {
+              break-before: page;
+              page-break-before: always;
+            }
+
+            .relationships-page {
+              break-before: page;
+              page-break-before: always;
+            }
+
+            .relationships-page,
+            .relationships-grid {
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+
+            .print-footer {
+              font-size: 10px;
+              color: #94a3b8;
+              text-align: center;
+              padding-top: 12px;
+              border-top: 1px solid #e2e8f0;
             }
           }
         `}
       </style>
 
-      {/* ====================================================================
-          PAGE 1
-          ================================================================== */}
-
-      <div className="print-page">
-        <div className="header-wrap">
-          <div className="player-header">
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="flex items-center justify-between header-wrap">
+          <div className="flex items-center">
             {player.photoBase64 ? (
               <img
                 src={player.photoBase64}
                 alt={player.name}
-                className="player-photo"
+                className="w-24 h-24 rounded-full object-cover border-2 border-slate-900 mr-6"
               />
             ) : (
-              <div className="player-initial">
+              <div className="w-24 h-24 rounded-full bg-slate-100 border-2 border-slate-900 mr-6 flex items-center justify-center text-3xl font-black">
                 {player.name.charAt(0)}
               </div>
             )}
 
             <div>
-              <div className="player-name">
+              <h1 className="text-4xl font-black uppercase tracking-wide">
                 {player.name}
-              </div>
+              </h1>
 
-              <div className="player-tags">
+              {/* Rating bewust verwijderd */}
+              <div className="flex gap-2 mt-2 text-sm font-bold uppercase text-slate-600">
                 {player.isKeeper && (
-                  <span className="player-tag">
+                  <span className="border border-slate-900 px-2 py-1 rounded">
                     Keeper
                   </span>
                 )}
 
                 {player.isFixedMember && (
-                  <span className="player-tag">
+                  <span className="border border-slate-900 px-2 py-1 rounded">
                     Lid
                   </span>
                 )}
-
-                <span className="player-tag">
-                  Rating:{' '}
-                  {player.rating.toFixed(2)}
-                </span>
               </div>
             </div>
           </div>
@@ -1793,36 +1514,32 @@ const PlayerPrintView: React.FC<
           <img
             src="https://www.obverband.nl/wp-content/uploads/2019/01/logo-goed.png"
             alt="Logo"
-            className="print-logo"
+            className="h-20 w-auto"
           />
         </div>
 
-        {/* PRIJZENKAST */}
-
         {trophies.length > 0 && (
-          <div className="avoid-break">
-            <h3 className="section-title">
+          <div className="mb-6 break-inside-avoid">
+            <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-3 uppercase">
               Prijzenkast
             </h3>
 
-            <div className="trophies">
+            <div className="grid grid-cols-2 gap-3">
               {trophies.map((t) => (
                 <div
                   key={t.id}
-                  className="trophy-card"
+                  className="flex items-center border border-slate-200 p-2 rounded-xl bg-slate-50"
                 >
-                  <div>
-                    {getTrophyContent(
-                      t.type
-                    )}
+                  <div className="mr-3">
+                    {getTrophyContent(t.type)}
                   </div>
 
                   <div>
-                    <div className="trophy-name">
+                    <div className="font-black text-sm">
                       {t.type}
                     </div>
 
-                    <div className="trophy-year">
+                    <div className="text-xs text-slate-500 font-bold">
                       {t.year}
                     </div>
                   </div>
@@ -1832,9 +1549,7 @@ const PlayerPrintView: React.FC<
           </div>
         )}
 
-        {/* SEIZOEN */}
-
-        <h3 className="section-title">
+        <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-4 uppercase">
           {seasonTitle}
         </h3>
 
@@ -1845,19 +1560,12 @@ const PlayerPrintView: React.FC<
             </div>
 
             <div className="stat-value">
-              {
-                seasonAttendance.attendedNights
-              }
-              /
-              {
-                seasonAttendance.totalNights
-              }
+              {seasonAttendance.attendedNights}/
+              {seasonAttendance.totalNights}
             </div>
 
             <div className="stat-sub">
-              Minimaal:{' '}
-              {seasonRanks.minNights}{' '}
-              avonden
+              Minimaal: {seasonRanks.minNights} avonden
             </div>
           </div>
 
@@ -1929,8 +1637,6 @@ const PlayerPrintView: React.FC<
           </div>
         </div>
 
-        {/* ALGEMENE STATISTIEKEN */}
-
         <div className="print-grid">
           <div className="stat-box tile-orange">
             <div className="stat-title">
@@ -1948,33 +1654,39 @@ const PlayerPrintView: React.FC<
             </div>
 
             <div className="result-grid">
-              <div className="result-text">
-                <span className="result-count">
-                  {stats.wins}
-                </span>
+              <div className="result-item">
+                <span className="result-text">
+                  <span className="result-count">
+                    {stats.wins}
+                  </span>
 
-                <span className="result-label">
-                  Gewonnen
-                </span>
-              </div>
-
-              <div className="result-text">
-                <span className="result-count">
-                  {stats.draws}
-                </span>
-
-                <span className="result-label">
-                  Gelijk
+                  <span className="result-label">
+                    Gewonnen
+                  </span>
                 </span>
               </div>
 
-              <div className="result-text">
-                <span className="result-count">
-                  {stats.losses}
-                </span>
+              <div className="result-item">
+                <span className="result-text">
+                  <span className="result-count">
+                    {stats.draws}
+                  </span>
 
-                <span className="result-label">
-                  Verloren
+                  <span className="result-label">
+                    Gelijk
+                  </span>
+                </span>
+              </div>
+
+              <div className="result-item">
+                <span className="result-text">
+                  <span className="result-count">
+                    {stats.losses}
+                  </span>
+
+                  <span className="result-label">
+                    Verloren
+                  </span>
                 </span>
               </div>
             </div>
@@ -1988,17 +1700,6 @@ const PlayerPrintView: React.FC<
             <div className="stat-value">
               {stats.goalsScored}
             </div>
-
-            <div className="stat-sub">
-              {(
-                stats.goalsScored /
-                Math.max(
-                  1,
-                  stats.gamesPlayed
-                )
-              ).toFixed(2)}{' '}
-              gemiddeld
-            </div>
           </div>
 
           <div className="stat-box tile-red">
@@ -2009,119 +1710,65 @@ const PlayerPrintView: React.FC<
             <div className="stat-value">
               {avgPoints.toFixed(2)}
             </div>
-
-            <div className="stat-sub">
-              Totaal: {stats.points}
-            </div>
           </div>
         </div>
 
-        <div className="print-footer">
-          Gegenereerd door de Bounceball App{' '}
-          {new Date().toLocaleDateString(
-            'nl-NL'
-          )}
+        {/* ==================================================================
+         * Grafieken - beide op één aparte pagina
+         * ================================================================== */}
+
+        <div className="charts-page mb-8">
+          <PrintChart
+            data={seasonHistory}
+            title="Verloop Huidig Seizoen"
+          />
+
+          <PrintChart
+            data={allTimeHistory}
+            title="All-Time Verloop"
+          />
         </div>
-      </div>
 
-      {/* ====================================================================
-          PAGE 2 - GRAFIEKEN
-          ================================================================== */}
+        {/* ==================================================================
+         * Relatiestatistieken - aparte pagina
+         * ================================================================== */}
 
-      <div className="print-page page-break charts-page">
-        <h3 className="charts-heading">
-          Rating verloop
-        </h3>
+        <div className="relationships-page mb-8">
+          <h3 className="text-lg font-black border-b border-slate-200 pb-1 mb-3 uppercase">
+            Statistieken vs Spelers (Top 5)
+          </h3>
 
-        <PrintChart
-          data={seasonHistory}
-          title="Verloop huidig seizoen"
-        />
+          <div className="relationships-grid">
+            <RelationshipSection
+              title="Vaak samen"
+              data={stats.mostFrequentTeammates}
+              variant="rel-frequent"
+            />
 
-        <PrintChart
-          data={allTimeHistory}
-          title="All-time verloop"
-        />
+            <RelationshipSection
+              title="Beste Medespeler"
+              data={stats.bestTeammates}
+              variant="rel-best"
+            />
 
-        <div className="print-footer">
-          Gegenereerd door de Bounceball App{' '}
-          {new Date().toLocaleDateString(
-            'nl-NL'
-          )}
-        </div>
-      </div>
+            <RelationshipSection
+              title="Slechtste Medespeler"
+              data={stats.worstTeammates}
+              variant="rel-worst"
+            />
 
-      {/* ====================================================================
-          PAGE 3 - RELATIONSHIPS
-          ================================================================== */}
+            <RelationshipSection
+              title="Makkelijkste Tegenstander"
+              data={stats.bestOpponents}
+              variant="rel-easy"
+            />
 
-      <div className="print-page page-break relationships-page">
-        <h3 className="charts-heading">
-          Statistieken vs spelers (Top 5)
-        </h3>
-
-        <div className="relationships-grid">
-
-          {/* ================================================================
-              PLAKFACTOR
-              ================================================================ */}
-
-          <RelationshipSection
-            title="Plakfactor: Onlosmakelijk"
-            data={stats.freq || []}
-            playerMap={playerMap}
-            variant="rel-frequent"
-            mode="frequent"
-          />
-
-          {/* ================================================================
-              GOUDEN DUO
-              ================================================================ */}
-
-          <RelationshipSection
-            title="Gouden Duo (Winstgarantie)"
-            data={stats.bestT || []}
-            playerMap={playerMap}
-            variant="rel-best"
-            mode="winrate"
-          />
-
-          {/* ================================================================
-              AFGROND
-              ================================================================ */}
-
-          <RelationshipSection
-            title="Samen de Afgrond in..."
-            data={stats.worstT || []}
-            playerMap={playerMap}
-            variant="rel-worst"
-            mode="winrate"
-          />
-
-          {/* ================================================================
-              FAVORIETE SLACHTOFFER
-              ================================================================ */}
-
-          <RelationshipSection
-            title="Mijn Favoriete Slachtoffer"
-            data={stats.bestO || []}
-            playerMap={playerMap}
-            variant="rel-easy"
-            mode="winrate"
-          />
-
-          {/* ================================================================
-              NACHTMERRIE
-              ================================================================ */}
-
-          <RelationshipSection
-            title="Mijn Persoonlijke Nachtmerrie"
-            data={stats.worstO || []}
-            playerMap={playerMap}
-            variant="rel-hard"
-            mode="winrate"
-          />
-
+            <RelationshipSection
+              title="Lastigste Tegenstander"
+              data={stats.worstOpponents}
+              variant="rel-hard"
+            />
+          </div>
         </div>
 
         <div className="print-footer">
