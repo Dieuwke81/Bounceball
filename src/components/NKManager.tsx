@@ -30,6 +30,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
   const [hallNames, setHallNames] = useState<string[]>(['A', 'B', 'C']);
   const [playersPerTeam, setPlayersPerTeam] = useState(4);
   const [minTeamRating, setMinTeamRating] = useState(4.0);
+  const [introPoolCount, setIntroPoolCount] = useState(3);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(new Set());
   const [attendanceText, setAttendanceText] = useState('');
   const [playerSource, setPlayerSource] = useState<'database' | 'intro'>('database');
@@ -367,7 +368,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
           NK
         </button>
         <button 
-          onClick={() => { setPlayerSource('intro'); setSelectedPlayerIds(new Set()); setMinTeamRating(6.25); }}
+          onClick={() => { setPlayerSource('intro'); setSelectedPlayerIds(new Set()); setIntroPoolCount(3); }}
           className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${playerSource === 'intro' ? 'bg-amber-500 text-white shadow-lg' : 'text-gray-500'}`}
         >
           Introductie toernooi
@@ -401,7 +402,20 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
               ))}
             </div>
           </div>
-          <div><span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Min. Team Rating</span><input type="number" step="0.01" value={minTeamRating} onFocus={(e) => e.target.select()} onChange={e => setMinTeamRating(+e.target.value)} className="w-full bg-gray-800 p-3 rounded-xl font-bold border border-gray-700 focus:border-amber-500 outline-none text-white font-black" /></div>
+          {playerSource === 'database' ? (
+            <div><span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Min. Team Rating</span><input type="number" step="0.01" value={minTeamRating} onFocus={(e) => e.target.select()} onChange={e => setMinTeamRating(+e.target.value)} className="w-full bg-gray-800 p-3 rounded-xl font-bold border border-gray-700 focus:border-amber-500 outline-none text-white font-black" /></div>
+          ) : (
+            <div className="space-y-2">
+              <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Aantal ratingpoules</span>
+              <div className="flex gap-2 text-white font-black">
+                {[2, 3, 4].map(n => (
+                  <button key={n} onClick={() => setIntroPoolCount(n)} className={`flex-1 py-3 rounded-xl font-black border-2 ${introPoolCount === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>
+                    {n} poules
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex gap-2 text-white font-black">{[4, 5].map(n => <button key={n} onClick={() => setPlayersPerTeam(n)} className={`flex-1 py-3 rounded-xl font-black border-2 ${playersPerTeam === n ? 'bg-amber-500 border-amber-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>{n} vs {n}</button>)}</div>
           <textarea value={attendanceText} onChange={e => setAttendanceText(e.target.value)} placeholder="Plak WhatsApp lijst..." className="w-full h-40 bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs outline-none text-white font-black" />
           <button onClick={handleParseAttendance} className="w-full py-3 bg-amber-500 text-white font-black rounded-xl uppercase text-xs hover:bg-amber-400 transition-all tracking-widest shadow-lg">Verwerk Lijst</button>
@@ -460,7 +474,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                       setIsGenerating(true); setProgressMsg("Balans optimaliseren..."); setErrorAnalysis(null);
                       try {
                         const p = activePlayerPool.filter(x => selectedPlayerIds.has(x.id));
-                        const s = await generateNKSchedule(p, hallNames, selectedOption.mpp, playersPerTeam, "NK", setProgressMsg, manualTimes, minTeamRating, playerSource === 'intro');
+                        const s = await generateNKSchedule(p, hallNames, selectedOption.mpp, playersPerTeam, "NK", setProgressMsg, manualTimes, minTeamRating, playerSource === 'intro', introPoolCount);
                         setSession(s);
                       } catch(e:any) { setErrorAnalysis(e.message); } finally { setIsGenerating(false); }
                     }} className="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-black rounded-2xl uppercase tracking-widest shadow-xl transition-all font-black">Start Toernooi</button>
