@@ -89,8 +89,6 @@ function getBestTeamSplit(
 ) {
   let bestDiff = Infinity;
   let bestSplit: { t1: Player[], t2: Player[] } | null = null;
-  const requiredIntroRatings = isIntro ? getRequiredIntroRatings(introPoolCount) : [];
-
   function combine(start: number, team1: Player[]) {
     if (team1.length === ppt) {
       const team2 = players.filter(p => !team1.find(t1p => t1p.id === p.id));
@@ -103,12 +101,20 @@ function getBestTeamSplit(
 
       let introProfileOk = true;
       if (isIntro) {
-        introProfileOk = requiredIntroRatings.every(rating =>
-          team1.filter(p => p.rating === rating).length >= 1 &&
-          team2.filter(p => p.rating === rating).length >= 1
-        );
+        // In Intro hoeft niet elke ratingpool in ieder team voor te komen.
+        // Een team mag maximaal 2 spelers uit dezelfde geselecteerde pool hebben.
+        // De twee teams moeten vervolgens exact hetzelfde profiel hebben.
+        // Controleer iedere rating die daadwerkelijk in deze wedstrijd voorkomt.
+        // Er mogen nooit meer dan 2 spelers uit dezelfde ratingpool in een team zitten.
+        const ratingsInMatch = Array.from(new Set(players.map(p => p.rating)));
+        introProfileOk = ratingsInMatch.every(rating => {
+          const count1 = team1.filter(p => p.rating === rating).length;
+          const count2 = team2.filter(p => p.rating === rating).length;
+          return count1 <= 2 && count2 <= 2;
+        });
 
         if (introProfileOk) {
+          // Beide teams krijgen exact dezelfde verdeling over de ratingpoules.
           introProfileOk = getRatingProfile(team1) === getRatingProfile(team2);
         }
       }
