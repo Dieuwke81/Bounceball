@@ -89,6 +89,43 @@ function getBestTeamSplit(
 ) {
   let bestDiff = Infinity;
   let bestSplit: { t1: Player[], t2: Player[] } | null = null;
+
+  if (isIntro) {
+    // De selectie van spelers voor een Intro-wedstrijd wordt elders al
+    // zo gemaakt dat iedere rating in even aantallen voorkomt. Daardoor
+    // kunnen we hier heel eenvoudig spiegelen: per rating de spelers
+    // gelijk over beide teams verdelen.
+    const byRating = new Map<number, Player[]>();
+    players.forEach(p => {
+      if (!byRating.has(p.rating)) byRating.set(p.rating, []);
+      byRating.get(p.rating)!.push(p);
+    });
+
+    const team1: Player[] = [];
+    const team2: Player[] = [];
+
+    for (const [, ratingPlayers] of byRating.entries()) {
+      if (ratingPlayers.length % 2 !== 0 || ratingPlayers.length > 4) return null;
+
+      const half = ratingPlayers.length / 2;
+      // Maximaal 2 uit dezelfde ratingpool per team.
+      if (half > 2) return null;
+
+      team1.push(...ratingPlayers.slice(0, half));
+      team2.push(...ratingPlayers.slice(half));
+    }
+
+    if (team1.length !== ppt || team2.length !== ppt) return null;
+
+    const avg1 = team1.reduce((s, p) => s + p.rating, 0) / ppt;
+    const avg2 = team2.reduce((s, p) => s + p.rating, 0) / ppt;
+
+    bestDiff = Math.abs(avg1 - avg2);
+    bestSplit = { t1: team1, t2: team2 };
+
+    return bestSplit;
+  }
+
   function combine(start: number, team1: Player[]) {
     if (team1.length === ppt) {
       const team2 = players.filter(p => !team1.find(t1p => t1p.id === p.id));
@@ -97,32 +134,9 @@ function getBestTeamSplit(
 
       const k1 = team1.filter(p => p.isKeeper).length;
       const k2 = team2.filter(p => p.isKeeper).length;
-      const keepersOk = isIntro ? true : (k1 <= 1 && k2 <= 1);
+      const keepersOk = k1 <= 1 && k2 <= 1;
 
-      let introProfileOk = true;
-      if (isIntro) {
-        // In Intro hoeft niet elke ratingpool in ieder team voor te komen.
-        // Een team mag maximaal 2 spelers uit dezelfde geselecteerde pool hebben.
-        // De twee teams moeten vervolgens exact hetzelfde profiel hebben.
-        // Controleer iedere rating die daadwerkelijk in deze wedstrijd voorkomt.
-        // Er mogen nooit meer dan 2 spelers uit dezelfde ratingpool in een team zitten.
-        const ratingsInMatch = Array.from(new Set(players.map(p => p.rating)));
-        introProfileOk = ratingsInMatch.every(rating => {
-          const count1 = team1.filter(p => p.rating === rating).length;
-          const count2 = team2.filter(p => p.rating === rating).length;
-          return count1 <= 2 && count2 <= 2;
-        });
-
-        if (introProfileOk) {
-          // Beide teams krijgen exact dezelfde verdeling over de ratingpoules.
-          introProfileOk = getRatingProfile(team1) === getRatingProfile(team2);
-        }
-      }
-
-      if (
-        (isIntro ? introProfileOk : (avg1 >= minRating && avg2 >= minRating)) &&
-        keepersOk
-      ) {
+      if (avg1 >= minRating && avg2 >= minRating && keepersOk) {
         const diff = Math.abs(avg1 - avg2);
         if (diff < bestDiff) {
           bestDiff = diff;
@@ -135,13 +149,101 @@ function getBestTeamSplit(
       team1.push(players[i]);
       combine(i + 1, team1);
       team1.pop();
-      if (bestDiff <= targetDiff) return; 
+      if (bestDiff <= targetDiff) return;
     }
   }
 
   combine(0, []);
-  if (isIntro && !bestSplit) return null;
   return bestSplit;
+}
+
+/**
+ * Kies voor Intro meteen een geldige groep van 8 spelers.
+ *
+ * Een geldige wedstrijd bestaat uit vier rating-paren:
+ * - iedere rating komt dus 2 of 4 keer voor in de wedstrijd;
+ * - maximaal twee spelers van dezelfde rating per team;
+ * - de teams kunnen daardoor exact gespiegeld worden.
+ *
+ * Dit voorkomt dat we eerst willekeurig 8 spelers kiezen en pas daarna
+ * ontdekken dat die 8 onmogelijk in twee geldige teams te verdelen zijn.
+ */
+function selectIntroMatchPlayers(
+  candidates: Player[],
+  pairCounts: Map<string, number>,
+  ppt: number
+): Player[] | null {
+  const neededPairs = ppt;
+  const pairOptions: {
+    a: Player,
+    b: Player,
+    rating: number,
+    score: number
+  }[] = [];
+
+  const byRating = new Map<number, Player[]>();
+  candidates.forEach(p => {
+    if (!byRating.has(p.rating)) byRating.set(p.rating, []);
+    byRating.get(p.rating)!.push(p);
+  });
+
+  byRating.forEach((ratingPlayers, rating) => {
+    for (let i = 0; i < ratingPlayers.length; i++) {
+      for (let j = i + 1; j < ratingPlayers.length; j++) {
+        const a = ratingPlayers[i];
+        const b = ratingPlayers[j];
+        const key = [a.id, b.id].sort().join('-');
+
+        pairOptions.push({
+          a,
+          b,
+          rating,
+          score: pairCounts.get(key) || 0
+        });
+      }
+    }
+  });
+
+  if (pairOptions.length < neededPairs) return null;
+
+  pairOptions.sort((a, b) => a.score - b.score || Math.random() - 0.5);
+
+  const chosen: typeof pairOptions = [];
+  const used = new Set<number>();
+  const pairsPerRating = new Map<number, number>();
+
+  function search(start: number): boolean {
+    if (chosen.length === neededPairs) return true;
+
+    for (let i = start; i < pairOptions.length; i++) {
+      const option = pairOptions[i];
+
+      if (used.has(option.a.id) || used.has(option.b.id)) continue;
+
+      const countForRating = pairsPerRating.get(option.rating) || 0;
+      if (countForRating >= 2) continue;
+
+      chosen.push(option);
+      used.add(option.a.id);
+      used.add(option.b.id);
+      pairsPerRating.set(option.rating, countForRating + 1);
+
+      if (search(i + 1)) return true;
+
+      chosen.pop();
+      used.delete(option.a.id);
+      used.delete(option.b.id);
+
+      if (countForRating === 0) pairsPerRating.delete(option.rating);
+      else pairsPerRating.set(option.rating, countForRating);
+    }
+
+    return false;
+  }
+
+  if (!search(0)) return null;
+
+  return chosen.flatMap(pair => [pair.a, pair.b]);
 }
 
 async function generateSingleVersion(
@@ -206,20 +308,31 @@ async function generateSingleVersion(
           const candidates = pool.filter(p => !usedThisRound.has(p.id));
           if (candidates.length < ppm) break;
 
-          const selectedForMatch: Player[] = [];
-          selectedForMatch.push(candidates[0]); 
+          let mPlayers: Player[] | null;
 
-          while (selectedForMatch.length < ppm) {
-            const remaining = candidates.filter(c => !selectedForMatch.includes(c));
-            remaining.sort((a, b) => {
-                const scoreA = selectedForMatch.reduce((sum, p) => sum + (pairCounts.get([p.id, a.id].sort().join('-')) || 0), 0);
-                const scoreB = selectedForMatch.reduce((sum, p) => sum + (pairCounts.get([p.id, b.id].sort().join('-')) || 0), 0);
-                return scoreA - scoreB || Math.random() - 0.5;
-            });
-            selectedForMatch.push(remaining[0]);
+          if (isIntro) {
+            // BELANGRIJK: kies in Intro niet eerst willekeurig 8 spelers.
+            // Dat kan heel vaak een groep opleveren die onmogelijk gespiegeld
+            // kan worden. Kies daarom direct vier geldige rating-paren.
+            mPlayers = selectIntroMatchPlayers(candidates, pairCounts, ppt)
+          } else {
+            const selectedForMatch: Player[] = [];
+            selectedForMatch.push(candidates[0]);
+
+            while (selectedForMatch.length < ppm) {
+              const remaining = candidates.filter(c => !selectedForMatch.includes(c));
+              remaining.sort((a, b) => {
+                  const scoreA = selectedForMatch.reduce((sum, p) => sum + (pairCounts.get([p.id, a.id].sort().join('-')) || 0), 0);
+                  const scoreB = selectedForMatch.reduce((sum, p) => sum + (pairCounts.get([p.id, b.id].sort().join('-')) || 0), 0);
+                  return scoreA - scoreB || Math.random() - 0.5;
+              });
+              selectedForMatch.push(remaining[0]);
+            }
+
+            mPlayers = selectedForMatch;
           }
 
-          const mPlayers = selectedForMatch;
+          if (!mPlayers) throw new Error();
           const split = getBestTeamSplit(mPlayers, ppt, target, minRating, isIntro, introPoolCount);
 
           if (!split) throw new Error();
