@@ -132,7 +132,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
           <div className="print-header">
             <h1>
-              NK OVERZICHT - RONDE {round.roundNumber} 
+              OVERZICHT - RONDE {round.roundNumber} 
               <span className="time-label">
                 {(round as any).startTime ? `(${(round as any).startTime} - ${(round as any).endTime})` : ''}
               </span>
@@ -358,7 +358,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             </tbody>
           </table>
           <div className="mt-20 text-center text-gray-400 text-xs uppercase font-bold italic">
-            Gegenereerd via Bounceball NK Manager • {new Date().toLocaleDateString('nl-NL')}
+            Gegenereerd via Bounceball Manager • {new Date().toLocaleDateString('nl-NL')}
           </div>
         </div>
       )}
