@@ -55,76 +55,208 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           .points-explanation div {
             margin-bottom: 3px !important;
           }
+
+          /* COMPLEET OVERZICHT: 4 zalen op 1 A4 */
+          .overview-round {
+            page-break-after: always !important;
+            break-after: page !important;
+            padding: 8px !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+          }
+
+          .overview-round:last-child {
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
+
+          .overview-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            grid-template-rows: 1fr 1fr !important;
+            gap: 8px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .overview-match-card {
+            border: 2px solid #000 !important;
+            padding: 7px 10px !important;
+            margin: 0 !important;
+            background: white !important;
+            border-radius: 8px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            min-height: 0 !important;
+            box-sizing: border-box !important;
+          }
+
+          .overview-match-card .hall-label {
+            font-size: 14pt !important;
+          }
+
+          .overview-match-card .player-name {
+            font-size: 10pt !important;
+            line-height: 1.15 !important;
+          }
+
+          .overview-match-card .label-small {
+            font-size: 7pt !important;
+          }
+
+          .overview-match-card .score-box {
+            width: 28pt !important;
+            height: 28pt !important;
+          }
+
+          .overview-match-card .score-area {
+            gap: 5px !important;
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+          }
+
+          .overview-match-card .reserve-row {
+            margin-top: 5px !important;
+            padding-top: 4px !important;
+          }
+
+          .overview-match-card .reserve-row .player-name {
+            font-size: 8pt !important;
+          }
         }
       `}</style>
 
       {/* OPTIE 1: COMPLEET OVERZICHT */}
       {activePrintType === 'overview' && session.rounds.map((round) => (
-        <div key={round.roundNumber} className="page-break">
-          <div className="p-4">
-            <div className="print-header">
-              <h1>
-                NK OVERZICHT - RONDE {round.roundNumber} 
-                <span className="time-label">{(round as any).startTime ? `(${ (round as any).startTime } - ${ (round as any).endTime })` : ''}</span>
-              </h1>
-            </div>
-            <div className="space-y-2">
-              {round.matches.map(m => {
-                const isFixed = (session as any).isFixedTeams;
-                return (
-                  <div key={m.id} className="match-card">
-                    <div className="flex justify-between items-center mb-2 border-b-2 border-black pb-1">
-                      <span className="hall-label">ZAAL: {m.hallName}</span>
-                      {!isFixed ? (
-                        <div className="flex items-center">
-                          <span className="color-scheids label-small uppercase mr-2">SCHEIDS:</span>
-                          <span className="player-name">{m.referee?.name}</span>
-                        </div>
-                      ) : (
-                        <span className="label-small uppercase font-black color-blauw">Vaste Teams</span>
-                      )}
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div className="flex-1">
-                        <div className="label-small underline mb-1 color-blauw uppercase tracking-widest">{(m as any).team1Name || 'TEAM BLAUW'}</div>
-                        <div className="space-y-0.5">
-                          {m.team1.map(p => {
-                            const isReserve = (m as any).t1ReserveId === p.id;
-                            return <div key={p.id} className={`player-name ${isReserve ? 'strike-name' : ''}`}>{p.name}</div>;
-                          })}
-                        </div>
+        <div key={round.roundNumber} className="overview-round">
+
+          <div className="print-header">
+            <h1>
+              NK OVERZICHT - RONDE {round.roundNumber} 
+              <span className="time-label">
+                {(round as any).startTime ? `(${(round as any).startTime} - ${(round as any).endTime})` : ''}
+              </span>
+            </h1>
+          </div>
+
+          <div className="overview-grid">
+            {round.matches.map(m => {
+              const isFixed = (session as any).isFixedTeams;
+
+              return (
+                <div key={m.id} className="overview-match-card">
+
+                  <div className="flex justify-between items-center mb-1 border-b-2 border-black pb-1">
+                    <span className="hall-label">
+                      ZAAL: {m.hallName}
+                    </span>
+
+                    {!isFixed ? (
+                      <div className="flex items-center">
+                        <span className="color-scheids label-small uppercase mr-1">
+                          SCHEIDS:
+                        </span>
+                        <span className="player-name">
+                          {m.referee?.name}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-3 px-6">
-                        <div className="score-box"></div>
-                        <span className="font-black text-2xl" style={{color: 'black'}}>-</span>
-                        <div className="score-box"></div>
-                      </div>
-                      <div className="flex-1 text-right">
-                        <div className="label-small underline mb-1 color-geel uppercase tracking-widest">{(m as any).team2Name || 'TEAM GEEL'}</div>
-                        <div className="space-y-0.5">
-                          {m.team2.map(p => {
-                            const isReserve = (m as any).t2ReserveId === p.id;
-                            return <div key={p.id} className={`player-name ${isReserve ? 'strike-name' : ''}`}>{p.name}</div>;
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                    {!isFixed && (
-                      <div className="mt-4 pt-2 border-t-2 border-dashed border-black flex justify-around">
-                        <div className="flex items-center">
-                            <span className="color-reserve label-small uppercase font-black">RESERVE 1:</span>
-                            <span className="player-name ml-2" style={{fontSize: '12pt'}}>{m.subHigh?.name}</span>
-                        </div>
-                        <div className="flex items-center">
-                            <span className="color-reserve label-small uppercase font-black">RESERVE 2:</span>
-                            <span className="player-name ml-2" style={{fontSize: '12pt'}}>{m.subLow?.name}</span>
-                        </div>
-                      </div>
+                    ) : (
+                      <span className="label-small uppercase font-black color-blauw">
+                        Vaste Teams
+                      </span>
                     )}
                   </div>
-                );
-              })}
-            </div>
+
+                  <div className="flex justify-between items-center">
+
+                    <div className="flex-1">
+                      <div className="label-small underline mb-1 color-blauw uppercase tracking-widest">
+                        {(m as any).team1Name || 'TEAM BLAUW'}
+                      </div>
+
+                      <div className="space-y-0.5">
+                        {m.team1.map(p => {
+                          const isReserve = (m as any).t1ReserveId === p.id;
+
+                          return (
+                            <div
+                              key={p.id}
+                              className={`player-name ${isReserve ? 'strike-name' : ''}`}
+                            >
+                              {p.name}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center score-area px-2">
+                      <div className="score-box"></div>
+                      <span
+                        className="font-black text-xl"
+                        style={{color: 'black'}}
+                      >
+                        -
+                      </span>
+                      <div className="score-box"></div>
+                    </div>
+
+                    <div className="flex-1 text-right">
+                      <div className="label-small underline mb-1 color-geel uppercase tracking-widest">
+                        {(m as any).team2Name || 'TEAM GEEL'}
+                      </div>
+
+                      <div className="space-y-0.5">
+                        {m.team2.map(p => {
+                          const isReserve = (m as any).t2ReserveId === p.id;
+
+                          return (
+                            <div
+                              key={p.id}
+                              className={`player-name ${isReserve ? 'strike-name' : ''}`}
+                            >
+                              {p.name}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {!isFixed && (
+                    <div className="reserve-row mt-2 pt-1 border-t-2 border-dashed border-black flex justify-around">
+
+                      <div className="flex items-center">
+                        <span className="color-reserve label-small uppercase font-black">
+                          RES 1:
+                        </span>
+                        <span
+                          className="player-name ml-1"
+                          style={{fontSize: '8pt'}}
+                        >
+                          {m.subHigh?.name}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center">
+                        <span className="color-reserve label-small uppercase font-black">
+                          RES 2:
+                        </span>
+                        <span
+                          className="player-name ml-1"
+                          style={{fontSize: '8pt'}}
+                        >
+                          {m.subLow?.name}
+                        </span>
+                      </div>
+
+                    </div>
+                  )}
+
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}
