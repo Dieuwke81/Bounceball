@@ -257,6 +257,29 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
     setTimeout(() => { window.print(); setActivePrintType(null); }, 500);
   };
 
+  const handleWhatsAppStand = () => {
+    if (!session || !currentStandings.length) return;
+
+    let text = `🏆 *STAND NK* 🏆\n\n`;
+
+    currentStandings.forEach((entry: any, idx: number) => {
+      const name = entry.name || entry.playerName || '?';
+      const points = entry.points ?? 0;
+
+      let position = `${idx + 1}.`;
+      if (idx === 0) position = '🥇';
+      else if (idx === 1) position = '🥈';
+      else if (idx === 2) position = '🥉';
+
+      text += `${position} *${name}* — ${points} ptn\n`;
+    });
+
+    text += `\n🏆 *Stand van het NK*`;
+
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
   const handleSelectOption = (opt: any) => {
     setSelectedOption(opt);
     setManualTimes(Array.from({ length: opt.rounds }, () => ({ start: '', end: '' })));
@@ -542,7 +565,20 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
               <button onClick={() => handlePrintAction('overview')} className="w-full py-4 bg-gray-700 hover:bg-amber-500 text-white font-bold rounded-2xl transition-all uppercase text-xs font-black">Compleet Overzicht</button>
               <button onClick={() => handlePrintAction('halls')} className="w-full py-4 bg-gray-700 hover:bg-amber-500 text-white font-bold rounded-2xl transition-all uppercase text-xs font-black">Per Zaal</button>
               <button onClick={() => handlePrintAction('players')} className="w-full py-4 bg-gray-700 hover:bg-amber-500 text-white font-bold rounded-2xl transition-all uppercase text-xs font-black">Individuele Spelers</button>
-              <button onClick={() => handlePrintAction('standings')} className="w-full py-4 bg-gray-700 hover:bg-amber-500 text-white font-bold rounded-2xl transition-all uppercase text-xs font-black">Stand</button>
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => handlePrintAction('standings')} 
+                  className="w-full py-4 bg-gray-700 hover:bg-amber-500 text-white font-bold rounded-2xl transition-all uppercase text-xs font-black"
+                >
+                  🖨️ Stand printen
+                </button>
+                <button 
+                  onClick={handleWhatsAppStand} 
+                  className="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-2xl transition-all uppercase text-xs font-black"
+                >
+                  📱 WhatsApp
+                </button>
+              </div>
             </div>
             <button onClick={() => setPrintMenuOpen(false)} className="w-full text-gray-500 font-bold uppercase text-[10px] hover:text-white transition-colors font-black">Annuleren</button>
           </div>
@@ -691,8 +727,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                 {currentStandings.map((entry, idx) => (
                   <tr key={idx} className={`transition-colors ${idx < 3 ? 'bg-amber-500/5' : 'hover:bg-gray-700/30'} text-white font-black font-black`}>
                     <td className="p-5 text-center font-black text-amber-500 uppercase font-black">{idx + 1}</td>
-                    <td className="p-5 font-bold text-sm tracking-tight text-white font-black uppercase text-left font-black font-black font-black">{(entry as any).name || (entry as any).playerName}</td>
-                    <td className="p-5 text-center text-gray-400 font-mono text-xs text-white font-black uppercase font-black font-black font-black">{(entry as any).matchesPlayed}</td>
+                    <td className="p-5 font-bold text-sm tracking-tight text-white font-black uppercase text-left font-black font-black">{(entry as any).name || (entry as any).playerName}</td>
+                    <td className="p-5 text-center text-gray-400 font-mono text-xs text-white font-black uppercase font-black font-black">{(entry as any).matchesPlayed}</td>
                     <td className={`p-5 text-center font-black font-mono text-xs ${entry.goalDifference > 0 ? 'text-green-500' : entry.goalDifference < 0 ? 'text-red-500' : 'text-gray-500'}`}>{entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}</td>
                     <td className="p-5 text-center font-black font-black font-black font-black font-black font-black font-black font-black"><span className="bg-gray-900 text-amber-400 px-4 py-1.5 rounded-full font-black text-sm shadow-inner border border-amber-500/20 font-black font-black font-black">{entry.points}</span></td>
                   </tr>
@@ -724,7 +760,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                         <td className="p-5 text-xs font-bold tracking-tight text-left uppercase text-white font-black font-black">{pair.p1} + {pair.p2}</td>
                         <td className="p-5 text-center text-xs text-gray-400 font-mono text-white font-black uppercase font-black font-black">{pair.together}x</td>
                         <td className="p-5 text-center text-xs text-gray-400 font-mono text-white font-black uppercase font-black font-black">{pair.against}x</td>
-                        <td className="p-5 text-center font-black font-black font-black font-black font-black font-black"><span className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${totalColor}`}>{total}x</span></td>
+                        <td className="p-5 text-center font-black font-black font-black font-black font-black"><span className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${totalColor}`}>{total}x</span></td>
                       </tr>
                     );
                   })}
