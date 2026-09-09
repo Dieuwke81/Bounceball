@@ -260,10 +260,10 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
   const handleWhatsAppStand = () => {
     if (!session || !currentStandings.length) return;
 
-    let text = `🏆 *STAND NK* 🏆\n\n`;
+    let text = `🏆 *EINDSTAND* 🏆\n\n`;
 
     currentStandings.forEach((entry: any, idx: number) => {
-      const name = entry.name || entry.playerName || '?';
+      const name = (entry.name || entry.playerName || '?').trim();
       const points = entry.points ?? 0;
 
       let position = `${idx + 1}.`;
@@ -273,8 +273,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
 
       text += `${position} *${name}* — ${points} ptn\n`;
     });
-
-    text += `\n🏆 *Stand van het NK*`;
 
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, '_blank');
@@ -707,7 +705,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                             <div className="text-[9px] text-gray-500 mt-2 font-black font-black">GEM: {avg2.toFixed(2)}</div>
                           </div>
                         </div>
-                        {!isFixed && ( <div className="p-2.5 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-8 text-[9px] font-black uppercase text-white font-black font-black font-black font-black font-black"><span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subHigh?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subHigh?.name || '') ? 'bg-green-500 text-white font-black font-black' : 'text-pink-400 font-black'}`}>Res 1: {match.subHigh?.name}</span><span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subLow?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subLow?.name || '') ? 'bg-green-500 text-white font-black font-black' : 'text-pink-400 font-black'}`}>Res 2: {match.subLow?.name}</span></div> )}
+                        {!isFixed && ( <div className="p-2.5 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-8 text-[9px] font-black uppercase text-white font-black font-black font-black font-black font-black font-black font-black"><span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subHigh?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subHigh?.name || '') ? 'bg-green-500 text-white font-black font-black' : 'text-pink-400 font-black'}`}>Res 1: {match.subHigh?.name}</span><span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subLow?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subLow?.name || '') ? 'bg-green-500 text-white font-black font-black' : 'text-pink-400 font-black'}`}>Res 2: {match.subLow?.name}</span></div> )}
                       </div>
                     );
                   })}
@@ -719,9 +717,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
 
         {activeTab === 'standings' && (
           <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden text-white animate-fade-in font-black text-center font-black">
-            <table className="w-full text-left font-black text-white uppercase font-black font-black font-black font-black font-black font-black font-black font-black font-black">
+            <table className="w-full text-left font-black text-white uppercase font-black font-black font-black font-black font-black font-black font-black font-black font-black font-black">
               <thead className="bg-gray-900 text-gray-400 text-[10px] font-black tracking-widest uppercase font-black">
-                <tr><th className="p-5 w-12 text-center text-white font-black uppercase font-black">#</th><th className="p-5 text-white font-black uppercase text-left font-black font-black font-black font-black">{(session as any).isFixedTeams ? 'Team' : 'Speler'}</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">W</th><th className="p-5 text-center text-white font-black uppercase font-black font-black font-black font-black font-black font-black font-black">DS</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">PTN</th></tr>
+                <tr><th className="p-5 w-12 text-center text-white font-black uppercase font-black">#</th><th className="p-5 text-white font-black uppercase text-left font-black font-black font-black font-black">{(session as any).isFixedTeams ? 'Team' : 'Speler'}</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">W</th><th className="p-5 text-center text-white font-black uppercase font-black font-black font-black font-black font-black font-black">DS</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">PTN</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-700/50 uppercase text-white font-black font-black">
                 {currentStandings.map((entry, idx) => (
@@ -760,7 +758,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                         <td className="p-5 text-xs font-bold tracking-tight text-left uppercase text-white font-black font-black">{pair.p1} + {pair.p2}</td>
                         <td className="p-5 text-center text-xs text-gray-400 font-mono text-white font-black uppercase font-black font-black">{pair.together}x</td>
                         <td className="p-5 text-center text-xs text-gray-400 font-mono text-white font-black uppercase font-black font-black">{pair.against}x</td>
-                        <td className="p-5 text-center font-black font-black font-black font-black font-black"><span className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${totalColor}`}>{total}x</span></td>
+                        <td className="p-5 text-center font-black font-black font-black font-black"><span className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${totalColor}`}>{total}x</span></td>
                       </tr>
                     );
                   })}
