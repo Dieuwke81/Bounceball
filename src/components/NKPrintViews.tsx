@@ -333,7 +333,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
       {activePrintType === 'standings' && (
         <div className="page-break p-12">
           <div className="print-header">
-            <h1>HUIDIGE STAND:</h1>
+            <h1>HUIDIGE STAND</h1>
           </div>
           <table className="print-table" style={{marginTop: '20px'}}>
             <thead>
