@@ -1,4 +1,3 @@
-
 export interface Player {
   id: number;
   name: string;
@@ -15,6 +14,13 @@ export interface Player {
 
   /** Alleen voor CSV export (NOOIT als bron) */
   excelId?: string;
+
+  /**
+   * Alleen tijdens een NK/Introductietoernooi.
+   * Deze speler telt officieel mee in het schema,
+   * maar wordt fysiek vervangen door een speler met exact dezelfde rating.
+   */
+  isTournamentReserve?: boolean;
 }
 
 export type NewPlayer = Omit<Player, 'id'>;
@@ -102,6 +108,35 @@ export interface NKRound {
   restingPlayers: Player[]; // De rest die geen specifieke rol heeft die ronde
 }
 
+/**
+ * Een fysieke invaller voor een officiële reserve-deelnemer.
+ *
+ * De reserve-deelnemer blijft de officiële speler van de wedstrijd
+ * en krijgt dus ook de wedstrijd, punten en statistieken.
+ *
+ * De substitutePlayer speelt fysiek in zijn/haar plaats, maar krijgt
+ * zelf geen officiële wedstrijd, punten of wedstrijdtelling.
+ */
+export interface NKInfillAssignment {
+  /** Ronde waarin de invalbeurt plaatsvindt */
+  roundNumber: number;
+
+  /** ID van de wedstrijd */
+  matchId: string;
+
+  /** De officiële reserve-deelnemer */
+  reservePlayerId: number;
+
+  /** De echte speler die fysiek invalt */
+  substitutePlayerId: number;
+
+  /** Zaal van de wedstrijd */
+  hallName: string;
+
+  /** Team waarvoor de invaller speelt */
+  team: 'BLAUW' | 'GEEL';
+}
+
 export interface NKStandingsEntry {
   playerId: number;
   playerName: string;
@@ -118,5 +153,9 @@ export interface NKSession {
   playersPerTeam: number;
   rounds: NKRound[];
   standings: NKStandingsEntry[];
+
+  /** Fysieke invallers voor officiële reserve-deelnemers */
+  infillAssignments?: NKInfillAssignment[];
+
   isCompleted: boolean;
 }
