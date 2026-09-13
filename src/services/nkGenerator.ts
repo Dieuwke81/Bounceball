@@ -2,6 +2,21 @@ import { Player, NKSession, NKRound, NKMatch } from '../types';
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
+const GENERATOR_DIAGNOSTICS = true;
+
+function diagnosticError(message: string): Error {
+  return new Error(`[GENERATOR] ${message}`);
+}
+
+function describePlayers(players: Player[]): string {
+  const counts = new Map<number, number>();
+  players.forEach(p => counts.set(p.rating, (counts.get(p.rating) || 0) + 1));
+  return Array.from(counts.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([rating, count]) => `${rating}:${count}`)
+    .join(', ');
+}
+
 function getRequiredIntroRatings(poolCount: number): number[] {
   if (poolCount === 2) return [5, 10];
   if (poolCount === 3) return [5, 7.5, 10];
@@ -204,7 +219,12 @@ function selectIntroMatchPlayers(
     }
   });
 
-  if (pairOptions.length < neededPairs) return null;
+  if (pairOptions.length < neededPairs) {
+    if (GENERATOR_DIAGNOSTICS) {
+      throw diagnosticError(`Intro wedstrijd: slechts ${pairOptions.length} geldige ratingparen beschikbaar, maar ${neededPairs} nodig. Beschikbare spelers per rating: ${describePlayers(candidates)}`);
+    }
+    return null;
+  }
 
   pairOptions.sort((a, b) => a.score - b.score || Math.random() - 0.5);
 
@@ -241,7 +261,12 @@ function selectIntroMatchPlayers(
     return false;
   }
 
-  if (!search(0)) return null;
+  if (!search(0)) {
+    if (GENERATOR_DIAGNOSTICS) {
+      throw diagnosticError(`Intro wedstrijd: er kunnen geen ${neededPairs} onderling niet-overlappende ratingparen worden samengesteld uit de beschikbare spelers: ${describePlayers(candidates)}`);
+    }
+    return null;
+  }
 
   return chosen.flatMap(pair => [pair.a, pair.b]);
 }
@@ -378,7 +403,12 @@ async function generateSingleVersion(
         }
 
         roundMatches = matches; success = true; break;
-      } catch (e) {}
+      } catch (e) {
+        if (GENERATOR_DIAGNOSTICS) {
+          const reason = e instanceof Error ? e.message : String(e);
+          console.warn(`[NK GENERATOR] Ronde ${rIdx}, poging ${attempt + 1}/100 mislukt: ${reason}`);
+        }
+      }
     }
 
     if (success) {
@@ -428,7 +458,12 @@ export async function generateNKSchedule(
     if (session) validVersions.push(session);
   }
 
-  if (validVersions.length === 0) throw new Error("Geen schema gevonden die voldoet aan de eisen (max 0.30 diff).");
+  if (validVersions.length === 0) {
+    if (isIntro) {
+      throw new Error(`Geen geldig Intro-schema gevonden na ${totalAttempts} pogingen. Dit betekent niet automatisch dat de teamverschillen te groot zijn. Controleer de console op [NK GENERATOR]-meldingen voor de exacte reden waarom rondes/attempts mislukken. Spelers: ${players.length}, wedstrijden per persoon: ${mpp}, spelers per team: ${ppt}, zalen: ${hallNames.length}.`);
+    }
+    throw new Error(`Geen geldig NK-schema gevonden na ${totalAttempts} pogingen. De maximale team-diff van 0.30 is mogelijk niet de daadwerkelijke oorzaak; controleer de console op [NK GENERATOR]-meldingen.`);
+  }
 
   const getMaxDiff = (s: NKSession): number => {
     let max = 0;
@@ -471,6 +506,8 @@ export async function generateNKSchedule(
   let candidates = validVersions.filter(v => getMaxDiff(v) <= balanceThreshold);
 
   if (candidates.length === 0) {
+      const bestDiff = Math.min(...validVersions.map(getMaxDiff));
+      if (GENERATOR_DIAGNOSTICS) console.warn(`[NK GENERATOR] ${validVersions.length} geldige schema's gevonden, maar geen enkel schema voldoet aan max diff ${balanceThreshold}. Beste gevonden diff: ${bestDiff.toFixed(3)}`);
       candidates = [...validVersions].sort((a, b) => getMaxDiff(a) - getMaxDiff(b)).slice(0, 10);
   }
 
