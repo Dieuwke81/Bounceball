@@ -28,6 +28,11 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           .color-geel { color: #ffd700 !important; } 
           .color-scheids { color: #db2777 !important; } 
           .color-reserve { color: #15803d !important; }
+
+          /* NIEUW: fysieke inval */
+          .color-inval { color: #7c3aed !important; }
+          .bg-inval-trans { background-color: rgba(124, 58, 237, 0.10) !important; }
+
           .bg-blauw-trans { background-color: rgba(0, 0, 255, 0.08) !important; }
           .bg-geel-trans { background-color: rgba(255, 215, 0, 0.12) !important; }
           .bg-scheids-trans { background-color: rgba(219, 39, 119, 0.08) !important; }
@@ -52,6 +57,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             color: black !important;
             text-align: center !important;
           }
+
           .points-explanation div {
             margin-bottom: 3px !important;
           }
@@ -122,6 +128,28 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
           .overview-match-card .reserve-row .player-name {
             font-size: 8pt !important;
+          }
+
+          /* NIEUW: opmaak individuele fysieke invaller */
+          .inval-label {
+            font-size: 8pt !important;
+            font-weight: 900 !important;
+            text-transform: uppercase !important;
+            color: #7c3aed !important;
+          }
+
+          .inval-role {
+            font-size: 14pt !important;
+            font-weight: 900 !important;
+            text-transform: uppercase !important;
+            color: #7c3aed !important;
+          }
+
+          .inval-no-points {
+            font-size: 7pt !important;
+            color: #777 !important;
+            font-weight: 900 !important;
+            text-transform: uppercase !important;
           }
         }
       `}</style>
@@ -290,15 +318,44 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                     <td className="text-center text-xs">{(r as any).startTime}<br/>{(r as any).endTime}</td>
                     <td className="text-[9pt] bg-blauw-trans">
                       <div className="label-small mb-1 opacity-50">{(m as any).team1Name}</div>
-                      {m.team1.map(p => ( <div key={p.id} className={(m as any).t1ReserveId === p.id ? 'strike-name' : ''}>{p.name}</div> ))}
+                      {m.team1.map(p => (
+                        <div
+                          key={p.id}
+                          className={(m as any).t1ReserveId === p.id ? 'strike-name' : ''}
+                        >
+                          {p.name}
+                        </div>
+                      ))}
                     </td>
-                    <td className="text-center"><div className="flex justify-center items-center gap-1"><div className="small-score-box"></div><span style={{color: 'black'}}>-</span><div className="small-score-box"></div></div></td>
+                    <td className="text-center">
+                      <div className="flex justify-center items-center gap-1">
+                        <div className="small-score-box"></div>
+                        <span style={{color: 'black'}}>-</span>
+                        <div className="small-score-box"></div>
+                      </div>
+                    </td>
                     <td className="text-[9pt] bg-geel-trans">
                       <div className="label-small mb-1 opacity-50">{(m as any).team2Name}</div>
-                      {m.team2.map(p => ( <div key={p.id} className={(m as any).t2ReserveId === p.id ? 'strike-name' : ''}>{p.name}</div> ))}
+                      {m.team2.map(p => (
+                        <div
+                          key={p.id}
+                          className={(m as any).t2ReserveId === p.id ? 'strike-name' : ''}
+                        >
+                          {p.name}
+                        </div>
+                      ))}
                     </td>
-                    <td className="text-[9pt] bg-scheids-trans">{!isFixed ? m.referee?.name : '-'}</td>
-                    <td className="text-[8pt] bg-reserve-trans">{!isFixed ? (<><div>1: {m.subHigh?.name}</div><div>2: {m.subLow?.name}</div></>) : '-'}</td>
+                    <td className="text-[9pt] bg-scheids-trans">
+                      {!isFixed ? m.referee?.name : '-'}
+                    </td>
+                    <td className="text-[8pt] bg-reserve-trans">
+                      {!isFixed ? (
+                        <>
+                          <div>1: {m.subHigh?.name}</div>
+                          <div>2: {m.subLow?.name}</div>
+                        </>
+                      ) : '-'}
+                    </td>
                   </tr>
                 );
               })}
@@ -310,21 +367,151 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
       {/* OPTIE 3: INDIVIDUELE SPELERS */}
       {activePrintType === 'players' && playerSchedules.map(ps => (
         <div key={ps.name} className="page-break p-6">
-          <div className="print-header"><h1>PERSOONLIJK SCHEMA: {ps.name}</h1></div>
+          <div className="print-header">
+            <h1>PERSOONLIJK SCHEMA: {ps.name}</h1>
+          </div>
+
           <table className="print-table" style={{marginTop: '10px'}}>
-            <thead><tr className="bg-gray-100 uppercase text-[9pt] color-black"><th className="w-12 text-center">RD</th><th className="w-24 text-center">TIJD</th><th className="w-20 text-center">ZAAL</th><th className="text-left">ROL</th><th className="w-28 text-center">PUNTEN</th></tr></thead>
-            <tbody>{ps.rounds.map((r: any) => {
-                  let roleClass = ""; if (r.role === "BLAUW") roleClass = "bg-blauw-trans"; if (r.role === "GEEL") roleClass = "bg-geel-trans"; if (r.role === "REF") roleClass = "bg-scheids-trans"; if (r.role === "RES") roleClass = "bg-reserve-trans";
-                  let roleTextColor = ""; if (r.role === "BLAUW") roleTextColor = "color-blauw"; if (r.role === "GEEL") roleTextColor = "color-geel"; if (r.role === "REF") roleTextColor = "color-scheids"; if (r.role === "RES") roleTextColor = "color-reserve";
-                  return (<tr key={r.round} className={roleClass}><td className="text-center text-xl py-2 font-black">{r.round}</td><td className="text-center text-sm font-black">{r.startTime}</td><td className="text-center text-3xl font-black uppercase">{r.hall}</td><td className={`font-black uppercase text-lg ${roleTextColor}`}>{r.role}</td><td className="text-center">{r.hall !== '-' && (r.role === "BLAUW" || r.role === "GEEL") ? ( <div className="border-2 border-black w-10 h-10 mx-auto bg-white"></div> ) : ( <span className="text-gray-400 text-[7pt]">N.v.t.</span> )}</td></tr>);
-              })}</tbody>
-            <tfoot><tr><td colSpan={3} className="border-none"></td><td className="text-right font-black text-xl py-4 pr-4 uppercase">TOTAAL:</td><td className="text-center"><div className="border-4 border-black w-14 h-14 mx-auto bg-white"></div></td></tr></tfoot>
+            <thead>
+              <tr className="bg-gray-100 uppercase text-[9pt] color-black">
+                <th className="w-12 text-center">RD</th>
+                <th className="w-24 text-center">TIJD</th>
+                <th className="w-20 text-center">ZAAL</th>
+                <th className="text-left">ROL</th>
+                <th className="w-28 text-center">PUNTEN</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {ps.rounds.map((r: any) => {
+
+                /*
+                 * NIEUW:
+                 * Een fysieke invaller krijgt de rol
+                 * "INVAL BLAUW" of "INVAL GEEL".
+                 *
+                 * Deze speler heeft geen officiële wedstrijd
+                 * en krijgt daarom ook geen puntenvak.
+                 */
+                const isInval =
+                  r.role === "INVAL BLAUW" ||
+                  r.role === "INVAL GEEL";
+
+                let roleClass = "";
+
+                if (r.role === "BLAUW") {
+                  roleClass = "bg-blauw-trans";
+                }
+
+                if (r.role === "GEEL") {
+                  roleClass = "bg-geel-trans";
+                }
+
+                if (r.role === "REF") {
+                  roleClass = "bg-scheids-trans";
+                }
+
+                if (r.role === "RES") {
+                  roleClass = "bg-reserve-trans";
+                }
+
+                if (isInval) {
+                  roleClass = "bg-inval-trans";
+                }
+
+                let roleTextColor = "";
+
+                if (r.role === "BLAUW") {
+                  roleTextColor = "color-blauw";
+                }
+
+                if (r.role === "GEEL") {
+                  roleTextColor = "color-geel";
+                }
+
+                if (r.role === "REF") {
+                  roleTextColor = "color-scheids";
+                }
+
+                if (r.role === "RES") {
+                  roleTextColor = "color-reserve";
+                }
+
+                if (isInval) {
+                  roleTextColor = "color-inval";
+                }
+
+                return (
+                  <tr
+                    key={r.round}
+                    className={roleClass}
+                  >
+                    <td className="text-center text-xl py-2 font-black">
+                      {r.round}
+                    </td>
+
+                    <td className="text-center text-sm font-black">
+                      {r.startTime}
+                    </td>
+
+                    <td className="text-center text-3xl font-black uppercase">
+                      {r.hall}
+                    </td>
+
+                    <td className={`font-black uppercase text-lg ${roleTextColor}`}>
+                      {isInval ? (
+                        <>
+                          <div className="inval-label">
+                            FYSIEKE INVALLER
+                          </div>
+                          <div className="inval-role">
+                            {r.role}
+                          </div>
+                        </>
+                      ) : (
+                        r.role
+                      )}
+                    </td>
+
+                    <td className="text-center">
+                      {isInval ? (
+                        <span className="inval-no-points">
+                          GEEN OFFICIËLE WEDSTRIJD
+                        </span>
+                      ) : (
+                        r.hall !== '-' &&
+                        (r.role === "BLAUW" || r.role === "GEEL") ? (
+                          <div className="border-2 border-black w-10 h-10 mx-auto bg-white"></div>
+                        ) : (
+                          <span className="text-gray-400 text-[7pt]">
+                            N.v.t.
+                          </span>
+                        )
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+
+            <tfoot>
+              <tr>
+                <td colSpan={3} className="border-none"></td>
+                <td className="text-right font-black text-xl py-4 pr-4 uppercase">
+                  TOTAAL:
+                </td>
+                <td className="text-center">
+                  <div className="border-4 border-black w-14 h-14 mx-auto bg-white"></div>
+                </td>
+              </tr>
+            </tfoot>
           </table>
+
           {/* NIEUWE TEKST HIER */}
           <div className="points-explanation">
             <div>Winst = 3 punten</div>
             <div>Gelijk = 1 punt</div>
-            <div>Verlies = 0 punten</div> {/* Ik heb aangenomen dat Verlies 0 punten is */}
+            <div>Verlies = 0 punten</div>
           </div>
         </div>
       ))}
@@ -335,28 +522,49 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           <div className="print-header">
             <h1>EINDSTAND</h1>
           </div>
+
           <table className="print-table" style={{marginTop: '20px'}}>
             <thead>
               <tr className="uppercase">
                 <th className="w-16 text-center">#</th>
-                <th className="text-left">{(session as any).isFixedTeams ? 'TEAM NAAM' : 'SPELER NAAM'}</th>
+                <th className="text-left">
+                  {(session as any).isFixedTeams ? 'TEAM NAAM' : 'SPELER NAAM'}
+                </th>
                 <th className="w-24 text-center">GESPEELD</th>
                 <th className="w-24 text-center">SALDO</th>
                 <th className="w-24 text-center">PUNTEN</th>
               </tr>
             </thead>
+
             <tbody>
               {currentStandings.map((entry, idx) => (
                 <tr key={idx} className="font-black uppercase">
-                  <td className="text-center text-2xl py-4">{idx + 1}</td>
-                  <td className="text-xl pl-4">{(entry as any).name || (entry as any).playerName}</td>
-                  <td className="text-center text-lg">{(entry as any).matchesPlayed}</td>
-                  <td className="text-center text-lg">{entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}</td>
-                  <td className="text-center text-2xl bg-gray-100">{entry.points}</td>
+                  <td className="text-center text-2xl py-4">
+                    {idx + 1}
+                  </td>
+
+                  <td className="text-xl pl-4">
+                    {(entry as any).name || (entry as any).playerName}
+                  </td>
+
+                  <td className="text-center text-lg">
+                    {(entry as any).matchesPlayed}
+                  </td>
+
+                  <td className="text-center text-lg">
+                    {entry.goalDifference > 0
+                      ? `+${entry.goalDifference}`
+                      : entry.goalDifference}
+                  </td>
+
+                  <td className="text-center text-2xl bg-gray-100">
+                    {entry.points}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
           <div className="mt-20 text-center text-gray-400 text-xs uppercase font-bold italic">
             Gegenereerd via Bounceball Manager • {new Date().toLocaleDateString('nl-NL')}
           </div>
