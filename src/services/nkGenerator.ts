@@ -1,18 +1,23 @@
 import { Player, NKSession, NKRound, NKMatch } from '../types';
 
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+const delay = (ms: number) =>
+  new Promise(res => setTimeout(res, ms));
 
 function getRequiredIntroRatings(poolCount: number): number[] {
   if (poolCount === 2) return [5, 10];
   if (poolCount === 3) return [5, 7.5, 10];
   if (poolCount === 4) return [2.5, 5, 7.5, 10];
-  throw new Error("Aantal ratingpoules moet 2, 3 of 4 zijn.");
+
+  throw new Error(
+    "Aantal ratingpoules moet 2, 3 of 4 zijn."
+  );
 }
+
 
 /**
  * Normale NK-teamverdeler.
  *
- * Intro wordt hieronder apart afgehandeld, omdat daar de ratingverdeling
+ * Intro wordt apart afgehandeld, omdat daar de ratingverdeling
  * vooraf bepaald wordt.
  */
 function getBestTeamSplit(
@@ -37,67 +42,112 @@ function getBestTeamSplit(
     const team2: Player[] = [];
 
     for (const [, ratingPlayers] of byRating.entries()) {
-      // Een rating moet altijd gelijk over beide teams verdeeld kunnen worden.
-      if (ratingPlayers.length % 2 !== 0) return null;
+      // Een rating moet even over beide teams verdeeld kunnen worden.
+      if (ratingPlayers.length % 2 !== 0) {
+        return null;
+      }
 
       // Maximaal 2 spelers van dezelfde rating per team.
-      if (ratingPlayers.length > 4) return null;
+      if (ratingPlayers.length > 4) {
+        return null;
+      }
 
       const half = ratingPlayers.length / 2;
 
-      if (half > 2) return null;
+      if (half > 2) {
+        return null;
+      }
 
       // Willekeurig verdelen binnen dezelfde rating.
-      const shuffled = [...ratingPlayers].sort(() => Math.random() - 0.5);
+      const shuffled = [...ratingPlayers].sort(
+        () => Math.random() - 0.5
+      );
 
-      team1.push(...shuffled.slice(0, half));
-      team2.push(...shuffled.slice(half));
+      team1.push(
+        ...shuffled.slice(0, half)
+      );
+
+      team2.push(
+        ...shuffled.slice(half)
+      );
     }
 
-    if (team1.length !== ppt || team2.length !== ppt) {
+    if (
+      team1.length !== ppt ||
+      team2.length !== ppt
+    ) {
       return null;
     }
 
-    // Bij Intro zijn de teams per definitie exact gespiegeld.
+    // Bij Intro zijn de teams exact gespiegeld.
     return {
       t1: team1,
       t2: team2
     };
   }
 
-  // -----------------------------
+  // ============================================================
   // NORMAAL NK
-  // -----------------------------
+  // ============================================================
 
   let bestDiff = Infinity;
-  let bestSplit: { t1: Player[], t2: Player[] } | null = null;
 
-  function combine(start: number, team1: Player[]) {
+  let bestSplit: {
+    t1: Player[];
+    t2: Player[];
+  } | null = null;
+
+  function combine(
+    start: number,
+    team1: Player[]
+  ) {
     if (team1.length === ppt) {
       const team2 = players.filter(
-        p => !team1.find(t1p => t1p.id === p.id)
+        p =>
+          !team1.find(
+            t1p => t1p.id === p.id
+          )
       );
 
       const avg1 =
-        team1.reduce((s, p) => s + p.rating, 0) / ppt;
+        team1.reduce(
+          (s, p) => s + p.rating,
+          0
+        ) / ppt;
 
       const avg2 =
-        team2.reduce((s, p) => s + p.rating, 0) / ppt;
+        team2.reduce(
+          (s, p) => s + p.rating,
+          0
+        ) / ppt;
 
-      const k1 = team1.filter(p => p.isKeeper).length;
-      const k2 = team2.filter(p => p.isKeeper).length;
+      const k1 =
+        team1.filter(
+          p => p.isKeeper
+        ).length;
 
-      const keepersOk = k1 <= 1 && k2 <= 1;
+      const k2 =
+        team2.filter(
+          p => p.isKeeper
+        ).length;
+
+      const keepersOk =
+        k1 <= 1 &&
+        k2 <= 1;
 
       if (
         avg1 >= minRating &&
         avg2 >= minRating &&
         keepersOk
       ) {
-        const diff = Math.abs(avg1 - avg2);
+        const diff =
+          Math.abs(
+            avg1 - avg2
+          );
 
         if (diff < bestDiff) {
           bestDiff = diff;
+
           bestSplit = {
             t1: [...team1],
             t2: [...team2]
@@ -108,14 +158,23 @@ function getBestTeamSplit(
       return;
     }
 
-    for (let i = start; i < players.length; i++) {
+    for (
+      let i = start;
+      i < players.length;
+      i++
+    ) {
       team1.push(players[i]);
 
-      combine(i + 1, team1);
+      combine(
+        i + 1,
+        team1
+      );
 
       team1.pop();
 
-      if (bestDiff <= targetDiff) {
+      if (
+        bestDiff <= targetDiff
+      ) {
         return;
       }
     }
@@ -126,26 +185,25 @@ function getBestTeamSplit(
   return bestSplit;
 }
 
+
 /**
- * Een rating-compositie voor één Intro-wedstrijd.
+ * Mogelijke ratingcompositie voor één Intro-wedstrijd.
  *
- * De wedstrijd bestaat uit `ppt` rating-paren.
+ * Een compositie bevat ratingparen.
  *
- * Voor 4 tegen 4 zijn er dus 4 paren:
+ * Voor 4 tegen 4 zijn er 4 paren.
  *
- *   [5, 5, 7.5, 10]
+ * Bijvoorbeeld:
+ *
+ * [5, 5, 7.5, 10]
  *
  * betekent:
  *
- *   2 spelers rating 5
- *   2 spelers rating 7.5
- *   2 spelers rating 10
+ * - 2 spelers rating 5
+ * - 2 spelers rating 7.5
+ * - 2 spelers rating 10
  *
- * Iedere rating komt daardoor even vaak voor en wordt 50/50 over
- * de twee teams verdeeld.
- *
- * Een rating mag maximaal twee paren hebben, want anders zouden
- * er meer dan twee spelers van dezelfde rating in één team komen.
+ * Iedere rating wordt daardoor gelijk over beide teams verdeeld.
  */
 function getPossibleIntroCompositions(
   ratings: number[],
@@ -158,40 +216,72 @@ function getPossibleIntroCompositions(
     current: number[],
     counts: Map<number, number>
   ) {
-    if (current.length === ppt) {
-      result.push([...current]);
+    if (
+      current.length === ppt
+    ) {
+      result.push([
+        ...current
+      ]);
+
       return;
     }
 
-    for (let i = startRating; i < ratings.length; i++) {
-      const rating = ratings[i];
-      const count = counts.get(rating) || 0;
+    for (
+      let i = startRating;
+      i < ratings.length;
+      i++
+    ) {
+      const rating =
+        ratings[i];
+
+      const count =
+        counts.get(rating) || 0;
 
       // Maximaal twee paren van dezelfde rating.
-      if (count >= 2) continue;
+      if (count >= 2) {
+        continue;
+      }
 
-      counts.set(rating, count + 1);
-      current.push(rating);
+      counts.set(
+        rating,
+        count + 1
+      );
 
-      build(i, current, counts);
+      current.push(
+        rating
+      );
+
+      build(
+        i,
+        current,
+        counts
+      );
 
       current.pop();
 
       if (count === 0) {
         counts.delete(rating);
       } else {
-        counts.set(rating, count);
+        counts.set(
+          rating,
+          count
+        );
       }
     }
   }
 
-  build(0, [], new Map());
+  build(
+    0,
+    [],
+    new Map()
+  );
 
   return result;
 }
 
+
 /**
- * Bepaalt hoeveel spelers van iedere rating nog nodig zijn.
+ * Bepaalt hoeveel speelbeurten iedere ratingpool nog nodig heeft.
  */
 function getRemainingRatingAppearances(
   allPlayers: Player[],
@@ -199,45 +289,81 @@ function getRemainingRatingAppearances(
   ratings: number[],
   mpp: number
 ): Map<number, number> {
-  const result = new Map<number, number>();
+  const result =
+    new Map<number, number>();
 
-  for (const rating of ratings) {
+  for (
+    const rating of ratings
+  ) {
     let remaining = 0;
 
-    for (const player of allPlayers) {
-      if (player.rating !== rating) continue;
+    for (
+      const player of allPlayers
+    ) {
+      if (
+        player.rating !== rating
+      ) {
+        continue;
+      }
 
-      const played = playedCount.get(player.id) || 0;
-      remaining += Math.max(0, mpp - played);
+      const played =
+        playedCount.get(
+          player.id
+        ) || 0;
+
+      remaining += Math.max(
+        0,
+        mpp - played
+      );
     }
 
-    result.set(rating, remaining);
+    result.set(
+      rating,
+      remaining
+    );
   }
 
   return result;
 }
 
+
 /**
- * Controleert of een compositie haalbaar is met de nog beschikbare
- * spelers uit iedere ratingpool.
+ * Controleert of een compositie haalbaar is
+ * met de nog beschikbare spelers.
  */
 function compositionIsPossible(
   composition: number[],
   remainingAppearances: Map<number, number>
 ): boolean {
-  const needed = new Map<number, number>();
+  const needed =
+    new Map<number, number>();
 
-  for (const rating of composition) {
+  for (
+    const rating of composition
+  ) {
     needed.set(
       rating,
-      (needed.get(rating) || 0) + 2
+      (
+        needed.get(rating) ||
+        0
+      ) + 2
     );
   }
 
-  for (const [rating, amount] of needed.entries()) {
-    const available = remainingAppearances.get(rating) || 0;
+  for (
+    const [
+      rating,
+      amount
+    ] of needed.entries()
+  ) {
+    const available =
+      remainingAppearances.get(
+        rating
+      ) || 0;
 
-    if (available < amount) {
+    if (
+      available < amount
+    ) {
       return false;
     }
   }
@@ -245,12 +371,12 @@ function compositionIsPossible(
   return true;
 }
 
+
 /**
  * Score voor een compositie.
  *
- * We proberen de resterende speelbeurten zo eerlijk mogelijk over de
- * ratingpoules te verdelen. Daarnaast geven we wat willekeur mee zodat
- * meerdere gegenereerde versies niet steeds hetzelfde zijn.
+ * We proberen de resterende speelbeurten zo eerlijk mogelijk
+ * over de ratingpoules te verdelen.
  */
 function getIntroCompositionScore(
   composition: number[],
@@ -258,22 +384,51 @@ function getIntroCompositionScore(
   totalMatchesRemaining: number,
   ratings: number[]
 ): number {
-  const needed = new Map<number, number>();
+  const needed =
+    new Map<number, number>();
 
-  for (const rating of composition) {
+  for (
+    const rating of composition
+  ) {
     needed.set(
       rating,
-      (needed.get(rating) || 0) + 2
+      (
+        needed.get(rating) ||
+        0
+      ) + 2
     );
   }
 
   let score = 0;
 
-  for (const rating of ratings) {
-    const remaining = remainingAppearances.get(rating) || 0;
-    const use = needed.get(rating) || 0;
+  const totalRemaining =
+    ratings.reduce(
+      (sum, rating) =>
+        sum +
+        (
+          remainingAppearances.get(
+            rating
+          ) || 0
+        ),
+      0
+    );
 
-    if (remaining <= 0) {
+  for (
+    const rating of ratings
+  ) {
+    const remaining =
+      remainingAppearances.get(
+        rating
+      ) || 0;
+
+    const use =
+      needed.get(
+        rating
+      ) || 0;
+
+    if (
+      remaining <= 0
+    ) {
       if (use > 0) {
         return Infinity;
       }
@@ -281,41 +436,38 @@ function getIntroCompositionScore(
       continue;
     }
 
-    /*
-     * Verwachte verdeling:
-     *
-     * Als bijvoorbeeld 40% van alle resterende speelbeurten uit
-     * een rating komt, willen we ongeveer 40% van de huidige
-     * wedstrijdplaatsen uit die rating gebruiken.
-     */
-    const totalRemaining = ratings.reduce(
-      (sum, r) => sum + (remainingAppearances.get(r) || 0),
-      0
-    );
-
-    if (totalRemaining > 0) {
+    if (
+      totalRemaining > 0
+    ) {
       const expected =
-        (remaining / totalRemaining) * (totalMatchesRemaining * 2);
+        (
+          remaining /
+          totalRemaining
+        ) *
+        (
+          totalMatchesRemaining *
+          2
+        );
 
-      score += Math.abs(use - expected);
+      score += Math.abs(
+        use - expected
+      );
     }
   }
 
-  // Kleine willekeur voorkomt dat iedere versie exact hetzelfde wordt.
-  score += Math.random() * 3;
+  // Kleine willekeur zodat versies niet identiek worden.
+  score +=
+    Math.random() * 3;
 
   return score;
 }
 
+
 /**
  * Kies voor een hele ronde een ratingverdeling.
  *
- * Dit is de belangrijkste wijziging:
- *
- * We kiezen NIET eerst acht spelers.
- *
- * Eerst bepalen we voor iedere wedstrijd welke ratingparen nodig zijn.
- * Daarna worden de daadwerkelijke spelers gekozen.
+ * Eerst bepalen we welke ratings iedere wedstrijd nodig heeft.
+ * Pas daarna kiezen we de daadwerkelijke spelers.
  */
 function selectIntroRoundCompositions(
   ratings: number[],
@@ -323,86 +475,110 @@ function selectIntroRoundCompositions(
   ppt: number,
   remainingAppearances: Map<number, number>
 ): number[][] | null {
-  const possible = getPossibleIntroCompositions(
-    ratings,
-    ppt
-  );
+  const possible =
+    getPossibleIntroCompositions(
+      ratings,
+      ppt
+    );
 
-  if (possible.length === 0) {
+  if (
+    possible.length === 0
+  ) {
     return null;
   }
 
-  /*
-   * Eerst alle mogelijke composities sorteren op hoe goed ze passen
-   * bij de huidige resterende ratingverdeling.
-   */
-  const scored = possible
-    .filter(composition =>
-      compositionIsPossible(
-        composition,
-        remainingAppearances
+  const scored =
+    possible
+      .filter(
+        composition =>
+          compositionIsPossible(
+            composition,
+            remainingAppearances
+          )
       )
-    )
-    .map(composition => ({
-      composition,
-      score: getIntroCompositionScore(
-        composition,
-        remainingAppearances,
-        matchesNeeded,
-        ratings
+      .map(
+        composition => ({
+          composition,
+          score:
+            getIntroCompositionScore(
+              composition,
+              remainingAppearances,
+              matchesNeeded,
+              ratings
+            )
+        })
       )
-    }))
-    .sort((a, b) => a.score - b.score);
+      .sort(
+        (a, b) =>
+          a.score -
+          b.score
+      );
 
-  if (scored.length === 0) {
+  if (
+    scored.length === 0
+  ) {
     return null;
   }
 
-  /*
-   * We zoeken een combinatie van composities die samen de huidige
-   * ronde kunnen vullen.
-   *
-   * Omdat er bij 4 tegen 4 maar vier ratingparen per wedstrijd zijn,
-   * blijft deze zoekruimte klein.
-   */
   const selected: number[][] = [];
 
   function search(
     matchIndex: number,
     remaining: Map<number, number>
   ): boolean {
-    if (matchIndex === matchesNeeded) {
+    if (
+      matchIndex ===
+      matchesNeeded
+    ) {
       return true;
     }
 
-    /*
-     * Probeer eerst de beste composities, maar shuffle composities
-     * met vrijwel dezelfde score zodat versies kunnen verschillen.
-     */
-    const candidates = [...scored];
+    const candidates =
+      [...scored];
 
-    candidates.sort((a, b) => {
-      const diff = a.score - b.score;
+    candidates.sort(
+      (a, b) => {
+        const diff =
+          a.score -
+          b.score;
 
-      if (Math.abs(diff) < 2) {
-        return Math.random() - 0.5;
+        if (
+          Math.abs(diff) < 2
+        ) {
+          return (
+            Math.random() -
+            0.5
+          );
+        }
+
+        return diff;
       }
+    );
 
-      return diff;
-    });
+    for (
+      const candidate of candidates
+    ) {
+      const composition =
+        candidate.composition;
 
-    for (const candidate of candidates) {
-      const composition = candidate.composition;
-
-      const nextRemaining = new Map(remaining);
+      const nextRemaining =
+        new Map(
+          remaining
+        );
 
       let valid = true;
 
-      for (const rating of composition) {
+      for (
+        const rating of composition
+      ) {
         const current =
-          nextRemaining.get(rating) || 0;
+          nextRemaining.get(
+            rating
+          ) || 0;
 
-        if (current < 2) {
+        if (
+          current < 2
+        ) {
           valid = false;
           break;
         }
@@ -417,25 +593,32 @@ function selectIntroRoundCompositions(
         continue;
       }
 
-      /*
-       * Kijk vooruit of de resterende wedstrijden überhaupt nog
-       * gevuld kunnen worden.
-       */
       const remainingMatches =
-        matchesNeeded - matchIndex - 1;
+        matchesNeeded -
+        matchIndex -
+        1;
 
-      let totalRemaining =
-        0;
+      let totalRemaining = 0;
 
-      nextRemaining.forEach(value => {
-        totalRemaining += value;
-      });
+      nextRemaining.forEach(
+        value => {
+          totalRemaining +=
+            value;
+        }
+      );
 
-      if (totalRemaining < remainingMatches * ppt * 2) {
+      if (
+        totalRemaining <
+        remainingMatches *
+          ppt *
+          2
+      ) {
         continue;
       }
 
-      selected.push(composition);
+      selected.push(
+        composition
+      );
 
       if (
         search(
@@ -453,7 +636,9 @@ function selectIntroRoundCompositions(
   }
 
   const startingRemaining =
-    new Map(remainingAppearances);
+    new Map(
+      remainingAppearances
+    );
 
   if (
     !search(
@@ -467,14 +652,12 @@ function selectIntroRoundCompositions(
   return selected;
 }
 
+
 /**
- * Kies daadwerkelijke spelers voor een bepaalde rating.
+ * Kies daadwerkelijke spelers voor één rating.
  *
  * Spelers met minder gespeelde wedstrijden krijgen voorrang.
- * Bij gelijke stand wordt willekeurig gekozen.
- *
- * Pair-counts worden meegenomen om herhaling van dezelfde spelers
- * zoveel mogelijk te beperken.
+ * Bij gelijke stand wordt gekeken naar eerdere combinaties.
  */
 function chooseIntroPlayersForRating(
   candidates: Player[],
@@ -484,62 +667,98 @@ function chooseIntroPlayersForRating(
   pairCounts: Map<string, number>,
   alreadySelected: Player[]
 ): Player[] | null {
-  const available = candidates.filter(
-    p =>
-      p.rating === rating &&
-      !alreadySelected.some(
-        selected => selected.id === p.id
-      )
-  );
+  const available =
+    candidates.filter(
+      p =>
+        p.rating === rating &&
+        !alreadySelected.some(
+          selected =>
+            selected.id === p.id
+        )
+    );
 
-  if (available.length < amount) {
+  if (
+    available.length <
+    amount
+  ) {
     return null;
   }
 
-  const shuffled = [...available].sort(
-    () => Math.random() - 0.5
+  const shuffled =
+    [...available].sort(
+      () =>
+        Math.random() -
+        0.5
+    );
+
+  shuffled.sort(
+    (a, b) => {
+      const playedA =
+        playedCount.get(
+          a.id
+        ) || 0;
+
+      const playedB =
+        playedCount.get(
+          b.id
+        ) || 0;
+
+      if (
+        playedA !== playedB
+      ) {
+        return (
+          playedA -
+          playedB
+        );
+      }
+
+      const pairScoreA =
+        alreadySelected.reduce(
+          (sum, p) =>
+            sum +
+            (
+              pairCounts.get(
+                [
+                  p.id,
+                  a.id
+                ]
+                  .sort()
+                  .join('-')
+              ) || 0
+            ),
+          0
+        );
+
+      const pairScoreB =
+        alreadySelected.reduce(
+          (sum, p) =>
+            sum +
+            (
+              pairCounts.get(
+                [
+                  p.id,
+                  b.id
+                ]
+                  .sort()
+                  .join('-')
+              ) || 0
+            ),
+          0
+        );
+
+      return (
+        pairScoreA -
+        pairScoreB
+      );
+    }
   );
 
-  shuffled.sort((a, b) => {
-    const playedA =
-      playedCount.get(a.id) || 0;
-
-    const playedB =
-      playedCount.get(b.id) || 0;
-
-    if (playedA !== playedB) {
-      return playedA - playedB;
-    }
-
-    /*
-     * Geef spelers die minder vaak met de al gekozen spelers
-     * hebben gespeeld een kleine voorkeur.
-     */
-    const pairScoreA =
-      alreadySelected.reduce(
-        (sum, p) =>
-          sum +
-          (pairCounts.get(
-            [p.id, a.id].sort().join('-')
-          ) || 0),
-        0
-      );
-
-    const pairScoreB =
-      alreadySelected.reduce(
-        (sum, p) =>
-          sum +
-          (pairCounts.get(
-            [p.id, b.id].sort().join('-')
-          ) || 0),
-        0
-      );
-
-    return pairScoreA - pairScoreB;
-  });
-
-  return shuffled.slice(0, amount);
+  return shuffled.slice(
+    0,
+    amount
+  );
 }
+
 
 /**
  * Selecteer de daadwerkelijke spelers voor één Intro-wedstrijd
@@ -554,44 +773,58 @@ function selectIntroMatchPlayersFromComposition(
 ): Player[] | null {
   const selected: Player[] = [];
 
-  const counts = new Map<number, number>();
+  const counts =
+    new Map<number, number>();
 
-  for (const rating of composition) {
+  for (
+    const rating of composition
+  ) {
     counts.set(
       rating,
-      (counts.get(rating) || 0) + 2
+      (
+        counts.get(rating) ||
+        0
+      ) + 2
     );
   }
 
-  /*
-   * Eerst ratings met de kleinste beschikbare pool verwerken.
-   * Daarmee verkleinen we de kans dat een kleine pool later
-   * niet meer genoeg spelers heeft.
-   */
-  const orderedRatings = [...counts.keys()].sort(
-    (a, b) => {
-      const aCount = candidates.filter(
-        p =>
-          p.rating === a &&
-          !selected.some(
-            s => s.id === p.id
-          )
-      ).length;
+  const orderedRatings =
+    [...counts.keys()].sort(
+      (a, b) => {
+        const aCount =
+          candidates.filter(
+            p =>
+              p.rating === a &&
+              !selected.some(
+                s =>
+                  s.id === p.id
+              )
+          ).length;
 
-      const bCount = candidates.filter(
-        p =>
-          p.rating === b &&
-          !selected.some(
-            s => s.id === p.id
-          )
-      ).length;
+        const bCount =
+          candidates.filter(
+            p =>
+              p.rating === b &&
+              !selected.some(
+                s =>
+                  s.id === p.id
+              )
+          ).length;
 
-      return aCount - bCount;
-    }
-  );
+        return (
+          aCount -
+          bCount
+        );
+      }
+    );
 
-  for (const rating of orderedRatings) {
-    const amount = counts.get(rating)!;
+  for (
+    const rating of orderedRatings
+  ) {
+    const amount =
+      counts.get(
+        rating
+      )!;
 
     const players =
       chooseIntroPlayersForRating(
@@ -607,55 +840,95 @@ function selectIntroMatchPlayersFromComposition(
       return null;
     }
 
-    selected.push(...players);
+    selected.push(
+      ...players
+    );
   }
 
-  if (selected.length !== ppt * 2) {
+  if (
+    selected.length !==
+    ppt * 2
+  ) {
     return null;
   }
 
   return selected;
 }
 
+
 /**
- * Willekeurige verdeling van rustende spelers over:
+ * Verdeel wissels en scheidsrechters willekeurig.
  *
- * - subLow
- * - subHigh
- * - referee
+ * Hier wordt bewust GEEN ratingvoorwaarde gebruikt.
  *
- * Er wordt hier bewust GEEN ratingvoorwaarde gebruikt.
+ * De functie geeft de spelers terug die na het uitdelen
+ * van alle rollen daadwerkelijk niets hoeven te doen.
  */
 function assignRandomReservesAndReferees(
   resting: Player[],
   matches: NKMatch[]
 ): Player[] {
-  const available = [...resting].sort(
-    () => Math.random() - 0.5
-  );
+  const available =
+    [...resting].sort(
+      () =>
+        Math.random() -
+        0.5
+    );
 
   let index = 0;
 
-  for (const match of matches) {
-    if (index < available.length) {
-      match.subLow = available[index++];
+  // Eerst subLow
+  for (
+    const match of matches
+  ) {
+    if (
+      index <
+      available.length
+    ) {
+      match.subLow =
+        available[index++];
     }
   }
 
-  for (const match of matches) {
-    if (index < available.length) {
-      match.subHigh = available[index++];
+  // Daarna subHigh
+  for (
+    const match of matches
+  ) {
+    if (
+      index <
+      available.length
+    ) {
+      match.subHigh =
+        available[index++];
     }
   }
 
-  for (const match of matches) {
-    if (index < available.length) {
-      match.referee = available[index++];
+  // Daarna scheidsrechter
+  for (
+    const match of matches
+  ) {
+    if (
+      index <
+      available.length
+    ) {
+      match.referee =
+        available[index++];
     }
   }
 
+  /*
+   * Dit zijn de spelers die:
+   *
+   * - niet spelen;
+   * - geen subLow zijn;
+   * - geen subHigh zijn;
+   * - geen scheidsrechter zijn.
+   *
+   * Zij komen onderaan de ronde te staan.
+   */
   return available.slice(index);
 }
+
 
 async function generateSingleVersion(
   allPlayers: Player[],
@@ -663,43 +936,61 @@ async function generateSingleVersion(
   mpp: number,
   ppt: number,
   competitionName: string,
-  manualTimes: { start: string, end: string }[],
+  manualTimes: {
+    start: string;
+    end: string;
+  }[],
   minRating: number,
   isIntro: boolean,
   introPoolCount: number
 ): Promise<NKSession | null> {
-  const ppm = ppt * 2;
+  const ppm =
+    ppt * 2;
 
-  const totalRounds = Math.ceil(
-    (allPlayers.length * mpp / ppm) /
-    hallNames.length
-  );
+  const totalRounds =
+    Math.ceil(
+      (
+        allPlayers.length *
+        mpp /
+        ppm
+      ) /
+      hallNames.length
+    );
 
-  const playedCount = new Map(
-    allPlayers.map(p => [p.id, 0])
-  );
+  const playedCount =
+    new Map(
+      allPlayers.map(
+        p => [p.id, 0]
+      )
+    );
 
-  const pairCounts = new Map<string, number>();
+  const pairCounts =
+    new Map<string, number>();
 
   const rounds: NKRound[] = [];
 
-  const playedCountsHistory: Map<number, number>[] = [
-    new Map(playedCount)
-  ];
+  const playedCountsHistory:
+    Map<number, number>[] = [
+      new Map(
+        playedCount
+      )
+    ];
 
   const roundAttempts =
-    new Array(totalRounds + 1).fill(0);
+    new Array(
+      totalRounds + 1
+    ).fill(0);
 
   /*
-   * Intro krijgt meer tijd.
-   *
-   * Het oude algoritme moest binnen 5 seconden geluk hebben.
-   * Bij deze compositie-aanpak is dat veel minder problematisch,
-   * maar we geven hem nog steeds een duidelijke bovengrens.
+   * Intro krijgt meer tijd dan normaal NK.
    */
   const maxGlobalTime =
     Date.now() +
-    (isIntro ? 30000 : 5000);
+    (
+      isIntro
+        ? 30000
+        : 5000
+    );
 
   /*
    * Intro-basiscontrole.
@@ -710,25 +1001,30 @@ async function generateSingleVersion(
         introPoolCount
       );
 
-    if (ppm % 2 !== 0) {
+    if (
+      ppm % 2 !== 0
+    ) {
       throw new Error(
         "Intro vereist een even aantal spelers per wedstrijd."
       );
     }
 
-    for (const rating of requiredIntroRatings) {
+    for (
+      const rating of
+      requiredIntroRatings
+    ) {
       const poolCount =
         allPlayers.filter(
-          p => p.rating === rating
+          p =>
+            p.rating === rating
         ).length;
 
-      /*
-       * Iedere speler moet mpp wedstrijden spelen.
-       * De totale hoeveelheid speelbeurten van een rating
-       * moet even zijn, omdat iedere wedstrijd deze rating
-       * alleen in paren kan gebruiken.
-       */
-      if ((poolCount * mpp) % 2 !== 0) {
+      if (
+        (
+          poolCount *
+          mpp
+        ) % 2 !== 0
+      ) {
         throw new Error(
           `Niet haalbaar met ${introPoolCount} ratingpoules: ` +
           `rating ${rating} kan niet gelijk over beide teams ` +
@@ -740,43 +1036,57 @@ async function generateSingleVersion(
 
   let rIdx = 1;
 
-  while (rIdx <= totalRounds) {
-    if (Date.now() > maxGlobalTime) {
+  while (
+    rIdx <= totalRounds
+  ) {
+    if (
+      Date.now() >
+      maxGlobalTime
+    ) {
       return null;
     }
 
     const currentPlayedCount =
-      playedCountsHistory[rIdx - 1];
+      playedCountsHistory[
+        rIdx - 1
+      ];
 
     let success = false;
 
-    let roundMatches: NKMatch[] = [];
+    let roundMatches:
+      NKMatch[] = [];
 
     /*
-     * We proberen een ronde meerdere keren.
+     * Probeer deze ronde.
      */
     for (
       let attempt = 0;
       attempt < 100;
       attempt++
     ) {
-      if (Date.now() > maxGlobalTime) {
+      if (
+        Date.now() >
+        maxGlobalTime
+      ) {
         return null;
       }
 
       const usedThisRound =
         new Set<number>();
 
-      const matches: NKMatch[] = [];
+      const matches:
+        NKMatch[] = [];
 
       const target =
-        isIntro ? 0 : 0.30;
+        isIntro
+          ? 0
+          : 0.30;
 
       try {
         /*
-         * ---------------------------------------------------------
+         * ========================================================
          * INTRO
-         * ---------------------------------------------------------
+         * ========================================================
          */
         if (isIntro) {
           const ratings =
@@ -787,29 +1097,28 @@ async function generateSingleVersion(
           const candidates =
             allPlayers.filter(
               p =>
-                (currentPlayedCount.get(p.id) || 0) <
-                mpp
+                (
+                  currentPlayedCount.get(
+                    p.id
+                  ) || 0
+                ) < mpp
             );
 
-          /*
-           * Hoeveel wedstrijden kunnen we deze ronde maken?
-           */
           const mInRound =
             Math.min(
               hallNames.length,
               Math.floor(
-                candidates.length / ppm
+                candidates.length /
+                ppm
               )
             );
 
-          if (mInRound <= 0) {
+          if (
+            mInRound <= 0
+          ) {
             throw new Error();
           }
 
-          /*
-           * Bepaal eerst hoeveel speelbeurten iedere ratingpool
-           * nog nodig heeft.
-           */
           const remainingAppearances =
             getRemainingRatingAppearances(
               allPlayers,
@@ -819,8 +1128,7 @@ async function generateSingleVersion(
             );
 
           /*
-           * Bepaal vervolgens de ratingcompositie van ALLE
-           * wedstrijden in deze ronde.
+           * Eerst de ratingverdeling bepalen.
            */
           const compositions =
             selectIntroRoundCompositions(
@@ -830,12 +1138,14 @@ async function generateSingleVersion(
               remainingAppearances
             );
 
-          if (!compositions) {
+          if (
+            !compositions
+          ) {
             throw new Error();
           }
 
           /*
-           * Nu pas kiezen we de daadwerkelijke spelers.
+           * Daarna pas de spelers kiezen.
            */
           for (
             let h = 0;
@@ -845,12 +1155,20 @@ async function generateSingleVersion(
             const available =
               allPlayers.filter(
                 p =>
-                  (currentPlayedCount.get(p.id) || 0) <
-                    mpp &&
-                  !usedThisRound.has(p.id)
+                  (
+                    currentPlayedCount.get(
+                      p.id
+                    ) || 0
+                  ) < mpp &&
+                  !usedThisRound.has(
+                    p.id
+                  )
               );
 
-            if (available.length < ppm) {
+            if (
+              available.length <
+              ppm
+            ) {
               throw new Error();
             }
 
@@ -863,13 +1181,14 @@ async function generateSingleVersion(
                 ppt
               );
 
-            if (!mPlayers) {
+            if (
+              !mPlayers
+            ) {
               throw new Error();
             }
 
             /*
-             * Dit is nu alleen nog een controle.
-             * De compositie garandeert al dat dit klopt.
+             * Controleer de gespiegeldheid.
              */
             const split =
               getBestTeamSplit(
@@ -880,77 +1199,101 @@ async function generateSingleVersion(
                 true
               );
 
-            if (!split) {
+            if (
+              !split
+            ) {
               throw new Error();
             }
 
             const avg1 =
               split.t1.reduce(
-                (s, p) => s + p.rating,
+                (s, p) =>
+                  s + p.rating,
                 0
               ) / ppt;
 
             const avg2 =
               split.t2.reduce(
-                (s, p) => s + p.rating,
+                (s, p) =>
+                  s + p.rating,
                 0
               ) / ppt;
 
             const diff =
-              Math.abs(avg1 - avg2);
+              Math.abs(
+                avg1 -
+                avg2
+              );
 
-            /*
-             * Bij Intro moet dit exact 0 zijn.
-             */
-            if (diff > 0.00001) {
+            if (
+              diff >
+              0.00001
+            ) {
               throw new Error();
             }
 
             mPlayers.forEach(
-              p => usedThisRound.add(p.id)
+              p =>
+                usedThisRound.add(
+                  p.id
+                )
             );
 
             matches.push({
-              id: `r${rIdx}h${h}`,
-              hallName: hallNames[h],
-              team1: split.t1,
-              team2: split.t2,
+              id:
+                `r${rIdx}h${h}`,
+              hallName:
+                hallNames[h],
+              team1:
+                split.t1,
+              team2:
+                split.t2,
               team1Score: 0,
               team2Score: 0,
               isPlayed: false,
-              subLow: null as any,
-              subHigh: null as any,
-              referee: null as any
+              subLow: null,
+              subHigh: null,
+              referee: null
             });
           }
         }
 
         /*
-         * ---------------------------------------------------------
+         * ========================================================
          * NORMAAL NK
-         * ---------------------------------------------------------
-         *
-         * Deze logica blijft grotendeels zoals voorheen.
+         * ========================================================
          */
         else {
           let pool =
             [...allPlayers]
               .filter(
                 p =>
-                  (currentPlayedCount.get(p.id) || 0) <
-                  mpp
+                  (
+                    currentPlayedCount.get(
+                      p.id
+                    ) || 0
+                  ) < mpp
               )
               .sort(
                 (a, b) =>
                   (
                     mpp -
-                    (currentPlayedCount.get(a.id) || 0)
+                    (
+                      currentPlayedCount.get(
+                        a.id
+                      ) || 0
+                    )
                   ) -
                   (
                     mpp -
-                    (currentPlayedCount.get(b.id) || 0)
+                    (
+                      currentPlayedCount.get(
+                        b.id
+                      ) || 0
+                    )
                   ) ||
-                  Math.random() - 0.5
+                  Math.random() -
+                  0.5
               )
               .reverse();
 
@@ -958,7 +1301,8 @@ async function generateSingleVersion(
             Math.min(
               hallNames.length,
               Math.floor(
-                pool.length / ppm
+                pool.length /
+                ppm
               )
             );
 
@@ -969,37 +1313,53 @@ async function generateSingleVersion(
           ) {
             const candidates =
               pool.filter(
-                p => !usedThisRound.has(p.id)
+                p =>
+                  !usedThisRound.has(
+                    p.id
+                  )
               );
 
-            if (candidates.length < ppm) {
+            if (
+              candidates.length <
+              ppm
+            ) {
               break;
             }
 
-            const selectedForMatch: Player[] = [];
+            const selectedForMatch:
+              Player[] = [];
 
             selectedForMatch.push(
               candidates[0]
             );
 
             while (
-              selectedForMatch.length < ppm
+              selectedForMatch.length <
+              ppm
             ) {
               const remaining =
                 candidates.filter(
                   c =>
-                    !selectedForMatch.includes(c)
+                    !selectedForMatch.includes(
+                      c
+                    )
                 );
 
               remaining.sort(
                 (a, b) => {
                   const scoreA =
                     selectedForMatch.reduce(
-                      (sum, p) =>
+                      (
+                        sum,
+                        p
+                      ) =>
                         sum +
                         (
                           pairCounts.get(
-                            [p.id, a.id]
+                            [
+                              p.id,
+                              a.id
+                            ]
                               .sort()
                               .join('-')
                           ) || 0
@@ -1009,11 +1369,17 @@ async function generateSingleVersion(
 
                   const scoreB =
                     selectedForMatch.reduce(
-                      (sum, p) =>
+                      (
+                        sum,
+                        p
+                      ) =>
                         sum +
                         (
                           pairCounts.get(
-                            [p.id, b.id]
+                            [
+                              p.id,
+                              b.id
+                            ]
                               .sort()
                               .join('-')
                           ) || 0
@@ -1025,11 +1391,17 @@ async function generateSingleVersion(
                     scoreA -
                     scoreB
                   ) ||
-                  Math.random() - 0.5;
+                  (
+                    Math.random() -
+                    0.5
+                  );
                 }
               );
 
-              if (remaining.length === 0) {
+              if (
+                remaining.length ===
+                0
+              ) {
                 throw new Error();
               }
 
@@ -1047,7 +1419,9 @@ async function generateSingleVersion(
                 false
               );
 
-            if (!split) {
+            if (
+              !split
+            ) {
               throw new Error();
             }
 
@@ -1069,55 +1443,82 @@ async function generateSingleVersion(
                 )
               );
 
-            if (diff > 0.301) {
+            if (
+              diff >
+              0.301
+            ) {
               throw new Error();
             }
 
             selectedForMatch.forEach(
               p =>
-                usedThisRound.add(p.id)
+                usedThisRound.add(
+                  p.id
+                )
             );
 
             matches.push({
-              id: `r${rIdx}h${h}`,
-              hallName: hallNames[h],
-              team1: split.t1,
-              team2: split.t2,
+              id:
+                `r${rIdx}h${h}`,
+              hallName:
+                hallNames[h],
+              team1:
+                split.t1,
+              team2:
+                split.t2,
               team1Score: 0,
               team2Score: 0,
               isPlayed: false,
-              subLow: null as any,
-              subHigh: null as any,
-              referee: null as any
+              subLow: null,
+              subHigh: null,
+              referee: null
             });
           }
         }
 
         /*
-         * ---------------------------------------------------------
+         * ========================================================
          * WISSELS + SCHEIDSRECHTERS
-         * ---------------------------------------------------------
+         * ========================================================
          *
-         * Bewust volledig losgekoppeld van ratingpoules.
+         * Rating maakt hier bewust niet uit.
          */
         const resting =
           allPlayers.filter(
-            p => !usedThisRound.has(p.id)
+            p =>
+              !usedThisRound.has(
+                p.id
+              )
           );
 
-        assignRandomReservesAndReferees(
-          resting,
-          matches
-        );
-
         /*
-         * Er moet minimaal één wedstrijd zijn gemaakt.
+         * Deze functie geeft de spelers terug die na het uitdelen
+         * van wissels en scheidsrechters écht niets hoeven te doen.
          */
-        if (matches.length === 0) {
+        const completelyResting =
+          assignRandomReservesAndReferees(
+            resting,
+            matches
+          );
+
+        if (
+          matches.length === 0
+        ) {
           throw new Error();
         }
 
-        roundMatches = matches;
+        roundMatches =
+          matches;
+
+        /*
+         * Sla de spelers die echt niets doen tijdelijk op.
+         *
+         * We gebruiken hier een tijdelijke property op de lokale
+         * rondeverwerking. Die wordt hieronder netjes in
+         * restingPlayers gezet.
+         */
+        (roundMatches as any).__restingPlayers =
+          completelyResting;
 
         success = true;
 
@@ -1125,36 +1526,63 @@ async function generateSingleVersion(
       } catch (e) {
         /*
          * Deze poging is mislukt.
-         * We proberen dezelfde ronde opnieuw.
          */
       }
 
-      /*
-       * Laat de browser tussendoor ademen.
-       */
       await delay(0);
     }
 
     /*
-     * -----------------------------------------------------------
+     * ============================================================
      * RONDE GELUKT
-     * -----------------------------------------------------------
+     * ============================================================
      */
     if (success) {
       const time =
-        manualTimes[rIdx - 1] ||
-        {
+        manualTimes[
+          rIdx - 1
+        ] || {
           start: '',
           end: ''
         };
 
+      /*
+       * Haal de spelers op die daadwerkelijk niets doen.
+       */
+      const restingPlayers =
+        (
+          roundMatches as any
+        ).__restingPlayers ||
+        [];
+
+      /*
+       * Verwijder de tijdelijke property weer.
+       */
+      delete (
+        roundMatches as any
+      ).__restingPlayers;
+
       rounds.push({
-        roundNumber: rIdx,
-        matches: roundMatches,
-        restingPlayers: [],
-        startTime: time.start,
-        endTime: time.end
-      } as any);
+        roundNumber:
+          rIdx,
+
+        matches:
+          roundMatches,
+
+        /*
+         * Deze spelers worden alleen voor het overzicht
+         * opgeslagen.
+         *
+         * Ze tellen nergens anders voor mee.
+         */
+        restingPlayers,
+
+        startTime:
+          time.start,
+
+        endTime:
+          time.end
+      } as NKRound);
 
       const nextCounts =
         new Map(
@@ -1169,22 +1597,24 @@ async function generateSingleVersion(
           ];
 
           /*
-           * Wedstrijdteller.
+           * Alleen daadwerkelijk spelende spelers krijgen
+           * een wedstrijd erbij.
            */
           allInMatch.forEach(
             p => {
               nextCounts.set(
                 p.id,
                 (
-                  nextCounts.get(p.id) || 0
+                  nextCounts.get(
+                    p.id
+                  ) || 0
                 ) + 1
               );
             }
           );
 
           /*
-           * Bijhouden hoe vaak spelers al samen in
-           * een wedstrijd hebben gezeten.
+           * Pair counts bijwerken.
            */
           for (
             let i = 0;
@@ -1207,7 +1637,9 @@ async function generateSingleVersion(
               pairCounts.set(
                 key,
                 (
-                  pairCounts.get(key) || 0
+                  pairCounts.get(
+                    key
+                  ) || 0
                 ) + 1
               );
             }
@@ -1215,24 +1647,24 @@ async function generateSingleVersion(
         }
       );
 
-      playedCountsHistory[rIdx] =
-        nextCounts;
+      playedCountsHistory[
+        rIdx
+      ] = nextCounts;
 
       rIdx++;
 
-      /*
-       * UI een kans geven om te updaten.
-       */
       await delay(0);
     }
 
     /*
-     * -----------------------------------------------------------
-     * RONDE MISLUKT → TERUG NAAR VORIGE RONDE
-     * -----------------------------------------------------------
+     * ============================================================
+     * RONDE MISLUKT → TERUG
+     * ============================================================
      */
     else {
-      if (rIdx === 1) {
+      if (
+        rIdx === 1
+      ) {
         return null;
       }
 
@@ -1240,18 +1672,24 @@ async function generateSingleVersion(
 
       rIdx--;
 
-      roundAttempts[rIdx]++;
+      roundAttempts[
+        rIdx
+      ]++;
 
-      if (roundAttempts[rIdx] > 15) {
+      if (
+        roundAttempts[
+          rIdx
+        ] > 15
+      ) {
         return null;
       }
     }
   }
 
   /*
-   * -------------------------------------------------------------
-   * EINDE CONTROLE
-   * -------------------------------------------------------------
+   * ============================================================
+   * EINDCONTROLE
+   * ============================================================
    */
 
   const lastCounts =
@@ -1260,38 +1698,50 @@ async function generateSingleVersion(
     ];
 
   /*
-   * Iedere speler moet exact mpp wedstrijden hebben gespeeld.
+   * Iedere speler exact mpp wedstrijden.
    */
   if (
     !allPlayers.every(
       p =>
-        lastCounts.get(p.id) === mpp
+        lastCounts.get(
+          p.id
+        ) === mpp
     )
   ) {
     return null;
   }
 
   /*
-   * Extra Intro-controle:
-   *
-   * Iedere wedstrijd moet exact gespiegeld zijn.
+   * Extra Intro-controle.
    */
   if (isIntro) {
-    for (const round of rounds) {
-      for (const match of round.matches) {
+    for (
+      const round of rounds
+    ) {
+      for (
+        const match of
+        round.matches
+      ) {
         const team1Ratings =
-          new Map<number, number>();
+          new Map<
+            number,
+            number
+          >();
 
         const team2Ratings =
-          new Map<number, number>();
+          new Map<
+            number,
+            number
+          >();
 
         match.team1.forEach(
           p =>
             team1Ratings.set(
               p.rating,
               (
-                team1Ratings.get(p.rating) ||
-                0
+                team1Ratings.get(
+                  p.rating
+                ) || 0
               ) + 1
             )
         );
@@ -1301,8 +1751,9 @@ async function generateSingleVersion(
             team2Ratings.set(
               p.rating,
               (
-                team2Ratings.get(p.rating) ||
-                0
+                team2Ratings.get(
+                  p.rating
+                ) || 0
               ) + 1
             )
         );
@@ -1313,34 +1764,30 @@ async function generateSingleVersion(
             ...team2Ratings.keys()
           ]);
 
-        for (const rating of ratings) {
+        for (
+          const rating of
+          ratings
+        ) {
+          const team1Count =
+            team1Ratings.get(
+              rating
+            ) || 0;
+
+          const team2Count =
+            team2Ratings.get(
+              rating
+            ) || 0;
+
           if (
-            (
-              team1Ratings.get(rating) ||
-              0
-            ) !==
-            (
-              team2Ratings.get(rating) ||
-              0
-            )
+            team1Count !==
+            team2Count
           ) {
             return null;
           }
 
           if (
-            (
-              team1Ratings.get(rating) ||
-              0
-            ) > 2
-          ) {
-            return null;
-          }
-
-          if (
-            (
-              team2Ratings.get(rating) ||
-              0
-            ) > 2
+            team1Count > 2 ||
+            team2Count > 2
           ) {
             return null;
           }
@@ -1352,13 +1799,17 @@ async function generateSingleVersion(
   return {
     competitionName,
     hallNames,
-    playersPerTeam: ppt,
-    totalRounds: rounds.length,
+    playersPerTeam:
+      ppt,
+    totalRounds:
+      rounds.length,
     rounds,
     standings: [],
-    isCompleted: false
+    isCompleted:
+      false
   };
 }
+
 
 export async function generateNKSchedule(
   players: Player[],
@@ -1366,38 +1817,43 @@ export async function generateNKSchedule(
   mpp: number,
   ppt: number,
   competitionName: string,
-  onProgress: (msg: string) => void,
-  manualTimes: { start: string, end: string }[],
+  onProgress: (
+    msg: string
+  ) => void,
+  manualTimes: {
+    start: string;
+    end: string;
+  }[],
   minTeamRating: number,
   isIntro: boolean,
   introPoolCount: number
 ): Promise<NKSession> {
-  const validVersions: NKSession[] = [];
+  const validVersions:
+    NKSession[] = [];
 
   let totalAttempts = 0;
 
-  /*
-   * Voor Intro hoeven we niet 300 versies te maken.
-   *
-   * Eén goede compositie-gebaseerde versie is al veel betrouwbaarder
-   * dan honderden oude willekeurige versies.
-   *
-   * Voor normaal NK behouden we de oude 300-versies aanpak.
-   */
   const targetVersions =
-    isIntro ? 30 : 300;
+    isIntro
+      ? 30
+      : 300;
 
   const maxAttempts =
-    isIntro ? 500 : 3500;
+    isIntro
+      ? 500
+      : 3500;
 
   while (
-    validVersions.length < targetVersions &&
-    totalAttempts < maxAttempts
+    validVersions.length <
+      targetVersions &&
+    totalAttempts <
+      maxAttempts
   ) {
     totalAttempts++;
 
     if (
-      totalAttempts % 5 === 0
+      totalAttempts % 5 ===
+      0
     ) {
       onProgress(
         isIntro
@@ -1422,11 +1878,16 @@ export async function generateNKSchedule(
       );
 
     if (session) {
-      validVersions.push(session);
+      validVersions.push(
+        session
+      );
     }
   }
 
-  if (validVersions.length === 0) {
+  if (
+    validVersions.length ===
+    0
+  ) {
     if (isIntro) {
       throw new Error(
         "Geen Intro-schema gevonden. " +
@@ -1441,10 +1902,12 @@ export async function generateNKSchedule(
   }
 
   /*
-   * Maximaal ratingverschil per sessie.
+   * Bepaal maximaal ratingverschil.
    */
   const getMaxDiff =
-    (s: NKSession): number => {
+    (
+      s: NKSession
+    ): number => {
       let max = 0;
 
       s.rounds.forEach(
@@ -1453,26 +1916,37 @@ export async function generateNKSchedule(
             m => {
               const avg1 =
                 m.team1.reduce(
-                  (acc, p) =>
-                    acc + p.rating,
+                  (
+                    acc,
+                    p
+                  ) =>
+                    acc +
+                    p.rating,
                   0
                 ) /
                 m.team1.length;
 
               const avg2 =
                 m.team2.reduce(
-                  (acc, p) =>
-                    acc + p.rating,
+                  (
+                    acc,
+                    p
+                  ) =>
+                    acc +
+                    p.rating,
                   0
                 ) /
                 m.team2.length;
 
               const diff =
                 Math.abs(
-                  avg1 - avg2
+                  avg1 -
+                  avg2
                 );
 
-              if (diff > max) {
+              if (
+                diff > max
+              ) {
                 max = diff;
               }
             }
@@ -1482,17 +1956,19 @@ export async function generateNKSchedule(
       return max;
     };
 
+
   /*
-   * Sociale score:
-   *
-   * - zo weinig mogelijk herhaling;
-   * - zo veel mogelijk verschillende tegenstanders/teamgenoten;
-   * - zware straf voor extreem veel herhaling.
+   * Sociale score.
    */
   const getSocialScore =
-    (s: NKSession): number => {
+    (
+      s: NKSession
+    ): number => {
       const pairs =
-        new Map<string, number>();
+        new Map<
+          string,
+          number
+        >();
 
       s.rounds.forEach(
         r =>
@@ -1524,8 +2000,9 @@ export async function generateNKSchedule(
                   pairs.set(
                     key,
                     (
-                      pairs.get(key) ||
-                      0
+                      pairs.get(
+                        key
+                      ) || 0
                     ) + 1
                   );
                 }
@@ -1536,26 +2013,29 @@ export async function generateNKSchedule(
 
       let score = 0;
 
-      let maxRepeats = 0;
+      let maxRepeats =
+        0;
 
       pairs.forEach(
         v => {
           score +=
-            Math.pow(v, 6);
+            Math.pow(
+              v,
+              6
+            );
 
           if (
-            v > maxRepeats
+            v >
+            maxRepeats
           ) {
-            maxRepeats = v;
+            maxRepeats =
+              v;
           }
         }
       );
 
-      /*
-       * Straf voor spelers die helemaal nooit samen in een
-       * wedstrijd hebben gezeten.
-       */
-      let missing = 0;
+      let missing =
+        0;
 
       for (
         let i = 0;
@@ -1575,7 +2055,9 @@ export async function generateNKSchedule(
               .sort()
               .join('-');
 
-          if (!pairs.has(key)) {
+          if (
+            !pairs.has(key)
+          ) {
             missing++;
           }
         }
@@ -1583,23 +2065,27 @@ export async function generateNKSchedule(
 
       return (
         score +
-        missing * 500 +
-        maxRepeats * 10000
+        (
+          missing *
+          500
+        ) +
+        (
+          maxRepeats *
+          10000
+        )
       );
     };
 
+
   /*
-   * -------------------------------------------------------------
-   * KANDIDATEN
-   * -------------------------------------------------------------
-   *
    * Intro:
-   *   Alle geldige Intro-versies zijn kandidaten.
+   * alle geldige versies zijn kandidaten.
    *
    * Normaal NK:
-   *   Bestaande maximale ratingbalans van 0.305 behouden.
+   * bestaande 0.305-balance behouden.
    */
-  let candidates: NKSession[];
+  let candidates:
+    NKSession[];
 
   if (isIntro) {
     candidates = [
@@ -1617,7 +2103,8 @@ export async function generateNKSchedule(
       );
 
     if (
-      candidates.length === 0
+      candidates.length ===
+      0
     ) {
       candidates =
         [...validVersions]
@@ -1626,7 +2113,10 @@ export async function generateNKSchedule(
               getMaxDiff(a) -
               getMaxDiff(b)
           )
-          .slice(0, 10);
+          .slice(
+            0,
+            10
+          );
     }
   }
 
@@ -1634,7 +2124,10 @@ export async function generateNKSchedule(
    * Beste sociale verdeling kiezen.
    */
   return candidates.reduce(
-    (best, cur) =>
+    (
+      best,
+      cur
+    ) =>
       getSocialScore(cur) <
       getSocialScore(best)
         ? cur
