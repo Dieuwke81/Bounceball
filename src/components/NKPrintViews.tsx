@@ -21,11 +21,18 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({
   return (
     <div className="print-only">
       <style>{`
+        @page {
+          size: A4 portrait;
+          margin: 7mm;
+        }
+
         @media print {
 
-          @page {
-            size: A4 portrait;
-            margin: 8mm;
+          html,
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
           }
 
           body * {
@@ -47,11 +54,9 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({
             background: white !important;
           }
 
-          body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
+          /* ==========================================
+             ALGEMENE PRINTSTIJLEN
+             ========================================== */
 
           .print-header {
             display: block !important;
@@ -192,131 +197,29 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({
             margin-left: 10px;
           }
 
-          /* =====================================================
+          /* ==========================================
              PUNTENUITLEG
-             ===================================================== */
+             ========================================== */
 
           .points-explanation {
-            margin-top: 10px !important;
-            font-size: 9pt !important;
+            width: 100% !important;
+            margin-top: 4mm !important;
+            font-size: 8pt !important;
+            line-height: 1 !important;
             font-weight: bold !important;
             color: black !important;
             text-align: center !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            gap: 35px !important;
             white-space: nowrap !important;
           }
 
           .points-explanation div {
-            margin: 0 !important;
-            padding: 0 !important;
+            display: inline !important;
+            margin: 0 18px !important;
           }
 
-
-          /* =====================================================
-             PERSOONLIJK SCHEMA
-             IETS KLEINER ZODAT ALLES OP 1 A4 PAST
-             ===================================================== */
-
-          .player-print-page {
-            box-sizing: border-box !important;
-            width: 100% !important;
-            height: 281mm !important;
-            min-height: 281mm !important;
-            max-height: 281mm !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            page-break-after: always !important;
-            break-after: page !important;
-            overflow: hidden !important;
-          }
-
-          .player-print-page:last-child {
-            page-break-after: auto !important;
-            break-after: auto !important;
-          }
-
-          .player-print-page .print-header {
-            margin-bottom: 7px !important;
-            padding-bottom: 4px !important;
-            border-bottom-width: 3px !important;
-          }
-
-          .player-print-page .print-header h1 {
-            font-size: 18pt !important;
-          }
-
-          .player-print-page .player-table {
-            margin-top: 5px !important;
-            width: 100% !important;
-          }
-
-          .player-print-page .player-table th {
-            padding: 4px 5px !important;
-            font-size: 8pt !important;
-            line-height: 1 !important;
-            height: 20px !important;
-          }
-
-          .player-print-page .player-table td {
-            padding: 3px 5px !important;
-            font-size: 9pt !important;
-            line-height: 1 !important;
-            height: 26px !important;
-          }
-
-          .player-print-page .player-table td:first-child {
-            font-size: 10pt !important;
-            padding-top: 3px !important;
-            padding-bottom: 3px !important;
-          }
-
-          .player-print-page .player-table td:nth-child(2) {
-            font-size: 9pt !important;
-          }
-
-          .player-print-page .player-table td:nth-child(3) {
-            font-size: 12pt !important;
-          }
-
-          .player-print-page .player-table td:nth-child(4) {
-            font-size: 9pt !important;
-          }
-
-          .player-print-page .player-table .player-points-box {
-            width: 26pt !important;
-            height: 26pt !important;
-            margin: 0 auto !important;
-          }
-
-          .player-print-page .player-table tfoot td {
-            padding: 5px !important;
-            height: 42px !important;
-          }
-
-          .player-print-page .player-table tfoot td:nth-child(4) {
-            font-size: 12pt !important;
-            padding-right: 8px !important;
-          }
-
-          .player-print-page .player-total-box {
-            width: 42pt !important;
-            height: 42pt !important;
-            margin: 0 auto !important;
-          }
-
-          .player-print-page .points-explanation {
-            margin-top: 7px !important;
-            font-size: 8pt !important;
-            gap: 28px !important;
-          }
-
-
-          /* =====================================================
-             COMPLEET OVERZICHT: 4 ZALEN OP 1 A4
-             ===================================================== */
+          /* ==========================================
+             COMPLEET OVERZICHT
+             ========================================== */
 
           .overview-round {
             page-break-after: always !important;
@@ -384,597 +287,704 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({
           .overview-match-card .reserve-row .player-name {
             font-size: 8pt !important;
           }
+
+          /* ==========================================
+             PERSOONLIJK SCHEMA
+             DIT IS DE BELANGRIJKE AANPASSING
+             ========================================== */
+
+          .player-print-page {
+            width: 100% !important;
+            height: 281mm !important;
+            min-height: 281mm !important;
+            max-height: 281mm !important;
+
+            box-sizing: border-box !important;
+
+            display: flex !important;
+            flex-direction: column !important;
+
+            padding: 0 !important;
+            margin: 0 !important;
+
+            page-break-after: always !important;
+            break-after: page !important;
+          }
+
+          .player-print-page:last-child {
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
+
+          .player-print-page .print-header {
+            flex: 0 0 auto !important;
+
+            margin-top: 2mm !important;
+            margin-bottom: 4mm !important;
+            padding-bottom: 2mm !important;
+
+            border-bottom: 3px solid black !important;
+          }
+
+          .player-print-page .print-header h1 {
+            font-size: 18pt !important;
+            line-height: 1 !important;
+          }
+
+          .player-table-wrap {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            width: 100% !important;
+
+            display: flex !important;
+          }
+
+          .player-print-table {
+            width: 100% !important;
+            height: 100% !important;
+
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+
+            margin: 0 !important;
+          }
+
+          .player-print-table thead {
+            height: 8mm !important;
+          }
+
+          .player-print-table thead tr {
+            height: 8mm !important;
+          }
+
+          .player-print-table th {
+            border: 2px solid black !important;
+
+            padding: 1.5mm 1mm !important;
+
+            font-size: 7.5pt !important;
+            line-height: 1 !important;
+
+            font-weight: 900 !important;
+
+            background: #f0f0f0 !important;
+            color: black !important;
+
+            vertical-align: middle !important;
+          }
+
+          .player-print-table tbody {
+            height: auto !important;
+          }
+
+          .player-print-table tbody tr {
+            height: 11.5mm !important;
+          }
+
+          .player-print-table td {
+            border: 2px solid black !important;
+
+            padding: 1mm 1.5mm !important;
+
+            font-size: 9pt !important;
+            line-height: 1 !important;
+
+            font-weight: 900 !important;
+
+            vertical-align: middle !important;
+
+            color: black !important;
+          }
+
+          /* RD */
+          .player-print-table td:nth-child(1),
+          .player-print-table th:nth-child(1) {
+            width: 9% !important;
+            text-align: center !important;
+          }
+
+          /* TIJD */
+          .player-print-table td:nth-child(2),
+          .player-print-table th:nth-child(2) {
+            width: 15% !important;
+            text-align: center !important;
+          }
+
+          /* ZAAL */
+          .player-print-table td:nth-child(3),
+          .player-print-table th:nth-child(3) {
+            width: 12% !important;
+            text-align: center !important;
+          }
+
+          /* ROL */
+          .player-print-table td:nth-child(4),
+          .player-print-table th:nth-child(4) {
+            width: 48% !important;
+            text-align: left !important;
+          }
+
+          /* PUNTEN */
+          .player-print-table td:nth-child(5),
+          .player-print-table th:nth-child(5) {
+            width: 16% !important;
+            text-align: center !important;
+          }
+
+          .player-print-table td:nth-child(1) {
+            font-size: 9pt !important;
+          }
+
+          .player-print-table td:nth-child(2) {
+            font-size: 8.5pt !important;
+          }
+
+          .player-print-table td:nth-child(3) {
+            font-size: 11pt !important;
+            font-weight: 900 !important;
+          }
+
+          .player-print-table td:nth-child(4) {
+            font-size: 9.5pt !important;
+            font-weight: 900 !important;
+          }
+
+          .player-print-table td:nth-child(5) {
+            font-size: 8pt !important;
+          }
+
+          /* Puntenvakjes */
+          .player-print-table .player-score-box {
+            width: 8mm !important;
+            height: 8mm !important;
+
+            border: 2px solid black !important;
+
+            margin: 0 auto !important;
+
+            background: white !important;
+
+            box-sizing: border-box !important;
+          }
+
+          /* Totaalregel */
+          .player-print-table tfoot {
+            height: 16mm !important;
+          }
+
+          .player-print-table tfoot tr {
+            height: 16mm !important;
+          }
+
+          .player-print-table tfoot td {
+            border: 2px solid black !important;
+            padding: 1mm !important;
+            font-size: 10pt !important;
+          }
+
+          .player-print-table .total-label {
+            text-align: right !important;
+            padding-right: 5mm !important;
+
+            font-size: 10pt !important;
+            font-weight: 900 !important;
+
+            text-transform: uppercase !important;
+          }
+
+          .player-print-table .total-box {
+            width: 11mm !important;
+            height: 11mm !important;
+
+            border: 3px solid black !important;
+
+            margin: 0 auto !important;
+
+            background: white !important;
+
+            box-sizing: border-box !important;
+          }
+
+          .player-points-explanation {
+            flex: 0 0 auto !important;
+
+            height: 8mm !important;
+
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+
+            white-space: nowrap !important;
+
+            margin: 2mm 0 0 0 !important;
+
+            font-size: 7.5pt !important;
+            line-height: 1 !important;
+
+            font-weight: bold !important;
+
+            color: black !important;
+          }
+
+          .player-points-explanation span {
+            margin: 0 12mm !important;
+          }
+
+          /* ==========================================
+             PER ZAAL
+             ========================================== */
+
+          .halls-page {
+            page-break-after: always !important;
+            break-after: page !important;
+          }
+
+          /* ==========================================
+             STAND
+             ========================================== */
+
+          .standings-page {
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
         }
       `}</style>
-
 
       {/* =========================================================
           OPTIE 1: COMPLEET OVERZICHT
           ========================================================= */}
 
-      {activePrintType === 'overview' && session.rounds.map((round) => (
-        <div key={round.roundNumber} className="overview-round">
+      {activePrintType === 'overview' &&
+        session.rounds.map((round) => (
+          <div
+            key={round.roundNumber}
+            className="overview-round"
+          >
+            <div className="print-header">
+              <h1>
+                OVERZICHT - RONDE {round.roundNumber}
+                <span className="time-label">
+                  {(round as any).startTime
+                    ? `(${(round as any).startTime} - ${(round as any).endTime})`
+                    : ''}
+                </span>
+              </h1>
+            </div>
 
-          <div className="print-header">
-            <h1>
-              OVERZICHT - RONDE {round.roundNumber}
-              <span className="time-label">
-                {(round as any).startTime
-                  ? `(${(round as any).startTime} - ${(round as any).endTime})`
-                  : ''}
-              </span>
-            </h1>
-          </div>
+            <div className="overview-grid">
+              {round.matches.map((m) => {
+                const isFixed = (session as any).isFixedTeams;
 
-          <div className="overview-grid">
-
-            {round.matches.map(m => {
-
-              const isFixed = (session as any).isFixedTeams;
-
-              return (
-                <div key={m.id} className="overview-match-card">
-
-                  <div className="flex justify-between items-center mb-1 border-b-2 border-black pb-1">
-
-                    <span className="hall-label">
-                      ZAAL: {m.hallName}
-                    </span>
-
-                    {!isFixed ? (
-
-                      <div className="flex items-center">
-
-                        <span className="color-scheids label-small uppercase mr-1">
-                          SCHEIDS:
-                        </span>
-
-                        <span className="player-name">
-                          {m.referee?.name}
-                        </span>
-
-                      </div>
-
-                    ) : (
-
-                      <span className="label-small uppercase font-black color-blauw">
-                        Vaste Teams
+                return (
+                  <div
+                    key={m.id}
+                    className="overview-match-card"
+                  >
+                    <div className="flex justify-between items-center mb-1 border-b-2 border-black pb-1">
+                      <span className="hall-label">
+                        ZAAL: {m.hallName}
                       </span>
 
+                      {!isFixed ? (
+                        <div className="flex items-center">
+                          <span className="color-scheids label-small uppercase mr-1">
+                            SCHEIDS:
+                          </span>
+
+                          <span className="player-name">
+                            {m.referee?.name}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="label-small uppercase font-black color-blauw">
+                          Vaste Teams
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <div className="label-small underline mb-1 color-blauw uppercase tracking-widest">
+                          {(m as any).team1Name || 'TEAM BLAUW'}
+                        </div>
+
+                        <div className="space-y-0.5">
+                          {m.team1.map((p) => {
+                            const isReserve =
+                              (m as any).t1ReserveId === p.id;
+
+                            return (
+                              <div
+                                key={p.id}
+                                className={`player-name ${
+                                  isReserve ? 'strike-name' : ''
+                                }`}
+                              >
+                                {p.name}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center score-area px-2">
+                        <div className="score-box"></div>
+
+                        <span
+                          className="font-black text-xl"
+                          style={{ color: 'black' }}
+                        >
+                          -
+                        </span>
+
+                        <div className="score-box"></div>
+                      </div>
+
+                      <div className="flex-1 text-right">
+                        <div className="label-small underline mb-1 color-geel uppercase tracking-widest">
+                          {(m as any).team2Name || 'TEAM GEEL'}
+                        </div>
+
+                        <div className="space-y-0.5">
+                          {m.team2.map((p) => {
+                            const isReserve =
+                              (m as any).t2ReserveId === p.id;
+
+                            return (
+                              <div
+                                key={p.id}
+                                className={`player-name ${
+                                  isReserve ? 'strike-name' : ''
+                                }`}
+                              >
+                                {p.name}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {!isFixed && (
+                      <div className="reserve-row mt-2 pt-1 border-t-2 border-dashed border-black flex justify-around">
+                        <div className="flex items-center">
+                          <span className="color-reserve label-small uppercase font-black">
+                            RES 1:
+                          </span>
+
+                          <span
+                            className="player-name ml-1"
+                            style={{ fontSize: '8pt' }}
+                          >
+                            {m.subHigh?.name}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center">
+                          <span className="color-reserve label-small uppercase font-black">
+                            RES 2:
+                          </span>
+
+                          <span
+                            className="player-name ml-1"
+                            style={{ fontSize: '8pt' }}
+                          >
+                            {m.subLow?.name}
+                          </span>
+                        </div>
+                      </div>
                     )}
-
                   </div>
-
-
-                  <div className="flex justify-between items-center">
-
-                    <div className="flex-1">
-
-                      <div className="label-small underline mb-1 color-blauw uppercase tracking-widest">
-                        {(m as any).team1Name || 'TEAM BLAUW'}
-                      </div>
-
-                      <div className="space-y-0.5">
-
-                        {m.team1.map(p => {
-
-                          const isReserve =
-                            (m as any).t1ReserveId === p.id;
-
-                          return (
-                            <div
-                              key={p.id}
-                              className={`player-name ${
-                                isReserve ? 'strike-name' : ''
-                              }`}
-                            >
-                              {p.name}
-                            </div>
-                          );
-
-                        })}
-
-                      </div>
-
-                    </div>
-
-
-                    <div className="flex items-center score-area px-2">
-
-                      <div className="score-box"></div>
-
-                      <span
-                        className="font-black text-xl"
-                        style={{color: 'black'}}
-                      >
-                        -
-                      </span>
-
-                      <div className="score-box"></div>
-
-                    </div>
-
-
-                    <div className="flex-1 text-right">
-
-                      <div className="label-small underline mb-1 color-geel uppercase tracking-widest">
-                        {(m as any).team2Name || 'TEAM GEEL'}
-                      </div>
-
-                      <div className="space-y-0.5">
-
-                        {m.team2.map(p => {
-
-                          const isReserve =
-                            (m as any).t2ReserveId === p.id;
-
-                          return (
-                            <div
-                              key={p.id}
-                              className={`player-name ${
-                                isReserve ? 'strike-name' : ''
-                              }`}
-                            >
-                              {p.name}
-                            </div>
-                          );
-
-                        })}
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
-
-                  {!isFixed && (
-
-                    <div className="reserve-row mt-2 pt-1 border-t-2 border-dashed border-black flex justify-around">
-
-                      <div className="flex items-center">
-
-                        <span className="color-reserve label-small uppercase font-black">
-                          RES 1:
-                        </span>
-
-                        <span
-                          className="player-name ml-1"
-                          style={{fontSize: '8pt'}}
-                        >
-                          {m.subHigh?.name}
-                        </span>
-
-                      </div>
-
-
-                      <div className="flex items-center">
-
-                        <span className="color-reserve label-small uppercase font-black">
-                          RES 2:
-                        </span>
-
-                        <span
-                          className="player-name ml-1"
-                          style={{fontSize: '8pt'}}
-                        >
-                          {m.subLow?.name}
-                        </span>
-
-                      </div>
-
-                    </div>
-
-                  )}
-
-                </div>
-              );
-            })}
-
+                );
+              })}
+            </div>
           </div>
-
-        </div>
-      ))}
-
+        ))}
 
       {/* =========================================================
           OPTIE 2: PER ZAAL
           ========================================================= */}
 
-      {activePrintType === 'halls' && session.hallNames.map(hall => (
+      {activePrintType === 'halls' &&
+        session.hallNames.map((hall) => (
+          <div
+            key={hall}
+            className="page-break p-8 halls-page"
+          >
+            <div className="print-header">
+              <h1>WEDSTRIJDSCHEMA - ZAAL {hall}</h1>
+            </div>
 
-        <div key={hall} className="page-break p-8">
+            <table className="print-table">
+              <thead>
+                <tr className="uppercase text-[9px]">
+                  <th className="w-8">RD</th>
+                  <th className="w-20">TIJD</th>
+                  <th className="color-blauw text-left">
+                    TEAM BLAUW
+                  </th>
+                  <th className="text-center w-28">
+                    SCORE
+                  </th>
+                  <th className="color-geel text-left">
+                    TEAM GEEL
+                  </th>
+                  <th className="color-scheids text-left">
+                    SCHEIDS
+                  </th>
+                  <th className="color-reserve text-left">
+                    RESERVES
+                  </th>
+                </tr>
+              </thead>
 
-          <div className="print-header">
-            <h1>
-              WEDSTRIJDSCHEMA - ZAAL {hall}
-            </h1>
+              <tbody>
+                {session.rounds.map((r) => {
+                  const m = r.matches.find(
+                    (match) =>
+                      match.hallName.trim().toUpperCase() ===
+                      hall.trim().toUpperCase()
+                  );
+
+                  if (!m) return null;
+
+                  const isFixed =
+                    (session as any).isFixedTeams;
+
+                  return (
+                    <tr
+                      key={r.roundNumber}
+                      className="font-bold uppercase"
+                    >
+                      <td className="text-center text-xl bg-gray-50">
+                        {r.roundNumber}
+                      </td>
+
+                      <td className="text-center text-xs">
+                        {(r as any).startTime}
+                        <br />
+                        {(r as any).endTime}
+                      </td>
+
+                      <td className="text-[9pt] bg-blauw-trans">
+                        <div className="label-small mb-1 opacity-50">
+                          {(m as any).team1Name}
+                        </div>
+
+                        {m.team1.map((p) => (
+                          <div
+                            key={p.id}
+                            className={
+                              (m as any).t1ReserveId === p.id
+                                ? 'strike-name'
+                                : ''
+                            }
+                          >
+                            {p.name}
+                          </div>
+                        ))}
+                      </td>
+
+                      <td className="text-center">
+                        <div className="flex justify-center items-center gap-1">
+                          <div className="small-score-box"></div>
+
+                          <span style={{ color: 'black' }}>
+                            -
+                          </span>
+
+                          <div className="small-score-box"></div>
+                        </div>
+                      </td>
+
+                      <td className="text-[9pt] bg-geel-trans">
+                        <div className="label-small mb-1 opacity-50">
+                          {(m as any).team2Name}
+                        </div>
+
+                        {m.team2.map((p) => (
+                          <div
+                            key={p.id}
+                            className={
+                              (m as any).t2ReserveId === p.id
+                                ? 'strike-name'
+                                : ''
+                            }
+                          >
+                            {p.name}
+                          </div>
+                        ))}
+                      </td>
+
+                      <td className="text-[9pt] bg-scheids-trans">
+                        {!isFixed ? m.referee?.name : '-'}
+                      </td>
+
+                      <td className="text-[8pt] bg-reserve-trans">
+                        {!isFixed ? (
+                          <>
+                            <div>
+                              1: {m.subHigh?.name}
+                            </div>
+                            <div>
+                              2: {m.subLow?.name}
+                            </div>
+                          </>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-
-          <table className="print-table">
-
-            <thead>
-
-              <tr className="uppercase text-[9px]">
-
-                <th className="w-8">
-                  RD
-                </th>
-
-                <th className="w-20">
-                  TIJD
-                </th>
-
-                <th className="color-blauw text-left">
-                  TEAM BLAUW
-                </th>
-
-                <th className="text-center w-28">
-                  SCORE
-                </th>
-
-                <th className="color-geel text-left">
-                  TEAM GEEL
-                </th>
-
-                <th className="color-scheids text-left">
-                  SCHEIDS
-                </th>
-
-                <th className="color-reserve text-left">
-                  RESERVES
-                </th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              {session.rounds.map(r => {
-
-                const m = r.matches.find(
-                  match =>
-                    match.hallName.trim().toUpperCase() ===
-                    hall.trim().toUpperCase()
-                );
-
-                if (!m) return null;
-
-                const isFixed =
-                  (session as any).isFixedTeams;
-
-                return (
-
-                  <tr
-                    key={r.roundNumber}
-                    className="font-bold uppercase"
-                  >
-
-                    <td className="text-center text-xl bg-gray-50">
-                      {r.roundNumber}
-                    </td>
-
-                    <td className="text-center text-xs">
-                      {(r as any).startTime}
-                      <br/>
-                      {(r as any).endTime}
-                    </td>
-
-                    <td className="text-[9pt] bg-blauw-trans">
-
-                      <div className="label-small mb-1 opacity-50">
-                        {(m as any).team1Name}
-                      </div>
-
-                      {m.team1.map(p => (
-
-                        <div
-                          key={p.id}
-                          className={
-                            (m as any).t1ReserveId === p.id
-                              ? 'strike-name'
-                              : ''
-                          }
-                        >
-                          {p.name}
-                        </div>
-
-                      ))}
-
-                    </td>
-
-                    <td className="text-center">
-
-                      <div className="flex justify-center items-center gap-1">
-
-                        <div className="small-score-box"></div>
-
-                        <span style={{color: 'black'}}>
-                          -
-                        </span>
-
-                        <div className="small-score-box"></div>
-
-                      </div>
-
-                    </td>
-
-                    <td className="text-[9pt] bg-geel-trans">
-
-                      <div className="label-small mb-1 opacity-50">
-                        {(m as any).team2Name}
-                      </div>
-
-                      {m.team2.map(p => (
-
-                        <div
-                          key={p.id}
-                          className={
-                            (m as any).t2ReserveId === p.id
-                              ? 'strike-name'
-                              : ''
-                          }
-                        >
-                          {p.name}
-                        </div>
-
-                      ))}
-
-                    </td>
-
-                    <td className="text-[9pt] bg-scheids-trans">
-                      {!isFixed ? m.referee?.name : '-'}
-                    </td>
-
-                    <td className="text-[8pt] bg-reserve-trans">
-
-                      {!isFixed ? (
-
-                        <>
-                          <div>
-                            1: {m.subHigh?.name}
-                          </div>
-
-                          <div>
-                            2: {m.subLow?.name}
-                          </div>
-                        </>
-
-                      ) : '-'}
-
-                    </td>
-
-                  </tr>
-
-                );
-
-              })}
-
-            </tbody>
-
-          </table>
-
-        </div>
-
-      ))}
-
+        ))}
 
       {/* =========================================================
           OPTIE 3: INDIVIDUELE SPELERS
           ========================================================= */}
 
-      {activePrintType === 'players' && playerSchedules.map(ps => (
-
-        <div
-          key={ps.name}
-          className="player-print-page"
-        >
-
-          <div className="print-header">
-
-            <h1>
-              PERSOONLIJK SCHEMA: {ps.name}
-            </h1>
-
-          </div>
-
-
-          <table
-            className="print-table player-table"
+      {activePrintType === 'players' &&
+        playerSchedules.map((ps) => (
+          <div
+            key={ps.name}
+            className="player-print-page"
           >
+            {/* HEADER */}
 
-            <thead>
+            <div className="print-header">
+              <h1>
+                PERSOONLIJK SCHEMA: {ps.name}
+              </h1>
+            </div>
 
-              <tr className="bg-gray-100 uppercase">
+            {/* TABEL VULT DE BESCHIKBARE HOOGTE */}
 
-                <th className="w-12 text-center">
-                  RD
-                </th>
+            <div className="player-table-wrap">
+              <table className="print-table player-print-table">
+                <thead>
+                  <tr className="uppercase">
+                    <th>RD</th>
+                    <th>TIJD</th>
+                    <th>ZAAL</th>
+                    <th className="text-left">
+                      ROL
+                    </th>
+                    <th>PUNTEN</th>
+                  </tr>
+                </thead>
 
-                <th className="w-24 text-center">
-                  TIJD
-                </th>
+                <tbody>
+                  {ps.rounds.map((r: any) => {
+                    let roleClass = '';
+                    let roleTextColor = '';
 
-                <th className="w-20 text-center">
-                  ZAAL
-                </th>
+                    if (r.role === 'BLAUW') {
+                      roleClass = 'bg-blauw-trans';
+                      roleTextColor = 'color-blauw';
+                    }
 
-                <th className="text-left">
-                  ROL
-                </th>
+                    if (r.role === 'GEEL') {
+                      roleClass = 'bg-geel-trans';
+                      roleTextColor = 'color-geel';
+                    }
 
-                <th className="w-28 text-center">
-                  PUNTEN
-                </th>
+                    if (r.role === 'REF') {
+                      roleClass = 'bg-scheids-trans';
+                      roleTextColor = 'color-scheids';
+                    }
 
-              </tr>
+                    if (r.role === 'RES') {
+                      roleClass = 'bg-reserve-trans';
+                      roleTextColor = 'color-reserve';
+                    }
 
-            </thead>
+                    return (
+                      <tr
+                        key={r.round}
+                        className={roleClass}
+                      >
+                        <td className="text-center font-black">
+                          {r.round}
+                        </td>
 
+                        <td className="text-center font-black">
+                          {r.startTime}
+                        </td>
 
-            <tbody>
+                        <td className="text-center font-black uppercase">
+                          {r.hall}
+                        </td>
 
-              {ps.rounds.map((r: any) => {
+                        <td
+                          className={`font-black uppercase ${roleTextColor}`}
+                        >
+                          {r.role}
+                        </td>
 
-                let roleClass = "";
+                        <td className="text-center">
+                          {r.hall !== '-' &&
+                          (r.role === 'BLAUW' ||
+                            r.role === 'GEEL') ? (
+                            <div className="player-score-box"></div>
+                          ) : (
+                            <span className="text-gray-400 text-[7pt]">
+                              N.v.t.
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
 
-                if (r.role === "BLAUW")
-                  roleClass = "bg-blauw-trans";
-
-                if (r.role === "GEEL")
-                  roleClass = "bg-geel-trans";
-
-                if (r.role === "REF")
-                  roleClass = "bg-scheids-trans";
-
-                if (r.role === "RES")
-                  roleClass = "bg-reserve-trans";
-
-
-                let roleTextColor = "";
-
-                if (r.role === "BLAUW")
-                  roleTextColor = "color-blauw";
-
-                if (r.role === "GEEL")
-                  roleTextColor = "color-geel";
-
-                if (r.role === "REF")
-                  roleTextColor = "color-scheids";
-
-                if (r.role === "RES")
-                  roleTextColor = "color-reserve";
-
-
-                return (
-
-                  <tr
-                    key={r.round}
-                    className={roleClass}
-                  >
-
-                    <td className="text-center font-black">
-                      {r.round}
-                    </td>
-
-                    <td className="text-center font-black">
-                      {r.startTime}
-                    </td>
-
-                    <td className="text-center font-black uppercase">
-                      {r.hall}
-                    </td>
-
+                <tfoot>
+                  <tr>
                     <td
-                      className={`font-black uppercase ${roleTextColor}`}
-                    >
-                      {r.role}
+                      colSpan={3}
+                      className="border-none"
+                    ></td>
+
+                    <td className="total-label">
+                      TOTAAL:
                     </td>
 
                     <td className="text-center">
-
-                      {r.hall !== '-' &&
-                      (
-                        r.role === "BLAUW" ||
-                        r.role === "GEEL"
-                      ) ? (
-
-                        <div className="border-2 border-black player-points-box bg-white"></div>
-
-                      ) : (
-
-                        <span className="text-gray-400 text-[7pt]">
-                          N.v.t.
-                        </span>
-
-                      )}
-
+                      <div className="total-box"></div>
                     </td>
-
                   </tr>
-
-                );
-
-              })}
-
-            </tbody>
-
-
-            <tfoot>
-
-              <tr>
-
-                <td
-                  colSpan={3}
-                  className="border-none"
-                ></td>
-
-                <td className="text-right font-black uppercase">
-                  TOTAAL:
-                </td>
-
-                <td className="text-center">
-
-                  <div className="border-3 border-black player-total-box bg-white"></div>
-
-                </td>
-
-              </tr>
-
-            </tfoot>
-
-          </table>
-
-
-          {/* Puntenuitleg op één regel */}
-
-          <div className="points-explanation">
-
-            <div>
-              Winst = 3 punten
+                </tfoot>
+              </table>
             </div>
 
-            <div>
-              Gelijk = 1 punt
-            </div>
+            {/* PUNTENUITLEG OP ÉÉN REGEL */}
 
-            <div>
-              Verlies = 0 punten
+            <div className="player-points-explanation">
+              <span>Winst = 3 punten</span>
+              <span>Gelijk = 1 punt</span>
+              <span>Verlies = 0 punten</span>
             </div>
-
           </div>
-
-        </div>
-
-      ))}
-
+        ))}
 
       {/* =========================================================
-          OPTIE 4: STAND PRINTEN
+          OPTIE 4: STAND
           ========================================================= */}
 
       {activePrintType === 'standings' && (
-
-        <div className="page-break p-12">
-
+        <div className="page-break p-12 standings-page">
           <div className="print-header">
-
-            <h1>
-              EINDSTAND
-            </h1>
-
+            <h1>EINDSTAND</h1>
           </div>
 
           <table
             className="print-table"
-            style={{marginTop: '20px'}}
+            style={{ marginTop: '20px' }}
           >
-
             <thead>
-
               <tr className="uppercase">
-
                 <th className="w-16 text-center">
                   #
                 </th>
@@ -996,59 +1006,50 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({
                 <th className="w-24 text-center">
                   PUNTEN
                 </th>
-
               </tr>
-
             </thead>
 
             <tbody>
+              {currentStandings.map(
+                (entry, idx) => (
+                  <tr
+                    key={idx}
+                    className="font-black uppercase"
+                  >
+                    <td className="text-center text-2xl py-4">
+                      {idx + 1}
+                    </td>
 
-              {currentStandings.map((entry, idx) => (
+                    <td className="text-xl pl-4">
+                      {(entry as any).name ||
+                        (entry as any).playerName}
+                    </td>
 
-                <tr
-                  key={idx}
-                  className="font-black uppercase"
-                >
+                    <td className="text-center text-lg">
+                      {(entry as any).matchesPlayed}
+                    </td>
 
-                  <td className="text-center text-2xl py-4">
-                    {idx + 1}
-                  </td>
+                    <td className="text-center text-lg">
+                      {entry.goalDifference > 0
+                        ? `+${entry.goalDifference}`
+                        : entry.goalDifference}
+                    </td>
 
-                  <td className="text-xl pl-4">
-                    {(entry as any).name ||
-                     (entry as any).playerName}
-                  </td>
-
-                  <td className="text-center text-lg">
-                    {(entry as any).matchesPlayed}
-                  </td>
-
-                  <td className="text-center text-lg">
-                    {entry.goalDifference > 0
-                      ? `+${entry.goalDifference}`
-                      : entry.goalDifference}
-                  </td>
-
-                  <td className="text-center text-2xl bg-gray-100">
-                    {entry.points}
-                  </td>
-
-                </tr>
-
-              ))}
-
+                    <td className="text-center text-2xl bg-gray-100">
+                      {entry.points}
+                    </td>
+                  </tr>
+                )
+              )}
             </tbody>
-
           </table>
 
           <div className="mt-20 text-center text-gray-400 text-xs uppercase font-bold italic">
-            Gegenereerd via Bounceball Manager • {new Date().toLocaleDateString('nl-NL')}
+            Gegenereerd via Bounceball Manager •{' '}
+            {new Date().toLocaleDateString('nl-NL')}
           </div>
-
         </div>
-
       )}
-
     </div>
   );
 };
