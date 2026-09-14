@@ -1,4 +1,3 @@
-
 export interface Player {
   id: number;
   name: string;
@@ -9,15 +8,25 @@ export interface Player {
   /** Start rating bij begin seizoen (handmatig instelbaar) */
   startRating?: number;
 
+  /** Of deze speler keeper is */
   isKeeper: boolean;
+
+  /** Vast lid van de vereniging */
   isFixedMember: boolean;
+
+  /** Optionele profielfoto */
   photoBase64?: string;
 
-  /** Alleen voor CSV export (NOOIT als bron) */
+  /** Alleen voor CSV-export (NOOIT als bron gebruiken) */
   excelId?: string;
 }
 
 export type NewPlayer = Omit<Player, 'id'>;
+
+
+// ============================================================================
+// WEDSTRIJDEN / GAME SESSION
+// ============================================================================
 
 export interface Goal {
   playerId: number;
@@ -47,12 +56,26 @@ export interface GameSession {
   round2Teams?: Player[][];
 }
 
-export type ConstraintType = 'together' | 'apart' | 'versus' | 'must_be_5';
+
+// ============================================================================
+// CONSTRAINTS
+// ============================================================================
+
+export type ConstraintType =
+  | 'together'
+  | 'apart'
+  | 'versus'
+  | 'must_be_5';
 
 export interface Constraint {
   type: ConstraintType;
   playerIds: number[];
 }
+
+
+// ============================================================================
+// RATING LOG
+// ============================================================================
 
 export interface RatingLogEntry {
   date: string;
@@ -60,15 +83,27 @@ export interface RatingLogEntry {
   rating: number;
 }
 
+
 // ============================================================================
 // TROPHY ROOM
 // ============================================================================
+
 export type TrophyType =
-  | 'Clubkampioen' | '2de' | '3de'
-  | 'Topscoorder' | 'Verdediger' | 'Speler van het jaar'
-  | '1ste NK' | '2de NK' | '3de NK'
-  | '1ste Introductietoernooi' | '2de Introductietoernooi' | '3de Introductietoernooi'
-  | '1ste Wintertoernooi' | '2de Wintertoernooi' | '3de Wintertoernooi';
+  | 'Clubkampioen'
+  | '2de'
+  | '3de'
+  | 'Topscoorder'
+  | 'Verdediger'
+  | 'Speler van het jaar'
+  | '1ste NK'
+  | '2de NK'
+  | '3de NK'
+  | '1ste Introductietoernooi'
+  | '2de Introductietoernooi'
+  | '3de Introductietoernooi'
+  | '1ste Wintertoernooi'
+  | '2de Wintertoernooi'
+  | '3de Wintertoernooi';
 
 export interface Trophy {
   id: string;
@@ -77,29 +112,80 @@ export interface Trophy {
   year: string;
 }
 
-/** NIEUW: seizoen startdatum (Instellingen) */
+
+// ============================================================================
+// SEIZOEN
+// ============================================================================
+
 export interface SeasonSettings {
-  seasonStartDate: string; // "YYYY-MM-DD"
+  /** Seizoen startdatum in formaat YYYY-MM-DD */
+  seasonStartDate: string;
 }
 
-// Nieuwe types voor de NK Module
+
+// ============================================================================
+// NK / INTRODUCTIETOERNOOI
+// ============================================================================
+
 export interface NKMatch {
+  /** Unieke ID van de wedstrijd */
   id: string;
+
+  /** Zaal waarin de wedstrijd gespeeld wordt */
   hallName: string;
+
+  /** Team 1 */
   team1: Player[];
+
+  /** Team 2 */
   team2: Player[];
+
+  /** Uitslag */
   team1Score: number;
   team2Score: number;
-  referee: Player;
-  subHigh: Player; // Rating >= 5
-  subLow: Player;  // Rating < 5
+
+  /**
+   * Scheidsrechter.
+   *
+   * Tijdens het genereren kan deze nog null zijn.
+   */
+  referee: Player | null;
+
+  /**
+   * Hoge reserve.
+   *
+   * Tijdens het genereren kan deze nog null zijn.
+   */
+  subHigh: Player | null;
+
+  /**
+   * Lage reserve.
+   *
+   * Tijdens het genereren kan deze nog null zijn.
+   */
+  subLow: Player | null;
+
+  /** Of de wedstrijd al gespeeld is */
   isPlayed: boolean;
 }
 
 export interface NKRound {
+  /** Rondenummer, beginnend bij 1 */
   roundNumber: number;
+
+  /** Wedstrijden in deze ronde */
   matches: NKMatch[];
-  restingPlayers: Player[]; // De rest die geen specifieke rol heeft die ronde
+
+  /**
+   * Spelers die deze ronde helemaal geen specifieke rol hebben.
+   *
+   * Dit staat los van subHigh, subLow en referee.
+   */
+  restingPlayers: Player[];
+
+  /** Optionele tijden van de ronde */
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface NKStandingsEntry {
@@ -112,11 +198,24 @@ export interface NKStandingsEntry {
 }
 
 export interface NKSession {
+  /** Naam van het toernooi */
   competitionName: string;
+
+  /** Totaal aantal rondes */
   totalRounds: number;
+
+  /** Beschikbare zalen */
   hallNames: string[];
+
+  /** Aantal spelers per team */
   playersPerTeam: number;
+
+  /** Alle rondes */
   rounds: NKRound[];
+
+  /** Stand */
   standings: NKStandingsEntry[];
+
+  /** Of het toernooi is afgerond */
   isCompleted: boolean;
 }
