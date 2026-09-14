@@ -16,47 +16,21 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
     <div className="print-only">
       <style>{`
         @media print {
-
-          @page {
-            size: A4 portrait;
-            margin: 5mm;
-          }
-
-          body * {
-            visibility: hidden;
-          }
-
-          .print-only,
-          .print-only * {
-            visibility: visible !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-
-          .print-only {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            background: white !important;
-          }
-
-          body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
+          body * { visibility: hidden; }
+          .print-only, .print-only * { visibility: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .print-only { position: absolute; left: 0; top: 0; width: 100%; background: white !important; }
+          body { margin: 0 !important; padding: 0 !important; background: white !important; }
 
           .print-header {
             display: block !important;
             text-align: center !important;
-            border-bottom: 3px solid black !important;
-            margin-bottom: 6px !important;
-            padding-bottom: 3px !important;
+            border-bottom: 4px solid black !important;
+            margin-bottom: 10px !important;
+            padding-bottom: 5px !important;
           }
 
           .print-header h1 {
-            font-size: 18pt !important;
+            font-size: 22pt !important;
             font-weight: 900 !important;
             margin: 0 !important;
             text-transform: uppercase !important;
@@ -75,21 +49,10 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             break-after: auto !important;
           }
 
-          .color-blauw {
-            color: #0000ff !important;
-          }
-
-          .color-geel {
-            color: #ffd700 !important;
-          }
-
-          .color-scheids {
-            color: #db2777 !important;
-          }
-
-          .color-reserve {
-            color: #15803d !important;
-          }
+          .color-blauw { color: #0000ff !important; } 
+          .color-geel { color: #ffd700 !important; } 
+          .color-scheids { color: #db2777 !important; } 
+          .color-reserve { color: #15803d !important; }
 
           .bg-blauw-trans {
             background-color: rgba(0, 0, 255, 0.08) !important;
@@ -180,120 +143,31 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           }
 
           .time-label {
-            font-size: 12pt !important;
+            font-size: 14pt !important;
             font-weight: 900 !important;
             color: #444 !important;
-            margin-left: 8px;
+            margin-left: 10px;
           }
 
-          /* Puntenuitleg */
+          /* Puntenuitleg onderaan */
           .points-explanation {
-            margin-top: 6px !important;
-            font-size: 8pt !important;
-            line-height: 1.1 !important;
+            margin-top: 15px !important;
+            font-size: 10pt !important;
             font-weight: bold !important;
             color: black !important;
             text-align: center !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            gap: 35px !important;
+            white-space: nowrap !important;
           }
 
           .points-explanation div {
-            margin-bottom: 1px !important;
+            margin-bottom: 0 !important;
           }
 
-
-          /* =========================================================
-             PERSOONLIJK SCHEMA
-             Compact gemaakt zodat alles op 1 A4 past
-             ========================================================= */
-
-          .player-print-page {
-            box-sizing: border-box !important;
-            width: 100% !important;
-            height: 100% !important;
-            min-height: 0 !important;
-            padding: 0 4px !important;
-            overflow: hidden !important;
-          }
-
-          .player-print-page .print-header {
-            border-bottom-width: 2px !important;
-            margin-bottom: 4px !important;
-            padding-bottom: 2px !important;
-          }
-
-          .player-print-page .print-header h1 {
-            font-size: 15pt !important;
-          }
-
-          .player-print-table {
-            margin-top: 3px !important;
-          }
-
-          .player-print-table th {
-            padding: 3px 4px !important;
-            font-size: 7pt !important;
-            line-height: 1 !important;
-            height: 18px !important;
-          }
-
-          .player-print-table td {
-            padding: 2px 4px !important;
-            font-size: 8pt !important;
-            line-height: 1 !important;
-            height: 20px !important;
-          }
-
-          .player-print-table td:nth-child(1) {
-            font-size: 9pt !important;
-          }
-
-          .player-print-table td:nth-child(2) {
-            font-size: 8pt !important;
-          }
-
-          .player-print-table td:nth-child(3) {
-            font-size: 10pt !important;
-          }
-
-          .player-print-table td:nth-child(4) {
-            font-size: 9pt !important;
-          }
-
-          .player-print-table td:nth-child(5) {
-            padding: 1px !important;
-          }
-
-          .player-print-table .player-score-box {
-            width: 24px !important;
-            height: 24px !important;
-            border-width: 1.5px !important;
-          }
-
-          .player-print-table tfoot td {
-            padding: 3px 4px !important;
-            height: 30px !important;
-          }
-
-          .player-print-table tfoot td:nth-child(4) {
-            font-size: 11pt !important;
-            padding-right: 6px !important;
-          }
-
-          .player-print-table .player-total-box {
-            width: 34px !important;
-            height: 34px !important;
-            border-width: 2.5px !important;
-          }
-
-          .player-print-page .points-explanation {
-            margin-top: 4px !important;
-            font-size: 7.5pt !important;
-          }
-
-
-          /* =========================================================
-             COMPLEET OVERZICHT: 4 zalen op 1 A4
-             ========================================================= */
+          /* COMPLEET OVERZICHT: 4 zalen op 1 A4 */
 
           .overview-round {
             page-break-after: always !important;
@@ -374,7 +248,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
           <div className="print-header">
             <h1>
-              OVERZICHT - RONDE {round.roundNumber}
+              OVERZICHT - RONDE {round.roundNumber} 
               <span className="time-label">
                 {(round as any).startTime
                   ? `(${(round as any).startTime} - ${(round as any).endTime})`
@@ -540,7 +414,6 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
                 </div>
               );
-
             })}
 
           </div>
@@ -599,7 +472,6 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
             </thead>
 
-
             <tbody>
 
               {session.rounds.map(r => {
@@ -654,7 +526,6 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
                     </td>
 
-
                     <td className="text-center">
 
                       <div className="flex justify-center items-center gap-1">
@@ -670,7 +541,6 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                       </div>
 
                     </td>
-
 
                     <td className="text-[9pt] bg-geel-trans">
 
@@ -695,15 +565,9 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
                     </td>
 
-
                     <td className="text-[9pt] bg-scheids-trans">
-
-                      {!isFixed
-                        ? m.referee?.name
-                        : '-'}
-
+                      {!isFixed ? m.referee?.name : '-'}
                     </td>
-
 
                     <td className="text-[8pt] bg-reserve-trans">
 
@@ -744,21 +608,18 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
       {activePrintType === 'players' && playerSchedules.map(ps => (
 
-        <div
-          key={ps.name}
-          className="page-break p-6 player-print-page"
-        >
+        <div key={ps.name} className="page-break p-6">
 
           <div className="print-header">
-
             <h1>
               PERSOONLIJK SCHEMA: {ps.name}
             </h1>
-
           </div>
 
-
-          <table className="print-table player-print-table">
+          <table
+            className="print-table"
+            style={{marginTop: '10px'}}
+          >
 
             <thead>
 
@@ -851,7 +712,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                       {r.hall !== '-' &&
                       (r.role === "BLAUW" || r.role === "GEEL") ? (
 
-                        <div className="border-2 border-black w-10 h-10 mx-auto bg-white player-score-box"></div>
+                        <div className="border-2 border-black w-10 h-10 mx-auto bg-white"></div>
 
                       ) : (
 
@@ -887,7 +748,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
                 <td className="text-center">
 
-                  <div className="border-4 border-black w-14 h-14 mx-auto bg-white player-total-box"></div>
+                  <div className="border-4 border-black w-14 h-14 mx-auto bg-white"></div>
 
                 </td>
 
@@ -898,19 +759,15 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           </table>
 
 
+          {/* Puntenuitleg nu op één regel */}
+
           <div className="points-explanation">
 
-            <div>
-              Winst = 3 punten
-            </div>
+            <div>Winst = 3 punten</div>
 
-            <div>
-              Gelijk = 1 punt
-            </div>
+            <div>Gelijk = 1 punt</div>
 
-            <div>
-              Verlies = 0 punten
-            </div>
+            <div>Verlies = 0 punten</div>
 
           </div>
 
@@ -934,7 +791,6 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             </h1>
 
           </div>
-
 
           <table
             className="print-table"
@@ -970,7 +826,6 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
               </tr>
 
             </thead>
-
 
             <tbody>
 
@@ -1012,12 +867,8 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
           </table>
 
-
           <div className="mt-20 text-center text-gray-400 text-xs uppercase font-bold italic">
-
-            Gegenereerd via Bounceball Manager •{' '}
-            {new Date().toLocaleDateString('nl-NL')}
-
+            Gegenereerd via Bounceball Manager • {new Date().toLocaleDateString('nl-NL')}
           </div>
 
         </div>
