@@ -262,6 +262,35 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
     setTimeout(() => { window.print(); setActivePrintType(null); }, 500);
   };
 
+  const handleWhatsAppStandings = () => {
+    if (!session || currentStandings.length === 0) return;
+
+    let message = `🏆 *EINDSTAND BOUNCEBALL*\n`;
+    message += `━━━━━━━━━━━━━━━━━━\n\n`;
+
+    currentStandings.forEach((entry, idx) => {
+      const name = (entry as any).name || (entry as any).playerName;
+      const played = (entry as any).matchesPlayed ?? 0;
+      const saldo = entry.goalDifference ?? 0;
+      const points = entry.points ?? 0;
+
+      const medal =
+        idx === 0 ? '🥇' :
+        idx === 1 ? '🥈' :
+        idx === 2 ? '🥉' :
+        `${idx + 1}.`;
+
+      message += `${medal} *${name}*\n`;
+      message += `   Wedstrijden: ${played} | Saldo: ${saldo > 0 ? '+' : ''}${saldo} | Punten: *${points}*\n\n`;
+    });
+
+    message += `━━━━━━━━━━━━━━━━━━\n`;
+    message += `⚽ Bedankt allemaal voor het meedoen!`;
+
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
   const handleSelectOption = (opt: any) => {
     setSelectedOption(opt);
     setManualTimes(Array.from({ length: opt.rounds }, () => ({ start: '', end: '' })));
@@ -626,6 +655,12 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
               <button onClick={() => handlePrintAction('halls')} className="w-full py-4 bg-gray-700 hover:bg-amber-500 text-white font-bold rounded-2xl transition-all uppercase text-xs font-black">Per Zaal</button>
               <button onClick={() => handlePrintAction('players')} className="w-full py-4 bg-gray-700 hover:bg-amber-500 text-white font-bold rounded-2xl transition-all uppercase text-xs font-black">Individuele Spelers</button>
               <button onClick={() => handlePrintAction('standings')} className="w-full py-4 bg-gray-700 hover:bg-amber-500 text-white font-bold rounded-2xl transition-all uppercase text-xs font-black">Stand</button>
+              <button
+                onClick={handleWhatsAppStandings}
+                className="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-2xl transition-all uppercase text-xs font-black"
+              >
+                📱 WhatsApp Stand
+              </button>
             </div>
             <button onClick={() => setPrintMenuOpen(false)} className="w-full text-gray-500 font-bold uppercase text-[10px] hover:text-white transition-colors font-black">Annuleren</button>
           </div>
@@ -841,7 +876,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                         <td className="p-5 text-xs font-bold tracking-tight text-left uppercase text-white font-black font-black">{pair.p1} + {pair.p2}</td>
                         <td className="p-5 text-center text-xs text-gray-400 font-mono text-white font-black uppercase font-black font-black">{pair.together}x</td>
                         <td className="p-5 text-center text-xs text-gray-400 font-mono text-white font-black uppercase font-black font-black">{pair.against}x</td>
-                        <td className="p-5 text-center font-black font-black font-black font-black font-black"><span className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${totalColor}`}>{total}x</span></td>
+                        <td className="p-5 text-center font-black font-black font-black font-black"><span className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${totalColor}`}>{total}x</span></td>
                       </tr>
                     );
                   })}
