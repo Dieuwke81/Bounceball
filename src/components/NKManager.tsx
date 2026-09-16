@@ -157,39 +157,101 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
     if (isFixed) {
         const teamStats = new Map<number, any>();
         (session as any).fixedTeams.forEach((t: any) => {
-            teamStats.set(t.id, { id: t.id, name: t.name, points: 0, goalDifference: 0, matchesPlayed: 0 });
+            teamStats.set(t.id, {
+              id: t.id,
+              name: t.name,
+              points: 0,
+              goalDifference: 0,
+              goalsFor: 0,
+              matchesPlayed: 0
+            });
         });
+
         session.rounds.forEach(r => r.matches.forEach(m => {
             if (!m.isPlayed) return;
+
             const t1Id = (session as any).fixedTeams.findIndex((ft: any) => ft.players[0].id === m.team1[0].id);
             const t2Id = (session as any).fixedTeams.findIndex((ft: any) => ft.players[0].id === m.team2[0].id);
-            const s1 = teamStats.get(t1Id); const s2 = teamStats.get(t2Id);
+
+            const s1 = teamStats.get(t1Id);
+            const s2 = teamStats.get(t2Id);
+
             if (s1 && s2) {
-                s1.matchesPlayed++; s2.matchesPlayed++;
-                s1.goalDifference += (m.team1Score - m.team2Score); s2.goalDifference += (m.team2Score - m.team1Score);
+                s1.matchesPlayed++;
+                s2.matchesPlayed++;
+
+                s1.goalsFor += m.team1Score;
+                s2.goalsFor += m.team2Score;
+
+                s1.goalDifference += (m.team1Score - m.team2Score);
+                s2.goalDifference += (m.team2Score - m.team1Score);
+
                 if (m.team1Score > m.team2Score) s1.points += 3;
                 else if (m.team2Score > m.team1Score) s2.points += 3;
-                else { s1.points += 1; s2.points += 1; }
+                else {
+                  s1.points += 1;
+                  s2.points += 1;
+                }
             }
         }));
-        return Array.from(teamStats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
+
+        return Array.from(teamStats.values()).sort(
+          (a, b) =>
+            b.points - a.points ||
+            b.goalDifference - a.goalDifference ||
+            b.goalsFor - a.goalsFor
+        );
     } else {
         const stats = new Map<number, NKStandingsEntry>();
+
         session.rounds.forEach(r => r.matches.forEach(m => {
           [...m.team1, ...m.team2].forEach(p => {
             if (!stats.has(p.id)) {
-              stats.set(p.id, { playerId: p.id, playerName: p.name || '?', points: 0, goalDifference: 0, goalsFor: 0, matchesPlayed: 0 });
+              stats.set(p.id, {
+                playerId: p.id,
+                playerName: p.name || '?',
+                points: 0,
+                goalDifference: 0,
+                goalsFor: 0,
+                matchesPlayed: 0
+              });
             }
           });
         }));
+
         session.rounds.forEach(r => r.matches.forEach(m => {
           if (!m.isPlayed) return;
+
           const p1 = m.team1Score > m.team2Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
           const p2 = m.team2Score > m.team1Score ? 3 : m.team1Score === m.team2Score ? 1 : 0;
-          m.team1.forEach(p => { const st = stats.get(p.id); if (st) { st.matchesPlayed++; st.points += p1; st.goalsFor += m.team1Score; st.goalDifference += (m.team1Score - m.team2Score); }});
-          m.team2.forEach(p => { const st = stats.get(p.id); if (st) { st.matchesPlayed++; st.points += p2; st.goalsFor += m.team2Score; st.goalDifference += (m.team2Score - m.team1Score); }});
+
+          m.team1.forEach(p => {
+            const st = stats.get(p.id);
+            if (st) {
+              st.matchesPlayed++;
+              st.points += p1;
+              st.goalsFor += m.team1Score;
+              st.goalDifference += (m.team1Score - m.team2Score);
+            }
+          });
+
+          m.team2.forEach(p => {
+            const st = stats.get(p.id);
+            if (st) {
+              st.matchesPlayed++;
+              st.points += p2;
+              st.goalsFor += m.team2Score;
+              st.goalDifference += (m.team2Score - m.team1Score);
+            }
+          });
         }));
-        return Array.from(stats.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
+
+        return Array.from(stats.values()).sort(
+          (a, b) =>
+            b.points - a.points ||
+            b.goalDifference - a.goalDifference ||
+            b.goalsFor - a.goalsFor
+        );
     }
   }, [session]);
 
@@ -261,9 +323,23 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
     if (!session || currentStandings.length === 0) return;
 
     const pointsCounts = new Map<number, number>();
+    const pointsAndSaldoCounts = new Map<string, number>();
+
     currentStandings.forEach((entry) => {
       const points = entry.points ?? 0;
-      pointsCounts.set(points, (pointsCounts.get(points) || 0) + 1);
+      const saldo = entry.goalDifference ?? 0;
+
+      pointsCounts.set(
+        points,
+        (pointsCounts.get(points) || 0) + 1
+      );
+
+      const key = `${points}|${saldo}`;
+
+      pointsAndSaldoCounts.set(
+        key,
+        (pointsAndSaldoCounts.get(key) || 0) + 1
+      );
     });
 
     let message = `🏆 *EINDSTAND BOUNCEBALL*\n`;
@@ -273,6 +349,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
       const name = ((entry as any).name || (entry as any).playerName || '').trim();
       const points = entry.points ?? 0;
       const saldo = entry.goalDifference ?? 0;
+      const goalsFor = (entry as any).goalsFor ?? 0;
+
+      const pointsTie = (pointsCounts.get(points) || 0) > 1;
+      const pointsAndSaldoTie =
+        (pointsAndSaldoCounts.get(`${points}|${saldo}`) || 0) > 1;
 
       const medal =
         idx === 0 ? '🥇' :
@@ -282,7 +363,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
 
       message += `${medal} *${name}*\n`;
 
-      if ((pointsCounts.get(points) || 0) > 1) {
+      if (pointsAndSaldoTie) {
+        message += `   Punten: *${points}* | Saldo: ${saldo > 0 ? '+' : ''}${saldo} | Doelpunten: ${goalsFor}\n\n`;
+      } else if (pointsTie) {
         message += `   Punten: *${points}* | Saldo: ${saldo > 0 ? '+' : ''}${saldo}\n\n`;
       } else {
         message += `   Punten: *${points}*\n\n`;
@@ -728,9 +811,9 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
 
         {activeTab === 'standings' && (
           <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden text-white animate-fade-in font-black text-center font-black">
-            <table className="w-full text-left font-black text-white uppercase font-black font-black font-black font-black font-black font-black font-black font-black font-black">
+            <table className="w-full text-left font-black text-white uppercase font-black font-black font-black font-black font-black font-black font-black font-black">
               <thead className="bg-gray-900 text-gray-400 text-[10px] font-black tracking-widest uppercase font-black">
-                <tr><th className="p-5 w-12 text-center text-white font-black uppercase font-black">#</th><th className="p-5 text-white font-black uppercase text-left font-black font-black font-black font-black">{(session as any).isFixedTeams ? 'Team' : 'Speler'}</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">W</th><th className="p-5 text-center text-white font-black uppercase font-black font-black font-black font-black font-black font-black font-black font-black font-black">DS</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">PTN</th></tr>
+                <tr><th className="p-5 w-12 text-center text-white font-black uppercase font-black">#</th><th className="p-5 text-white font-black uppercase text-left font-black font-black font-black font-black font-black">{(session as any).isFixedTeams ? 'Team' : 'Speler'}</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">W</th><th className="p-5 text-center text-white font-black uppercase font-black font-black font-black font-black font-black font-black font-black font-black font-black">DS</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">PTN</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-700/50 uppercase text-white font-black font-black">
                 {currentStandings.map((entry, idx) => (
