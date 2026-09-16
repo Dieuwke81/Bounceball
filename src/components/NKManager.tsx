@@ -342,10 +342,32 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
       );
     });
 
+    // Rangschikking op basis van:
+    // 1. Punten
+    // 2. Saldo
+    // 3. Doelpunten
+    //
+    // Bij exact gelijke standen krijgt iedereen dezelfde positie.
+    // We gebruiken "dense ranking":
+    // 1, 2, 2, 2, 3, 3, 4...
+    const rankingKeys: string[] = [];
+
+    currentStandings.forEach((entry) => {
+      const points = entry.points ?? 0;
+      const saldo = entry.goalDifference ?? 0;
+      const goalsFor = (entry as any).goalsFor ?? 0;
+
+      const key = `${points}|${saldo}|${goalsFor}`;
+
+      if (!rankingKeys.includes(key)) {
+        rankingKeys.push(key);
+      }
+    });
+
     let message = `🏆 *EINDSTAND BOUNCEBALL*\n`;
     message += `━━━━━━━━━━━━━━━━━━\n\n`;
 
-    currentStandings.forEach((entry, idx) => {
+    currentStandings.forEach((entry) => {
       const name = ((entry as any).name || (entry as any).playerName || '').trim();
       const points = entry.points ?? 0;
       const saldo = entry.goalDifference ?? 0;
@@ -355,11 +377,18 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
       const pointsAndSaldoTie =
         (pointsAndSaldoCounts.get(`${points}|${saldo}`) || 0) > 1;
 
-      const medal =
-        idx === 0 ? '🥇' :
-        idx === 1 ? '🥈' :
-        idx === 2 ? '🥉' :
-        `${idx + 1}.`;
+      const rankingKey = `${points}|${saldo}|${goalsFor}`;
+      const position = rankingKeys.indexOf(rankingKey) + 1;
+
+      let medal = `${position}.`;
+
+      if (position === 1) {
+        medal = '🥇';
+      } else if (position === 2) {
+        medal = '🥈';
+      } else if (position === 3) {
+        medal = '🥉';
+      }
 
       message += `${medal} *${name}*\n`;
 
@@ -799,7 +828,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                             <div className="text-[9px] text-gray-500 mt-2 font-black font-black">GEM: {avg2.toFixed(2)}</div>
                           </div>
                         </div>
-                        {!isFixed && ( <div className="p-2.5 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-8 text-[9px] font-black uppercase text-white font-black font-black font-black font-black font-black"><span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subHigh?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subHigh?.name || '') ? 'bg-green-500 text-white font-black font-black' : 'text-pink-400 font-black'}`}>Res 1: {match.subHigh?.name}</span><span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subLow?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subLow?.name || '') ? 'bg-green-500 text-white font-black font-black' : 'text-pink-400 font-black'}`}>Res 2: {match.subLow?.name}</span></div> )}
+                        {!isFixed && ( <div className="p-2.5 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-8 text-[9px] font-black uppercase text-white font-black font-black font-black font-black font-black font-black font-black"><span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subHigh?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subHigh?.name || '') ? 'bg-green-500 text-white font-black font-black' : 'text-pink-400 font-black'}`}>Res 1: {match.subHigh?.name}</span><span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subLow?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subLow?.name || '') ? 'bg-green-500 text-white font-black font-black' : 'text-pink-400 font-black'}`}>Res 2: {match.subLow?.name}</span></div> )}
                       </div>
                     );
                   })}
@@ -813,7 +842,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
           <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden text-white animate-fade-in font-black text-center font-black">
             <table className="w-full text-left font-black text-white uppercase font-black font-black font-black font-black font-black font-black font-black font-black">
               <thead className="bg-gray-900 text-gray-400 text-[10px] font-black tracking-widest uppercase font-black">
-                <tr><th className="p-5 w-12 text-center text-white font-black uppercase font-black">#</th><th className="p-5 text-white font-black uppercase text-left font-black font-black font-black font-black font-black">{(session as any).isFixedTeams ? 'Team' : 'Speler'}</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">W</th><th className="p-5 text-center text-white font-black uppercase font-black font-black font-black font-black font-black font-black font-black font-black font-black">DS</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">PTN</th></tr>
+                <tr><th className="p-5 w-12 text-center text-white font-black uppercase font-black">#</th><th className="p-5 text-white font-black uppercase text-left font-black font-black font-black">{(session as any).isFixedTeams ? 'Team' : 'Speler'}</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">W</th><th className="p-5 text-center text-white font-black uppercase font-black font-black font-black font-black font-black font-black font-black font-black font-black font-black">DS</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">PTN</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-700/50 uppercase text-white font-black font-black">
                 {currentStandings.map((entry, idx) => (
