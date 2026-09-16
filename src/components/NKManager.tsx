@@ -15,10 +15,6 @@ interface NKManagerProps {
 type PrintType = 'overview' | 'halls' | 'players' | 'standings' | null;
 type NKType = 'individual' | 'fixed';
 
-type SwapSelection =
-  | { kind: 'team1' | 'team2' | 'referee' | 'subHigh' | 'subLow'; rIdx: number; mIdx: number; playerIdx?: number }
-  | { kind: 'resting'; rIdx: number; playerIdx: number };
-
 const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClose }) => {
   const [session, setSession] = useState<NKSession | null>(null);
   const [activeTab, setActiveTab] = useState<'schedule' | 'standings' | 'analysis'>('schedule');
@@ -42,7 +38,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
 
   const [selectedOption, setSelectedOption] = useState<any | null>(null);
   const [manualTimes, setManualTimes] = useState<{start: string, end: string}[]>([]);
-  const [swapSelection, setSwapSelection] = useState<SwapSelection | null>(null);
 
   useEffect(() => {
     const savedSession = localStorage.getItem('bounceball_nk_session');
@@ -265,14 +260,19 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
   const handleWhatsAppStandings = () => {
     if (!session || currentStandings.length === 0) return;
 
+    const pointsCounts = new Map<number, number>();
+    currentStandings.forEach((entry) => {
+      const points = entry.points ?? 0;
+      pointsCounts.set(points, (pointsCounts.get(points) || 0) + 1);
+    });
+
     let message = `🏆 *EINDSTAND BOUNCEBALL*\n`;
     message += `━━━━━━━━━━━━━━━━━━\n\n`;
 
     currentStandings.forEach((entry, idx) => {
-      const name = (entry as any).name || (entry as any).playerName;
-      const played = (entry as any).matchesPlayed ?? 0;
-      const saldo = entry.goalDifference ?? 0;
+      const name = ((entry as any).name || (entry as any).playerName || '').trim();
       const points = entry.points ?? 0;
+      const saldo = entry.goalDifference ?? 0;
 
       const medal =
         idx === 0 ? '🥇' :
@@ -281,7 +281,12 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
         `${idx + 1}.`;
 
       message += `${medal} *${name}*\n`;
-      message += `   Wedstrijden: ${played} | Saldo: ${saldo > 0 ? '+' : ''}${saldo} | Punten: *${points}*\n\n`;
+
+      if ((pointsCounts.get(points) || 0) > 1) {
+        message += `   Punten: *${points}* | Saldo: ${saldo > 0 ? '+' : ''}${saldo}\n\n`;
+      } else {
+        message += `   Punten: *${points}*\n\n`;
+      }
     });
 
     message += `━━━━━━━━━━━━━━━━━━\n`;
@@ -309,84 +314,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
     const key = teamNum === 1 ? 't1ReserveId' : 't2ReserveId';
     match[key] = match[key] === playerId ? null : playerId;
     setSession(newS);
-  };
-
-  const tournamentHasStarted = useMemo(() => {
-    if (!session) return false;
-    return session.rounds.some(r => r.matches.some(m => m.isPlayed));
-  }, [session]);
-
-  const getSwapPlayerName = (selection: SwapSelection): string => {
-    if (!session) return '';
-    const round = session.rounds[selection.rIdx];
-    if (!round) return '';
-
-    if (selection.kind === 'resting') {
-      return round.restingPlayers[selection.playerIdx]?.name || '';
-    }
-
-    const match = round.matches[selection.mIdx];
-    if (!match) return '';
-
-    if (selection.kind === 'team1') return match.team1[selection.playerIdx ?? -1]?.name || '';
-    if (selection.kind === 'team2') return match.team2[selection.playerIdx ?? -1]?.name || '';
-    if (selection.kind === 'referee') return match.referee?.name || '';
-    if (selection.kind === 'subHigh') return match.subHigh?.name || '';
-    return match.subLow?.name || '';
-  };
-
-  const handleSwapClick = (selection: SwapSelection) => {
-    if (!session || tournamentHasStarted || (session as any).isFixedTeams) return;
-
-    if (!swapSelection) {
-      setSwapSelection(selection);
-      return;
-    }
-
-    const sameSlot = JSON.stringify(swapSelection) === JSON.stringify(selection);
-    if (sameSlot) {
-      setSwapSelection(null);
-      return;
-    }
-
-    const newS: NKSession = JSON.parse(JSON.stringify(session));
-
-    const getSlotValue = (s: SwapSelection): Player | null => {
-      const round = newS.rounds[s.rIdx];
-      if (!round) return null;
-      if (s.kind === 'resting') return round.restingPlayers[s.playerIdx] || null;
-      const match = round.matches[s.mIdx];
-      if (!match) return null;
-      if (s.kind === 'team1') return match.team1[s.playerIdx ?? -1] || null;
-      if (s.kind === 'team2') return match.team2[s.playerIdx ?? -1] || null;
-      if (s.kind === 'referee') return match.referee;
-      if (s.kind === 'subHigh') return match.subHigh;
-      return match.subLow;
-    };
-
-    const setSlotValue = (s: SwapSelection, value: Player | null) => {
-      const round = newS.rounds[s.rIdx];
-      if (!round) return;
-      if (s.kind === 'resting') {
-        round.restingPlayers[s.playerIdx] = value as Player;
-        return;
-      }
-      const match = round.matches[s.mIdx];
-      if (!match) return;
-      if (s.kind === 'team1') match.team1[s.playerIdx ?? -1] = value as Player;
-      else if (s.kind === 'team2') match.team2[s.playerIdx ?? -1] = value as Player;
-      else if (s.kind === 'referee') match.referee = value;
-      else if (s.kind === 'subHigh') match.subHigh = value;
-      else match.subLow = value;
-    };
-
-    const firstValue = getSlotValue(swapSelection);
-    const secondValue = getSlotValue(selection);
-    setSlotValue(swapSelection, secondValue);
-    setSlotValue(selection, firstValue);
-
-    setSession(newS);
-    setSwapSelection(null);
   };
 
   const handleStartFixedNK = async () => {
@@ -687,16 +614,6 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
         {activeTab === 'schedule' && (
           <>
             <input type="text" placeholder="Naam markeren..." value={highlightName} onChange={e => setHighlightName(e.target.value)} className="w-full bg-gray-800 p-4 rounded-2xl text-white border border-gray-700 outline-none focus:ring-2 ring-green-500 transition-all font-black uppercase" />
-            {!((session as any).isFixedTeams) && !tournamentHasStarted && (
-              <div className={`rounded-2xl border p-4 text-center uppercase text-[10px] font-black tracking-widest ${swapSelection ? 'bg-amber-500/15 border-amber-500 text-amber-400' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>
-                {swapSelection
-                  ? `Geselecteerd: ${getSwapPlayerName(swapSelection)} — klik nu op de tweede naam om te wisselen`
-                  : 'Wisselen: klik op twee namen. Dit wisselt alleen de twee aangeklikte velden.'}
-                {swapSelection && (
-                  <button onClick={() => setSwapSelection(null)} className="ml-3 underline text-gray-400 hover:text-white">Annuleren</button>
-                )}
-              </div>
-            )}
             
             {(session as any).isFixedTeams && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 animate-fade-in font-black">
@@ -760,7 +677,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                           {isFixed ? (
                              <span className="text-cyan-400 font-black font-black">Vaste Teams</span>
                           ) : (
-                             <span onClick={() => match.referee && handleSwapClick({ kind: 'referee', rIdx, mIdx })} className={`px-2 py-0.5 rounded transition-all cursor-pointer hover:text-amber-400 border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.referee?.rating)?.border || 'border-transparent') : 'border-transparent'} ${swapSelection?.kind === 'referee' && swapSelection.rIdx === rIdx && swapSelection.mIdx === mIdx ? 'bg-amber-500 text-white shadow-lg' : ''} ${isHighlighted(match.referee?.name || '') ? 'bg-green-500 text-white font-black scale-110 shadow-lg font-black' : 'text-pink-400 font-black'}`}>Ref: {match.referee?.name}</span>
+                             <span className={`px-2 py-0.5 rounded transition-all ${isHighlighted(match.referee?.name || '') ? 'bg-green-500 text-white font-black scale-110 shadow-lg font-black' : 'text-pink-400 font-black'}`}>Ref: {match.referee?.name}</span>
                           )}
                         </div>
                         <div className="p-5 flex justify-between items-stretch gap-4 text-white font-black">
@@ -770,7 +687,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                                 const rColor = ratingColors.get(p.rating);
                                 const isR = (match as any).t1ReserveId === p.id;
                                 return (
-                                    <div key={p.id} onClick={() => isFixed ? handleToggleReserve(rIdx, mIdx, 1, p.id) : handleSwapClick({ kind: 'team1', rIdx, mIdx, playerIdx: match.team1.indexOf(p) })} className={`text-sm uppercase font-bold border-l-2 pl-2 ${playerSource === 'intro' ? (rColor?.border || 'border-transparent') : 'border-transparent'} transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md font-black' : 'font-black'} ${isFixed ? 'cursor-pointer hover:text-amber-500 font-black' : `cursor-pointer hover:text-amber-400 ${swapSelection?.kind === 'team1' && swapSelection.rIdx === rIdx && swapSelection.mIdx === mIdx && swapSelection.playerIdx === match.team1.indexOf(p) ? 'bg-amber-500 text-white px-1 rounded-sm shadow-lg' : 'font-black'}`} ${isR ? 'line-through opacity-40 grayscale font-black' : 'font-black'}`}>{p.name}</div>
+                                    <div key={p.id} onClick={() => isFixed && handleToggleReserve(rIdx, mIdx, 1, p.id)} className={`text-sm uppercase font-bold border-l-2 pl-2 ${playerSource === 'intro' ? (rColor?.border || 'border-transparent') : 'border-transparent'} transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md font-black' : 'font-black'} ${isFixed ? 'cursor-pointer hover:text-amber-500 font-black' : 'font-black'} ${isR ? 'line-through opacity-40 grayscale font-black' : 'font-black'}`}>{p.name}</div>
                                 );
                             })}
                             <div className="text-[9px] text-gray-500 mt-2 font-black font-black">GEM: {avg1.toFixed(2)}</div>
@@ -793,41 +710,17 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                                 const rColor = ratingColors.get(p.rating);
                                 const isR = (match as any).t2ReserveId === p.id;
                                 return (
-                                    <div key={p.id} onClick={() => isFixed ? handleToggleReserve(rIdx, mIdx, 2, p.id) : handleSwapClick({ kind: 'team2', rIdx, mIdx, playerIdx: match.team2.indexOf(p) })} className={`text-sm uppercase font-bold border-r-2 pr-2 ${playerSource === 'intro' ? (rColor?.border || 'border-transparent') : 'border-transparent'} transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md font-black' : 'font-black'} ${isFixed ? 'cursor-pointer hover:text-amber-500 font-black' : `cursor-pointer hover:text-amber-400 ${swapSelection?.kind === 'team2' && swapSelection.rIdx === rIdx && swapSelection.mIdx === mIdx && swapSelection.playerIdx === match.team2.indexOf(p) ? 'bg-amber-500 text-white px-1 rounded-sm shadow-lg' : 'font-black'}`} ${isR ? 'line-through opacity-40 grayscale font-black' : 'font-black'}`}>{p.name}</div>
+                                    <div key={p.id} onClick={() => isFixed && handleToggleReserve(rIdx, mIdx, 2, p.id)} className={`text-sm uppercase font-bold border-r-2 pr-2 ${playerSource === 'intro' ? (rColor?.border || 'border-transparent') : 'border-transparent'} transition-all ${isHighlighted(p.name) ? 'bg-green-500 text-white px-1 rounded-sm scale-105 shadow-md font-black' : 'font-black'} ${isFixed ? 'cursor-pointer hover:text-amber-500 font-black' : 'font-black'} ${isR ? 'line-through opacity-40 grayscale font-black' : 'font-black'}`}>{p.name}</div>
                                 );
                             })}
                             <div className="text-[9px] text-gray-500 mt-2 font-black font-black">GEM: {avg2.toFixed(2)}</div>
                           </div>
                         </div>
-                        {!isFixed && ( <div className="p-2.5 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-8 text-[9px] font-black uppercase text-white font-black font-black font-black font-black"><span onClick={() => match.subHigh && handleSwapClick({ kind: 'subHigh', rIdx, mIdx })} className={`px-2 rounded transition-all border-l-2 cursor-pointer hover:text-amber-400 ${playerSource === 'intro' ? (ratingColors.get(match.subHigh?.rating)?.border || 'border-transparent') : 'border-transparent'} ${swapSelection?.kind === 'subHigh' && swapSelection.rIdx === rIdx && swapSelection.mIdx === mIdx ? 'bg-amber-500 text-white shadow-lg' : ''} ${isHighlighted(match.subHigh?.name || '') ? 'bg-green-500 text-white font-black font-black' : 'text-pink-400 font-black'}`}>Res 1: {match.subHigh?.name}</span><span onClick={() => match.subLow && handleSwapClick({ kind: 'subLow', rIdx, mIdx })} className={`px-2 rounded transition-all border-l-2 cursor-pointer hover:text-amber-400 ${playerSource === 'intro' ? (ratingColors.get(match.subLow?.rating)?.border || 'border-transparent') : 'border-transparent'} ${swapSelection?.kind === 'subLow' && swapSelection.rIdx === rIdx && swapSelection.mIdx === mIdx ? 'bg-amber-500 text-white shadow-lg' : ''} ${isHighlighted(match.subLow?.name || '') ? 'bg-green-500 text-white font-black font-black' : 'text-pink-400 font-black'}`}>Res 2: {match.subLow?.name}</span></div> )}
+                        {!isFixed && ( <div className="p-2.5 bg-gray-900/30 border-t border-gray-700 flex justify-center gap-8 text-[9px] font-black uppercase text-white font-black font-black font-black font-black"><span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subHigh?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subHigh?.name || '') ? 'bg-green-500 text-white font-black font-black' : 'text-pink-400 font-black'}`}>Res 1: {match.subHigh?.name}</span><span className={`px-2 rounded transition-all border-l-2 ${playerSource === 'intro' ? (ratingColors.get(match.subLow?.rating)?.border || 'border-transparent') : 'border-transparent'} ${isHighlighted(match.subLow?.name || '') ? 'bg-green-500 text-white font-black font-black' : 'text-pink-400 font-black'}`}>Res 2: {match.subLow?.name}</span></div> )}
                       </div>
                     );
                   })}
                 </div>
-                {(round as any).restingPlayers?.length > 0 && (
-                  <div className="bg-gray-900/60 border border-gray-700 rounded-2xl p-4">
-                    <div className="text-[9px] text-gray-500 uppercase tracking-widest font-black mb-3">
-                      Doen deze ronde niets
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {(round as any).restingPlayers.map((player: Player, playerIdx: number) => (
-                        <span
-                          key={player.id}
-                          onClick={() => handleSwapClick({ kind: 'resting', rIdx, playerIdx })}
-                          className={`px-3 py-1.5 rounded-lg bg-gray-800 border-l-2 text-xs uppercase font-black cursor-pointer hover:text-amber-400 transition-all ${
-                            playerSource === 'intro' ? (ratingColors.get(player.rating)?.border || 'border-transparent') : 'border-transparent'
-                          } ${
-                            swapSelection?.kind === 'resting' && swapSelection.rIdx === rIdx && swapSelection.playerIdx === playerIdx
-                              ? 'bg-amber-500 text-white border-amber-400 shadow-lg'
-                              : 'text-gray-300'
-                          } ${isHighlighted(player.name) ? 'ring-2 ring-green-500' : ''}`}
-                        >
-                          {player.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             ))}
           </>
@@ -837,7 +730,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
           <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden text-white animate-fade-in font-black text-center font-black">
             <table className="w-full text-left font-black text-white uppercase font-black font-black font-black font-black font-black font-black font-black font-black font-black">
               <thead className="bg-gray-900 text-gray-400 text-[10px] font-black tracking-widest uppercase font-black">
-                <tr><th className="p-5 w-12 text-center text-white font-black uppercase font-black">#</th><th className="p-5 text-white font-black uppercase text-left font-black font-black font-black font-black">{(session as any).isFixedTeams ? 'Team' : 'Speler'}</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">W</th><th className="p-5 text-center text-white font-black uppercase font-black font-black font-black font-black font-black font-black font-black">DS</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">PTN</th></tr>
+                <tr><th className="p-5 w-12 text-center text-white font-black uppercase font-black">#</th><th className="p-5 text-white font-black uppercase text-left font-black font-black font-black font-black">{(session as any).isFixedTeams ? 'Team' : 'Speler'}</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">W</th><th className="p-5 text-center text-white font-black uppercase font-black font-black font-black font-black font-black font-black font-black font-black font-black">DS</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">PTN</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-700/50 uppercase text-white font-black font-black">
                 {currentStandings.map((entry, idx) => (
@@ -857,7 +750,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
         {activeTab === 'analysis' && (
           <div className="space-y-4 animate-fade-in text-white no-print font-black font-black font-black">
             <input type="text" placeholder="Duo's filteren..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl p-4 text-sm outline-none focus:border-amber-500 transition-all text-white font-black uppercase font-black" />
-            <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden max-h-[600px] overflow-y-auto uppercase custom-scrollbar text-white text-center font-black font-black">
+            <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden max-h-[600px] overflow-y-auto uppercase custom-scrollbar text-white text-center font-black font-black font-black">
               <table className="w-full text-left text-white font-black uppercase text-center font-black">
                 <thead className="bg-gray-900 text-gray-400 text-[10px] uppercase font-black sticky top-0 z-20 text-white font-black uppercase">
                   <tr><th className="p-5 text-white font-black uppercase text-left font-black">Duo</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">Samen</th><th className="p-5 text-center text-white font-black uppercase font-black font-black">Tegen</th><th className="p-5 text-center text-white font-black uppercase font-black">Totaal</th></tr>
@@ -876,7 +769,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
                         <td className="p-5 text-xs font-bold tracking-tight text-left uppercase text-white font-black font-black">{pair.p1} + {pair.p2}</td>
                         <td className="p-5 text-center text-xs text-gray-400 font-mono text-white font-black uppercase font-black font-black">{pair.together}x</td>
                         <td className="p-5 text-center text-xs text-gray-400 font-mono text-white font-black uppercase font-black font-black">{pair.against}x</td>
-                        <td className="p-5 text-center font-black font-black font-black font-black"><span className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${totalColor}`}>{total}x</span></td>
+                        <td className="p-5 text-center font-black font-black font-black font-black font-black"><span className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${totalColor}`}>{total}x</span></td>
                       </tr>
                     );
                   })}
