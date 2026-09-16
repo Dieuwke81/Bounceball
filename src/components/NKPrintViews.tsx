@@ -316,7 +316,12 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
             <tbody>{ps.rounds.map((r: any) => {
                   let roleClass = ""; if (r.role === "BLAUW") roleClass = "bg-blauw-trans"; if (r.role === "GEEL") roleClass = "bg-geel-trans"; if (r.role === "REF") roleClass = "bg-scheids-trans"; if (r.role === "RES") roleClass = "bg-reserve-trans";
                   let roleTextColor = ""; if (r.role === "BLAUW") roleTextColor = "color-blauw"; if (r.role === "GEEL") roleTextColor = "color-geel"; if (r.role === "REF") roleTextColor = "color-scheids"; if (r.role === "RES") roleTextColor = "color-reserve";
-                  return (<tr key={r.round} className={roleClass}><td className="text-center text-xl py-2 font-black">{r.round}</td><td className="text-center text-sm font-black">{r.startTime}</td><td className="text-center text-3xl font-black uppercase">{r.hall}</td><td className={`font-black uppercase text-lg ${roleTextColor}`}>{r.role}</td><td className="text-center">{r.hall !== '-' && (r.role === "BLAUW" || r.role === "GEEL") ? ( <div className="border-2 border-black w-10 h-10 mx-auto bg-white"></div> ) : ( <span className="text-gray-400 text-[7pt]">N.v.t.</span> )}</td></tr>);
+                  return (<tr key={r.round} className={roleClass}><td className="text-center text-xl py-2 font-black">{r.round}</td><td className="text-center text-sm font-black">{r.startTime}</td><td className="text-center text-3xl font-black uppercase">{r.hall}</td><td className={`font-black uppercase text-lg ${roleTextColor}`}>
+  {r.role === "REF" ? "SCHEIDS" : r.role}
+  {r.role === "REF" && r.hall?.trim().toUpperCase() === "C" && (
+    <span style={{ marginLeft: '8px', fontSize: '20pt' }}>📣</span>
+  )}
+</td><td className="text-center">{r.hall !== '-' && (r.role === "BLAUW" || r.role === "GEEL") ? ( <div className="border-2 border-black w-10 h-10 mx-auto bg-white"></div> ) : ( <span className="text-gray-400 text-[7pt]">N.v.t.</span> )}</td></tr>);
               })}</tbody>
             <tfoot><tr><td colSpan={3} className="border-none"></td><td className="text-right font-black text-xl py-4 pr-4 uppercase">TOTAAL:</td><td className="text-center"><div className="border-4 border-black w-14 h-14 mx-auto bg-white"></div></td></tr></tfoot>
           </table>
