@@ -24,14 +24,16 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           .print-header h1 { font-size: 22pt !important; font-weight: 900 !important; margin: 0 !important; text-transform: uppercase !important; color: black !important; }
           .page-break { page-break-after: always !important; break-after: page !important; display: block !important; width: 100%; }
           .page-break:last-child { page-break-after: auto !important; break-after: auto !important; }
-          .color-blauw { color: #0000ff !important; } 
-          .color-geel { color: #ffd700 !important; } 
-          .color-scheids { color: #db2777 !important; } 
+          .color-blauw { color: #0000ff !important; }
+          .color-geel { color: #ffd700 !important; }
+          .color-scheids { color: #db2777 !important; }
           .color-reserve { color: #15803d !important; }
+          .color-invaller { color: #dc2626 !important; }
           .bg-blauw-trans { background-color: rgba(0, 0, 255, 0.08) !important; }
           .bg-geel-trans { background-color: rgba(255, 215, 0, 0.12) !important; }
           .bg-scheids-trans { background-color: rgba(219, 39, 119, 0.08) !important; }
           .bg-reserve-trans { background-color: rgba(21, 128, 61, 0.08) !important; }
+          .bg-invaller-trans { background-color: rgba(220, 38, 38, 0.10) !important; }
           .match-card { border: 3px solid #000 !important; margin-bottom: 10px !important; page-break-inside: avoid !important; padding: 10px 15px !important; background: white !important; border-radius: 12px; }
           .hall-label { font-size: 20pt !important; font-weight: 900 !important; text-transform: uppercase; color: black !important; }
           .player-name { font-size: 14pt !important; font-weight: bold !important; color: black !important; text-transform: uppercase; }
@@ -43,7 +45,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           .print-table td { border: 2px solid black !important; padding: 6px !important; vertical-align: middle !important; color: black !important; }
           .small-score-box { border: 1.5px solid black; width: 25pt; height: 25pt; display: inline-block; background: white !important; }
           .time-label { font-size: 14pt !important; font-weight: 900 !important; color: #444 !important; margin-left: 10px; }
-          
+
           /* Nieuwe stijl voor de puntenuitleg */
           .points-explanation {
             margin-top: 15px !important;
@@ -132,7 +134,7 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
 
           <div className="print-header">
             <h1>
-              OVERZICHT - RONDE {round.roundNumber} 
+              OVERZICHT - RONDE {round.roundNumber}
               <span className="time-label">
                 {(round as any).startTime ? `(${(round as any).startTime} - ${(round as any).endTime})` : ''}
               </span>
@@ -142,6 +144,12 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           <div className="overview-grid">
             {round.matches.map(m => {
               const isFixed = (session as any).isFixedTeams;
+              const invallerIds: number[] = Array.isArray((m as any).invallerPlayerIds)
+                ? (m as any).invallerPlayerIds
+                : [];
+
+              const subHighIsInvaller = !!m.subHigh && invallerIds.includes(m.subHigh.id);
+              const subLowIsInvaller = !!m.subLow && invallerIds.includes(m.subLow.id);
 
               return (
                 <div key={m.id} className="overview-match-card">
@@ -227,24 +235,24 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                   {!isFixed && (
                     <div className="reserve-row mt-2 pt-1 border-t-2 border-dashed border-black flex justify-around">
 
-                      <div className="flex items-center">
-                        <span className="color-reserve label-small uppercase font-black">
-                          RES 1:
+                      <div className={`flex items-center ${subHighIsInvaller ? 'bg-invaller-trans px-1 rounded' : ''}`}>
+                        <span className={`label-small uppercase font-black ${subHighIsInvaller ? 'color-invaller' : 'color-reserve'}`}>
+                          {subHighIsInvaller ? 'INVALLER: ' : 'RES 1: '}
                         </span>
                         <span
-                          className="player-name ml-1"
+                          className={`player-name ml-1 ${subHighIsInvaller ? 'color-invaller' : ''}`}
                           style={{fontSize: '8pt'}}
                         >
                           {m.subHigh?.name}
                         </span>
                       </div>
 
-                      <div className="flex items-center">
-                        <span className="color-reserve label-small uppercase font-black">
-                          RES 2:
+                      <div className={`flex items-center ${subLowIsInvaller ? 'bg-invaller-trans px-1 rounded' : ''}`}>
+                        <span className={`label-small uppercase font-black ${subLowIsInvaller ? 'color-invaller' : 'color-reserve'}`}>
+                          {subLowIsInvaller ? 'INVALLER: ' : 'RES 2: '}
                         </span>
                         <span
-                          className="player-name ml-1"
+                          className={`player-name ml-1 ${subLowIsInvaller ? 'color-invaller' : ''}`}
                           style={{fontSize: '8pt'}}
                         >
                           {m.subLow?.name}
@@ -284,6 +292,13 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                 const m = r.matches.find(match => match.hallName.trim().toUpperCase() === hall.trim().toUpperCase());
                 if (!m) return null;
                 const isFixed = (session as any).isFixedTeams;
+
+                const invallerIds: number[] = Array.isArray((m as any).invallerPlayerIds)
+                  ? (m as any).invallerPlayerIds
+                  : [];
+                const subHighIsInvaller = !!m.subHigh && invallerIds.includes(m.subHigh.id);
+                const subLowIsInvaller = !!m.subLow && invallerIds.includes(m.subLow.id);
+
                 return (
                   <tr key={r.roundNumber} className="font-bold uppercase">
                     <td className="text-center text-xl bg-gray-50">{r.roundNumber}</td>
@@ -298,7 +313,18 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
                       {m.team2.map(p => ( <div key={p.id} className={(m as any).t2ReserveId === p.id ? 'strike-name' : ''}>{p.name}</div> ))}
                     </td>
                     <td className="text-[9pt] bg-scheids-trans">{!isFixed ? m.referee?.name : '-'}</td>
-                    <td className="text-[8pt] bg-reserve-trans">{!isFixed ? (<><div>1: {m.subHigh?.name}</div><div>2: {m.subLow?.name}</div></>) : '-'}</td>
+                    <td className="text-[8pt] bg-reserve-trans">
+                      {!isFixed ? (
+                        <>
+                          <div className={subHighIsInvaller ? 'color-invaller font-black' : ''}>
+                            {subHighIsInvaller ? 'INVALLER: ' : '1: '}{m.subHigh?.name}
+                          </div>
+                          <div className={subLowIsInvaller ? 'color-invaller font-black' : ''}>
+                            {subLowIsInvaller ? 'INVALLER: ' : '2: '}{m.subLow?.name}
+                          </div>
+                        </>
+                      ) : '-'}
+                    </td>
                   </tr>
                 );
               })}
@@ -314,14 +340,45 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           <table className="print-table" style={{marginTop: '10px'}}>
             <thead><tr className="bg-gray-100 uppercase text-[9pt] color-black"><th className="w-12 text-center">RD</th><th className="w-24 text-center">TIJD</th><th className="w-20 text-center">ZAAL</th><th className="text-left">ROL</th><th className="w-28 text-center">PUNTEN</th></tr></thead>
             <tbody>{ps.rounds.map((r: any) => {
-                  let roleClass = ""; if (r.role === "BLAUW") roleClass = "bg-blauw-trans"; if (r.role === "GEEL") roleClass = "bg-geel-trans"; if (r.role === "REF") roleClass = "bg-scheids-trans"; if (r.role === "RES") roleClass = "bg-reserve-trans";
-                  let roleTextColor = ""; if (r.role === "BLAUW") roleTextColor = "color-blauw"; if (r.role === "GEEL") roleTextColor = "color-geel"; if (r.role === "REF") roleTextColor = "color-scheids"; if (r.role === "RES") roleTextColor = "color-reserve";
-                  return (<tr key={r.round} className={roleClass}><td className="text-center text-xl py-2 font-black">{r.round}</td><td className="text-center text-sm font-black">{r.startTime}</td><td className="text-center text-3xl font-black uppercase">{r.hall}</td><td className={`font-black uppercase text-lg ${roleTextColor}`}>
-  {r.role === "REF" ? "SCHEIDS" : r.role}
-  {r.role === "REF" && r.hall?.trim().toUpperCase() === "C" && (
-    <span style={{ marginLeft: '8px', fontSize: '20pt' }}>📣</span>
-  )}
-</td><td className="text-center">{r.hall !== '-' && (r.role === "BLAUW" || r.role === "GEEL") ? ( <div className="border-2 border-black w-10 h-10 mx-auto bg-white"></div> ) : ( <span className="text-gray-400 text-[7pt]">N.v.t.</span> )}</td></tr>);
+                  let roleClass = "";
+                  if (r.role === "BLAUW") roleClass = "bg-blauw-trans";
+                  if (r.role === "GEEL") roleClass = "bg-geel-trans";
+                  if (r.role === "REF") roleClass = "bg-scheids-trans";
+                  if (r.role === "RES") roleClass = "bg-reserve-trans";
+                  if (r.role === "INVALLER") roleClass = "bg-invaller-trans";
+
+                  let roleTextColor = "";
+                  if (r.role === "BLAUW") roleTextColor = "color-blauw";
+                  if (r.role === "GEEL") roleTextColor = "color-geel";
+                  if (r.role === "REF") roleTextColor = "color-scheids";
+                  if (r.role === "RES") roleTextColor = "color-reserve";
+                  if (r.role === "INVALLER") roleTextColor = "color-invaller";
+
+                  return (
+                    <tr key={r.round} className={roleClass}>
+                      <td className="text-center text-xl py-2 font-black">{r.round}</td>
+                      <td className="text-center text-sm font-black">{r.startTime}</td>
+                      <td className="text-center text-3xl font-black uppercase">{r.hall}</td>
+                      <td className={`font-black uppercase text-lg ${roleTextColor}`}>
+                        {r.role === "REF" ? "SCHEIDS" : r.role}
+                        {r.role === "INVALLER" && (
+                          <div style={{ fontSize: '11pt', marginTop: '2px', fontWeight: 900 }}>
+                            {r.note || `INVALLER – ZAAL ${r.hall}`}
+                          </div>
+                        )}
+                        {r.role === "REF" && r.hall?.trim().toUpperCase() === "C" && (
+                          <span style={{ marginLeft: '8px', fontSize: '20pt' }}>📣</span>
+                        )}
+                      </td>
+                      <td className="text-center">
+                        {r.hall !== '-' && (r.role === "BLAUW" || r.role === "GEEL") ? (
+                          <div className="border-2 border-black w-10 h-10 mx-auto bg-white"></div>
+                        ) : (
+                          <span className="text-gray-400 text-[7pt]">N.v.t.</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
               })}</tbody>
             <tfoot><tr><td colSpan={3} className="border-none"></td><td className="text-right font-black text-xl py-4 pr-4 uppercase">TOTAAL:</td><td className="text-center"><div className="border-4 border-black w-14 h-14 mx-auto bg-white"></div></td></tr></tfoot>
           </table>
