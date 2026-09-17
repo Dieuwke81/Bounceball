@@ -245,19 +245,27 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
     return participantIds.map(id => {
         const p = activePlayerPool.find(x => x.id === id);
         const rounds = session.rounds.map(r => {
-            const match = r.matches.find(m => [...m.team1, ...m.team2, m.referee, m.subHigh, m.subLow].some(pl => pl?.id === id));
+            // Een gemarkeerde invaller moet in het persoonlijke schema
+            // altijd als invaller worden gevonden, zolang deze speler
+            // daadwerkelijk één van de huidige reserves is.
+            const invallerMatch = r.matches.find(m => {
+              const invallerIds = Array.isArray((m as any).invallerPlayerIds)
+                ? (m as any).invallerPlayerIds
+                : [];
+              const isCurrentReserve =
+                m.subHigh?.id === id || m.subLow?.id === id;
+              return isCurrentReserve && invallerIds.includes(id);
+            });
+
+            const match = invallerMatch || r.matches.find(m => [...m.team1, ...m.team2, m.referee, m.subHigh, m.subLow].some(pl => pl?.id === id));
             let role = "RUST";
-            if (match?.team1.some(pl => pl.id === id)) role = "BLAUW";
+            if (invallerMatch) role = "INVALLER";
+            else if (match?.team1.some(pl => pl.id === id)) role = "BLAUW";
             else if (match?.team2.some(pl => pl.id === id)) role = "GEEL";
             else if (match?.referee?.id === id) role = "REF";
             else if (match?.subHigh?.id === id || match?.subLow?.id === id) role = "RES";
 
-            const isInvaller =
-              !!match &&
-              Array.isArray((match as any).invallerPlayerIds) &&
-              (match as any).invallerPlayerIds.includes(id);
-
-            if (isInvaller) role = "INVALLER";
+            const isInvaller = !!invallerMatch;
 
             return {
               round: r.roundNumber,
