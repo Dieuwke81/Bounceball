@@ -281,6 +281,14 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
   }, [session, activePlayerPool]);
 
   const handlePrintAction = (type: PrintType) => {
+    const savedSession = localStorage.getItem('bounceball_nk_session');
+    if (savedSession) {
+      try {
+        setSession(JSON.parse(savedSession));
+      } catch {
+        // Gebruik de huidige sessie als de opgeslagen data ongeldig is.
+      }
+    }
     setActivePrintType(type); setPrintMenuOpen(false);
     setTimeout(() => { window.print(); setActivePrintType(null); }, 500);
   };
@@ -322,6 +330,7 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
     }
 
     setSession(newS);
+    localStorage.setItem('bounceball_nk_session', JSON.stringify(newS));
   };
 
   const tournamentHasStarted = useMemo(() => {
