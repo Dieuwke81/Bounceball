@@ -245,16 +245,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
     return participantIds.map(id => {
         const p = activePlayerPool.find(x => x.id === id);
         const rounds = session.rounds.map(r => {
-            // Een gemarkeerde invaller moet in het persoonlijke schema
-            // altijd als invaller worden gevonden, zolang deze speler
-            // daadwerkelijk één van de huidige reserves is.
             const invallerMatch = r.matches.find(m => {
               const invallerIds = Array.isArray((m as any).invallerPlayerIds)
                 ? (m as any).invallerPlayerIds
                 : [];
-              const isCurrentReserve =
-                m.subHigh?.id === id || m.subLow?.id === id;
-              return isCurrentReserve && invallerIds.includes(id);
+              return invallerIds.includes(id) && (m.subHigh?.id === id || m.subLow?.id === id);
             });
 
             const match = invallerMatch || r.matches.find(m => [...m.team1, ...m.team2, m.referee, m.subHigh, m.subLow].some(pl => pl?.id === id));
@@ -276,19 +271,11 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
               startTime: (r as any).startTime || ''
             };
         });
-        return { name: p?.name || '?', rounds };
+        return { name: p?.name || '?', playerId: id, rounds };
     });
   }, [session, activePlayerPool]);
 
   const handlePrintAction = (type: PrintType) => {
-    const savedSession = localStorage.getItem('bounceball_nk_session');
-    if (savedSession) {
-      try {
-        setSession(JSON.parse(savedSession));
-      } catch {
-        // Gebruik de huidige sessie als de opgeslagen data ongeldig is.
-      }
-    }
     setActivePrintType(type); setPrintMenuOpen(false);
     setTimeout(() => { window.print(); setActivePrintType(null); }, 500);
   };
@@ -329,8 +316,8 @@ const NKManager: React.FC<NKManagerProps> = ({ players, introPlayers = [], onClo
       match.invallerPlayerIds.push(playerId);
     }
 
-    setSession(newS);
     localStorage.setItem('bounceball_nk_session', JSON.stringify(newS));
+    setSession(newS);
   };
 
   const tournamentHasStarted = useMemo(() => {
