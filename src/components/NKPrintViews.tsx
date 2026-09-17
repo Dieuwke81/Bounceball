@@ -340,46 +340,41 @@ const NKPrintViews: React.FC<NKPrintViewsProps> = ({ session, activePrintType, h
           <table className="print-table" style={{marginTop: '10px'}}>
             <thead><tr className="bg-gray-100 uppercase text-[9pt] color-black"><th className="w-12 text-center">RD</th><th className="w-24 text-center">TIJD</th><th className="w-20 text-center">ZAAL</th><th className="text-left">ROL</th><th className="w-28 text-center">PUNTEN</th></tr></thead>
             <tbody>{ps.rounds.map((r: any) => {
+                  const sourceRound = session.rounds.find(sr => sr.roundNumber === r.round);
+                  const invallerMatch = sourceRound?.matches.find((m: any) => {
+                    const ids = Array.isArray(m.invallerPlayerIds) ? m.invallerPlayerIds : [];
+                    return ids.includes(ps.playerId) && (m.subHigh?.id === ps.playerId || m.subLow?.id === ps.playerId);
+                  });
+                  const isInvaller = !!invallerMatch;
+                  const displayRole = isInvaller ? "INVALLER" : r.role;
+                  const displayHall = isInvaller ? invallerMatch?.hallName || r.hall : r.hall;
+
                   let roleClass = "";
-                  if (r.role === "BLAUW") roleClass = "bg-blauw-trans";
-                  if (r.role === "GEEL") roleClass = "bg-geel-trans";
-                  if (r.role === "REF") roleClass = "bg-scheids-trans";
-                  if (r.role === "RES") roleClass = "bg-reserve-trans";
-                  if (r.role === "INVALLER") roleClass = "bg-invaller-trans";
+                  if (displayRole === "BLAUW") roleClass = "bg-blauw-trans";
+                  if (displayRole === "GEEL") roleClass = "bg-geel-trans";
+                  if (displayRole === "REF") roleClass = "bg-scheids-trans";
+                  if (displayRole === "RES") roleClass = "bg-reserve-trans";
+                  if (displayRole === "INVALLER") roleClass = "bg-invaller-trans";
 
                   let roleTextColor = "";
-                  if (r.role === "BLAUW") roleTextColor = "color-blauw";
-                  if (r.role === "GEEL") roleTextColor = "color-geel";
-                  if (r.role === "REF") roleTextColor = "color-scheids";
-                  if (r.role === "RES") roleTextColor = "color-reserve";
-                  if (r.role === "INVALLER") roleTextColor = "color-invaller";
+                  if (displayRole === "BLAUW") roleTextColor = "color-blauw";
+                  if (displayRole === "GEEL") roleTextColor = "color-geel";
+                  if (displayRole === "REF") roleTextColor = "color-scheids";
+                  if (displayRole === "RES") roleTextColor = "color-reserve";
+                  if (displayRole === "INVALLER") roleTextColor = "color-invaller";
 
                   return (
                     <tr key={r.round} className={roleClass}>
                       <td className="text-center text-xl py-2 font-black">{r.round}</td>
                       <td className="text-center text-sm font-black">{r.startTime}</td>
-                      <td className="text-center text-3xl font-black uppercase">{r.hall}</td>
+                      <td className="text-center text-3xl font-black uppercase">{displayHall}</td>
                       <td className={`font-black uppercase text-lg ${roleTextColor}`}>
-                        {r.role === "REF" ? "SCHEIDS" : r.role}
-                        {r.role === "INVALLER" && (
-                          <div style={{ fontSize: '11pt', marginTop: '2px', fontWeight: 900 }}>
-                            {r.note || `INVALLER – ZAAL ${r.hall}`}
-                          </div>
-                        )}
-                        {r.role === "REF" && r.hall?.trim().toUpperCase() === "C" && (
-                          <span style={{ marginLeft: '8px', fontSize: '20pt' }}>📣</span>
-                        )}
+                        {displayRole === "REF" ? "SCHEIDS" : displayRole === "RES" ? "RESERVE" : displayRole === "INVALLER" ? `INVALLER – ZAAL ${displayHall}` : displayRole}
                       </td>
-                      <td className="text-center">
-                        {r.hall !== '-' && (r.role === "BLAUW" || r.role === "GEEL") ? (
-                          <div className="border-2 border-black w-10 h-10 mx-auto bg-white"></div>
-                        ) : (
-                          <span className="text-gray-400 text-[7pt]">N.v.t.</span>
-                        )}
-                      </td>
+                      <td className="text-center text-xl font-black">-</td>
                     </tr>
                   );
-              })}</tbody>
+                })}</tbody>
             <tfoot><tr><td colSpan={3} className="border-none"></td><td className="text-right font-black text-xl py-4 pr-4 uppercase">TOTAAL:</td><td className="text-center"><div className="border-4 border-black w-14 h-14 mx-auto bg-white"></div></td></tr></tfoot>
           </table>
           {/* NIEUWE TEKST HIER */}
