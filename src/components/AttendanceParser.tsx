@@ -25,9 +25,9 @@ const AttendanceParser: React.FC<AttendanceParserProps> = ({ onParse }) => {
         className="w-full h-40 bg-gray-700 border border-gray-600 rounded-md shadow-sm p-3 text-white focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 mb-4 resize-y"
         placeholder={` 29 oktober 20:30
 
-1. Bram
-2. Hein
-3. Gijs
+1. Wesley
+2. Mark
+3. Marielle
 4. Dieuwke
 5. Roel
 ...`}
