@@ -495,7 +495,8 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
             <button
   onClick={() => {
     alert('Printknop werkt. Browser: ' + navigator.userAgent);
-    window.print();
+document.body.innerHTML = '<h1>Printtest Bounceball</h1>';
+window.print();
   }}
   className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95"
   title="Print Wedstrijdformulier"
