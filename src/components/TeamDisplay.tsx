@@ -492,15 +492,8 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ teams, teams2, gameMode, curr
             <button onClick={handleShareToWhatsApp} className="flex items-center space-x-2 bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95" title="Deel via WhatsApp">
                 <WhatsAppIcon className="w-5 h-5" />
             </button>
-            <button
-  onClick={() => {
-    alert('Printknop werkt. Browser: ' + navigator.userAgent);
-document.body.innerHTML = '<h1>Printtest Bounceball</h1>';
-window.print();
-  }}
-  className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95"
-  title="Print Wedstrijdformulier"
->        <PrinterIcon className="w-5 h-5" />
+            <button onClick={() => window.print()} className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg transition-colors text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95" title="Print Wedstrijdformulier">    
+              <PrinterIcon className="w-5 h-5" />
                 <span className="hidden sm:inline">Formulier</span>
             </button>
         </div>
